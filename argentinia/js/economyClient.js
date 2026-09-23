@@ -136,6 +136,21 @@ export function convertEssenceServer(quantity = 1, operationId = null) {
   });
 }
 
+export function evolveCardServer(cardId, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('card-evolution'),
+    action: 'evolveCard', cardId:String(cardId || '')
+  });
+}
+
+
+export function mixCardsServer(cardId, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('industrial-mix'),
+    action: 'mixCards', cardId:String(cardId || '')
+  });
+}
+
 export function purchasePrebuiltDeckServer(productId, deckName, operationId = null) {
   return call('economyPurchasePrebuiltDeck', {
     operationId: operationId || createEconomyOperationId('prebuilt'),

@@ -186,3 +186,16 @@ tools/test_workshop_foundation_23_21_6_hf23_3_12.mjs
 
 
 tools/test_achievements_essence_23_21_6_hf23_3_13.mjs
+
+tools/test_evolution_capsule_23_21_6_hf23_3_14.mjs
+
+tools/test_evolution_content_balance_23_21_6_hf23_3_14_1.mjs
+
+tools/test_workshop_evolution_cinematic_trophies_23_21_6_hf23_3_14_2.mjs
+
+tools/test_achievement_claim_workshop_unlock_modals_23_21_6_hf23_3_14_2_2.mjs
+
+tools/test_industrial_mixer_23_21_6_hf23_3_15.mjs
+tools/test_public_profile_23_21_6_hf23_3_16.mjs
+
+tools/test_public_profile_favorite_chest_essence_23_21_6_hf23_3_16_1.mjs

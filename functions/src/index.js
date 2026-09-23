@@ -39,7 +39,7 @@ import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
-import { unlockWorkshopMachineTx, convertEssenceTx } from './economy/workshop.js';
+import { unlockWorkshopMachineTx, convertEssenceTx, evolveCardTx, mixCardsTx } from './economy/workshop.js';
 import { claimAchievementTx } from './economy/achievements.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
 import { sendMultiplayerCommunication, sendLobbyCommunication, deleteLobbyCommunication } from './multiplayer/communication.js';
@@ -51,6 +51,7 @@ import {
   getPendingTradeNotifications, acknowledgeTradeNotification
 } from './community/community.js';
 import { advanceCommunityBots, getCommunityBotAdminSnapshot, setCommunityBotConfigAdmin } from './community/bots.js';
+import { getPublicPlayerProfile, setFavoriteCard } from './community/publicProfile.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -316,9 +317,9 @@ export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async re
   const data = requestData(request);
   const action = String(data.action || '').trim();
   try {
-    const actionRateKey = action === 'unlockWorkshopMachine' ? 'workshop-unlock' : action === 'claimAchievement' ? 'achievement-claim' : action === 'convertEssence' ? 'essence-convert' : 'craft-enhancement';
+    const actionRateKey = action === 'unlockWorkshopMachine' ? 'workshop-unlock' : action === 'claimAchievement' ? 'achievement-claim' : action === 'convertEssence' ? 'essence-convert' : action === 'evolveCard' ? 'card-evolution' : action === 'mixCards' ? 'industrial-mix' : 'craft-enhancement';
     assertRateLimit(auth.uid, actionRateKey, { limit: 20, windowMs: 60000 });
-    rejectForbidden(data, ['uid','fichas','fichaCost','points','cost','essence','collection','enhancements','achievements','workshop','profile','unlockedMachines']);
+    rejectForbidden(data, ['uid','fichas','fichaCost','points','cost','essence','collection','enhancements','evolutions','achievements','workshop','profile','unlockedMachines']);
     rejectUnknown(data, ['operationId','economyProtocolVersion','action','machineId','cardId','keyword','achievementId','quantity']);
     const operationId = String(data.operationId || '');
     if (action === 'unlockWorkshopMachine') {
@@ -356,6 +357,29 @@ export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async re
       }});
       await finalizeAuthorityAudit({auth,operationId,type:'essence.convert',outcome,metadata:{quantity}});
       logger.info('Essence converted',{uid:auth.uid,quantity,operationId,replayed:outcome.replayed,appCheckPresent:auth.appCheckPresent});
+      return {ok:true,...outcome};
+    }
+    if (action === 'evolveCard') {
+      if (data.machineId != null || data.keyword != null || data.achievementId != null || data.quantity != null) throw economyError('INVALID_ECONOMY_REQUEST');
+      const cardId=String(data.cardId||'');
+      const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'workshop.evolve_card',request:{cardId},execute:async tx=>{
+        const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+        return evolveCardTx({db,tx,uid:auth.uid,cardId});
+      }});
+      await finalizeAuthorityAudit({auth,operationId,type:'workshop.evolve_card',outcome,metadata:{cardId}});
+      logger.info('Card evolved',{uid:auth.uid,cardId,stage:outcome?.result?.toStage,operationId,replayed:outcome.replayed,appCheckPresent:auth.appCheckPresent});
+      return {ok:true,...outcome};
+    }
+    if (action === 'mixCards') {
+      if (data.machineId != null || data.keyword != null || data.achievementId != null || data.quantity != null) throw economyError('INVALID_ECONOMY_REQUEST');
+      const cardId=String(data.cardId||'');
+      const entropy=createServerEntropy();
+      const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'workshop.mix_cards',request:{cardId},execute:async tx=>{
+        const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+        return mixCardsTx({db,tx,uid:auth.uid,cardId,seed:entropy.seed,entropyCommitment:entropy.commitment});
+      }});
+      await finalizeAuthorityAudit({auth,operationId,type:'workshop.mix_cards',outcome,metadata:{cardId,outputCardId:outcome?.result?.outputCardId||null,fromRarity:outcome?.result?.fromRarity||null,toRarity:outcome?.result?.toRarity||null}});
+      logger.info('Cards mixed',{uid:auth.uid,cardId,outputCardId:outcome?.result?.outputCardId,operationId,replayed:outcome.replayed,appCheckPresent:auth.appCheckPresent});
       return {ok:true,...outcome};
     }
     if (action) throw economyError('INVALID_ECONOMY_REQUEST');
@@ -500,9 +524,11 @@ export const economyCommunityAction = onCall(FUNCTION_RUNTIME_OPTIONS, async req
   const data = requestData(request);
   const action = String(data.action || '').trim().toLowerCase();
   try {
-    rejectUnknown(data, ['economyProtocolVersion','action','targetUid','duration','reason','blockedWords','kind','messageSeq','tradeId','notificationId','subject','text','caseId','response','botConfig']);
+    rejectUnknown(data, ['economyProtocolVersion','action','targetUid','duration','reason','blockedWords','kind','messageSeq','tradeId','notificationId','subject','text','caseId','response','botConfig','cardId']);
     assertRateLimit(auth.uid, `community-${action || 'invalid'}`, { limit: action.startsWith('admin_') ? 90 : 30, windowMs:5*60000 });
     if (action === 'status') return { ok:true, status:await getCommunityStatus(db, auth.uid) };
+    if (action === 'public_profile') return { ok:true, profile:await getPublicPlayerProfile(db, { targetUid:data.targetUid }) };
+    if (action === 'set_favorite_card') return { ok:true, ...(await setFavoriteCard(db,{ uid:auth.uid, cardId:data.cardId })) };
     if (action === 'directory_refresh') {
       await advanceCommunityBots(db, { nowMs:Date.now() });
       return { ok:true, refreshed:true };

@@ -4,6 +4,7 @@ import { fetchPublicPlayerStats } from './firebaseClient.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { formatDuration, winRate } from './statistics.js';
 import { gameText } from './gameTexts.js';
+import { showPublicPlayerProfile } from './publicProfileUI.js';
 
 function esc(value) {
   const div = document.createElement('div');
@@ -31,6 +32,7 @@ function injectStyles() {
     .ranking-table th[data-sort]:hover { background:#263228; }
     .ranking-table td { padding:10px; border-bottom:1px solid rgba(212,175,55,.10); text-align:center; white-space:nowrap; }
     .ranking-table td.ranking-player { text-align:left; font-weight:750; color:#fff0b7; }
+    .ranking-profile-btn{border:0;background:none;padding:0;color:#fff0b7;font:inherit;font-weight:800;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(212,175,55,.4);text-underline-offset:3px}.ranking-profile-btn:hover{color:#fff7d6;text-decoration-color:#d4af37}
     .ranking-table tbody tr:hover { background:rgba(212,175,55,.06); }
     .ranking-rank { color:#d4af37; font-weight:800; }
     .ranking-empty { padding:34px; text-align:center; color:#a99d88; }
@@ -89,7 +91,7 @@ export function showGlobalRanking(onBack = () => {}) {
     const headers=columns.map(([key,textKey])=>`<th data-sort="${key}">${esc(gameText(textKey))}${sortKey===key?(direction==='asc'?' ↑':' ↓'):''}</th>`).join('');
     const body=sorted.map((r,i)=>`<tr>
       <td class="ranking-rank">${i+1}</td>
-      <td class="ranking-player" title="${esc(eloLabel(r))}">${esc(r.username || gameText('ranking.playerFallback'))}</td>
+      <td class="ranking-player" title="${esc(eloLabel(r))}"><button type="button" class="ranking-profile-btn" data-public-profile-uid="${esc(String(r.id||r.uid||''))}" title="${esc(gameText('publicProfile.view'))}">${esc(r.username || gameText('ranking.playerFallback'))}</button></td>
       <td><strong>${elo(r.eloRating).toLocaleString('es-AR')}</strong>${n(r.eloGames)<10?'*':''}</td>
       <td>${n(r.tournamentChampionships).toLocaleString('es-AR')}</td>
       <td>${n(r.tournamentsPlayed).toLocaleString('es-AR')}</td>
@@ -105,6 +107,7 @@ export function showGlobalRanking(onBack = () => {}) {
     </tr>`).join('');
     wrap.innerHTML=`<table class="ranking-table"><thead><tr><th>#</th>${headers}</tr></thead><tbody>${body}</tbody></table>`;
     wrap.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{ const key=th.dataset.sort; if(sortKey===key) direction=direction==='asc'?'desc':'asc'; else {sortKey=key; direction=key==='username'?'asc':'desc';} render(); }));
+    wrap.querySelectorAll('[data-public-profile-uid]').forEach(btn=>btn.addEventListener('click',event=>{event.stopPropagation();const uid=btn.dataset.publicProfileUid||'';if(uid)showPublicPlayerProfile(uid);}));
   }
   fetchPublicPlayerStats().then(data=>{ rows=(Array.isArray(data)?data:[]).filter(row=>row?.excludeFromGlobalRanking !== true); render(); }).catch(err=>{ console.error('No se pudo cargar Ranking Global:',err); overlay.querySelector('#ranking-wrap').innerHTML=`<div class="ranking-empty">${esc(gameText('ranking.error'))}<br>${esc(err?.message||err)}</div>`; });
 }

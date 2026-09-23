@@ -20,15 +20,15 @@ const admin=fs.readFileSync(path.join(repo,'functions','src','economy','admin.js
 const audit=fs.readFileSync(path.join(repo,'functions','src','economy','audit.js'),'utf8');
 const config=getDefaultGameConfig();
 
-// Economy/config defaults: only Generador is player-available in Point 5.
+// Economy/config defaults: foundation remains intact; HF23.3.14 promotes Machine 2 and HF23.3.15 promotes Machine 3.
 assert.equal(config.workshopEnabled,true);
 assert.equal(config.workshopMachine1Available,true);
 assert.equal(config.workshopMachine1UnlockPoints,1000);
 assert.equal(config.workshopMachine1UnlockFichas,0);
-assert.equal(config.workshopMachine2Available,false);
+assert.equal(config.workshopMachine2Available,true);
 assert.equal(config.workshopMachine2UnlockPoints,2000);
 assert.equal(config.workshopMachine2UnlockFichas,20);
-assert.equal(config.workshopMachine3Available,false);
+assert.equal(config.workshopMachine3Available,true);
 assert.equal(config.workshopMachine3UnlockPoints,3000);
 assert.equal(config.workshopMachine3UnlockFichas,50);
 assert.equal(WORKSHOP_POLICY.machine1.points,1000);

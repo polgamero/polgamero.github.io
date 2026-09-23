@@ -73,6 +73,7 @@ export async function bootstrapAccountTx({ db, tx, uid, authProfile, usernameRaw
       decks: [],
       fichas: 0,
       enhancements: {},
+      evolutions: {},
       inventory: defaultInventory(),
       dailyRewards: defaultDailyRewards(),
       activeMatchId: null,

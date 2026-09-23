@@ -1,14 +1,26 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF23.3.8 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF23.3.7.1 RELEASED
+CURRENT_CANDIDATE=23.21.6 HF23.3.14 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF23.3.13.1 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
 ECONOMY=econ-23.19.5.6
 ECONOMY_SCHEMA=10
 RULES=23.13.89
 FUNCTIONS=42
+
+
+HF23.3.14 CAPSULA DE EVOLUCION — PUNTO 7:
+- Machine 2 activa: unlock default 2000 P + 20 F.
+- 20 rutas trusted; BASE -> EVO1 -> EVO2.
+- Server-authoritative/idempotent sobre economyCraftEnhancement; Functions siguen 42; Rules siguen 23.13.89.
+- IDs virtuales ::evo1/::evo2 por copia; max default 1 evolucionada/mazo, Admin-editable.
+- Costos default EVO1 250P+2F+10E+1 copia; EVO2 500P+5F+25E+2 copias; todos editables.
+- Mejora + evolución de una base requieren dos copias físicas; Trade Market protege ambas.
+- Local: Game Text 2189 PASS; Functions 28/28 PASS; parity65x3 PASS; packaging157/62/42 PASS; Gate05/Gate07 static preflight PASS.
+- Full Gate05/Gate07 emulator, Functions deploy/verify, GitHub y smoke PENDING.
+- PRE-RELEASE: no declarar Punto 7 RELEASED todavía.
 
 
 HF23.3.1 GATE CWD PORTABILITY FIX:

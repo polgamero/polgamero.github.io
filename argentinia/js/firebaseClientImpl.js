@@ -24,12 +24,13 @@ import {
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, getDocsFromServer, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
-import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { parseEvolutionVariantId, evolutionStageForProfile } from './evolution.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -237,6 +238,8 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   workshopUnlock: 'workshop.unlock_machine',
   achievementClaim: 'achievement.claim',
   essenceConvert: 'essence.convert',
+  cardEvolution: 'workshop.evolve_card',
+  industrialMix: 'workshop.mix_cards',
   prebuiltPurchase: 'store.purchase_prebuilt',
   emotePurchase: 'store.purchase_emote',
   classifiedPurchase: 'store.purchase_classified',
@@ -245,7 +248,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
-  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', essenceConvert:'essence-convert', prebuiltPurchase: 'prebuilt',
+  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', essenceConvert:'essence-convert', cardEvolution:'card-evolution', industrialMix:'industrial-mix', prebuiltPurchase: 'prebuilt',
   classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
@@ -406,7 +409,8 @@ export function onAuthChange(onChange) {
 //     decks: [{ id, name, cardIds: string[], isDefault, createdAt }],  // hasta 5, el
 //       primero ("starter") se crea solo con el mazo inicial random (Fase 3)
 //     fichas: number,          // Fase 2/23.13: +1 por sobre ABIERTO
-//     enhancements: { [cardId]: keyword },  // Fase 2: mejoras permanentes por Ficha
+//     enhancements: { [cardId]: keyword },  // mejoras permanentes por Ficha
+//     evolutions: { [cardId]: { stage: 1|2, evolvedAtMs } }, // Cápsula de Evolución
 //     createdAt, lastSeenAt }
 //
 // Nadie fuera de este archivo arma una referencia a `users/{uid}` a mano — todo pasa por
@@ -735,6 +739,14 @@ export async function adminSetAdmissionPolicy(policy = {}) {
 export async function getCommunityStatus() {
   const response = await communityActionServer('status');
   return response?.status || { ban:null, cases:[] };
+}
+export async function fetchPublicPlayerProfile(targetUid) {
+  const response = await communityActionServer('public_profile', { targetUid:String(targetUid||'') });
+  return response?.profile || null;
+}
+export async function setPublicProfileFavoriteCard(cardId = '') {
+  const response = await communityActionServer('set_favorite_card', { cardId:String(cardId||'') });
+  return { favoriteCardId:String(response?.favoriteCardId||'') };
 }
 export async function contactModeration({ subject = '', text = '' } = {}) {
   const response = await communityActionServer('contact', { subject:String(subject||''), text:String(text||'') });
@@ -1122,6 +1134,23 @@ export async function convertEssence(uid, quantity=1) {
   return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
 }
 
+export async function evolveCard(uid, cardId) {
+  const request={cardId:String(cardId||'')};
+  const outcome=await runEconomyActionAuthority(uid,'cardEvolution',request,operationId=>evolveCardServer(request.cardId,operationId));
+  const profile=await loadOwnProfileAfterServerMutation(uid);
+  if(!profile) throw new Error('EVOLUTION_PROFILE_MISSING_AFTER_COMMIT');
+  return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
+}
+
+
+export async function mixCards(uid, cardId) {
+  const request={cardId:String(cardId||'')};
+  const outcome=await runEconomyActionAuthority(uid,'industrialMix',request,operationId=>mixCardsServer(request.cardId,operationId));
+  const profile=await loadOwnProfileAfterServerMutation(uid);
+  if(!profile) throw new Error('INDUSTRIAL_MIX_PROFILE_MISSING_AFTER_COMMIT');
+  return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
+}
+
 // FASE 3, ETAPA 2: crea un mazo nuevo (límite global admin-editable, contando el inicial). Todo
 // validado DENTRO de la transacción — no confía en que el cliente ya haya chequeado esto,
 // lo vuelve a comprobar del lado "servidor": máximo de mazos, nombre no vacío, al menos
@@ -1161,15 +1190,22 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   // pero se valida aparte que: 1) esa carta REALMENTE tenga una mejora crafteada, y
   // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
   const enhancements = data.enhancements || {};
+  const evolutions = data.evolutions || {};
   const requestedCounts = {};
   const enhancedSlotCounts = {};
+  const evolvedSlotCounts = {};
+  const evolvedStages = {};
   const normalSlotCounts = {};
   cardIds.forEach(id => {
     const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
-    const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+    const parsedEvolution = isEnhancedSlot ? { baseId:id, stage:0 } : parseEvolutionVariantId(id);
+    const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
     requestedCounts[baseId] = (requestedCounts[baseId] || 0) + 1;
     if (isEnhancedSlot) enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
-    else normalSlotCounts[baseId] = (normalSlotCounts[baseId] || 0) + 1;
+    else if (parsedEvolution.stage > 0) {
+      evolvedSlotCounts[baseId] = (evolvedSlotCounts[baseId] || 0) + 1;
+      evolvedStages[baseId] = parsedEvolution.stage;
+    } else normalSlotCounts[baseId] = (normalSlotCounts[baseId] || 0) + 1;
   });
 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
@@ -1183,16 +1219,15 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
       throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
     }
   }
-  // HF8 — una mejora consume UNA de las copias físicas de ese cardId. Si tenés 2 copias
-  // y una está mejorada, quedan como máximo 1 normal + 1 mejorada; no puede persistir el
-  // estado histórico imposible de 2 normales + la mejorada virtual en el mismo mazo.
+  // Cada variante especial representa UNA copia física reservada de la colección. Una
+  // mejora y una evolución de la misma base son dos copias distintas si ambas se usan.
   if (!allowVirtualAdminPool) {
     for (const [baseId, normalCount] of Object.entries(normalSlotCounts)) {
-      if (!enhancements[baseId]) continue;
-      const normalOwned = Math.max(0, (ownedCounts[baseId] || 0) - 1);
+      const reserved = (enhancedSlotCounts[baseId] || 0) + (evolvedSlotCounts[baseId] || 0);
+      const normalOwned = Math.max(0, (ownedCounts[baseId] || 0) - reserved);
       if (normalCount > normalOwned) {
         const cardName = cardDb.getById(baseId)?.name || baseId;
-        throw new Error(`Una copia de ${cardName} está mejorada: sólo te quedan ${normalOwned} copia(s) normal(es) disponibles para este mazo.`);
+        throw new Error(`${cardName} tiene ${reserved} copia(s) especial(es) reservada(s): sólo quedan ${normalOwned} copia(s) normal(es) disponibles para este mazo.`);
       }
     }
   }
@@ -1212,6 +1247,18 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   if (totalEnhancedInDeck > MAX_ENHANCED_CARDS_PER_DECK) {
     throw new Error(`No podés tener más de ${MAX_ENHANCED_CARDS_PER_DECK} cartas mejoradas en el mismo mazo.`);
   }
+  for (const [baseId, count] of Object.entries(evolvedSlotCounts)) {
+    if (count > 1) throw new Error('Solo puede haber una copia evolucionada de la misma carta en el mazo.');
+    const stage = evolvedStages[baseId] || 0;
+    if (evolutionStageForProfile(evolutions, baseId) !== stage) {
+      throw new Error('Estás usando una evolución que no coincide con el estadio autorizado en tu perfil.');
+    }
+  }
+  const totalEvolvedInDeck = Object.values(evolvedSlotCounts).reduce((sum, n) => sum + n, 0);
+  if (totalEvolvedInDeck > MAX_EVOLVED_CARDS_PER_DECK) {
+    throw new Error(`No podés tener más de ${MAX_EVOLVED_CARDS_PER_DECK} carta(s) evolucionada(s) en el mismo mazo.`);
+  }
+
 }
 
 export async function createDeck(uid, name, cardIds) {

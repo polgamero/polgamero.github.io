@@ -12,7 +12,7 @@ const NUMERIC_KEYS = [
   'basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite','basicLandPacksBlue',
   'basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
   'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
-  'emotesPurchased','dailyRewardsClaimed','workshopMachinesUnlocked','essenceEarned','essenceSpent','achievementClaims'
+  'emotesPurchased','dailyRewardsClaimed','workshopMachinesUnlocked','essenceEarned','essenceSpent','achievementClaims','cardsEvolved','industrialMixes'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }
@@ -70,6 +70,12 @@ export function deriveAuthorityAudit(type,result={}){
     case 'essence.convert':
       out.source='essence_conversion_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.essenceDelta=nonneg(result.essenceGain);
       out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),essenceEarned:out.essenceDelta}; break;
+    case 'workshop.evolve_card':
+      out.source='card_evolution_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.essenceDelta=-nonneg(result.essenceCost);
+      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),essenceSpent:nonneg(result.essenceCost),cardsEvolved:1}; break;
+    case 'workshop.mix_cards':
+      out.source='industrial_mix_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.essenceDelta=-nonneg(result.essenceCost); out.cardsDelta=1-nonneg(result.copiesConsumed||3);
+      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),essenceSpent:nonneg(result.essenceCost),industrialMixes:1}; break;
     case 'store.purchase_prebuilt':
       out.source='prebuilt_deck_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=nonneg(result.cardsGranted);
       out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),prebuiltDecksPurchased:1}; break;

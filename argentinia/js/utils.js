@@ -5,6 +5,7 @@ import { zoneForCardOwner } from './zoneOwnership.js';
 import { cardForNonBattlefieldZone } from './transformEngine.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { buildCompetitiveDeck } from './deckIntelligence.js';
+import { parseEvolutionVariantId, evolutionStageForProfile, applyEvolutionStage } from './evolution.js';
 import { gameRandom } from './gameRng.js';
 
 export function shuffle(array, randomFn = gameRandom) {
@@ -243,18 +244,27 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
 // vez de importar `state` directo de main.js — a propósito: evita un import circular
 // (utils.js -> main.js -> ui.js/firebaseClient.js -> SDK de Firebase) que rompía poder
 // importar este archivo de forma aislada, y de paso deja la función más pura y testeable.
-export function buildDeckFromCardIds(cardIds, enhancements) {
+export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}) {
   const cards = cardIds
     .map(id => {
       const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
-      const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+      const parsedEvolution = isEnhancedSlot ? { baseId: id, stage: 0 } : parseEvolutionVariantId(id);
+      const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
       const cardDef = cardDb.getById(baseId);
       if (!cardDef) return null;
       if (cardDef.enabled === false) {
         const error = new Error(`La carta ${cardDef.name || baseId} está deshabilitada. Editá el mazo antes de jugar.`);
         error.code = 'CARD_DISABLED'; error.cardId = baseId; throw error;
       }
-      const cloned = { ...cardDef };
+      let cloned = { ...cardDef };
+      if (parsedEvolution.stage > 0) {
+        const authorizedStage = evolutionStageForProfile(evolutions, baseId);
+        if (authorizedStage !== parsedEvolution.stage) {
+          const error = new Error(`La evolución guardada de ${cardDef.name || baseId} no coincide con tu perfil. Editá el mazo antes de jugar.`);
+          error.code = 'EVOLUTION_STAGE_MISMATCH'; error.cardId = baseId; throw error;
+        }
+        cloned = applyEvolutionStage(cardDef, parsedEvolution.stage);
+      }
       if (isEnhancedSlot && isEnhancementEligibleCard(cardDef)) {
         const keyword = enhancements && enhancements[baseId];
         if (keyword) cloned.keywords = [...(cloned.keywords || []), keyword];

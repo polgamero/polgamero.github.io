@@ -1443,7 +1443,7 @@ async function initGame(deckSource, options = {}) {
 
   let deckLabel;
   if (deckSource.type === 'saved') {
-    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
+    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions);
     deckLabel = deckSource.deck.name;
   } else {
     state.localDeck = buildRandomDeck(deckSource.identity, { quality: 'competitive' });
@@ -2458,7 +2458,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
   const deckLabel = isTestDeck ? MULTIPLAYER_TEST_DECK_NAME : deckSource.deck.name;
   state.localDeck = isTestDeck
     ? buildMultiplayerTestDeck()
-    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
+    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).

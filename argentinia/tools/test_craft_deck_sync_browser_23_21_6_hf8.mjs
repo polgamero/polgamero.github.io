@@ -53,6 +53,16 @@ assert.deepEqual(
 );
 assert.equal(normalizeMaxEnhancedCardsPerDeck({ maxEnhancedCardsPerDeck:5 }), 5);
 
+const migratedWithEvolution = migrateDecksForEnhancementCraft({
+  cardId: base,
+  ownedCopies: 2,
+  evolved: true,
+  maxEnhancedCardsPerDeck: 3,
+  decks: [{ id:'deck_evo', cardIds:[base, 'x'] }]
+});
+assert.deepEqual(migratedWithEvolution.updatedDeckIds, ['deck_evo']);
+assert.equal(migratedWithEvolution.decks[0].cardIds[0], enhanced, 'an evolved copy reserves the second physical copy; crafting enhancement must migrate the remaining base slot');
+
 // UI: one improvement per base card ID remains the explicit contract; browser now has
 // search/color/rarity filters, and intrinsic keywords disappear from the choice list.
 assert.match(ui, /filter\(id => !enhancements\[id\]\)/);
@@ -75,6 +85,7 @@ assert.match(commerce, /migrateDecksForEnhancementCraft/);
 assert.match(commerce, /decks: deckSync\.decks/);
 assert.match(errors, /CRAFT_DECK_ENHANCED_LIMIT_CONFLICT/);
 assert.match(firebaseClient, /normalSlotCounts/);
-assert.match(firebaseClient, /normalOwned = Math\.max\(0, \(ownedCounts\[baseId\] \|\| 0\) - 1\)/);
+assert.match(firebaseClient, /const reserved = \(enhancedSlotCounts\[baseId\] \|\| 0\) \+ \(evolvedSlotCounts\[baseId\] \|\| 0\)/);
+assert.match(firebaseClient, /normalOwned = Math\.max\(0, \(ownedCounts\[baseId\] \|\| 0\) - reserved\)/);
 
-console.log('CRAFT_DECK_SYNC_BROWSER_23_21_6_HF8_OK autoDeckSync=atomic oneEnhancedPerId=yes filters=search+color+rarity duplicateKeyword=blocked deckDetail=type+cmc');
+console.log('CRAFT_DECK_SYNC_BROWSER_23_21_6_HF8_OK autoDeckSync=atomic evolutionCopyFence=twoPhysicalCopies oneEnhancedPerId=yes filters=search+color+rarity duplicateKeyword=blocked deckDetail=type+cmc');

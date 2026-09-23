@@ -156,10 +156,14 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   if (cardHasEnhancementKeyword(card, cleanKeyword)) throw economyError('CRAFT_KEYWORD_ALREADY_PRESENT');
 
   const ownedCopies = collection.filter(id => String(id) === card.id).length;
+  const evolutionRow = profile.evolutions && typeof profile.evolutions === 'object' && !Array.isArray(profile.evolutions) ? profile.evolutions[card.id] : null;
+  const evolved = Math.floor(Number(evolutionRow?.stage ?? evolutionRow) || 0) > 0;
+  if (evolved && ownedCopies < 2) throw economyError('CRAFT_EVOLUTION_COPY_CONFLICT');
   const deckSync = migrateDecksForEnhancementCraft({
     decks: profile.decks || [],
     cardId: card.id,
     ownedCopies,
+    evolved,
     maxEnhancedCardsPerDeck: settings.maxEnhancedCardsPerDeck
   });
   if (deckSync.conflictDeckIds.length) {

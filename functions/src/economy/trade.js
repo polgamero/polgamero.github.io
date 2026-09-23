@@ -23,6 +23,7 @@ import {
   cardMatchesWanted,
   swapOneCard
 } from './tradeCore.js';
+import { favoriteCardPatchForCollection } from '../shared/profileFavorite.js';
 
 const trustedById = new Map(TRUSTED_CARD_POOL.map(card => [String(card.id), card]));
 
@@ -288,7 +289,7 @@ export async function acceptTradeOfferTx({db,tx,uid,offerId,operationId='',nowMs
   let swapped; try{swapped=swapOneCard(ownerProfile.collection,listing.cardId,offererProfile.collection,accepted.offeredCardId);}catch{throw economyError('TRADE_RESERVATION_CONFLICT');}
   const otherOffers=offers.filter(o=>o.data.offerId!==accepted.offerId); const otherResByUid=await loadReservationsForOffers(db,tx,otherOffers);
   const ownerProfileAfter={...ownerProfile,collection:swapped.collectionA}, offererProfileAfter={...offererProfile,collection:swapped.collectionB};
-  tx.update(ownerRef,{collection:swapped.collectionA}); tx.update(offererRef,{collection:swapped.collectionB});
+  tx.update(ownerRef,{collection:swapped.collectionA,...favoriteCardPatchForCollection(ownerProfile,swapped.collectionA)}); tx.update(offererRef,{collection:swapped.collectionB,...favoriteCardPatchForCollection(offererProfile,swapped.collectionB)});
   const tradeStatsDelta=suppressPublicTradeStats?{}:{tradesCompleted:1};
   tx.set(ownerStatsRef,playerStatsMirrorServer(uid,ownerProfileAfter,ownerStatsSnap.exists?(ownerStatsSnap.data()||{}):{},tradeStatsDelta),{merge:false});
   tx.set(offererStatsRef,playerStatsMirrorServer(accepted.offererUid,offererProfileAfter,offererStatsSnap.exists?(offererStatsSnap.data()||{}):{},tradeStatsDelta),{merge:false});

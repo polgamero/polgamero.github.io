@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 1,
+  "contract": "23.21.6 HF23.3.14.1",
+  "baseCount": 20,
+  "stageCount": 40,
+  "directory": "assets/images/evolutions",
+  "entries": [
+    {
+      "baseId": "crea_001",
+      "stage": 1,
+      "name": "El Firulais · Guardián",
+      "image": "crea_001_evo1.png",
+      "path": "assets/images/evolutions/crea_001_evo1.png"
+    },
+    {
+      "baseId": "crea_001",
+      "stage": 2,
+      "name": "El Firulais · Leyenda del Barrio",
+      "image": "crea_001_evo2.png",
+      "path": "assets/images/evolutions/crea_001_evo2.png"
+    },
+    {
+      "baseId": "crea_002",
+      "stage": 1,
+      "name": "El Canillita · Mensajero",
+      "image": "crea_002_evo1.png",
+      "path": "assets/images/evolutions/crea_002_evo1.png"
+    },
+    {
+      "baseId": "crea_002",
+      "stage": 2,
+      "name": "El Canillita · Voz de la Ciudad",
+      "image": "crea_002_evo2.png",
+      "path": "assets/images/evolutions/crea_002_evo2.png"
+    },
+    {
+      "baseId": "crea_003",
+      "stage": 1,
+      "name": "El Gaucho · Baqueano",
+      "image": "crea_003_evo1.png",
+      "path": "assets/images/evolutions/crea_003_evo1.png"
+    },
+    {
+      "baseId": "crea_003",
+      "stage": 2,
+      "name": "El Gaucho · Custodio del Horizonte",
+      "image": "crea_003_evo2.png",
+      "path": "assets/images/evolutions/crea_003_evo2.png"
+    },
+    {
+      "baseId": "crea_004",
+      "stage": 1,
+      "name": "Mozo de Bodegón · Encargado",
+      "image": "crea_004_evo1.png",
+      "path": "assets/images/evolutions/crea_004_evo1.png"
+    },
+    {
+      "baseId": "crea_004",
+      "stage": 2,
+      "name": "Mozo de Bodegón · Dueño de la Noche",
+      "image": "crea_004_evo2.png",
+      "path": "assets/images/evolutions/crea_004_evo2.png"
+    },
+    {
+      "baseId": "crea_005",
+      "stage": 1,
+      "name": "Loro Hablador · Chusma",
+      "image": "crea_005_evo1.png",
+      "path": "assets/images/evolutions/crea_005_evo1.png"
+    },
+    {
+      "baseId": "crea_005",
+      "stage": 2,
+      "name": "Loro Hablador · Oráculo de Plaza",
+      "image": "crea_005_evo2.png",
+      "path": "assets/images/evolutions/crea_005_evo2.png"
+    },
+    {
+      "baseId": "crea_006",
+      "stage": 1,
+      "name": "El Trapito · Dueño de la Cuadra",
+      "image": "crea_006_evo1.png",
+      "path": "assets/images/evolutions/crea_006_evo1.png"
+    },
+    {
+      "baseId": "crea_006",
+      "stage": 2,
+      "name": "El Trapito · Señor de la Esquina",
+      "image": "crea_006_evo2.png",
+      "path": "assets/images/evolutions/crea_006_evo2.png"
+    },
+    {
+      "baseId": "crea_007",
+      "stage": 1,
+      "name": "Vecina Chismosa · Informante",
+      "image": "crea_007_evo1.png",
+      "path": "assets/images/evolutions/crea_007_evo1.png"
+    },
+    {
+      "baseId": "crea_007",
+      "stage": 2,
+      "name": "Vecina Chismosa · Red del Barrio",
+      "image": "crea_007_evo2.png",
+      "path": "assets/images/evolutions/crea_007_evo2.png"
+    },
+    {
+      "baseId": "crea_008",
+      "stage": 1,
+      "name": "Paloma de Plaza · Bandada",
+      "image": "crea_008_evo1.png",
+      "path": "assets/images/evolutions/crea_008_evo1.png"
+    },
+    {
+      "baseId": "crea_008",
+      "stage": 2,
+      "name": "Paloma de Plaza · Reina de las Cúpulas",
+      "image": "crea_008_evo2.png",
+      "path": "assets/images/evolutions/crea_008_evo2.png"
+    },
+    {
+      "baseId": "crea_009",
+      "stage": 1,
+      "name": "Vendedora de Chipá · Repartidora",
+      "image": "crea_009_evo1.png",
+      "path": "assets/images/evolutions/crea_009_evo1.png"
+    },
+    {
+      "baseId": "crea_009",
+      "stage": 2,
+      "name": "Vendedora de Chipá · Alma de la Terminal",
+      "image": "crea_009_evo2.png",
+      "path": "assets/images/evolutions/crea_009_evo2.png"
+    },
+    {
+      "baseId": "crea_010",
+      "stage": 1,
+      "name": "Pibe de la Cuadra · Corredor",
+      "image": "crea_010_evo1.png",
+      "path": "assets/images/evolutions/crea_010_evo1.png"
+    },
+    {
+      "baseId": "crea_010",
+      "stage": 2,
+      "name": "Pibe de la Cuadra · Ídolo del Asfalto",
+      "image": "crea_010_evo2.png",
+      "path": "assets/images/evolutions/crea_010_evo2.png"
+    },
+    {
+      "baseId": "crea_011",
+      "stage": 1,
+      "name": "Perro de la Plaza · Protector",
+      "image": "crea_011_evo1.png",
+      "path": "assets/images/evolutions/crea_011_evo1.png"
+    },
+    {
+      "baseId": "crea_011",
+      "stage": 2,
+      "name": "Perro de la Plaza · Guardián del Parque",
+      "image": "crea_011_evo2.png",
+      "path": "assets/images/evolutions/crea_011_evo2.png"
+    },
+    {
+      "baseId": "crea_012",
+      "stage": 1,
+      "name": "Colectivero Apurado · Línea Directa",
+      "image": "crea_012_evo1.png",
+      "path": "assets/images/evolutions/crea_012_evo1.png"
+    },
+    {
+      "baseId": "crea_012",
+      "stage": 2,
+      "name": "Colectivero Apurado · Último Servicio",
+      "image": "crea_012_evo2.png",
+      "path": "assets/images/evolutions/crea_012_evo2.png"
+    },
+    {
+      "baseId": "crea_024",
+      "stage": 1,
+      "name": "Petardo Ambulante · Mecha Corta",
+      "image": "crea_024_evo1.png",
+      "path": "assets/images/evolutions/crea_024_evo1.png"
+    },
+    {
+      "baseId": "crea_024",
+      "stage": 2,
+      "name": "Petardo Ambulante · Estallido Viviente",
+      "image": "crea_024_evo2.png",
+      "path": "assets/images/evolutions/crea_024_evo2.png"
+    },
+    {
+      "baseId": "crea_025",
+      "stage": 1,
+      "name": "Alma en Pena · Aparición",
+      "image": "crea_025_evo1.png",
+      "path": "assets/images/evolutions/crea_025_evo1.png"
+    },
+    {
+      "baseId": "crea_025",
+      "stage": 2,
+      "name": "Alma en Pena · Espectro Persistente",
+      "image": "crea_025_evo2.png",
+      "path": "assets/images/evolutions/crea_025_evo2.png"
+    },
+    {
+      "baseId": "crea_034",
+      "stage": 1,
+      "name": "El Recaudador Implacable · Cobrador",
+      "image": "crea_034_evo1.png",
+      "path": "assets/images/evolutions/crea_034_evo1.png"
+    },
+    {
+      "baseId": "crea_034",
+      "stage": 2,
+      "name": "El Recaudador Implacable · Verdugo Fiscal",
+      "image": "crea_034_evo2.png",
+      "path": "assets/images/evolutions/crea_034_evo2.png"
+    },
+    {
+      "baseId": "crea_036",
+      "stage": 1,
+      "name": "Buzo de la Costanera · Explorador",
+      "image": "crea_036_evo1.png",
+      "path": "assets/images/evolutions/crea_036_evo1.png"
+    },
+    {
+      "baseId": "crea_036",
+      "stage": 2,
+      "name": "Buzo de la Costanera · Fantasma del Río",
+      "image": "crea_036_evo2.png",
+      "path": "assets/images/evolutions/crea_036_evo2.png"
+    },
+    {
+      "baseId": "crea_039",
+      "stage": 1,
+      "name": "Capitana del Aguante · Jefa de Guardia",
+      "image": "crea_039_evo1.png",
+      "path": "assets/images/evolutions/crea_039_evo1.png"
+    },
+    {
+      "baseId": "crea_039",
+      "stage": 2,
+      "name": "Capitana del Aguante · Comandante del Barrio",
+      "image": "crea_039_evo2.png",
+      "path": "assets/images/evolutions/crea_039_evo2.png"
+    },
+    {
+      "baseId": "crea_041",
+      "stage": 1,
+      "name": "Jabalí del Descampado · Embestida",
+      "image": "crea_041_evo1.png",
+      "path": "assets/images/evolutions/crea_041_evo1.png"
+    },
+    {
+      "baseId": "crea_041",
+      "stage": 2,
+      "name": "Jabalí del Descampado · Bestia del Terraplén",
+      "image": "crea_041_evo2.png",
+      "path": "assets/images/evolutions/crea_041_evo2.png"
+    },
+    {
+      "baseId": "crea_046",
+      "stage": 1,
+      "name": "Contrabandista de Sombras · Correo Negro",
+      "image": "crea_046_evo1.png",
+      "path": "assets/images/evolutions/crea_046_evo1.png"
+    },
+    {
+      "baseId": "crea_046",
+      "stage": 2,
+      "name": "Contrabandista de Sombras · Amo del Pasaje",
+      "image": "crea_046_evo2.png",
+      "path": "assets/images/evolutions/crea_046_evo2.png"
+    },
+    {
+      "baseId": "crea_050",
+      "stage": 1,
+      "name": "Ángel del Descampado · Vigía",
+      "image": "crea_050_evo1.png",
+      "path": "assets/images/evolutions/crea_050_evo1.png"
+    },
+    {
+      "baseId": "crea_050",
+      "stage": 2,
+      "name": "Ángel del Descampado · Custodio del Cielo",
+      "image": "crea_050_evo2.png",
+      "path": "assets/images/evolutions/crea_050_evo2.png"
+    }
+  ],
+  "lines": [
+    {
+      "baseId": "crea_001",
+      "evo1": {
+        "name": "El Firulais · Guardián",
+        "image": "crea_001_evo1.png",
+        "path": "assets/images/evolutions/crea_001_evo1.png"
+      },
+      "evo2": {
+        "name": "El Firulais · Leyenda del Barrio",
+        "image": "crea_001_evo2.png",
+        "path": "assets/images/evolutions/crea_001_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_002",
+      "evo1": {
+        "name": "El Canillita · Mensajero",
+        "image": "crea_002_evo1.png",
+        "path": "assets/images/evolutions/crea_002_evo1.png"
+      },
+      "evo2": {
+        "name": "El Canillita · Voz de la Ciudad",
+        "image": "crea_002_evo2.png",
+        "path": "assets/images/evolutions/crea_002_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_003",
+      "evo1": {
+        "name": "El Gaucho · Baqueano",
+        "image": "crea_003_evo1.png",
+        "path": "assets/images/evolutions/crea_003_evo1.png"
+      },
+      "evo2": {
+        "name": "El Gaucho · Custodio del Horizonte",
+        "image": "crea_003_evo2.png",
+        "path": "assets/images/evolutions/crea_003_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_004",
+      "evo1": {
+        "name": "Mozo de Bodegón · Encargado",
+        "image": "crea_004_evo1.png",
+        "path": "assets/images/evolutions/crea_004_evo1.png"
+      },
+      "evo2": {
+        "name": "Mozo de Bodegón · Dueño de la Noche",
+        "image": "crea_004_evo2.png",
+        "path": "assets/images/evolutions/crea_004_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_005",
+      "evo1": {
+        "name": "Loro Hablador · Chusma",
+        "image": "crea_005_evo1.png",
+        "path": "assets/images/evolutions/crea_005_evo1.png"
+      },
+      "evo2": {
+        "name": "Loro Hablador · Oráculo de Plaza",
+        "image": "crea_005_evo2.png",
+        "path": "assets/images/evolutions/crea_005_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_006",
+      "evo1": {
+        "name": "El Trapito · Dueño de la Cuadra",
+        "image": "crea_006_evo1.png",
+        "path": "assets/images/evolutions/crea_006_evo1.png"
+      },
+      "evo2": {
+        "name": "El Trapito · Señor de la Esquina",
+        "image": "crea_006_evo2.png",
+        "path": "assets/images/evolutions/crea_006_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_007",
+      "evo1": {
+        "name": "Vecina Chismosa · Informante",
+        "image": "crea_007_evo1.png",
+        "path": "assets/images/evolutions/crea_007_evo1.png"
+      },
+      "evo2": {
+        "name": "Vecina Chismosa · Red del Barrio",
+        "image": "crea_007_evo2.png",
+        "path": "assets/images/evolutions/crea_007_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_008",
+      "evo1": {
+        "name": "Paloma de Plaza · Bandada",
+        "image": "crea_008_evo1.png",
+        "path": "assets/images/evolutions/crea_008_evo1.png"
+      },
+      "evo2": {
+        "name": "Paloma de Plaza · Reina de las Cúpulas",
+        "image": "crea_008_evo2.png",
+        "path": "assets/images/evolutions/crea_008_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_009",
+      "evo1": {
+        "name": "Vendedora de Chipá · Repartidora",
+        "image": "crea_009_evo1.png",
+        "path": "assets/images/evolutions/crea_009_evo1.png"
+      },
+      "evo2": {
+        "name": "Vendedora de Chipá · Alma de la Terminal",
+        "image": "crea_009_evo2.png",
+        "path": "assets/images/evolutions/crea_009_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_010",
+      "evo1": {
+        "name": "Pibe de la Cuadra · Corredor",
+        "image": "crea_010_evo1.png",
+        "path": "assets/images/evolutions/crea_010_evo1.png"
+      },
+      "evo2": {
+        "name": "Pibe de la Cuadra · Ídolo del Asfalto",
+        "image": "crea_010_evo2.png",
+        "path": "assets/images/evolutions/crea_010_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_011",
+      "evo1": {
+        "name": "Perro de la Plaza · Protector",
+        "image": "crea_011_evo1.png",
+        "path": "assets/images/evolutions/crea_011_evo1.png"
+      },
+      "evo2": {
+        "name": "Perro de la Plaza · Guardián del Parque",
+        "image": "crea_011_evo2.png",
+        "path": "assets/images/evolutions/crea_011_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_012",
+      "evo1": {
+        "name": "Colectivero Apurado · Línea Directa",
+        "image": "crea_012_evo1.png",
+        "path": "assets/images/evolutions/crea_012_evo1.png"
+      },
+      "evo2": {
+        "name": "Colectivero Apurado · Último Servicio",
+        "image": "crea_012_evo2.png",
+        "path": "assets/images/evolutions/crea_012_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_024",
+      "evo1": {
+        "name": "Petardo Ambulante · Mecha Corta",
+        "image": "crea_024_evo1.png",
+        "path": "assets/images/evolutions/crea_024_evo1.png"
+      },
+      "evo2": {
+        "name": "Petardo Ambulante · Estallido Viviente",
+        "image": "crea_024_evo2.png",
+        "path": "assets/images/evolutions/crea_024_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_025",
+      "evo1": {
+        "name": "Alma en Pena · Aparición",
+        "image": "crea_025_evo1.png",
+        "path": "assets/images/evolutions/crea_025_evo1.png"
+      },
+      "evo2": {
+        "name": "Alma en Pena · Espectro Persistente",
+        "image": "crea_025_evo2.png",
+        "path": "assets/images/evolutions/crea_025_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_034",
+      "evo1": {
+        "name": "El Recaudador Implacable · Cobrador",
+        "image": "crea_034_evo1.png",
+        "path": "assets/images/evolutions/crea_034_evo1.png"
+      },
+      "evo2": {
+        "name": "El Recaudador Implacable · Verdugo Fiscal",
+        "image": "crea_034_evo2.png",
+        "path": "assets/images/evolutions/crea_034_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_036",
+      "evo1": {
+        "name": "Buzo de la Costanera · Explorador",
+        "image": "crea_036_evo1.png",
+        "path": "assets/images/evolutions/crea_036_evo1.png"
+      },
+      "evo2": {
+        "name": "Buzo de la Costanera · Fantasma del Río",
+        "image": "crea_036_evo2.png",
+        "path": "assets/images/evolutions/crea_036_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_039",
+      "evo1": {
+        "name": "Capitana del Aguante · Jefa de Guardia",
+        "image": "crea_039_evo1.png",
+        "path": "assets/images/evolutions/crea_039_evo1.png"
+      },
+      "evo2": {
+        "name": "Capitana del Aguante · Comandante del Barrio",
+        "image": "crea_039_evo2.png",
+        "path": "assets/images/evolutions/crea_039_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_041",
+      "evo1": {
+        "name": "Jabalí del Descampado · Embestida",
+        "image": "crea_041_evo1.png",
+        "path": "assets/images/evolutions/crea_041_evo1.png"
+      },
+      "evo2": {
+        "name": "Jabalí del Descampado · Bestia del Terraplén",
+        "image": "crea_041_evo2.png",
+        "path": "assets/images/evolutions/crea_041_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_046",
+      "evo1": {
+        "name": "Contrabandista de Sombras · Correo Negro",
+        "image": "crea_046_evo1.png",
+        "path": "assets/images/evolutions/crea_046_evo1.png"
+      },
+      "evo2": {
+        "name": "Contrabandista de Sombras · Amo del Pasaje",
+        "image": "crea_046_evo2.png",
+        "path": "assets/images/evolutions/crea_046_evo2.png"
+      }
+    },
+    {
+      "baseId": "crea_050",
+      "evo1": {
+        "name": "Ángel del Descampado · Vigía",
+        "image": "crea_050_evo1.png",
+        "path": "assets/images/evolutions/crea_050_evo1.png"
+      },
+      "evo2": {
+        "name": "Ángel del Descampado · Custodio del Cielo",
+        "image": "crea_050_evo2.png",
+        "path": "assets/images/evolutions/crea_050_evo2.png"
+      }
+    }
+  ]
+}

@@ -293,7 +293,9 @@ def main() -> int:
     root = Path(args.root).resolve()
     data_dir = root / "assets" / "data"
     image_dir = root / "assets" / "images" / "cards"
+    evolution_image_dir = root / "assets" / "images" / "evolutions"
     image_dir.mkdir(parents=True, exist_ok=True)
+    evolution_image_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         milestone, contract_version, expected_total, expected_counts = load_pool_contract(root)
@@ -381,6 +383,32 @@ def main() -> int:
     existing_files.sort()
     existing_set = set(existing_files)
 
+    evolution_files = []
+    for path in evolution_image_dir.rglob("*"):
+        if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
+            evolution_files.append(path.relative_to(evolution_image_dir).as_posix())
+    evolution_files.sort()
+    evolution_existing_set = set(evolution_files)
+
+    evolution_contract_path = evolution_image_dir / "evolution_art_manifest.json"
+    evolution_expected = []
+    if evolution_contract_path.is_file():
+        evolution_contract = load_json(evolution_contract_path)
+        entries = evolution_contract.get("entries") if isinstance(evolution_contract, dict) else None
+        if not isinstance(entries, list):
+            print(f"ERROR: contrato EVO inválido: {evolution_contract_path.relative_to(root)} no contiene entries[]", file=sys.stderr)
+            return 6
+        for entry in entries:
+            image = str(entry.get("image") or "").strip().replace("\\", "/") if isinstance(entry, dict) else ""
+            if not image:
+                print(f"ERROR: entrada EVO sin image en {evolution_contract_path.relative_to(root)}", file=sys.stderr)
+                return 6
+            evolution_expected.append(image)
+    if len(evolution_expected) != len(set(evolution_expected)):
+        print("ERROR: contrato EVO contiene filenames duplicados", file=sys.stderr)
+        return 6
+    missing_evolution_images = sorted(image for image in evolution_expected if image not in evolution_existing_set)
+
     referenced = []
     missing = []
     cards_without_image_field = []
@@ -444,6 +472,15 @@ def main() -> int:
             "missingCardCount": len(missing),
             "cardsWithoutImageFieldCount": len(cards_without_image_field),
         },
+        "evolutionImages": {
+            "directory": "assets/images/evolutions",
+            "contractFile": "assets/images/evolutions/evolution_art_manifest.json",
+            "expectedFileCount": len(evolution_expected),
+            "existingFileCount": len(evolution_files),
+            "missingFileCount": len(missing_evolution_images),
+            "missingFiles": missing_evolution_images,
+            "files": evolution_files,
+        },
         "tokenImages": {
             "producerEffectCount": len(token_effects),
             "uniqueTokenNameCount": len(unique_token_names),
@@ -479,10 +516,13 @@ def main() -> int:
     ]
     token_unassigned_path.write_text(("\n".join(token_unassigned_lines) + ("\n" if token_unassigned_lines else "")), encoding="utf-8")
 
+    evolution_txt_path = evolution_image_dir / "missing-evolution-images.txt"
+    evolution_txt_path.write_text(("\n".join(missing_evolution_images) + ("\n" if missing_evolution_images else "")), encoding="utf-8")
+
     print(
         "IMAGE_MANIFEST_OK "
         f"milestone={milestone} pool={total} existing={len(existing_files)} "
-        f"missingCards={len(missing)} tokenEffects={len(token_effects)} "
+        f"missingCards={len(missing)} evolutionFiles={len(evolution_files)} missingEvolutionFiles={len(missing_evolution_images)} tokenEffects={len(token_effects)} "
         f"tokenConcepts={len(unique_token_names)} tokenUnassigned={len(token_effects_without_image)} "
         f"missingTokenFiles={len(token_txt_lines)} imageOwnership=OK tokenOwnership=OK"
     )
@@ -490,6 +530,7 @@ def main() -> int:
     print(f"Cards TXT: {txt_path.relative_to(root)}")
     print(f"Tokens TXT: {token_txt_path.relative_to(root)}")
     print(f"Unassigned token TXT: {token_unassigned_path.relative_to(root)}")
+    print(f"Evolution TXT: {evolution_txt_path.relative_to(root)}")
     return 0
 
 

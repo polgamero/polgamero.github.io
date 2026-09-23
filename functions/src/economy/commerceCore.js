@@ -36,12 +36,13 @@ export function migrateDecksForEnhancementCraft({
   cardId,
   ownedCopies = 0,
   maxEnhancedCardsPerDeck = DEFAULT_MAX_ENHANCED_CARDS_PER_DECK,
+  evolved = false,
   enhancedSuffix = ENHANCED_CARD_SUFFIX
 } = {}) {
   const baseId = String(cardId || '');
   const enhancedId = `${baseId}${enhancedSuffix}`;
   const owned = Math.max(0, Math.floor(Number(ownedCopies) || 0));
-  const normalOwnedAfter = Math.max(0, owned - 1);
+  const normalOwnedAfter = Math.max(0, owned - 1 - (evolved ? 1 : 0));
   const cap = Math.max(1, Math.floor(Number(maxEnhancedCardsPerDeck) || DEFAULT_MAX_ENHANCED_CARDS_PER_DECK));
   const updatedDeckIds = [];
   const skippedDeckIds = [];
@@ -98,10 +99,10 @@ export function normalizeStoreSettings(raw = {}) {
     workshopMachine1Available: typeof raw.workshopMachine1Available === 'boolean' ? raw.workshopMachine1Available : true,
     workshopMachine1UnlockPoints: intAtLeast(raw.workshopMachine1UnlockPoints, 0, 1000),
     workshopMachine1UnlockFichas: intAtLeast(raw.workshopMachine1UnlockFichas, 0, 0),
-    workshopMachine2Available: typeof raw.workshopMachine2Available === 'boolean' ? raw.workshopMachine2Available : false,
+    workshopMachine2Available: typeof raw.workshopMachine2Available === 'boolean' ? raw.workshopMachine2Available : true,
     workshopMachine2UnlockPoints: intAtLeast(raw.workshopMachine2UnlockPoints, 0, 2000),
     workshopMachine2UnlockFichas: intAtLeast(raw.workshopMachine2UnlockFichas, 0, 20),
-    workshopMachine3Available: typeof raw.workshopMachine3Available === 'boolean' ? raw.workshopMachine3Available : false,
+    workshopMachine3Available: typeof raw.workshopMachine3Available === 'boolean' ? raw.workshopMachine3Available : true,
     workshopMachine3UnlockPoints: intAtLeast(raw.workshopMachine3UnlockPoints, 0, 3000),
     workshopMachine3UnlockFichas: intAtLeast(raw.workshopMachine3UnlockFichas, 0, 50),
     workshopMachine4Available: typeof raw.workshopMachine4Available === 'boolean' ? raw.workshopMachine4Available : false,

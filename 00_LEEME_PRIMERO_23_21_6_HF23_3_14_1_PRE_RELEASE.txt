@@ -1,0 +1,72 @@
+ARGENTINIA 23.21.6 HF23.3.14.1 PRE-RELEASE
+PUNTO 7 — CÁPSULA DE EVOLUCIÓN · CONTENT/BALANCE HARDENING
+===========================================================
+
+BASELINE
+- Acumulativa sobre 23.21.6 HF23.3.14 PRE-RELEASE.
+- Rules: 23.13.89 SIN CAMBIOS.
+- Cloud Functions: 42 callables; sin callable nuevo.
+- Pool de evolución: CERRADO en 20 cartas base + 20 EVO1 + 20 EVO2.
+- Game Text: 2198 definitions.
+- Packaging preflight: canonical=158 regression=62 functions=42.
+
+QUÉ CAMBIA EN .14.1
+- Rebalance completo de las 40 evoluciones: ninguna EVO mantiene el CMC de su estadio anterior.
+- Progresión de rareza contractual: Base < EVO1 < EVO2. En el pool actual: Common→Uncommon→Rare o Uncommon→Rare→Mythic.
+- Las 40 EVO agregan una modificación mecánica real (keyword y/o trigger/habilidad), además de stats/coste.
+- El modelo de evolución ahora puede sobrescribir coste, CMC, rareza, colores, P/T, keywords, texto y triggers/habilidades estructurados.
+- Regla global: toda Criatura con defender/Muralla DEBE tener poder 0. Se corrigió el único incumplimiento histórico encontrado (crea_076 Custodio del Club: 1/4 -> 0/4) en data canónica + trusted Functions.
+- Cada EVO usa arte propio determinístico: assets/images/evolutions/<baseId>_evo1.png / <baseId>_evo2.png.
+- Los 40 PNG EVO todavía NO fueron inventados: el sistema los espera y Admin > Debug los reporta como faltantes.
+- Enciclopedia: las 20 bases muestran botones pequeños “Evo 1” y “Evo 2”. Si el stage no fue descubierto, se ve la carta/texto pero el arte queda oculto con el contrato normal de Enciclopedia. EVO2 descubierto implica EVO1 descubierto.
+- Todas las 20 cartas base evolucionables muestran assets/images/ui/evolucionable.png inmediatamente a la derecha del icono de rareza, al mismo tamaño diminuto.
+- Integrados los 5 PNG oficiales de soloWins (Cobre/Bronce/Plata/Oro/Diamante) provistos por el owner.
+
+ASSETS OFICIALES INCORPORADOS
+- assets/images/ui/evolucionable.png
+- assets/images/logros/soloWins_copper.png
+- assets/images/logros/soloWins_bronze.png
+- assets/images/logros/soloWins_silver.png
+- assets/images/logros/soloWins_gold.png
+- assets/images/logros/soloWins_diamond.png
+Los seis son byte-identical a los archivos provistos.
+
+CONTRATO NUEVO DE BALANCE
+- 20 bases exactas / 40 stages exactos; no se agregan futuras líneas automáticamente.
+- CMC estrictamente creciente BASE < EVO1 < EVO2.
+- Rareza sube exactamente un tier por estadio para estas 20 líneas.
+- Cada EVO debe cambiar mecánica, no sólo números.
+- defender => power=0 tanto en cartas físicas como en variantes EVO.
+- 40 rutas de arte únicas y determinísticas.
+- Los triggers usados por estas EVO pertenecen al resolver real del juego (draw/heal/damage/drain/scry sobre ETB/ataque/bloqueo/muerte/daño de combate).
+
+CERTIFICACIÓN LOCAL REALIZADA
+- Evolution Capsule .14: PASS.
+- Evolution Content/Balance .14.1: PASS (20/40, CMC STRICT_UP, rarity STRICT_UP, mechanics 40/40, defender GLOBAL, artExpected=40).
+- Workshop Foundation: PASS.
+- Achievements + Essence: PASS.
+- Craft/Deck Sync: PASS.
+- Trade Market + visual + exact-search + reopen: PASS.
+- Rarity/Ambient Stats: PASS.
+- Game Text: 2198 definitions PASS.
+- Functions unit suite: 29/29 PASS.
+- Functions parity: 65 files byte-identical en Gate05 + Deploy06 + Gate07: PASS x3.
+- Packaging preflight: canonical=158 regression=62 functions=42 PASS.
+- PNG oficiales: válidos y byte-identical al upload.
+
+EMULADORES / PROMOCIÓN
+- Esta entrega continúa siendo PRE-RELEASE.
+- Gate03 puede carry-forward: Rules siguen byte-identical 23.13.89.
+- Gate05 y Gate07 deben correrse con RUN_CURRENT.sh antes de promover, porque trusted Functions cambió por la corrección global de Defender y los runners ahora incluyen el contrato .14.1.
+- No se declara Gate05/Gate07 GREEN desde este entorno: firebase-tools/dependencias de emulator no están instaladas aquí.
+
+ORDEN
+1. 05_Economy_Authority_Emulator_Gate/RUN_CURRENT.sh
+2. 07_Trade_Market_Emulator_Gate/RUN_CURRENT.sh
+3. 06_Economy_Functions_DEPLOY_AFTER_GATE/DEPLOY_CURRENT.sh
+4. 06_Economy_Functions_DEPLOY_AFTER_GATE/VERIFY_CURRENT.sh
+5. GitHub/Pages.
+6. Smoke de 04_QA_Docs/QA_23_21_6_HF23_3_14_1_EVOLUTION_CONTENT_BALANCE.txt.
+7. Sólo con todo verde: promover Punto 7.
+
+NO desplegar Firestore Rules: no hay delta de Rules en HF23.3.14.1.

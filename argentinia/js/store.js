@@ -152,6 +152,7 @@ export let MAX_COPIES_PER_CARD = 4; // no aplica a Tierras básicas (sin límite
 // tope, un jugador con muchas Fichas podría armar un mazo entero de bombas mejoradas y
 // romper el balance del todo — 3 es el default pedido explícitamente.
 export let MAX_ENHANCED_CARDS_PER_DECK = 3;
+export let MAX_EVOLVED_CARDS_PER_DECK = 1;
 
 // 23.17.3 — Mazos Prearmados. Precio global y capacidad de Mis Mazos, editables en Admin.
 export let PREBUILT_DECK_POINTS = 1500;
@@ -167,16 +168,28 @@ export let TRADE_MAX_OFFERS_PER_LISTING = 10;
 export let TRADE_MAX_OUTGOING_OFFERS = 5;
 export let TRADE_MAX_COMPLETED_PER_WEEK = 3;
 
-// HF23.3.12 — Mi Taller Foundation. Unlock costs/availability live in gameConfig/settings
-// so Admin can tune the economy without a deploy. Machines 2–4 remain unavailable to
-// players until their gameplay systems ship; Admin preview can still reveal/edit their art.
+// HF23.3.14 — Mi Taller + Cápsula de Evolución. Unlock costs/availability and
+// evolution balance live in gameConfig/settings so Admin can tune them without a deploy.
 export const WORKSHOP_POLICY = {
   enabled: true,
   machine1: { available:true, points:1000, fichas:0 },
-  machine2: { available:false, points:2000, fichas:20 },
-  machine3: { available:false, points:3000, fichas:50 },
+  machine2: { available:true, points:2000, fichas:20 },
+  machine3: { available:true, points:3000, fichas:50 },
   machine4: { available:false, points:0, fichas:0 },
-  essence: { enabled:true, pointsPerUnit:500, fichasPerUnit:5, maxPerOperation:10 }
+  essence: { enabled:true, pointsPerUnit:500, fichasPerUnit:5, maxPerOperation:10 },
+  evolution: {
+    enabled:true,
+    maxPerDeck:1,
+    stage1:{ points:250, fichas:2, essence:10, copiesRequired:1 },
+    stage2:{ points:500, fichas:5, essence:25, copiesRequired:2 }
+  },
+  mixer: {
+    enabled:true,
+    Common:{ points:150, fichas:1, essence:2 },
+    Uncommon:{ points:400, fichas:4, essence:6 },
+    Rare:{ points:1000, fichas:10, essence:15 },
+    copiesConsumed:3
+  }
 };
 
 // ============================================================================
@@ -216,6 +229,7 @@ export function getDefaultGameConfig() {
     deckSizeExact: 60,
     maxCopiesPerCard: 4,
     maxEnhancedCardsPerDeck: 3,
+    maxEvolvedCardsPerDeck: 1,
     prebuiltDeckPoints: 1500,
     prebuiltDeckFichas: 3,
     maxSavedDecks: 12,
@@ -228,10 +242,10 @@ export function getDefaultGameConfig() {
     workshopMachine1Available: true,
     workshopMachine1UnlockPoints: 1000,
     workshopMachine1UnlockFichas: 0,
-    workshopMachine2Available: false,
+    workshopMachine2Available: true,
     workshopMachine2UnlockPoints: 2000,
     workshopMachine2UnlockFichas: 20,
-    workshopMachine3Available: false,
+    workshopMachine3Available: true,
     workshopMachine3UnlockPoints: 3000,
     workshopMachine3UnlockFichas: 50,
     workshopMachine4Available: false,
@@ -241,6 +255,25 @@ export function getDefaultGameConfig() {
     essenceConversionPoints: 500,
     essenceConversionFichas: 5,
     essenceConversionMaxPerOperation: 10,
+    evolutionEnabled: true,
+    evolutionStage1Points: 250,
+    evolutionStage1Fichas: 2,
+    evolutionStage1Essence: 10,
+    evolutionStage1CopiesRequired: 1,
+    evolutionStage2Points: 500,
+    evolutionStage2Fichas: 5,
+    evolutionStage2Essence: 25,
+    evolutionStage2CopiesRequired: 2,
+    industrialMixerEnabled: true,
+    industrialMixerCommonPoints: 150,
+    industrialMixerCommonFichas: 1,
+    industrialMixerCommonEssence: 2,
+    industrialMixerUncommonPoints: 400,
+    industrialMixerUncommonFichas: 4,
+    industrialMixerUncommonEssence: 6,
+    industrialMixerRarePoints: 1000,
+    industrialMixerRareFichas: 10,
+    industrialMixerRareEssence: 15,
     tournamentRewardedStartsPerDay: 1,
     tournamentNpcRandomnessPercent: 18,
     tournamentRound16LossPoints: 15,
@@ -308,6 +341,7 @@ export function applyGameConfig(config) {
   if (typeof config.deckSizeExact === 'number') DECK_SIZE_EXACT = config.deckSizeExact;
   if (typeof config.maxCopiesPerCard === 'number') MAX_COPIES_PER_CARD = config.maxCopiesPerCard;
   if (typeof config.maxEnhancedCardsPerDeck === 'number') MAX_ENHANCED_CARDS_PER_DECK = config.maxEnhancedCardsPerDeck;
+  if (typeof config.maxEvolvedCardsPerDeck === 'number') MAX_EVOLVED_CARDS_PER_DECK = Math.min(20, Math.max(0, Math.floor(config.maxEvolvedCardsPerDeck)));
   if (typeof config.prebuiltDeckPoints === 'number') PREBUILT_DECK_POINTS = Math.max(0, Math.floor(config.prebuiltDeckPoints));
   if (typeof config.prebuiltDeckFichas === 'number') PREBUILT_DECK_FICHAS = Math.max(0, Math.floor(config.prebuiltDeckFichas));
   if (typeof config.maxSavedDecks === 'number') MAX_SAVED_DECKS = Math.max(1, Math.floor(config.maxSavedDecks));
@@ -330,4 +364,21 @@ export function applyGameConfig(config) {
   if (typeof config.essenceConversionPoints === 'number') WORKSHOP_POLICY.essence.pointsPerUnit = Math.max(1, Math.floor(config.essenceConversionPoints));
   if (typeof config.essenceConversionFichas === 'number') WORKSHOP_POLICY.essence.fichasPerUnit = Math.max(0, Math.floor(config.essenceConversionFichas));
   if (typeof config.essenceConversionMaxPerOperation === 'number') WORKSHOP_POLICY.essence.maxPerOperation = Math.min(100, Math.max(1, Math.floor(config.essenceConversionMaxPerOperation)));
+  if (typeof config.evolutionEnabled === 'boolean') WORKSHOP_POLICY.evolution.enabled = config.evolutionEnabled;
+  WORKSHOP_POLICY.evolution.maxPerDeck = MAX_EVOLVED_CARDS_PER_DECK;
+  for (const [stage, prefix] of [[1, 'evolutionStage1'], [2, 'evolutionStage2']]) {
+    const row = WORKSHOP_POLICY.evolution[`stage${stage}`];
+    if (typeof config[`${prefix}Points`] === 'number') row.points = Math.max(0, Math.floor(config[`${prefix}Points`]));
+    if (typeof config[`${prefix}Fichas`] === 'number') row.fichas = Math.max(0, Math.floor(config[`${prefix}Fichas`]));
+    if (typeof config[`${prefix}Essence`] === 'number') row.essence = Math.max(0, Math.floor(config[`${prefix}Essence`]));
+    if (typeof config[`${prefix}CopiesRequired`] === 'number') row.copiesRequired = Math.min(20, Math.max(1, Math.floor(config[`${prefix}CopiesRequired`])));
+  }
+
+  if (typeof config.industrialMixerEnabled === 'boolean') WORKSHOP_POLICY.mixer.enabled = config.industrialMixerEnabled;
+  for (const [rarity, prefix] of [['Common','industrialMixerCommon'], ['Uncommon','industrialMixerUncommon'], ['Rare','industrialMixerRare']]) {
+    const row = WORKSHOP_POLICY.mixer[rarity];
+    if (typeof config[`${prefix}Points`] === 'number') row.points = Math.max(0, Math.floor(config[`${prefix}Points`]));
+    if (typeof config[`${prefix}Fichas`] === 'number') row.fichas = Math.max(0, Math.floor(config[`${prefix}Fichas`]));
+    if (typeof config[`${prefix}Essence`] === 'number') row.essence = Math.max(0, Math.floor(config[`${prefix}Essence`]));
+  }
 }

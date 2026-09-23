@@ -44,7 +44,9 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'fog_global', label:'Fog / Prevenir todo daño de combate', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['fogGlobal']) }),
   Object.freeze({ key:'proliferate', label:'Amplificar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
   Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) }),
-  Object.freeze({ key:'workshop_enhancement', label:'Taller · Mejora de carta', labelGameTextKey:'admin.animations.workshopEnhancement', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) })
+  Object.freeze({ key:'workshop_enhancement', label:'Taller · Mejora de carta', labelGameTextKey:'admin.animations.workshopEnhancement', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
+  Object.freeze({ key:'workshop_evolution', label:'Taller · Evolución de carta', labelGameTextKey:'admin.animations.workshopEvolution', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentTransformed']) }),
+  Object.freeze({ key:'workshop_mixer', label:'Taller · Mezcladora industrial', labelGameTextKey:'admin.animations.workshopMixer', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['libraryShuffle']) })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -349,6 +351,90 @@ export async function queueWorkshopEnhancementAnimation({ machineElement } = {},
   try { await sleepMs(duration + 80); }
   finally { clearTimeout(keyTimer); fx.remove(); }
   return { skipped:false, duration };
+}
+
+
+const WORKSHOP_EVOLUTION_STYLE_ID = 'arg-workshop-evolution-cinematic-style';
+
+function ensureWorkshopEvolutionCinematicStyles() {
+  if (typeof document === 'undefined' || document.getElementById(WORKSHOP_EVOLUTION_STYLE_ID)) return;
+  const style=document.createElement('style');
+  style.id=WORKSHOP_EVOLUTION_STYLE_ID;
+  style.textContent=`
+    .arg-workshop-evolution-fx{position:fixed;z-index:10063;pointer-events:none;transform:translate(-50%,-50%);isolation:isolate;--fx-duration:2300ms;}
+    .arg-workshop-evolution-fx .arg-workshop-evo-aura{position:absolute;inset:-4%;border-radius:50%;opacity:0;background:radial-gradient(circle,rgba(255,252,212,.98) 0%,rgba(234,179,255,.76) 18%,rgba(112,66,255,.42) 42%,rgba(39,15,106,0) 73%);filter:blur(2px);mix-blend-mode:screen;}
+    .arg-workshop-evolution-fx .arg-workshop-evo-shell{position:absolute;left:50%;top:50%;width:40%;aspect-ratio:1;border:3px solid rgba(245,214,255,.94);border-radius:46% 54% 52% 48%/56% 44% 56% 44%;transform:translate(-50%,-50%) scale(.22) rotate(-16deg);opacity:0;box-shadow:0 0 26px rgba(195,114,255,.9),inset 0 0 28px rgba(255,236,170,.52);}
+    .arg-workshop-evolution-fx .arg-workshop-evo-shell.s2{border-color:rgba(255,221,116,.92);transform:translate(-50%,-50%) scale(.24) rotate(23deg);}
+    .arg-workshop-evolution-fx .arg-workshop-evo-column{position:absolute;left:43%;top:8%;width:14%;height:84%;border-radius:999px;opacity:0;background:linear-gradient(to top,rgba(77,36,193,0),rgba(171,108,255,.68),rgba(255,244,190,.98),rgba(171,108,255,.34),rgba(77,36,193,0));filter:blur(4px);transform:scaleY(.18);}
+    .arg-workshop-evolution-fx .arg-workshop-evo-rune{position:absolute;left:50%;top:50%;width:7px;height:34%;border-radius:999px;background:linear-gradient(to top,rgba(149,83,255,0),rgba(255,231,158,.96),rgba(255,255,255,0));transform-origin:50% 100%;opacity:0;filter:drop-shadow(0 0 7px rgba(210,137,255,.95));}
+    .arg-workshop-evolution-fx.run .arg-workshop-evo-aura{animation:argWorkshopEvoAura var(--fx-duration) cubic-bezier(.18,.82,.2,1) both;}
+    .arg-workshop-evolution-fx.run .arg-workshop-evo-shell{animation:argWorkshopEvoShell var(--fx-duration) cubic-bezier(.12,.82,.2,1) both;}
+    .arg-workshop-evolution-fx.run .arg-workshop-evo-shell.s2{animation-delay:calc(var(--fx-duration)*.09);}
+    .arg-workshop-evolution-fx.run .arg-workshop-evo-column{animation:argWorkshopEvoColumn var(--fx-duration) cubic-bezier(.22,.78,.2,1) both;}
+    .arg-workshop-evolution-fx.run .arg-workshop-evo-rune{animation:argWorkshopEvoRune var(--fx-duration) cubic-bezier(.18,.76,.18,1) both;}
+    @keyframes argWorkshopEvoAura{0%{opacity:0;transform:scale(.36)}18%{opacity:.64}48%{opacity:1;transform:scale(1.06)}68%{opacity:.82;transform:scale(1.22)}100%{opacity:0;transform:scale(1.55)}}
+    @keyframes argWorkshopEvoShell{0%,12%{opacity:0;transform:translate(-50%,-50%) scale(.18) rotate(-28deg)}32%{opacity:1}62%{opacity:.95;transform:translate(-50%,-50%) scale(1.06) rotate(8deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.8) rotate(34deg)}}
+    @keyframes argWorkshopEvoColumn{0%,10%{opacity:0;transform:scaleY(.08)}34%{opacity:.88;transform:scaleY(.92)}58%{opacity:1;transform:scaleY(1.14)}100%{opacity:0;transform:scaleY(.25)}}
+    @keyframes argWorkshopEvoRune{0%,22%{opacity:0;transform:translate(-50%,-100%) rotate(var(--rune-angle)) scaleY(.18)}42%{opacity:.94}68%{opacity:.76}100%{opacity:0;transform:translate(-50%,-100%) rotate(var(--rune-angle)) scaleY(1.9)}}
+  `;
+  document.head.appendChild(style);
+}
+
+export async function queueWorkshopEvolutionAnimation({ machineElement } = {}, options = {}) {
+  if (!machineElement || !animationsEffectivelyEnabled(options)) return { skipped:true, reason:'disabled_or_missing' };
+  const rect=machineElement.getBoundingClientRect?.();
+  if (!rect || rect.width < 2 || rect.height < 2) return { skipped:true, reason:'no_geometry' };
+  ensureWorkshopEvolutionCinematicStyles();
+  const duration=animationTunedDuration(2300,'workshop_evolution',options?.speedOverride || null);
+  const fx=document.createElement('div');
+  fx.className='arg-workshop-evolution-fx';
+  fx.style.left=`${rect.left + rect.width/2}px`;
+  fx.style.top=`${rect.top + rect.height/2}px`;
+  fx.style.width=`${Math.max(170,rect.width*1.62)}px`;
+  fx.style.height=`${Math.max(170,rect.height*1.62)}px`;
+  fx.style.setProperty('--fx-duration',`${duration}ms`);
+  fx.innerHTML=`<div class="arg-workshop-evo-aura"></div><div class="arg-workshop-evo-column"></div><div class="arg-workshop-evo-shell s1"></div><div class="arg-workshop-evo-shell s2"></div>${Array.from({length:14},(_,i)=>`<i class="arg-workshop-evo-rune" style="--rune-angle:${Math.round(i*(360/14))}deg;animation-delay:${Math.round((i%4)*duration*.028)}ms"></i>`).join('')}`;
+  document.body.appendChild(fx);
+  playAnimationSfx('permanentTransformed','workshop_evolution','start');
+  void fx.offsetWidth;
+  fx.classList.add('run');
+  const keyDelay=Math.max(1,Math.round(duration*.52));
+  const keyTimer=setTimeout(()=>playAnimationSfx('permanentTransformed','workshop_evolution','key'),keyDelay);
+  try { await sleepMs(duration + 90); }
+  finally { clearTimeout(keyTimer); fx.remove(); }
+  return { skipped:false, duration };
+}
+
+
+
+const WORKSHOP_MIXER_STYLE_ID = 'arg-workshop-mixer-cinematic-style';
+function ensureWorkshopMixerCinematicStyles() {
+  if (typeof document === 'undefined' || document.getElementById(WORKSHOP_MIXER_STYLE_ID)) return;
+  const style=document.createElement('style'); style.id=WORKSHOP_MIXER_STYLE_ID;
+  style.textContent=`
+    .arg-workshop-mixer-fx{position:fixed;z-index:10063;pointer-events:none;transform:translate(-50%,-50%);isolation:isolate;--fx-duration:2450ms}
+    .arg-workshop-mixer-fx .mix-aura{position:absolute;inset:-10%;border-radius:50%;opacity:0;background:radial-gradient(circle,rgba(255,245,168,.95) 0%,rgba(111,226,185,.58) 25%,rgba(48,122,102,.20) 50%,transparent 72%);filter:blur(3px);mix-blend-mode:screen}
+    .arg-workshop-mixer-fx .mix-card{position:absolute;left:50%;top:50%;width:24%;aspect-ratio:5/7;border-radius:8px;border:2px solid rgba(244,226,153,.9);background:linear-gradient(145deg,#153126,#07110d);box-shadow:0 0 18px rgba(123,241,196,.55);opacity:0}
+    .arg-workshop-mixer-fx .mix-card.c1{--sx:-165%;--sy:-125%;--rot:-22deg}.arg-workshop-mixer-fx .mix-card.c2{--sx:65%;--sy:-138%;--rot:18deg}.arg-workshop-mixer-fx .mix-card.c3{--sx:-48%;--sy:82%;--rot:7deg}
+    .arg-workshop-mixer-fx .mix-core{position:absolute;left:50%;top:50%;width:24%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%) scale(.25);opacity:0;border:4px double rgba(255,224,109,.95);box-shadow:0 0 30px rgba(91,238,181,.85),inset 0 0 24px rgba(255,225,120,.55)}
+    .arg-workshop-mixer-fx.run .mix-aura{animation:mixAura var(--fx-duration) ease-out both}.arg-workshop-mixer-fx.run .mix-card{animation:mixCard var(--fx-duration) cubic-bezier(.18,.76,.18,1) both}.arg-workshop-mixer-fx.run .mix-core{animation:mixCore var(--fx-duration) cubic-bezier(.18,.8,.2,1) both}
+    @keyframes mixAura{0%{opacity:0;transform:scale(.35)}20%{opacity:.6}55%{opacity:1;transform:scale(1.05)}82%{opacity:.7}100%{opacity:0;transform:scale(1.6)}}
+    @keyframes mixCard{0%,8%{opacity:0;transform:translate(var(--sx),var(--sy)) rotate(var(--rot)) scale(.72)}22%{opacity:1}58%{opacity:1;transform:translate(-50%,-50%) rotate(540deg) scale(.55)}72%{opacity:.35;transform:translate(-50%,-50%) rotate(720deg) scale(.15)}100%{opacity:0;transform:translate(-50%,-50%) rotate(840deg) scale(.05)}}
+    @keyframes mixCore{0%,38%{opacity:0;transform:translate(-50%,-50%) scale(.18)}58%{opacity:1;transform:translate(-50%,-50%) scale(.7)}76%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)}}`;
+  document.head.appendChild(style);
+}
+export async function queueWorkshopMixerAnimation({ machineElement } = {}, options = {}) {
+  if (!machineElement || !animationsEffectivelyEnabled(options)) return { skipped:true, reason:'disabled_or_missing' };
+  const rect=machineElement.getBoundingClientRect?.(); if(!rect||rect.width<2||rect.height<2) return {skipped:true,reason:'no_geometry'};
+  ensureWorkshopMixerCinematicStyles();
+  const duration=animationTunedDuration(2450,'workshop_mixer',options?.speedOverride||null);
+  const fx=document.createElement('div'); fx.className='arg-workshop-mixer-fx';
+  fx.style.left=`${rect.left+rect.width/2}px`; fx.style.top=`${rect.top+rect.height/2}px`; fx.style.width=`${Math.max(180,rect.width*1.7)}px`; fx.style.height=`${Math.max(180,rect.height*1.7)}px`; fx.style.setProperty('--fx-duration',`${duration}ms`);
+  fx.innerHTML='<div class="mix-aura"></div><i class="mix-card c1"></i><i class="mix-card c2"></i><i class="mix-card c3"></i><div class="mix-core"></div>';
+  document.body.appendChild(fx); playAnimationSfx('libraryShuffle','workshop_mixer','start'); void fx.offsetWidth; fx.classList.add('run');
+  const timer=setTimeout(()=>playAnimationSfx('libraryShuffle','workshop_mixer','key'),Math.max(1,Math.round(duration*.57)));
+  try{await sleepMs(duration+90);}finally{clearTimeout(timer);fx.remove();}
+  return {skipped:false,duration};
 }
 
 export function setPresentationCueEmitter(emitter) {

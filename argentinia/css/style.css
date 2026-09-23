@@ -2967,3 +2967,21 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .trade-history-actions .trade-btn{min-width:150px}
 /* HF23.3.10 — semantic crawler-safe boot copy; keeps historical spinner as direct child. */
 #boot-loading-overlay { flex-direction:column; gap:14px; }
+
+/* HF23.3.14.1 — marcador diminuto de carta base evolucionable. Se ubica inmediatamente
+   a la derecha del icono de rareza y comparte su escala visual. */
+.evolvable-icon {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  width: 1.1em;
+  height: 1.1em;
+  max-width: 1.1em;
+  max-height: 1.1em;
+  filter: drop-shadow(0px 0px 3px black);
+  object-fit: contain;
+  display: block;
+  align-self: center;
+  pointer-events: none;
+  user-select: none;
+}
+.trade-profile-link{border:0;background:none;padding:0 0 0 5px;color:#d6bd69;font:inherit;font-weight:900;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.trade-profile-link:hover,.trade-profile-link:focus-visible{color:#fff0ad;outline:none}

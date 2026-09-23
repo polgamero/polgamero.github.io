@@ -1,3 +1,4 @@
+import { expectedEvolutionArtEntries } from './evolution.js';
 // js/cardLoader.js
 // ENTREGA 23.8.4 — auditoría segura por manifest + guardas anti-duplicación / anti-rate-limit.
 // IMPORTANTE: el runtime NO hace HEAD/GET por carta. GitHub Actions genera un único manifest
@@ -177,9 +178,15 @@ class CardDatabase {
 
   async getImageAudit({ force = false } = {}) {
     const manifest = await this.loadImageManifest({ force });
+    const evolutionFiles = new Set(Array.isArray(manifest?.evolutionImages?.files) ? manifest.evolutionImages.files : []);
+    const expectedEvolution = expectedEvolutionArtEntries();
+    const missingEvolutionImages = expectedEvolution.filter(entry => !evolutionFiles.has(entry.image));
     return {
       ...manifest,
       missingPreview: manifest.missing.slice(0, 20),
+      missingEvolutionImages,
+      missingEvolutionPreview: missingEvolutionImages.slice(0, 20),
+      evolutionManifestAvailable: !!manifest.evolutionImages && Array.isArray(manifest.evolutionImages.files),
       missingTokenPreview: Array.isArray(manifest.missingTokenImages) ? manifest.missingTokenImages.slice(0, 20) : [],
       tokenManifestAvailable: !!manifest.tokenImages && Array.isArray(manifest.missingTokenImages)
     };
@@ -191,12 +198,13 @@ class CardDatabase {
       const imageStats = audit.images || {};
       const tokenStats = audit.tokenImages || null;
       const missing = Array.isArray(audit.missing) ? audit.missing : [];
+      const missingEvolutionImages = Array.isArray(audit.missingEvolutionImages) ? audit.missingEvolutionImages : [];
       const missingTokenEffects = Array.isArray(audit.missingTokenImages) ? audit.missingTokenImages : [];
       const missingTokenFiles = new Set(missingTokenEffects.map(entry => entry?.image).filter(Boolean)).size;
       const unassignedTokenEffects = Array.isArray(audit.tokenEffectsWithoutImage) ? audit.tokenEffectsWithoutImage.length : 0;
       const missingBacks = missing.filter(entry => entry?.face === 'back').length;
       const missingFronts = missing.length - missingBacks;
-      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missingFronts} frente(s) y ${missingBacks} reverso(s) DFC sin archivo; ${missingTokenFiles} PNG de token faltante(s) (${missingTokenEffects.length} productor(es)); ${unassignedTokenEffects} token(s) sin filename; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por cara/token.`);
+      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missingFronts} frente(s), ${missingBacks} reverso(s) DFC y ${missingEvolutionImages.length} arte(s) EVO sin archivo; ${missingTokenFiles} PNG de token faltante(s) (${missingTokenEffects.length} productor(es)); ${unassignedTokenEffects} token(s) sin filename; ${imageStats.existingFileCount ?? '?'} archivo(s) de cartas presentes. 1 manifest, 0 probes por cara/token/evolución.`);
       if (!tokenStats) console.warn('[CardDatabase] Manifest legacy: no contiene auditoría de imágenes de token.');
       if (missing.length) {
         console.groupCollapsed(`[CardDatabase] Primeras ${Math.min(20, missing.length)} imágenes faltantes de ${missing.length}`);
@@ -207,6 +215,12 @@ class CardDatabase {
           categoria: entry.category,
           png: entry.image
         })));
+        console.info('Lista completa: Admin → DEBUGGING → Auditoría de imágenes.');
+        console.groupEnd();
+      }
+      if (missingEvolutionImages.length) {
+        console.groupCollapsed(`[CardDatabase] Evoluciones: ${missingEvolutionImages.length} PNG faltantes de ${expectedEvolutionArtEntries().length}`);
+        console.table(missingEvolutionImages.slice(0, 20).map(entry => ({ baseId:entry.baseId, stage:`EVO${entry.stage}`, carta:entry.name, png:entry.image })));
         console.info('Lista completa: Admin → DEBUGGING → Auditoría de imágenes.');
         console.groupEnd();
       }

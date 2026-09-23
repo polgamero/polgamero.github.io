@@ -53,8 +53,8 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, convertEssence, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -85,8 +85,10 @@ import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds 
 import { gameText } from './gameTexts.js';
 import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, achievementTrophyPath, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
+import { EVOLUTION_PATHS, normalizeEvolutionProfile, evolutionStageForProfile, evolutionVariantId, parseEvolutionVariantId, applyEvolutionStage, isEvolutionEligibleCard, isEvolutionStageDiscovered } from './evolution.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
+import { showPublicPlayerProfile, configurePublicProfileUI } from './publicProfileUI.js';
 import { prepareGameManualUI, showGameManual } from './manualUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
 import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
@@ -101,7 +103,7 @@ import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
-import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -110,6 +112,13 @@ import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from '.
 import * as headlessChoice from './headlessChoiceEngine.js';
 
 const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
+
+configurePublicProfileUI({
+  getCurrentUid:()=>String(state.currentUser?.uid||''),
+  getOwnedCardIds:()=>Array.isArray(state.userProfile?.collection)?state.userProfile.collection:[],
+  renderCard:card=>createCardElement(card,false,true,null,'encyclopedia',null),
+  onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; }
+});
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2119,19 +2128,23 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const rarityKey = ({ Common:'common', Uncommon:'uncommon', Rare:'rare', Mythic:'mythic' })[String(card.rarity || 'Common')] || 'common';
   const rarityLabel = ({ common:'Común', uncommon:'Poco común', rare:'Rara', mythic:'Mítica' })[rarityKey];
   const rarityIconHTML = `<img class="rarity-icon" src="./assets/images/ui/${rarityKey}.png" alt="Rareza ${rarityLabel}" title="Rareza ${rarityLabel}" decoding="async" draggable="false" onerror="this.style.visibility='hidden'">`;
+  const evolvableIconHTML = isEvolutionEligibleCard(card) && !card.evolutionStage
+    ? `<img class="evolvable-icon" src="./assets/images/ui/evolucionable.png" alt="${gameTextHtml('card.evolvable.icon')}" title="${gameTextHtml('card.evolvable.icon')}" decoding="async" draggable="false" onerror="this.style.visibility='hidden'">`
+    : '';
+  const cardImageRoot = card.imageRoot === 'evolutions' ? 'evolutions' : 'cards';
 
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" data-auto-name-cqw="${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div class="card-art-fallback" aria-hidden="true">${icon}</div>
-        ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${card.image ? `<img class="card-art-image" src="./assets/images/${cardImageRoot}/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
         ${counterBadgeHTML}
         ${sagaChapterHTML}
         ${dfcBadgeHTML}
         ${typalChoiceBadgeHTML}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span>${rarityIconHTML}</div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span>${rarityIconHTML}${evolvableIconHTML}</div>
       ${formattedTextHTML}
       ${hasDisplayCombatStats ? `<div class="card-pt${hasVehiclePrintedStats && !hasCreatureStats ? ' vehicle-printed-pt' : ''}"${hasVehiclePrintedStats && !hasCreatureStats ? ' title="Poder/Resistencia al tripular este Transporte" aria-label="Poder/Resistencia al tripular este Transporte"' : ''}>${ptText}</div>` : ''}
       ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
@@ -3035,7 +3048,7 @@ function injectRewardsStyles() {
     .reward-screen-title { font-size:26px; font-weight:800; color:#f0e0b0; letter-spacing:.3px; }
     .reward-screen-subtitle { color:#9fb0a2; font-size:12px; margin-left:auto; text-align:right; }
     .reward-screen-body { flex:1; min-height:0; overflow:auto; max-width:1180px; width:100%; margin:0 auto; padding:4px 4px 30px; }
-    .chest-summary { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:14px; margin-bottom:18px; }
+    .chest-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:18px; }
     .chest-item {
       position:relative; min-height:190px; background:linear-gradient(180deg,rgba(24,36,27,.94),rgba(10,18,12,.98));
       border:2px solid rgba(212,175,55,.42); border-radius:16px; padding:18px;
@@ -3296,6 +3309,7 @@ export function showChestScreen(onBack) {
     const inventory = normalizeInventory(state.userProfile.inventory);
     const points = Number(state.userProfile.points) || 0;
     const fichas = Number(state.userProfile.fichas) || 0;
+    const essence = Number(state.userProfile.essence) || 0;
     const packs = inventory[CHEST_ITEM_KEYS.standardPack];
     const mythics = inventory[CHEST_ITEM_KEYS.guaranteedMythic];
     const pendingPack = getPendingEconomyReveal(state.currentUser.uid, 'pack');
@@ -3313,6 +3327,11 @@ export function showChestScreen(onBack) {
           <div class="chest-item-desc">${gameTextHtml('chest.fichas.description')}</div></div>
           <button class="reward-action-btn" id="chest-use-fichas" ${fichas < FICHAS_PER_ENHANCEMENT ? 'disabled' : ''}>${gameTextHtml('chest.fichas.action')}</button>
         </div>
+        <div class="chest-item chest-essence">
+          <div class="chest-item-content"><div class="chest-item-icon">${ESSENCE_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.essence.title')}</div><div class="chest-item-count">${essence}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.essence.description')}</div></div>
+          <button class="reward-action-btn" id="chest-use-essence">${gameTextHtml('chest.essence.action')}</button>
+        </div>
         <div class="chest-item">
           <div class="chest-item-content"><div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.packs.title')}</div><div class="chest-item-count">${packs}</div>
           <div class="chest-item-desc">${pendingPack ? 'Apertura pendiente: el servidor conserva exactamente el resultado acreditado.' : gameTextHtml('chest.packs.description')}</div></div>
@@ -3329,6 +3348,11 @@ export function showChestScreen(onBack) {
     body.querySelector('#chest-use-fichas')?.addEventListener('click', () => {
       overlay.remove();
       showWorkshopScreen(() => showChestScreen(onBack), { autoOpenMachine1: true });
+    });
+
+    body.querySelector('#chest-use-essence')?.addEventListener('click', () => {
+      overlay.remove();
+      showWorkshopScreen(() => showChestScreen(onBack));
     });
 
     body.querySelector('#chest-open-pack')?.addEventListener('click', async () => {
@@ -3979,6 +4003,19 @@ function injectEncyclopediaStyles() {
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-progress { display:none; }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
     .encyclopedia-dfc-back-slot .card-inner { box-shadow:0 0 0 1px rgba(120,190,255,.28), 0 10px 25px rgba(0,0,0,.25); }
+    .encyclopedia-evolution-buttons { display:flex; justify-content:center; gap:6px; margin-top:7px; }
+    .encyclopedia-evolution-btn { border:1px solid rgba(96,145,103,.58); background:#e8f0e8; color:#1f4c29; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:900; letter-spacing:.035em; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+    .encyclopedia-evolution-btn:hover { background:#d6e8d8; transform:translateY(-1px); }
+    .encyclopedia-evolution-modal { position:fixed; inset:0; z-index:10040; background:rgba(2,6,3,.84); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .encyclopedia-evolution-modal-panel { width:min(560px,94vw); max-height:94vh; overflow:auto; background:linear-gradient(180deg,#172319,#0b130e); border:2px solid rgba(212,175,55,.6); border-radius:16px; padding:18px; box-shadow:0 24px 70px rgba(0,0,0,.72); color:#f0e0b0; position:relative; }
+    .encyclopedia-evolution-modal-title { text-align:center; font-size:18px; font-weight:900; margin:0 34px 12px; }
+    .encyclopedia-evolution-preview-card { display:flex; justify-content:center; --card-w:min(310px,72vw); }
+    .encyclopedia-evolution-preview-card .card { width:var(--card-w)!important; height:auto!important; aspect-ratio:5/7!important; max-width:none!important; transform:none!important; }
+    .encyclopedia-evolution-preview-card.unowned .card-art { background-color:#0b0b0b; background-image:url('./assets/images/ui/logo.png'); background-repeat:no-repeat; background-position:center; background-size:55% auto; }
+    .encyclopedia-evolution-preview-card.unowned .card-art img,
+    .encyclopedia-evolution-preview-card.unowned .card-art > div { visibility:hidden; }
+    .encyclopedia-evolution-lock-note { text-align:center; color:#c8b979; font-size:12px; font-weight:750; margin:11px auto 0; max-width:430px; }
+    .encyclopedia-evolution-close { position:absolute; top:8px; right:10px; width:30px; height:30px; border-radius:50%; border:1px solid rgba(212,175,55,.55); background:#0f1711; color:#f0e0b0; cursor:pointer; font-size:20px; line-height:26px; }
     .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
@@ -4029,6 +4066,7 @@ export function showEncyclopedia(onBack) {
   injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
+  const evolutionProfile = normalizeEvolutionProfile(state.userProfile?.evolutions);
   const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
   const encyclopediaTabs = [
     ...ENCYCLOPEDIA_TABS,
@@ -4124,6 +4162,33 @@ export function showEncyclopedia(onBack) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
+  function showEncyclopediaEvolutionPreview(baseCard, stageNumber) {
+    const evolved = applyEvolutionStage(baseCard, stageNumber);
+    const discovered = isEvolutionStageDiscovered(evolutionProfile, baseCard.id, stageNumber);
+    const modal = document.createElement('div');
+    modal.className = 'encyclopedia-evolution-modal';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    const panel = document.createElement('div');
+    panel.className = 'encyclopedia-evolution-modal-panel';
+    const close = document.createElement('button');
+    close.type='button'; close.className='encyclopedia-evolution-close'; close.textContent='×'; close.setAttribute('aria-label',gameText('common.close'));
+    const title = document.createElement('div');
+    title.className='encyclopedia-evolution-modal-title';
+    title.textContent=gameText('encyclopedia.evolution.previewTitle',{card:evolved.name,stage:stageNumber});
+    const cardHost=document.createElement('div');
+    cardHost.className=`encyclopedia-evolution-preview-card${discovered?'':' unowned'}`;
+    cardHost.appendChild(createCardElement(evolved,false,true,null,'encyclopedia',null));
+    const note=document.createElement('div'); note.className='encyclopedia-evolution-lock-note';
+    note.textContent=discovered?gameText('encyclopedia.evolution.discovered'):gameText('encyclopedia.evolution.locked');
+    panel.append(close,title,cardHost,note); modal.appendChild(panel); document.body.appendChild(modal);
+    const onKey=event=>{if(event.key==='Escape')destroy();};
+    const destroy=()=>{document.removeEventListener('keydown',onKey);modal.remove();};
+    close.addEventListener('click',destroy);
+    modal.addEventListener('click',event=>{if(event.target===modal)destroy();});
+    document.addEventListener('keydown',onKey);
+  }
+
   // 23.13.15 — cada solapa se construye UNA sola vez por apertura de Enciclopedia.
   // Después, filtros/orden sólo ocultan o reordenan los mismos nodos. Volver de
   // Instantáneos a Criaturas ya no recrea 210 <img> ni vuelve a generar candidatos HTTP.
@@ -4149,6 +4214,21 @@ export function showEncyclopedia(onBack) {
       const slot = document.createElement('div');
       slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}${isDfcBackTab ? ' encyclopedia-dfc-back-slot' : ''}`;
       slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+
+      // HF23.3.14.1 — las bases evolucionables exponen ambos stages aunque todavía no estén
+      // descubiertos. El botón existe; el arte sigue el mismo contrato de ocultamiento de
+      // Enciclopedia y sólo se revela cuando el perfil alcanzó ese stage.
+      if (!isAssetTab && isEvolutionEligibleCard(card)) {
+        const evoButtons=document.createElement('div'); evoButtons.className='encyclopedia-evolution-buttons';
+        for (const stageNumber of [1,2]) {
+          const button=document.createElement('button'); button.type='button'; button.className='encyclopedia-evolution-btn';
+          button.textContent=gameText(`encyclopedia.evolution.stage${stageNumber}`);
+          button.dataset.evolutionStage=String(stageNumber);
+          button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showEncyclopediaEvolutionPreview(card,stageNumber);});
+          evoButtons.appendChild(button);
+        }
+        slot.appendChild(evoButtons);
+      }
 
       // 23.13.23 — el editor existe EXCLUSIVAMENTE en Enciclopedia y sólo para Admin.
       // La seguridad real del SAVE sigue en Firestore Rules; este gate es además UX.
@@ -5923,6 +6003,14 @@ function injectWorkshopStyles() {
     .workshop-action-btn.secondary { background:#242821; border-color:#777; color:#eee; }
     .workshop-action-btn:disabled { opacity:.45; cursor:not-allowed; }
     .workshop-status { min-height:18px; color:#ffcf6a; margin-top:6px; font-size:12px; }
+    .workshop-evolution-picker { display:flex; gap:8px; align-items:center; justify-content:center; margin:9px 0; flex-wrap:wrap; }
+    .workshop-evolution-picker select { max-width:min(380px,80vw); background:#111914; color:#f4edcf; border:1px solid rgba(212,175,55,.55); border-radius:7px; padding:7px 9px; }
+    .workshop-evolution-preview { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; margin:9px auto; max-width:480px; }
+    .workshop-evolution-preview-block { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; }
+    .workshop-evolution-preview-label { font-size:10px; font-weight:900; letter-spacing:.08em; color:#e9d77f; }
+    .workshop-evolution-preview .card { --card-w:min(178px,34vw); width:var(--card-w)!important; height:auto!important; aspect-ratio:5/7!important; max-width:none!important; transform:none!important; pointer-events:none!important; }
+    .workshop-evolution-rule { font-size:11px; color:#bfc7bd; margin-top:6px; }
+
     .workshop-loading { position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(0,0,0,.7); font-weight:800; }
     .workshop-enhancement-success-overlay { position:fixed; inset:0; z-index:10070; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,7,18,.78); backdrop-filter:blur(6px); }
     .workshop-enhancement-success-modal { width:min(760px,96vw); max-height:94vh; overflow:auto; display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px 22px 18px; border:1px solid rgba(123,221,255,.72); border-radius:18px; background:radial-gradient(circle at 50% 0,rgba(54,163,255,.20),transparent 38%),linear-gradient(180deg,rgba(7,22,40,.98),rgba(5,12,21,.98)); box-shadow:0 0 42px rgba(66,188,255,.28),0 24px 70px rgba(0,0,0,.68); text-align:center; }
@@ -5931,7 +6019,22 @@ function injectWorkshopStyles() {
     .workshop-enhancement-success-card { display:flex; justify-content:center; width:100%; padding:2px 0; }
     .workshop-enhancement-success-card .card { --card-w:min(300px,72vw); width:var(--card-w)!important; height:auto!important; aspect-ratio:5/7!important; max-width:none!important; transform:none!important; pointer-events:none!important; filter:drop-shadow(0 0 17px rgba(88,195,255,.42)) drop-shadow(0 18px 30px rgba(0,0,0,.72)); }
     .workshop-enhancement-success-reminder { max-width:640px; margin:0; color:#c9d7df; font-size:13px; line-height:1.45; }
-    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card{--card-w:min(225px,68vw)} }
+    .workshop-evolution-success-overlay{position:fixed;inset:0;z-index:10064;background:rgba(3,2,8,.86);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(4px)}
+    .workshop-evolution-success-modal{width:min(720px,96vw);max-height:94vh;overflow:auto;border:1px solid rgba(218,166,255,.72);border-radius:18px;background:radial-gradient(circle at 50% 0,rgba(75,42,108,.72),rgba(17,12,25,.98) 54%,rgba(8,7,12,.99));box-shadow:0 0 48px rgba(152,83,255,.3),0 22px 70px rgba(0,0,0,.78);padding:20px 22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+    .workshop-evolution-success-title{margin:0;color:#f5ddff;font-size:28px;letter-spacing:.055em;text-shadow:0 0 16px rgba(198,125,255,.52)}
+    .workshop-evolution-success-stage{font-size:13px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#ffd980;border:1px solid rgba(255,215,111,.42);background:rgba(94,62,12,.24);padding:5px 10px;border-radius:999px}
+    .workshop-evolution-success-card{display:flex;justify-content:center;width:100%;padding:2px 0}.workshop-evolution-success-card .card{--card-w:min(300px,72vw);width:var(--card-w)!important;height:auto!important;aspect-ratio:5/7!important;max-width:none!important;transform:none!important;pointer-events:none!important;filter:drop-shadow(0 0 20px rgba(195,114,255,.5)) drop-shadow(0 18px 30px rgba(0,0,0,.74))}
+    .workshop-evolution-success-reminder{max-width:640px;margin:0;color:#d7cbdf;font-size:13px;line-height:1.45}
+    .workshop-mixer-success-overlay{position:fixed;inset:0;z-index:10064;background:rgba(2,8,6,.87);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(5px)}
+    .workshop-mixer-success-modal{width:min(720px,96vw);max-height:94vh;overflow:auto;border:1px solid rgba(132,238,190,.72);border-radius:18px;background:radial-gradient(circle at 50% 0,rgba(39,112,85,.6),rgba(12,29,22,.98) 54%,rgba(6,12,9,.99));box-shadow:0 0 48px rgba(82,223,166,.25),0 22px 70px rgba(0,0,0,.78);padding:20px 22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+    .workshop-mixer-success-title{margin:0;color:#dffff0;font-size:27px;letter-spacing:.035em;text-shadow:0 0 16px rgba(108,244,193,.42)}
+    .workshop-mixer-success-rarity{font-size:13px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#ffe89a;border:1px solid rgba(255,226,121,.42);background:rgba(78,61,10,.22);padding:5px 10px;border-radius:999px}
+    .workshop-mixer-success-card{display:flex;justify-content:center;width:100%;padding:2px 0}.workshop-mixer-success-card .card{--card-w:min(300px,72vw);width:var(--card-w)!important;height:auto!important;aspect-ratio:5/7!important;max-width:none!important;transform:none!important;pointer-events:none!important;filter:drop-shadow(0 0 20px rgba(86,226,171,.42)) drop-shadow(0 18px 30px rgba(0,0,0,.74))}
+    .workshop-mixer-success-reminder{max-width:640px;margin:0;color:#c8dbd2;font-size:13px;line-height:1.45}
+    .workshop-unlock-confirm-overlay{z-index:20110!important;background:radial-gradient(circle at 50% 35%,rgba(212,175,55,.12),rgba(0,0,0,.9) 58%)!important;backdrop-filter:blur(4px)}
+    .workshop-unlock-confirm-modal{width:min(520px,94vw)!important;max-width:520px!important;border:1px solid rgba(212,175,55,.62)!important;border-radius:15px!important;background:radial-gradient(circle at 50% 0,rgba(107,77,18,.22),transparent 38%),linear-gradient(180deg,#18231c,#0d1410)!important;box-shadow:0 0 34px rgba(212,175,55,.16),0 22px 58px rgba(0,0,0,.74)!important;padding:16px 18px 18px!important}
+    .workshop-unlock-confirm-header{justify-content:center!important;border-bottom-color:rgba(212,175,55,.34)!important}.workshop-unlock-confirm-header h3{margin:0;color:#f7e5a4;text-align:center;letter-spacing:.05em}.workshop-unlock-confirm-body{display:flex;flex-direction:column;gap:13px;align-items:center}.workshop-unlock-confirm-machine{font-size:20px;font-weight:900;color:#fff4c8;text-align:center}.workshop-unlock-confirm-copy{margin:0;color:#cbd8ce;font-size:13px;line-height:1.45;text-align:center}.workshop-unlock-costs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.workshop-unlock-cost{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;border:1px solid rgba(212,175,55,.3);background:rgba(0,0,0,.25);font-weight:900;color:#fff}.workshop-unlock-cost :is(.coin-icon,.ficha-icon){width:32px!important;height:32px!important;object-fit:contain}.workshop-unlock-confirm-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;width:100%}.workshop-unlock-confirm-actions .mulligan-btn{min-width:150px}
+    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card,.workshop-evolution-success-card .card,.workshop-mixer-success-card .card{--card-w:min(225px,68vw)}.workshop-evolution-success-title,.workshop-mixer-success-title{font-size:22px}.workshop-unlock-confirm-modal{width:min(94vw,440px)!important;padding:12px!important}.workshop-unlock-confirm-machine{font-size:17px}.workshop-unlock-confirm-actions{flex-direction:column}.workshop-unlock-confirm-actions .mulligan-btn{width:100%} }
   `;
   document.head.appendChild(style);
 }
@@ -5959,6 +6062,34 @@ function applyWorkshopStageCover(stage, image, host = window) {
 
 function machinePolicy(machineId) {
   return WORKSHOP_POLICY?.[machineId] || { available:false, points:0, fichas:0 };
+}
+
+function showWorkshopUnlockConfirmModal({machine='',points=0,fichas=0}={}){
+  injectMulliganStyles();
+  document.querySelector('.workshop-unlock-confirm-overlay')?.remove();
+  return new Promise(resolve=>{
+    const modal=document.createElement('div');
+    modal.className='gy-modal-overlay workshop-unlock-confirm-overlay';
+    const costs=[
+      Number(points)>0?`<span class="workshop-unlock-cost">${COIN_ICON_HTML}<strong>${Math.max(0,Math.floor(Number(points)||0)).toLocaleString('es-AR')}</strong></span>`:'',
+      Number(fichas)>0?`<span class="workshop-unlock-cost">${FICHA_ICON_HTML}<strong>${Math.max(0,Math.floor(Number(fichas)||0)).toLocaleString('es-AR')}</strong></span>`:''
+    ].join('');
+    modal.innerHTML=`<div class="gy-modal-content workshop-unlock-confirm-modal">
+      <div class="gy-modal-header workshop-unlock-confirm-header"><h3>${gameTextHtml('workshop.unlock.modalTitle')}</h3></div>
+      <div class="workshop-unlock-confirm-body">
+        <div class="workshop-unlock-confirm-machine">${escapeHtml(machine)}</div>
+        <p class="workshop-unlock-confirm-copy">${gameTextHtml('workshop.unlock.modalBody',{machine})}</p>
+        <div class="workshop-unlock-costs">${costs}</div>
+        <div class="workshop-unlock-confirm-actions"><button type="button" class="mulligan-btn mulligan-btn-keep" data-workshop-unlock-confirm>${gameTextHtml('workshop.unlock.confirmAction')}</button><button type="button" class="mulligan-btn mulligan-btn-mull" data-workshop-unlock-cancel>${gameTextHtml('common.cancel')}</button></div>
+      </div>
+    </div>`;
+    let settled=false;
+    const finish=value=>{if(settled)return;settled=true;document.removeEventListener('keydown',onKey);modal.remove();resolve(value);};
+    const onKey=event=>{if(event.key==='Escape')finish(false);};
+    document.addEventListener('keydown',onKey);
+    modal.querySelector('[data-workshop-unlock-confirm]')?.addEventListener('click',()=>finish(true));
+    modal.querySelector('[data-workshop-unlock-cancel]')?.addEventListener('click',()=>finish(false));
+  });
 }
 
 export function showWorkshopScreen(onBack, options = {}) {
@@ -6026,6 +6157,47 @@ export function showWorkshopScreen(onBack, options = {}) {
     modal.querySelector('#workshop-enhancement-success-close')?.addEventListener('click',dismiss);
   }
 
+
+  function showEvolutionSuccessModal({ cardId, stage } = {}) {
+    const baseCard=cardDb.getById(cardId);
+    const persistedStage=evolutionStageForProfile(state.userProfile?.evolutions,cardId);
+    const resolvedStage=Math.max(1,Math.min(2,Number(persistedStage || stage) || 1));
+    if (!baseCard) return;
+    const displayCard=applyEvolutionStage(baseCard,resolvedStage);
+    const modal=document.createElement('div');
+    modal.className='workshop-evolution-success-overlay';
+    modal.innerHTML=`<div class="workshop-evolution-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-evolution-success-title">
+      <h2 class="workshop-evolution-success-title" id="workshop-evolution-success-title">${gameTextHtml('workshop.evolution.successTitle')}</h2>
+      <div class="workshop-evolution-success-stage">${gameTextHtml('workshop.evolution.successStage',{stage:resolvedStage,rarity:displayCard.rarity||''})}</div>
+      <div class="workshop-evolution-success-card" id="workshop-evolution-success-card"></div>
+      <p class="workshop-evolution-success-reminder">${gameTextHtml('workshop.evolution.successReminder')}</p>
+      <button class="workshop-action-btn" id="workshop-evolution-success-close">${gameTextHtml('workshop.evolution.continue')}</button>
+    </div>`;
+    document.body.appendChild(modal);
+    const cardHost=modal.querySelector('#workshop-evolution-success-card');
+    const cardEl=createCardElement(displayCard,false,true,null,'preview',null);
+    cardEl.setAttribute('aria-label',`${displayCard.name} · EVO ${resolvedStage}`);
+    cardHost?.appendChild(cardEl);
+    const dismiss=()=>modal.remove();
+    modal.querySelector('#workshop-evolution-success-close')?.addEventListener('click',dismiss);
+  }
+
+
+  function showMixerSuccessModal({ outputCardId, fromRarity, toRarity } = {}) {
+    const displayCard=cardDb.getById(outputCardId); if(!displayCard)return;
+    const modal=document.createElement('div'); modal.className='workshop-mixer-success-overlay';
+    modal.innerHTML=`<div class="workshop-mixer-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-mixer-success-title">
+      <h2 class="workshop-mixer-success-title" id="workshop-mixer-success-title">${gameTextHtml('workshop.mixer.successTitle')}</h2>
+      <div class="workshop-mixer-success-rarity">${gameTextHtml('workshop.mixer.successRarity',{from:fromRarity||'',to:toRarity||displayCard.rarity||''})}</div>
+      <div class="workshop-mixer-success-card" id="workshop-mixer-success-card"></div>
+      <p class="workshop-mixer-success-reminder">${gameTextHtml('workshop.mixer.successReminder')}</p>
+      <button class="workshop-action-btn" id="workshop-mixer-success-close">${gameTextHtml('workshop.mixer.continue')}</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#workshop-mixer-success-card')?.appendChild(createCardElement(displayCard,false,true,null,'preview',null));
+    modal.querySelector('#workshop-mixer-success-close')?.addEventListener('click',()=>modal.remove());
+  }
+
   function renderWallet() {
     const points = Math.max(0, Math.floor(Number(state.userProfile?.points) || 0));
     const fichas = Math.max(0, Math.floor(Number(state.userProfile?.fichas) || 0));
@@ -6046,6 +6218,96 @@ export function showWorkshopScreen(onBack, options = {}) {
     btn?.addEventListener('click',async()=>{const quantity=Math.min(policy.maxPerOperation,Math.max(1,Math.floor(Number(input?.value)||1)));if(status)status.textContent='';try{const outcome=await withEconomyButtonPending(btn,()=>convertEssence(state.currentUser.uid,quantity),{pendingLabel:gameText('workshop.essence.pending'),slowLabel:gameText('workshop.server.slow')});if(outcome?.profile)state.userProfile=outcome.profile;renderWallet();if(status)status.textContent=gameText('workshop.essence.success',{quantity});}catch(err){console.error('No se pudo generar Esencia:',err);if(status)status.textContent=err?.message||gameText('workshop.essence.notEnough');}});
   }
 
+
+  function openMachine2Evolution() {
+    selectedMachineId='machine2';
+    const evolutions=normalizeEvolutionProfile(state.userProfile?.evolutions);
+    const ownedCounts={};
+    for(const id of (state.userProfile?.collection||[])) ownedCounts[id]=(ownedCounts[id]||0)+1;
+    const candidates=EVOLUTION_PATHS.map(path=>({
+      path,
+      card:cardDb.getById(path.baseId),
+      stage:evolutionStageForProfile(evolutions,path.baseId),
+      owned:ownedCounts[path.baseId]||0
+    })).filter(row=>row.card&&row.owned>0&&row.stage<2);
+    panel.hidden=false;
+    if(!candidates.length){
+      panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.evolution.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.evolution.empty')}</div><div class="workshop-panel-actions"><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div>`;
+      panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{panel.hidden=true;});
+      return;
+    }
+    panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.evolution.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.evolution.description')}</div><label class="workshop-evolution-picker"><span>${gameTextHtml('workshop.evolution.choose')}</span><select id="workshop-evolution-select">${candidates.map(row=>`<option value="${escapeHtml(row.path.baseId)}">${escapeHtml(row.card.name)} · ${row.stage?gameText('workshop.evolution.stage',{stage:row.stage}):gameText('workshop.evolution.base')}</option>`).join('')}</select></label><div id="workshop-evolution-detail"></div><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-evolution-action"></button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
+    const select=panel.querySelector('#workshop-evolution-select'),detail=panel.querySelector('#workshop-evolution-detail'),action=panel.querySelector('#workshop-evolution-action'),status=panel.querySelector('#workshop-status'),closeBtn=panel.querySelector('#workshop-panel-close');
+    const renderDetail=()=>{
+      const row=candidates.find(entry=>entry.path.baseId===select?.value)||candidates[0]; if(!row)return;
+      const currentStage=evolutionStageForProfile(state.userProfile?.evolutions,row.path.baseId),nextStage=Math.min(2,currentStage+1);
+      const currentCard=currentStage?applyEvolutionStage(row.card,currentStage):{...row.card};
+      const nextCard=applyEvolutionStage(row.card,nextStage);
+      const cost=WORKSHOP_POLICY?.evolution?.[`stage${nextStage}`]||{points:0,fichas:0,essence:0,copiesRequired:1};
+      const owned=ownedCounts[row.path.baseId]||0, enhanced=!!state.userProfile?.enhancements?.[row.path.baseId];
+      const physicalNeeded=Math.max(Number(cost.copiesRequired)||1,1+(enhanced?1:0));
+      const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&owned>=physicalNeeded;
+      detail.replaceChildren();
+      const preview=document.createElement('div');preview.className='workshop-evolution-preview';
+      for(const [label,card] of [[gameText('workshop.evolution.current'),currentCard],[gameText('workshop.evolution.next'),nextCard]]){
+        const block=document.createElement('div');block.className='workshop-evolution-preview-block';
+        const title=document.createElement('div');title.className='workshop-evolution-preview-label';title.textContent=label;
+        block.append(title,createCardElement(card,false,true,null,'preview',null));preview.appendChild(block);
+      }
+      const costEl=document.createElement('div');costEl.className='workshop-panel-cost';costEl.textContent=gameText('workshop.evolution.cost',{points:cost.points,fichas:cost.fichas,essence:cost.essence});
+      const copies=document.createElement('div');copies.className='workshop-panel-desc';copies.textContent=gameText('workshop.evolution.copies',{required:physicalNeeded,owned});
+      const rule=document.createElement('div');rule.className='workshop-evolution-rule';rule.textContent=gameText('workshop.evolution.deckRule');
+      detail.append(preview,costEl,copies,rule);
+      action.textContent=gameText('workshop.evolution.action',{stage:nextStage}); action.disabled=!hasFunds;
+      action.dataset.cardId=row.path.baseId; action.dataset.nextStage=String(nextStage);
+      if(status)status.textContent=hasFunds?'':gameText('workshop.evolution.notEnough');
+    };
+    select?.addEventListener('change',renderDetail); closeBtn?.addEventListener('click',()=>{panel.hidden=true;selectedMachineId=null;});
+    action?.addEventListener('click',async()=>{
+      const cardId=action.dataset.cardId,nextStage=Number(action.dataset.nextStage)||1,card=cardDb.getById(cardId); if(!card||!state.currentUser?.uid)return;
+      if(status)status.textContent='';
+      try{
+        const outcome=await withEconomyButtonPending(action,()=>evolveCard(state.currentUser.uid,cardId),{pendingLabel:gameText('workshop.evolution.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});
+        if(outcome?.profile)state.userProfile=outcome.profile;
+        renderWallet();renderMachines();
+        if(status)status.textContent=gameText('workshop.evolution.success',{card:card.name,stage:nextStage});
+        cleanupStage();
+        overlay.remove();
+        showWorkshopScreen(onBack,{ evolutionCelebration:{cardId,stage:nextStage} });
+      }catch(err){console.error('No se pudo evolucionar la carta:',err);if(status)status.textContent=err?.message||gameText('workshop.evolution.notEnough');}
+    });
+    renderDetail();
+  }
+
+
+  function clientMixerProtectedCopies(cardId){
+    const baseId=String(cardId||''); let maxDeck=0;
+    for(const deck of (state.userProfile?.decks||[])){
+      let count=0; for(const raw of (deck?.cardIds||[])){const id=String(raw||''); const base=id.replace(/::(?:enhanced|evo1|evo2)$/,''); if(base===baseId)count+=1;}
+      if(count>maxDeck)maxDeck=count;
+    }
+    const enhanced=state.userProfile?.enhancements?.[baseId]?1:0;
+    const evolved=evolutionStageForProfile(state.userProfile?.evolutions,baseId)>0?1:0;
+    return Math.max(1,maxDeck,enhanced+evolved);
+  }
+  function openMachine3Mixer(){
+    selectedMachineId='machine3';
+    const ownedCounts={}; for(const id of (state.userProfile?.collection||[]))ownedCounts[id]=(ownedCounts[id]||0)+1;
+    const candidates=(cardDb.enabledCards||cardDb.allCards||[]).filter(card=>['Common','Uncommon','Rare'].includes(card?.rarity)).map(card=>{
+      const owned=ownedCounts[card.id]||0,protectedCopies=clientMixerProtectedCopies(card.id),freeEstimate=Math.max(0,owned-protectedCopies);
+      return {card,owned,protectedCopies,freeEstimate};
+    }).filter(row=>row.freeEstimate>=3).sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es'));
+    panel.hidden=false;
+    if(!candidates.length){panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.mixer.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.mixer.empty')}</div><div class="workshop-panel-actions"><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div>`;panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{panel.hidden=true;});return;}
+    panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.mixer.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.mixer.description')}</div><label class="workshop-evolution-picker"><span>${gameTextHtml('workshop.mixer.choose')}</span><select id="workshop-mixer-select">${candidates.map(row=>`<option value="${escapeHtml(row.card.id)}">${escapeHtml(row.card.name)} · ${escapeHtml(row.card.rarity)} · ${row.owned}×</option>`).join('')}</select></label><div id="workshop-mixer-detail"></div><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-mixer-action">${gameTextHtml('workshop.mixer.action')}</button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
+    const select=panel.querySelector('#workshop-mixer-select'),detail=panel.querySelector('#workshop-mixer-detail'),action=panel.querySelector('#workshop-mixer-action'),status=panel.querySelector('#workshop-status'),closeBtn=panel.querySelector('#workshop-panel-close');
+    const nextRarity={Common:'Uncommon',Uncommon:'Rare',Rare:'Mythic'};
+    const renderDetail=()=>{const row=candidates.find(r=>r.card.id===select?.value)||candidates[0];if(!row)return;const cost=WORKSHOP_POLICY?.mixer?.[row.card.rarity]||{points:0,fichas:0,essence:0};const to=nextRarity[row.card.rarity];const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&row.freeEstimate>=3;detail.replaceChildren();const cardWrap=document.createElement('div');cardWrap.className='workshop-evolution-preview';cardWrap.style.gridTemplateColumns='1fr';const block=document.createElement('div');block.className='workshop-evolution-preview-block';block.appendChild(createCardElement(row.card,false,true,null,'preview',null));cardWrap.appendChild(block);const rarity=document.createElement('div');rarity.className='workshop-panel-cost';rarity.textContent=gameText('workshop.mixer.rarity',{from:row.card.rarity,to});const costEl=document.createElement('div');costEl.className='workshop-panel-cost';costEl.textContent=gameText('workshop.mixer.cost',{points:cost.points,fichas:cost.fichas,essence:cost.essence});const copies=document.createElement('div');copies.className='workshop-panel-desc';copies.textContent=gameText('workshop.mixer.copies',{owned:row.owned});const rule=document.createElement('div');rule.className='workshop-evolution-rule';rule.textContent=gameText('workshop.mixer.rule');detail.append(cardWrap,rarity,costEl,copies,rule);action.disabled=!hasFunds;action.dataset.cardId=row.card.id;if(status)status.textContent=hasFunds?'':gameText('workshop.mixer.notEnough');};
+    select?.addEventListener('change',renderDetail);closeBtn?.addEventListener('click',()=>{panel.hidden=true;selectedMachineId=null;});
+    action?.addEventListener('click',async()=>{const cardId=action.dataset.cardId;if(!cardId||!state.currentUser?.uid)return;if(status)status.textContent='';try{const outcome=await withEconomyButtonPending(action,()=>mixCards(state.currentUser.uid,cardId),{pendingLabel:gameText('workshop.mixer.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});if(outcome?.profile)state.userProfile=outcome.profile;const result=outcome?.result||{};renderWallet();renderMachines();cleanupStage();overlay.remove();showWorkshopScreen(onBack,{mixerCelebration:{outputCardId:result.outputCardId,fromRarity:result.fromRarity,toRarity:result.toRarity}});}catch(err){console.error('No se pudo mezclar la carta:',err);if(status)status.textContent=err?.message||gameText('workshop.mixer.notEnough');}});
+    renderDetail();
+  }
+
   function machineTitle(id) { return gameText(`workshop.${id}.title`); }
   function machineDescription(id) { return gameText(`workshop.${id}.description`); }
 
@@ -6056,7 +6318,7 @@ export function showWorkshopScreen(onBack, options = {}) {
     const points = Math.max(0, Math.floor(Number(policy.points)||0));
     const fichas = Math.max(0, Math.floor(Number(policy.fichas)||0));
     const hasFunds = (Number(state.userProfile?.points)||0) >= points && (Number(state.userProfile?.fichas)||0) >= fichas;
-    const future = machineId !== 'machine1' || policy.available === false;
+    const future = !['machine1','machine2','machine3'].includes(machineId) || policy.available === false;
     panel.hidden = false;
     panel.innerHTML = `<div class="workshop-panel-title">${escapeHtml(machineTitle(machineId))}</div>
       <div class="workshop-panel-desc">${escapeHtml(machineDescription(machineId))}</div>
@@ -6067,11 +6329,11 @@ export function showWorkshopScreen(onBack, options = {}) {
       </div>
       <div class="workshop-status" id="workshop-status">${(!future && !unlocked && !hasFunds) ? gameTextHtml('workshop.unlock.notEnough') : ''}</div>`;
     panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{ panel.hidden=true; selectedMachineId=null; });
-    panel.querySelector('#workshop-use-machine')?.addEventListener('click',openMachine1Craft);
+    panel.querySelector('#workshop-use-machine')?.addEventListener('click',()=>{ if(machineId==='machine2') openMachine2Evolution(); else if(machineId==='machine3') openMachine3Mixer(); else openMachine1Craft(); });
     panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event => {
       if (!state.currentUser?.uid || !state.userProfile) return;
-      const confirmText = gameText('workshop.unlock.confirm',{ machine:machineTitle(machineId), points, fichas });
-      if (!window.confirm(confirmText)) return;
+      const accepted = await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas});
+      if (!accepted) return;
       const btn=event.currentTarget, status=panel.querySelector('#workshop-status');
       const closeBtn=panel.querySelector('#workshop-panel-close');
       try {
@@ -6128,6 +6390,14 @@ export function showWorkshopScreen(onBack, options = {}) {
         const machineEl=machineRoot.querySelector('[data-machine-id="machine1"] .workshop-machine-img') || machineRoot.querySelector('[data-machine-id="machine1"]');
         await queueWorkshopEnhancementAnimation({ machineElement:machineEl });
         if (overlay.isConnected) showEnhancementSuccessModal(options.enhancementCelebration);
+      } else if(options.evolutionCelebration){
+        const machineEl=machineRoot.querySelector('[data-machine-id="machine2"] .workshop-machine-img') || machineRoot.querySelector('[data-machine-id="machine2"]');
+        await queueWorkshopEvolutionAnimation({ machineElement:machineEl });
+        if (overlay.isConnected) showEvolutionSuccessModal(options.evolutionCelebration);
+      } else if(options.mixerCelebration){
+        const machineEl=machineRoot.querySelector('[data-machine-id="machine3"] .workshop-machine-img') || machineRoot.querySelector('[data-machine-id="machine3"]');
+        await queueWorkshopMixerAnimation({ machineElement:machineEl });
+        if (overlay.isConnected) showMixerSuccessModal(options.mixerCelebration);
       } else if(options.autoOpenMachine1){
         if(isWorkshopMachineUnlocked(state.userProfile,'machine1')) openMachine1Craft();
         else renderPanel('machine1');
@@ -6406,6 +6676,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const recentAcquisitions = loadDeckbuilderRecentState(state.userProfile?.collection || []);
   const acquisitionLastIndex = recentAcquisitions.lastIndex;
   const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+  const evolutions = normalizeEvolutionProfile(state.userProfile?.evolutions);
   const enhancedIds = new Set(Object.keys(enhancements).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
 
   let activeTab = 'criaturas';
@@ -6554,7 +6825,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     cardPreview.innerHTML = '';
     cardPreview.classList.toggle('touch', touch);
 
-    const enhancementKeyword = entry.isEnhanced ? enhancements[entry.card.id] : null;
+    const enhancementKeyword = entry.isEnhanced ? enhancements[entry.baseId || entry.card.id] : null;
     const displayCard = enhancementKeyword
       ? { ...entry.card, keywords: [...(entry.card.keywords || []), enhancementKeyword] }
       : entry.card;
@@ -6597,9 +6868,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       .filter(([, n]) => n > 0)
       .map(([trackingKey, count]) => {
         const isEnhanced = trackingKey.endsWith(ENHANCED_SUFFIX);
-        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : trackingKey;
-        const card = cardDb.getById(baseId);
-        return { trackingKey, card, count, isEnhanced, categoryKey: card ? deckCategoryById.get(card.id) : null };
+        const parsedEvolution = isEnhanced ? {baseId:trackingKey,stage:0} : parseEvolutionVariantId(trackingKey);
+        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
+        const baseCard = cardDb.getById(baseId);
+        const card = baseCard && parsedEvolution.stage > 0 ? applyEvolutionStage(baseCard,parsedEvolution.stage) : baseCard;
+        return { trackingKey, baseId, card, count, isEnhanced, isEvolved:parsedEvolution.stage>0, evolutionStage:parsedEvolution.stage, categoryKey: baseCard ? deckCategoryById.get(baseId) : null };
       })
       .filter(entry => entry.card);
   }
@@ -6616,11 +6889,18 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       .reduce((sum, [, n]) => sum + n, 0);
   }
 
-  function isTileMaxed(trackingKey, cap, isEnhancedTile) {
+  function totalEvolvedInDeck() {
+    return Object.entries(deckCounts)
+      .filter(([key]) => parseEvolutionVariantId(key).stage > 0)
+      .reduce((sum, [, n]) => sum + n, 0);
+  }
+
+  function isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile=false) {
     const inDeck = deckCounts[trackingKey] || 0;
     const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
     const enhancedDeckCapReached = isEnhancedTile && inDeck === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK;
-    return inDeck >= cap || deckFull || enhancedDeckCapReached;
+    const evolvedDeckCapReached = isEvolvedTile && inDeck === 0 && totalEvolvedInDeck() >= MAX_EVOLVED_CARDS_PER_DECK;
+    return inDeck >= cap || deckFull || enhancedDeckCapReached || evolvedDeckCapReached;
   }
 
   // 23.12.0 — agregar/quitar una carta ya NO destruye y reconstruye toda la grilla.
@@ -6631,8 +6911,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const trackingKey = wrap.dataset.trackingKey;
       const cap = Number(wrap.dataset.cap || 0);
       const isEnhancedTile = wrap.dataset.enhanced === '1';
+      const isEvolvedTile = wrap.dataset.evolved === '1';
       const inDeck = deckCounts[trackingKey] || 0;
-      wrap.classList.toggle('maxed', isTileMaxed(trackingKey, cap, isEnhancedTile));
+      wrap.classList.toggle('maxed', isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile));
       const badge = wrap.querySelector('.deckbuilder-pool-card-badge');
       if (badge) badge.textContent = `${inDeck}/${cap}`;
     });
@@ -6649,18 +6930,19 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
     const fragment = document.createDocumentFragment();
 
-    function createPoolRecord(baseCard, displayCard, trackingKey, ownedForThisSlot, isEnhancedTile) {
+    function createPoolRecord(baseCard, displayCard, trackingKey, ownedForThisSlot, isEnhancedTile, isEvolvedTile=false) {
       const isBasicLand = displayCard.type.includes('básica');
       const cap = isBasicLand ? ownedForThisSlot : Math.min(ownedForThisSlot, MAX_COPIES_PER_CARD);
       const inDeck = deckCounts[trackingKey] || 0;
-      const maxed = isTileMaxed(trackingKey, cap, isEnhancedTile);
+      const maxed = isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile);
 
       const wrap = document.createElement('div');
-      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}`;
+      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}${isEvolvedTile ? ' evolved' : ''}`;
       wrap.dataset.trackingKey = trackingKey;
       wrap.dataset.baseCardId = baseCard.id;
       wrap.dataset.cap = String(cap);
       wrap.dataset.enhanced = isEnhancedTile ? '1' : '0';
+      wrap.dataset.evolved = isEvolvedTile ? '1' : '0';
       wrap.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
 
       if (isNewlyObtained(baseCard.id)) {
@@ -6676,6 +6958,12 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         star.textContent = '✨ Mejorada';
         wrap.appendChild(star);
       }
+      if (isEvolvedTile) {
+        const evo = document.createElement('div');
+        evo.className = 'deckbuilder-enhanced-marker deckbuilder-evolved-marker';
+        evo.textContent = gameText('workshop.evolution.badge',{stage:displayCard.evolutionStage || 1});
+        wrap.appendChild(evo);
+      }
 
       const badge = document.createElement('div');
       badge.className = 'deckbuilder-pool-card-badge';
@@ -6684,28 +6972,34 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
       wrap.addEventListener('click', () => {
         markRecentlyObtainedSeen(baseCard.id);
-        if (isTileMaxed(trackingKey, cap, isEnhancedTile)) return;
+        if (isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile)) return;
         deckCounts[trackingKey] = (deckCounts[trackingKey] || 0) + 1;
         refreshPoolTileStates();
         renderList();
       });
 
       fragment.appendChild(wrap);
-      entry.records.push({ card: baseCard, displayCard, node: wrap, trackingKey, isEnhancedTile });
+      entry.records.push({ card: baseCard, displayCard, node: wrap, trackingKey, isEnhancedTile, isEvolvedTile });
     }
 
     cardDb.getByCategory(tabKey).forEach(card => {
       const owned = ownedCounts[card.id] || 0;
       if (owned <= 0) return;
       const enhancementKeyword = enhancements[card.id];
-      if (enhancementKeyword) {
+      const evolutionStage = evolutionStageForProfile(evolutions,card.id);
+      let reserved=0;
+      if (enhancementKeyword && owned-reserved>0) {
         const enhancedDisplayCard = { ...card, keywords: [...(card.keywords || []), enhancementKeyword] };
-        createPoolRecord(card, enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true);
-        const remainingOwned = Math.max(0, owned - 1);
-        if (remainingOwned > 0) createPoolRecord(card, card, card.id, remainingOwned, false);
-      } else {
-        createPoolRecord(card, card, card.id, owned, false);
+        createPoolRecord(card, enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true, false);
+        reserved += 1;
       }
+      if (evolutionStage>0 && owned-reserved>0) {
+        const evolvedDisplayCard=applyEvolutionStage(card,evolutionStage);
+        createPoolRecord(card,evolvedDisplayCard,evolutionVariantId(card.id,evolutionStage),1,false,true);
+        reserved += 1;
+      }
+      const remainingOwned=Math.max(0,owned-reserved);
+      if (remainingOwned>0) createPoolRecord(card,card,card.id,remainingOwned,false,false);
     });
 
     entry.pane.appendChild(fragment);
@@ -6737,6 +7031,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       }
       if (byCard !== 0) return byCard;
       if (a.isEnhancedTile !== b.isEnhancedTile) return a.isEnhancedTile ? -1 : 1;
+      if (a.isEvolvedTile !== b.isEvolvedTile) return a.isEvolvedTile ? -1 : 1;
       return a.trackingKey.localeCompare(b.trackingKey);
     });
 
@@ -6884,7 +7179,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
           item.className = 'deckbuilder-list-item';
           const label = document.createElement('span');
           label.className = 'deckbuilder-list-card-name';
-          label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' ✨' : ''}`;
+          label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' ✨' : ''}${entry.isEvolved ? ` · ${gameText('workshop.evolution.badge',{stage:entry.evolutionStage})}` : ''}`;
           label.title = usesTouchPreview ? 'Tocá para ver la carta completa' : 'Pasá el mouse para ver la carta completa';
 
           if (usesTouchPreview) {
@@ -7228,6 +7523,7 @@ export function showMyDecksScreen(onBack) {
     // copia mejorada con su keyword de más y el marcador visual — mismo criterio que el
     // constructor de mazos, para que se vea igual acá y ahí.
     const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+    const evolutions = normalizeEvolutionProfile(state.userProfile?.evolutions);
     // HF8 — la vista previa del mazo usa un orden canónico legible: tipo (Criaturas →
     // Instantáneos → Conjuros → Encantamientos → Artefactos → Semidioses → Tierras),
     // luego CMC ascendente y finalmente nombre. La copia mejorada queda junto a su base.
@@ -7239,15 +7535,20 @@ export function showMyDecksScreen(onBack) {
     const cards = displayDeckIds
       .map(id => {
         const isEnhanced = id.endsWith(ENHANCED_SUFFIX);
-        const baseId = isEnhanced ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+        const parsedEvolution=isEnhanced?{baseId:id,stage:0}:parseEvolutionVariantId(id);
+        const baseId = isEnhanced ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
         const cardDef = cardDb.getById(baseId);
         if (!cardDef) return null;
         const keyword = isEnhanced ? enhancements[baseId] : null;
+        let displayCard=parsedEvolution.stage>0?applyEvolutionStage(cardDef,parsedEvolution.stage):cardDef;
+        if(keyword) displayCard={...displayCard,keywords:[...(displayCard.keywords||[]),keyword]};
         return {
           baseId,
           categoryKey: detailCategoryById.get(baseId) || 'otros',
-          displayCard: keyword ? { ...cardDef, keywords: [...(cardDef.keywords || []), keyword] } : cardDef,
-          isEnhanced: !!keyword
+          displayCard,
+          isEnhanced: !!keyword,
+          isEvolved: parsedEvolution.stage>0,
+          evolutionStage: parsedEvolution.stage
         };
       })
       .filter(Boolean)
@@ -7258,7 +7559,7 @@ export function showMyDecksScreen(onBack) {
         if (cmcDelta) return cmcDelta;
         const nameDelta = String(a.displayCard?.name || '').localeCompare(String(b.displayCard?.name || ''), 'es');
         if (nameDelta) return nameDelta;
-        return Number(b.isEnhanced) - Number(a.isEnhanced);
+        return (Number(b.isEvolved)-Number(a.isEvolved)) || (Number(b.isEnhanced)-Number(a.isEnhanced));
       });
 
     body.innerHTML = `
@@ -7314,7 +7615,7 @@ export function showMyDecksScreen(onBack) {
     detailZoom?.addEventListener('input', syncDetailZoom);
     syncDetailZoom();
 
-    cards.forEach(({ displayCard, isEnhanced }) => {
+    cards.forEach(({ displayCard, isEnhanced, isEvolved, evolutionStage }) => {
       const slot = document.createElement('div');
       slot.className = 'encyclopedia-card-slot';
       slot.style.position = 'relative';
@@ -7324,6 +7625,12 @@ export function showMyDecksScreen(onBack) {
         const marker = document.createElement('div');
         marker.className = 'deckbuilder-enhanced-marker';
         marker.textContent = '✨ Mejorada';
+        slot.appendChild(marker);
+      }
+      if (isEvolved) {
+        const marker = document.createElement('div');
+        marker.className = 'deckbuilder-enhanced-marker deckbuilder-evolved-marker';
+        marker.textContent = gameText('workshop.evolution.badge',{stage:evolutionStage});
         slot.appendChild(marker);
       }
       grid.appendChild(slot);
@@ -7458,6 +7765,38 @@ function achievementTrophyHtml(familyId,tier){
   return `<span class="achievement-trophy-media" aria-hidden="true"><img class="achievement-trophy-img" src="${escapeHtml(src)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="achievement-trophy-fallback" hidden>${fallback}</span></span>`;
 }
 
+function achievementRewardCardsHtml(row={}){
+  const rewards=[
+    {amount:Math.max(0,Number(row.points)||0),icon:COIN_ICON_HTML,label:gameTextHtml('admin.achievements.points')},
+    {amount:Math.max(0,Number(row.fichas)||0),icon:FICHA_ICON_HTML,label:gameTextHtml('admin.achievements.fichas')},
+    {amount:Math.max(0,Number(row.essence)||0),icon:ESSENCE_ICON_HTML,label:gameTextHtml('admin.achievements.essence')}
+  ].filter(item=>item.amount>0);
+  if(!rewards.length) return `<div class="achievement-claim-no-currency">${gameTextHtml('achievements.reward.none')}</div>`;
+  return rewards.map(item=>`<div class="achievement-claim-resource"><div class="achievement-claim-resource-icon">${item.icon}</div><strong>+${item.amount.toLocaleString('es-AR')}</strong><span>${item.label}</span></div>`).join('');
+}
+
+function showAchievementClaimRewardModal(row={}){
+  injectMulliganStyles();
+  injectAchievementStyles();
+  document.querySelector('.achievement-claim-success-overlay')?.remove();
+  const familyId=String(row.familyId||'');
+  const tier=String(row.tier||'');
+  const modal=document.createElement('div');
+  modal.className='gy-modal-overlay achievement-claim-success-overlay';
+  modal.innerHTML=`<div class="gy-modal-content achievement-claim-success-modal">
+    <div class="gy-modal-header achievement-claim-success-header"><h3>${gameTextHtml('achievements.claim.modalTitle')}</h3></div>
+    <div class="achievement-claim-success-body">
+      <div class="achievement-claim-success-trophy">${achievementTrophyHtml(familyId,tier)}</div>
+      <div class="achievement-claim-success-name">${gameTextHtml('achievements.claim.modalSubtitle',{achievement:achievementFamilyLabel(familyId),tier:achievementTierLabel(tier)})}</div>
+      <div class="achievement-claim-success-resources">${achievementRewardCardsHtml(row)}</div>
+      <button class="mulligan-btn mulligan-btn-keep achievement-claim-success-ok" type="button">${gameTextHtml('achievements.claim.continue')}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const close=()=>modal.remove();
+  modal.querySelector('.achievement-claim-success-ok')?.addEventListener('click',close);
+}
+
 function injectAchievementStyles(){
   if(document.getElementById('achievement-styles')) return;
   const style=document.createElement('style'); style.id='achievement-styles'; style.textContent=`
@@ -7466,9 +7805,14 @@ function injectAchievementStyles(){
     .achievements-heading{min-width:0;flex:1}.achievements-subtitle{font-size:12px;color:#9fb0a2;margin-top:4px}.achievements-wallet{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.achievements-wallet>span{display:flex;align-items:center;gap:4px;padding:6px 9px;border:1px solid rgba(212,175,55,.35);border-radius:999px;background:#111b;font-weight:800;font-size:12px}.achievements-wallet img{width:24px!important;height:24px!important;object-fit:contain;flex:0 0 auto}
     .achievement-family{margin:14px 0 20px;padding:14px;border:1px solid rgba(212,175,55,.28);border-radius:15px;background:linear-gradient(180deg,rgba(35,31,22,.78),rgba(11,12,14,.9));box-shadow:0 10px 28px rgba(0,0,0,.25)}
     .achievement-family-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:12px}.achievement-family-name{font-size:19px;font-weight:900;color:#f0d981}.achievement-family-metric{font-size:12px;color:#aaa}.achievement-family-value{font-size:17px;font-weight:900;color:#fff}
-    .achievement-levels{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:9px}.achievement-level{position:relative;padding:12px 10px;border:1px solid #3d3d3d;border-radius:12px;background:#111;min-height:172px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;overflow:hidden}.achievement-level.reached{border-color:#bd9b35;background:linear-gradient(180deg,#29200d,#111)}.achievement-level.claimed{border-color:#47734e;background:linear-gradient(180deg,#14251a,#101311)}.achievement-trophy{line-height:1;filter:drop-shadow(0 4px 8px #000)}.achievement-trophy-media{display:inline-flex;width:58px;height:58px;align-items:center;justify-content:center}.achievement-trophy-img{display:block;max-width:100%;max-height:100%;object-fit:contain}.achievement-trophy-fallback{font-size:34px;line-height:1}.achievement-tier{font-weight:900;text-transform:uppercase;letter-spacing:.06em}.achievement-progress{font-weight:800;font-size:12px}.achievement-bar{height:6px;width:100%;border-radius:99px;background:#303030;overflow:hidden}.achievement-bar>i{display:block;height:100%;background:linear-gradient(90deg,#688ac7,#8bdcff);border-radius:99px}.achievement-reward{font-size:11px;color:#d8c992;min-height:28px}.achievement-claim-btn{margin-top:auto;border:1px solid #d4af37;background:linear-gradient(#67501d,#382807);color:#fff2b8;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}.achievement-claim-btn:disabled{opacity:.48;cursor:default}.achievements-loading{padding:50px;text-align:center;font-weight:800;color:#dbc776}
-    .achievement-notice-trophy{display:flex;justify-content:center;margin:4px 0 10px}.achievement-notice-trophy .achievement-trophy-media{width:96px;height:96px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:70px}.achievement-notice-body{font-weight:800;margin:4px 0 10px;text-align:center;color:#dbe3dc;line-height:1.45}.achievement-notice-reward{text-align:center;color:#d8c992;font-size:12px}.achievement-notice-actions{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
-    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:165px;scroll-snap-align:start}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:168px}.achievements-heading .encyclopedia-title{font-size:20px}}
+    .achievement-levels{display:grid;grid-template-columns:repeat(5,minmax(185px,1fr));gap:9px}.achievement-level{position:relative;padding:12px 10px;border:1px solid #3d3d3d;border-radius:12px;background:#111;min-height:286px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;overflow:hidden}.achievement-level.reached{border-color:#bd9b35;background:linear-gradient(180deg,#29200d,#111)}.achievement-level.claimed{border-color:#47734e;background:linear-gradient(180deg,#14251a,#101311)}.achievement-trophy{line-height:1;filter:drop-shadow(0 4px 8px #000)}.achievement-trophy-media{display:inline-flex;width:158px;height:158px;align-items:center;justify-content:center}.achievement-trophy-img{display:block;max-width:100%;max-height:100%;object-fit:contain}.achievement-trophy-fallback{font-size:92px;line-height:1}.achievement-tier{font-weight:900;text-transform:uppercase;letter-spacing:.06em}.achievement-progress{font-weight:800;font-size:12px}.achievement-bar{height:6px;width:100%;border-radius:99px;background:#303030;overflow:hidden}.achievement-bar>i{display:block;height:100%;background:linear-gradient(90deg,#688ac7,#8bdcff);border-radius:99px}.achievement-reward{font-size:11px;color:#d8c992;min-height:28px}.achievement-claim-btn{margin-top:auto;border:1px solid #d4af37;background:linear-gradient(#67501d,#382807);color:#fff2b8;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}.achievement-claim-btn:disabled{opacity:.48;cursor:default}.achievements-loading{padding:50px;text-align:center;font-weight:800;color:#dbc776}
+    .achievement-notice-trophy{display:flex;justify-content:center;margin:4px 0 10px}.achievement-notice-trophy .achievement-trophy-media{width:184px;height:184px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:108px}.achievement-notice-body{font-weight:800;margin:4px 0 10px;text-align:center;color:#dbe3dc;line-height:1.45}.achievement-notice-reward{text-align:center;color:#d8c992;font-size:12px}.achievement-notice-actions{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+    .achievement-claim-success-overlay{z-index:20120!important;background:radial-gradient(circle at 50% 28%,rgba(212,175,55,.15),rgba(0,0,0,.9) 54%)!important;backdrop-filter:blur(5px)}
+    .achievement-claim-success-modal{width:min(560px,94vw)!important;max-width:560px!important;border:1px solid rgba(212,175,55,.7)!important;border-radius:16px!important;background:radial-gradient(circle at 50% 0,rgba(109,82,17,.28),transparent 38%),linear-gradient(180deg,#17211b,#0c1210)!important;box-shadow:0 0 38px rgba(212,175,55,.18),0 22px 58px rgba(0,0,0,.72)!important;padding:16px 18px 18px!important}
+    .achievement-claim-success-header{justify-content:center!important;border-bottom-color:rgba(212,175,55,.36)!important;margin-bottom:8px!important}.achievement-claim-success-header h3{margin:0;color:#f7e5a4;letter-spacing:.055em;text-align:center;font-size:22px}
+    .achievement-claim-success-body{display:flex;flex-direction:column;align-items:center;gap:12px}.achievement-claim-success-trophy{display:flex;justify-content:center;filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}.achievement-claim-success-trophy .achievement-trophy-media{width:164px;height:164px}.achievement-claim-success-trophy .achievement-trophy-fallback{font-size:96px}
+    .achievement-claim-success-name{font-size:15px;font-weight:900;color:#fff3c3;text-align:center}.achievement-claim-success-resources{width:100%;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.achievement-claim-resource{min-width:118px;display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:9px 11px;border:1px solid rgba(212,175,55,.28);border-radius:12px;background:rgba(0,0,0,.24);box-shadow:inset 0 0 18px rgba(255,255,255,.02)}.achievement-claim-resource-icon{grid-row:1/3;display:flex;align-items:center;justify-content:center}.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence-icon){width:42px!important;height:42px!important;object-fit:contain}.achievement-claim-resource strong{font-size:20px;line-height:1;color:#fff}.achievement-claim-resource span{font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:#d9c982}.achievement-claim-no-currency{padding:10px;color:#d9c982;font-weight:800}.achievement-claim-success-ok{min-width:180px;margin-top:2px}
+    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:174px;min-height:236px;scroll-snap-align:start}.achievement-trophy-media{width:108px;height:108px}.achievement-trophy-fallback{font-size:64px}.achievement-notice-trophy .achievement-trophy-media{width:132px;height:132px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:78px}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:168px}.achievements-heading .encyclopedia-title{font-size:20px}.achievement-claim-success-modal{width:min(94vw,460px)!important;padding:12px!important}.achievement-claim-success-header h3{font-size:18px}.achievement-claim-success-trophy .achievement-trophy-media{width:122px;height:122px}.achievement-claim-success-trophy .achievement-trophy-fallback{font-size:72px}.achievement-claim-success-resources{gap:6px}.achievement-claim-resource{min-width:94px;grid-template-columns:34px 1fr;padding:7px 8px}.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence-icon){width:32px!important;height:32px!important}.achievement-claim-resource strong{font-size:17px}}
   `; document.head.appendChild(style);
 }
 
@@ -7512,7 +7856,7 @@ export function showAchievementsScreen(onBack){
         const outcome=await withEconomyButtonPending(btn,()=>claimAchievement(state.currentUser.uid,id),{pendingLabel:gameText('achievements.claiming'),slowLabel:gameText('workshop.server.slow')});
         if(outcome?.profile) state.userProfile=outcome.profile;
         runtime.stats=await bootstrapPlayerStatistics(state.currentUser.uid)||runtime.stats;
-        showSimpleAlertModal(gameTextHtml('achievements.claim.success',{reward:achievementRewardText(row)})); render();
+        showAchievementClaimRewardModal(row); render();
       }catch(err){console.error('No se pudo reclamar logro:',err);showSimpleAlertModal(escapeHtml(err?.message||gameText('achievements.error.generic')));}
     }));
   };
@@ -7571,6 +7915,7 @@ function renderAccountBox(container, user) {
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-workshop">${gameTextHtml('account.workshop')}</button>
         <button class="main-menu-reward-btn" id="menu-achievements">${gameTextHtml('account.achievements')}</button>
+        <button class="main-menu-reward-btn" id="menu-public-profile">${gameTextHtml('publicProfile.myProfile')}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
@@ -7615,6 +7960,10 @@ function renderAccountBox(container, user) {
       });
     };
     container.querySelector('#menu-achievements')?.addEventListener('click', openAchievementsFromMenu);
+    container.querySelector('#menu-public-profile')?.addEventListener('click', () => {
+      if (!state.currentUser?.uid) return;
+      showPublicPlayerProfile(state.currentUser.uid);
+    });
     setTimeout(() => void maybeShowAchievementUnlockNotice(openAchievementsFromMenu), 0);
     container.querySelector('#menu-daily-rewards').addEventListener('click', () => {
       if (!state.userProfile) return;
@@ -8337,6 +8686,24 @@ export function showAdminPanel(onBack) {
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essencePoints')}</span><input type="number" min="1" step="1" class="admin-field-input" id="admin-workshop-essence-points"></div>
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essenceFichas')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-essence-fichas"></div>
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essenceMax')}</span><input type="number" min="1" max="100" step="1" class="admin-field-input" id="admin-workshop-essence-max"></div>
+        <div class="admin-section-title" style="margin-top:14px;font-size:14px;">${gameTextHtml('admin.workshop.evolutionTitle')}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.evolutionEnabled')}</span><input type="checkbox" id="admin-workshop-evolution-enabled"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.maxEvolved')}</span><input type="number" min="0" max="20" step="1" class="admin-field-input" id="admin-workshop-max-evolved"></div>
+        <div class="admin-workshop-machine-settings">
+          ${[1,2].map(stage=>`<div class="admin-workshop-setting-card"><div class="admin-workshop-setting-title">${gameTextHtml('admin.workshop.evolutionStage',{stage})}</div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.evolutionPoints')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-evo${stage}-points"></div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.evolutionFichas')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-evo${stage}-fichas"></div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.evolutionEssence')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-evo${stage}-essence"></div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.evolutionCopies')}</span><input type="number" min="1" max="20" step="1" class="admin-field-input" id="admin-workshop-evo${stage}-copies"></div></div>`).join('')}
+        </div>
+        <div class="admin-section-title" style="margin-top:14px;font-size:14px;">${gameTextHtml('admin.workshop.mixerTitle')}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.mixerEnabled')}</span><input type="checkbox" id="admin-workshop-mixer-enabled"></div>
+        <div class="admin-workshop-machine-settings">
+          ${[['Common','Uncommon','common'],['Uncommon','Rare','uncommon'],['Rare','Mythic','rare']].map(([from,to,key])=>`<div class="admin-workshop-setting-card"><div class="admin-workshop-setting-title">${gameTextHtml('admin.workshop.mixerTier',{from,to})}</div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.mixerPoints')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-mixer-${key}-points"></div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.mixerFichas')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-mixer-${key}-fichas"></div>
+            <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.mixerEssence')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-mixer-${key}-essence"></div></div>`).join('')}
+        </div>
         <div class="admin-workshop-machine-settings" id="admin-workshop-machine-settings"></div>
         <button class="admin-save-btn" id="admin-workshop-save-settings">${gameTextHtml('admin.workshop.saveSettings')}</button>
         <div class="admin-success-msg" id="admin-workshop-settings-status"></div>
@@ -8672,6 +9039,8 @@ export function showAdminPanel(onBack) {
     const missingCards = Array.isArray(audit?.missing) ? audit.missing : [];
     const missingFronts = missingCards.filter(entry => entry?.face !== 'back');
     const missingBacks = missingCards.filter(entry => entry?.face === 'back');
+    const missingEvolutionImages = Array.isArray(audit?.missingEvolutionImages) ? audit.missingEvolutionImages : [];
+    const evolutionManifestPresent = audit?.evolutionManifestAvailable === true;
     const tokenManifestPresent = !!audit?.tokenImages && Array.isArray(audit?.missingTokenImages) && Array.isArray(audit?.tokenEffectsWithoutImage);
     const missingTokenEffects = tokenManifestPresent ? audit.missingTokenImages : [];
     const unassignedTokenEffects = tokenManifestPresent ? audit.tokenEffectsWithoutImage : [];
@@ -8686,13 +9055,14 @@ export function showAdminPanel(onBack) {
     const tokenGroups = [...tokenGroupsMap.values()].sort((a,b) => String(a.tokenName).localeCompare(String(b.tokenName), 'es-AR'));
 
     summary.textContent = tokenManifestPresent
-      ? gameText('admin.images.summary', { fronts: missingFronts.length, backs: missingBacks.length, tokenFiles: tokenGroups.length, tokenEffects: missingTokenEffects.length, unassigned: unassignedTokenEffects.length, generated })
+      ? gameText('admin.images.summary', { fronts: missingFronts.length, backs: missingBacks.length, evolutions: missingEvolutionImages.length, tokenFiles: tokenGroups.length, tokenEffects: missingTokenEffects.length, unassigned: unassignedTokenEffects.length, generated })
       : gameText('admin.images.legacySummary', { cards: missingCards.length, generated });
     txtBtn.disabled = false;
     jsonBtn.disabled = false;
 
     const blocks = [];
     if (!tokenManifestPresent) blocks.push(`<div class="admin-debug-error">${escapeHtml(gameText('admin.images.oldManifest'))}</div>`);
+    if (!evolutionManifestPresent) blocks.push(`<div class="admin-debug-error">${escapeHtml(gameText('admin.images.evolutionManifestMissing'))}</div>`);
 
     const pushCardFaceBlock = (entries, titleKey, faceLabel) => {
       if (!entries.length) return;
@@ -8708,6 +9078,16 @@ export function showAdminPanel(onBack) {
     };
     pushCardFaceBlock(missingFronts, 'admin.images.frontsTitle', 'Frente');
     pushCardFaceBlock(missingBacks, 'admin.images.backsTitle', 'Reverso');
+
+    if (missingEvolutionImages.length) {
+      const visible=imageAuditShowAll?missingEvolutionImages:missingEvolutionImages.slice(0,20);
+      const rows=visible.map(entry=>`<tr><td><code>${escapeHtml(entry.baseId||'—')}</code></td><td>${escapeHtml(entry.name||'—')}</td><td>EVO ${escapeHtml(String(entry.stage||'—'))}</td><td><code>${escapeHtml(entry.image||'—')}</code></td><td><code>${escapeHtml(entry.path||'—')}</code></td></tr>`).join('');
+      blocks.push(`
+        <div class="admin-section-title" style="font-size:13px;margin-top:16px;">${escapeHtml(gameText('admin.images.evolutionsTitle',{count:missingEvolutionImages.length}))}</div>
+        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.id'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.stage'))}</th><th>${escapeHtml(gameText('admin.images.col.png'))}</th><th>${escapeHtml(gameText('admin.images.col.path'))}</th></tr></thead><tbody>${rows}</tbody></table>
+        ${!imageAuditShowAll&&missingEvolutionImages.length>20?`<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.first20'))}</div>`:''}
+      `);
+    }
 
     if (tokenManifestPresent && tokenGroups.length) {
       const visible = imageAuditShowAll ? tokenGroups : tokenGroups.slice(0, 20);
@@ -8734,11 +9114,11 @@ export function showAdminPanel(onBack) {
       `);
     }
 
-    if (!missingCards.length && tokenManifestPresent && !tokenGroups.length && !unassignedTokenEffects.length) {
+    if (!missingCards.length && evolutionManifestPresent && !missingEvolutionImages.length && tokenManifestPresent && !tokenGroups.length && !unassignedTokenEffects.length) {
       blocks.push(`<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.allOk'))}</div>`);
     }
 
-    const needToggle = missingFronts.length > 20 || missingBacks.length > 20 || tokenGroups.length > 20 || unassignedTokenEffects.length > 20;
+    const needToggle = missingFronts.length > 20 || missingBacks.length > 20 || missingEvolutionImages.length > 20 || tokenGroups.length > 20 || unassignedTokenEffects.length > 20;
     toggle.style.display = needToggle ? '' : 'none';
     toggle.textContent = imageAuditShowAll ? gameText('admin.images.showFirst') : gameText('admin.images.showAll');
     wrap.innerHTML = blocks.join('');
@@ -9159,7 +9539,7 @@ Receipt: ${receiptId}
     'eloGames','eloWins','eloLosses','basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite',
     'basicLandPacksBlue','basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
     'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
-    'emotesPurchased','dailyRewardsClaimed','essenceEarned','essenceSpent','essenceCurrent','achievementClaims'
+    'emotesPurchased','dailyRewardsClaimed','essenceEarned','essenceSpent','essenceCurrent','achievementClaims','industrialMixes'
   ]);
 
   function trackedTotals(publicRows) {
@@ -9278,6 +9658,7 @@ Receipt: ${receiptId}
         adminMetricCard(gameText('admin.stats.store.classifiedPurchases'), tracked.classifiedsCardsPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
         adminMetricCard(gameText('admin.stats.store.prebuiltPurchases'), tracked.prebuiltDecksPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
         adminMetricCard(gameText('admin.stats.store.enhancements'), tracked.enhancementsCrafted.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.store.mixes'), tracked.industrialMixes.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
         adminMetricCard(gameText('admin.stats.store.emotes'), tracked.emotesPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314'))
       ])
     ];
@@ -9703,6 +10084,22 @@ Receipt: ${receiptId}
     overlay.querySelector('#admin-workshop-essence-points').value = Number(settings.essenceConversionPoints ?? WORKSHOP_POLICY.essence.pointsPerUnit);
     overlay.querySelector('#admin-workshop-essence-fichas').value = Number(settings.essenceConversionFichas ?? WORKSHOP_POLICY.essence.fichasPerUnit);
     overlay.querySelector('#admin-workshop-essence-max').value = Number(settings.essenceConversionMaxPerOperation ?? WORKSHOP_POLICY.essence.maxPerOperation);
+    overlay.querySelector('#admin-workshop-evolution-enabled').checked = settings.evolutionEnabled !== false;
+    overlay.querySelector('#admin-workshop-max-evolved').value = Number(settings.maxEvolvedCardsPerDeck ?? MAX_EVOLVED_CARDS_PER_DECK);
+    for(const stage of [1,2]){
+      const policy=WORKSHOP_POLICY.evolution[`stage${stage}`];
+      overlay.querySelector(`#admin-workshop-evo${stage}-points`).value=Number(settings[`evolutionStage${stage}Points`] ?? policy.points);
+      overlay.querySelector(`#admin-workshop-evo${stage}-fichas`).value=Number(settings[`evolutionStage${stage}Fichas`] ?? policy.fichas);
+      overlay.querySelector(`#admin-workshop-evo${stage}-essence`).value=Number(settings[`evolutionStage${stage}Essence`] ?? policy.essence);
+      overlay.querySelector(`#admin-workshop-evo${stage}-copies`).value=Number(settings[`evolutionStage${stage}CopiesRequired`] ?? policy.copiesRequired);
+    }
+    overlay.querySelector('#admin-workshop-mixer-enabled').checked = settings.industrialMixerEnabled !== false;
+    for(const [rarity,key,prefix] of [['Common','common','industrialMixerCommon'],['Uncommon','uncommon','industrialMixerUncommon'],['Rare','rare','industrialMixerRare']]){
+      const policy=WORKSHOP_POLICY.mixer[rarity];
+      overlay.querySelector(`#admin-workshop-mixer-${key}-points`).value=Number(settings[`${prefix}Points`] ?? policy.points);
+      overlay.querySelector(`#admin-workshop-mixer-${key}-fichas`).value=Number(settings[`${prefix}Fichas`] ?? policy.fichas);
+      overlay.querySelector(`#admin-workshop-mixer-${key}-essence`).value=Number(settings[`${prefix}Essence`] ?? policy.essence);
+    }
 
     settingsRoot.innerHTML = WORKSHOP_MACHINE_IDS.map((id,index)=>{
       const n=index+1;
@@ -9760,7 +10157,27 @@ Receipt: ${receiptId}
           essenceConversionEnabled:overlay.querySelector('#admin-workshop-essence-enabled').checked,
           essenceConversionPoints:Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-points').value)||1)),
           essenceConversionFichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-fichas').value)||0)),
-          essenceConversionMaxPerOperation:Math.min(100,Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-max').value)||1)))};
+          essenceConversionMaxPerOperation:Math.min(100,Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-max').value)||1))),
+          evolutionEnabled:overlay.querySelector('#admin-workshop-evolution-enabled').checked,
+          maxEvolvedCardsPerDeck:Math.min(20,Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-max-evolved').value)||0))),
+          evolutionStage1Points:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo1-points').value)||0)),
+          evolutionStage1Fichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo1-fichas').value)||0)),
+          evolutionStage1Essence:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo1-essence').value)||0)),
+          evolutionStage1CopiesRequired:Math.min(20,Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-evo1-copies').value)||1))),
+          evolutionStage2Points:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo2-points').value)||0)),
+          evolutionStage2Fichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo2-fichas').value)||0)),
+          evolutionStage2Essence:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-evo2-essence').value)||0)),
+          evolutionStage2CopiesRequired:Math.min(20,Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-evo2-copies').value)||1))),
+          industrialMixerEnabled:overlay.querySelector('#admin-workshop-mixer-enabled').checked,
+          industrialMixerCommonPoints:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-common-points').value)||0)),
+          industrialMixerCommonFichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-common-fichas').value)||0)),
+          industrialMixerCommonEssence:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-common-essence').value)||0)),
+          industrialMixerUncommonPoints:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-uncommon-points').value)||0)),
+          industrialMixerUncommonFichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-uncommon-fichas').value)||0)),
+          industrialMixerUncommonEssence:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-uncommon-essence').value)||0)),
+          industrialMixerRarePoints:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-rare-points').value)||0)),
+          industrialMixerRareFichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-rare-fichas').value)||0)),
+          industrialMixerRareEssence:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-mixer-rare-essence').value)||0))};
         WORKSHOP_MACHINE_IDS.forEach((id,index)=>{const n=index+1;merged[`workshopMachine${n}Available`]=overlay.querySelector(`#admin-workshop-${id}-available`).checked;merged[`workshopMachine${n}UnlockPoints`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-points`).value)||0));merged[`workshopMachine${n}UnlockFichas`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-fichas`).value)||0));});
         await withEconomyButtonPending(event.currentTarget, () => saveGameConfig(merged), {
           pendingLabel:gameText('admin.workshop.saving'), slowLabel:gameText('workshop.server.slow')
@@ -9860,6 +10277,7 @@ Receipt: ${receiptId}
   overlay.querySelector('#admin-image-download-txt').addEventListener('click', () => {
     if (!imageAudit) return;
     const missing = Array.isArray(imageAudit.missing) ? imageAudit.missing : [];
+    const evolutionMissing = Array.isArray(imageAudit.missingEvolutionImages) ? imageAudit.missingEvolutionImages : [];
     const tokenMissing = Array.isArray(imageAudit.missingTokenImages) ? imageAudit.missingTokenImages : [];
     const tokenUnassigned = Array.isArray(imageAudit.tokenEffectsWithoutImage) ? imageAudit.tokenEffectsWithoutImage : [];
     const tokenFiles = [...new Set(tokenMissing.map(entry => entry.image).filter(Boolean))].sort();
@@ -9868,6 +10286,7 @@ Receipt: ${receiptId}
     const lines = [
       '[CARAS_FRONTALES_SIN_PNG]', ...fronts.map(entry => entry.image), '',
       '[CARAS_DFC_REVERSO_SIN_PNG]', ...backs.map(entry => `${entry.id} | ${entry.name} | ${entry.image}`), '',
+      '[EVOLUCIONES_SIN_PNG]', ...evolutionMissing.map(entry => `${entry.baseId} | EVO${entry.stage} | ${entry.name} | ${entry.path}`), '',
       '[TOKENS_SIN_PNG]', ...tokenFiles, '',
       '[TOKENS_SIN_FILENAME]', ...tokenUnassigned.map(entry => `${entry.cardId} | ${entry.cardName} | ${entry.tokenName} | ${entry.path}`), ''
     ];
@@ -10382,6 +10801,7 @@ function injectMultiplayerLobbyStyles() {
     .mp-challenge-btn { border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.1); color:#d4af37; border-radius:8px; padding:6px 9px; font-size:10px; font-weight:900; letter-spacing:.5px; }
     .mp-challenge-btn:disabled { opacity:.38; cursor:not-allowed; }
     .mp-match-versus { color:#f0e0b0; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mp-inline-profile-btn{border:0;background:none;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(212,175,55,.35);text-underline-offset:2px}.mp-inline-profile-btn:hover,.mp-inline-profile-btn:focus-visible{color:#fff4c6;text-decoration-color:#d4af37;outline:none}
     .mp-live-empty { padding:26px 15px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
 
     .mp-chat-list { min-height:0; flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:8px 10px; display:flex; flex-direction:column; gap:7px; }
@@ -10532,7 +10952,10 @@ function injectMultiplayerMatchBannerStyles() {
       font-size: 17px;
       font-weight: 800;
       text-shadow: 0 0 12px rgba(212,175,55,0.28);
+      border:0;background:none;padding:0;cursor:pointer;font-family:inherit;
+      text-decoration:underline;text-decoration-color:rgba(212,175,55,.35);text-underline-offset:3px;
     }
+    .mp-versus-name:hover,.mp-versus-name:focus-visible{color:#fff3c0;text-decoration-color:#d4af37;outline:none}
     .mp-versus-vs {
       color: #d4af37;
       font-family: Georgia, serif;
@@ -10553,7 +10976,7 @@ function injectMultiplayerMatchBannerStyles() {
   document.head.appendChild(style);
 }
 
-function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
+function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName, uid='') {
   const username = String(profile?.username || profile?.displayName || '').trim() || fallbackName;
   const photoURL = String(profile?.photoURL || '').trim();
   const avatar = photoURL
@@ -10563,7 +10986,7 @@ function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
     <div class="mp-versus-player">
       <div class="mp-versus-role">${escapeHtml(roleLabel)}</div>
       ${avatar}
-      <div class="mp-versus-name" title="${escapeHtml(username)}">${escapeHtml(username)}</div>
+      <button type="button" class="mp-versus-name" data-open-public-profile="${escapeHtml(String(uid||''))}" title="${gameTextHtml('publicProfile.view')}">${escapeHtml(username)}</button>
       <div class="mp-versus-elo" data-mp-elo-user="${escapeHtml(username)}">ELO …</div>
     </div>
   `;
@@ -10741,8 +11164,13 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const pop = document.createElement('div');
     pop.id = 'mp-player-popover'; pop.className = 'mp-player-popover';
     const canReport = uid !== String(state.currentUser?.uid || '');
-    pop.innerHTML = `<strong>${escapeHtml(anchorEl.dataset.playerName || 'Jugador')}</strong><br>${escapeHtml(playerHoverText(stats))}${canReport ? `<br><button type="button" class="mp-chat-delete" data-report-player="${escapeHtml(uid)}" style="margin-top:8px;width:auto;padding:4px 8px;">⚑ Reportar jugador</button>` : ''}`;
+    pop.innerHTML = `<strong>${escapeHtml(anchorEl.dataset.playerName || 'Jugador')}</strong><br>${escapeHtml(playerHoverText(stats))}<br><button type="button" class="mp-header-mini-btn" data-open-public-profile="${escapeHtml(uid)}" style="margin-top:8px;width:auto;padding:5px 10px;">${gameTextHtml('publicProfile.view')}</button>${canReport ? `<br><button type="button" class="mp-chat-delete" data-report-player="${escapeHtml(uid)}" style="margin-top:8px;width:auto;padding:4px 8px;">⚑ Reportar jugador</button>` : ''}`;
     document.body.appendChild(pop);
+    pop.querySelector('[data-open-public-profile]')?.addEventListener('click', event => {
+      event.stopPropagation();
+      closePlayerStatsPopover();
+      showPublicPlayerProfile(uid);
+    });
     pop.querySelector('[data-report-player]')?.addEventListener('click', event => {
       event.stopPropagation();
       const targetUid = event.currentTarget.dataset.reportPlayer || uid;
@@ -10955,10 +11383,11 @@ export function showMultiplayerLobby(onBack, onMatched) {
         ? `Turno ${turn}${phase?` · ${escapeHtml(phase)}`:''}${elapsed?` · ${escapeHtml(elapsed)}`:''}`
         : `${gameTextHtml('multiplayer.lobby.matchPreparing')}${elapsed?` · ${escapeHtml(elapsed)}`:''}`;
       return `<div class="mp-match-row"><div class="mp-match-copy">
-        <div class="mp-match-versus">${escapeHtml(host)} <span style="color:#8fa296">vs.</span> ${escapeHtml(guest)}</div>
+        <div class="mp-match-versus"><button type="button" class="mp-inline-profile-btn" data-open-public-profile="${escapeHtml(String(match.hostUid||''))}">${escapeHtml(host)}</button> <span style="color:#8fa296">vs.</span> <button type="button" class="mp-inline-profile-btn" data-open-public-profile="${escapeHtml(String(match.guestUid||''))}">${escapeHtml(guest)}</button></div>
         <div class="mp-match-meta">${meta}</div>
       </div></div>`;
     }).join('');
+    list.querySelectorAll('[data-open-public-profile]').forEach(btn=>btn.addEventListener('click',event=>{event.stopPropagation();const uid=btn.dataset.openPublicProfile||'';if(uid)showPublicPlayerProfile(uid);}));
   }
 
   function renderLobbyChat() {
@@ -11216,7 +11645,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     body.innerHTML = `<div class="mp-section" style="max-width:650px;margin:28px auto">
       <div class="mp-section-title">${gameTextHtml('multiplayer.matched.title', { rival: rivalName })}</div>
       <div class="mp-versus-banner" aria-label="Enfrentamiento confirmado">
-        ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host')}<div class="mp-versus-vs">VS.</div>${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
+        ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host', match.hostUid)}<div class="mp-versus-vs">VS.</div>${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest', match.guestUid)}
       </div>
       <div class="mp-section-desc">${gameTextHtml('multiplayer.matched.description')}<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
       <button class="store-buy-btn" id="mp-start">${gameTextHtml('multiplayer.matched.start')}</button></div>`;
@@ -11224,6 +11653,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const byName=new Map((Array.isArray(rows)?rows:[]).map(row=>[String(row.username||'').trim().toLocaleLowerCase('es-AR'),row]));
       body.querySelectorAll('[data-mp-elo-user]').forEach(node=>{ const row=byName.get(String(node.dataset.mpEloUser||'').trim().toLocaleLowerCase('es-AR'))||{}; const rating=Math.max(1,Math.floor(Number(row.eloRating)||1200),1200); node.textContent=gameText((Number(row.eloGames)||0)<10?'ranking.elo.provisional':'ranking.elo.established',{rating}); node.title=node.textContent; });
     }).catch(()=>{});
+    body.querySelectorAll('[data-open-public-profile]').forEach(btn=>btn.addEventListener('click',event=>{event.stopPropagation();const uid=btn.dataset.openPublicProfile||'';if(uid)showPublicPlayerProfile(uid);}));
     body.querySelector('#mp-start').addEventListener('click', () => { cleanup(); overlay.remove(); onMatched(match.code, myRole, rivalName, rivalPhotoURL, match.startingRole || 'host'); });
   }
 
@@ -11677,7 +12107,7 @@ export function showTradeMarketScreen(onBack) {
       const type=tradeCardTypeKeys(card).join(',');
       return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-listing-id="${escapeHtml(item.listingId)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
         <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
-        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}" data-offer-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
+        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(item.ownerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}" data-offer-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
       </article>`;
     }).join('');
     return `<div class="trade-explore-layout"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-filter-result-count"></span></div><div class="trade-market-grid" id="trade-explore-grid">${cardsHtml}</div><div class="trade-empty" id="trade-filter-empty" hidden>${gameTextHtml('trade.filter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderExploreFilters()}</aside></div>`;
@@ -11735,7 +12165,7 @@ export function showTradeMarketScreen(onBack) {
     const items=(Array.isArray(market?.ownListings)&&market.ownListings.length)?market.ownListings:(market?.ownListing?[market.ownListing]:[]);
     const activeHtml=items.length?`<div class="trade-own-listings">${items.map(item=>{
       const offers=(market?.receivedOffers||[]).filter(o=>String(o.listingId)===String(item.listingId));
-      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" data-cancel-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)}</div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
+      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" data-cancel-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.offererUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
     }).join('')}</div>`:'';
     if(items.length>=l.maxActiveListings)return activeHtml||`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     const entries=tradeTradableEntries(market);
@@ -11845,13 +12275,13 @@ export function showTradeMarketScreen(onBack) {
   function renderOffers(){
     const offers=market?.outgoingOffers||[];
     if(!offers.length)return `<div class="trade-empty">${gameTextHtml('trade.outgoing.none')}</div>`;
-    return `<div class="trade-offer-list">${offers.map(o=>`<article class="trade-outgoing-offer"><div class="trade-offer-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.outgoing.pending')}</div><div class="trade-muted">${gameTextHtml('trade.outgoing.owner',{username:o.listingOwnerUsername})}</div></div><span class="trade-status-pill">${gameTextHtml('trade.status.pending')}</span></div>${tradePairHtml(o.offeredCardId,o.listedCardId,{leftLabel:gameText('trade.pair.youOffer'),rightLabel:gameText('trade.pair.youWant')})}<button class="trade-btn danger" data-cancel-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.cancelOffer')}</button></article>`).join('')}</div>`;
+    return `<div class="trade-offer-list">${offers.map(o=>`<article class="trade-outgoing-offer"><div class="trade-offer-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.outgoing.pending')}</div><div class="trade-muted">${gameTextHtml('trade.outgoing.owner',{username:o.listingOwnerUsername})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.listingOwnerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div></div><span class="trade-status-pill">${gameTextHtml('trade.status.pending')}</span></div>${tradePairHtml(o.offeredCardId,o.listedCardId,{leftLabel:gameText('trade.pair.youOffer'),rightLabel:gameText('trade.pair.youWant')})}<button class="trade-btn danger" data-cancel-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.cancelOffer')}</button></article>`).join('')}</div>`;
   }
   function bindOffers(){root.querySelectorAll('[data-cancel-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>cancelTradeOffer(btn.dataset.cancelOffer))));}
   function renderHistory(){
     const rows=market?.history||[];
     if(!rows.length)return `<div class="trade-empty">${gameTextHtml('trade.history.none')}</div>`;
-    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername;const when=tradeFormatDate(r.completedAtMs);const tradeId=String(r.tradeId||r.receiptId||'');return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})}${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived')})}${tradeId?`<div class="trade-history-actions"><button type="button" class="trade-btn secondary" data-open-trade-dispute="${escapeHtml(tradeId)}">${gameTextHtml('trade.history.dispute')}</button></div>`:''}</article>`;}).join('')}</div>`;
+    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername,otherUid=owner?r.offererUid:r.ownerUid;const when=tradeFormatDate(r.completedAtMs);const tradeId=String(r.tradeId||r.receiptId||'');return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(otherUid||''))}">${gameTextHtml('publicProfile.view')}</button>${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived')})}${tradeId?`<div class="trade-history-actions"><button type="button" class="trade-btn secondary" data-open-trade-dispute="${escapeHtml(tradeId)}">${gameTextHtml('trade.history.dispute')}</button></div>`:''}</article>`;}).join('')}</div>`;
   }
   function bindHistory(){
     root.querySelectorAll('[data-open-trade-dispute]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -11874,6 +12304,7 @@ export function showTradeMarketScreen(onBack) {
     closeTransientTradeModal();
     root.innerHTML=summary()+tabs()+`<div class="trade-panel trade-main-panel">${tab==='explore'?renderExplore():tab==='mine'?renderMine():tab==='offers'?renderOffers():renderHistory()}</div>`;
     bindTabs();hydrateTradeCards(root);bindTradeZoom(root);
+    root.querySelectorAll('[data-open-public-profile]').forEach(btn=>btn.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const uid=btn.dataset.openPublicProfile||'';if(uid)showPublicPlayerProfile(uid);}));
     if(tab==='explore')bindExplore();if(tab==='mine')bindMine();if(tab==='offers')bindOffers();if(tab==='history')bindHistory();
   }
   void refresh();

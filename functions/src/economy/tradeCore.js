@@ -114,7 +114,10 @@ export function ownedCardCount(profile = {}, cardId) {
 
 function baseDeckCardId(value) {
   const id = String(value || '');
-  return id.endsWith('::enhanced') ? id.slice(0, -'::enhanced'.length) : id;
+  for (const suffix of ['::enhanced','::evo1','::evo2']) {
+    if (id.endsWith(suffix)) return id.slice(0,-suffix.length);
+  }
+  return id;
 }
 
 export function protectedCardCount(profile = {}, cardId) {
@@ -128,8 +131,10 @@ export function protectedCardCount(profile = {}, cardId) {
     if (count > maxDeckCopies) maxDeckCopies = count;
   }
   const enhancements = plainObject(profile.enhancements);
+  const evolutions = plainObject(profile.evolutions);
   const enhancedProtected = enhancements[clean] ? 1 : 0;
-  return Math.max(maxDeckCopies, enhancedProtected);
+  const evolvedProtected = Math.max(0, Math.min(1, Math.floor(Number(evolutions[clean]?.stage ?? evolutions[clean]) || 0)));
+  return Math.max(maxDeckCopies, enhancedProtected + evolvedProtected);
 }
 
 export function tradableCardCount(profile = {}, reservation = {}, cardId) {

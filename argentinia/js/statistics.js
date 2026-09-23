@@ -61,7 +61,8 @@ export function emptyPlayerStats() {
     essenceEarned: 0,
     essenceSpent: 0,
     essenceCurrent: 0,
-    achievementClaims: 0
+    achievementClaims: 0,
+    cardsEvolved: 0
   };
 }
 
