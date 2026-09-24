@@ -1792,6 +1792,12 @@ function startLocalMulliganFlow(onDone) {
 // modal que "Jugar" (mismo mecanismo de elegir identidad, mismo buildRandomDeck), pero con
 // un título distinto que deja bien claro que ESTA elección es para siempre. La partida NO
 // arranca acá — solo se guarda la colección; el jugador vuelve al menú y juega cuando quiera.
+function applyUsernameIdentity(profile) {
+  if (!state.currentUser || !profile) return;
+  state.currentUser.username = profile.username || '';
+  state.currentUser.usernameKey = profile.usernameKey || '';
+}
+
 function promptStarterDeckSelection() {
   if (!state.currentUser || !state.userProfile || state.userProfile.starterDeckPending !== true) return false;
   if (starterDeckSelectionOpen || document.getElementById('starter-deck-select-overlay')) return false;
@@ -1971,11 +1977,6 @@ async function boot() {
   // mazo inicial o reconnect. El modal es obligatorio; la única salida sin elegir es cerrar
   // sesión. authIdentitySerial evita que una respuesta vieja escriba estado después de logout.
   let authIdentitySerial = 0;
-  function applyUsernameIdentity(profile) {
-    if (!state.currentUser || !profile) return;
-    state.currentUser.username = profile.username || '';
-    state.currentUser.usernameKey = profile.usernameKey || '';
-  }
   function requestMandatoryUsername(profile, serial) {
     return new Promise((resolve) => {
       showUsernameSetupModal({
