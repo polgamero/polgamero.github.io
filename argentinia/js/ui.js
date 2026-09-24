@@ -12622,42 +12622,53 @@ export function showOptionsMenu(onBack) {
   challengeInvitesBtn?.addEventListener('click',()=>{const enabled=setChallengeInvitesEnabled(!getChallengeInvitesEnabled());challengeInvitesBtn.textContent=enabled?gameText('options.enabled'):gameText('options.off');});
 
   if (state.currentUser) {
-    overlay.querySelector('#opt-delete-account').addEventListener('click', async () => {
-      // 23.21.0 Mercado de Pases: una cuenta con cartas reservadas no puede borrarse.
-      // El guard real vive además en Rules 23.13.81; este preflight sólo evita una UX
-      // confusa y explica qué tiene que liberar el jugador antes de volver a intentar.
-      try {
-        const market = await getTradeMarket();
-        const reservation = market?.ownReservation || {};
-        if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
-          showSimpleAlertModal(gameText('account.delete.tradeReserved'));
-          return;
-        }
-      } catch (err) {
-        // Si el preflight no responde, no fingimos autoridad en cliente: Rules decide.
-        console.warn('No se pudo verificar reservas antes de borrar cuenta; continúa el guard server-side.', err);
-      }
-      showDeleteAccountModal(async () => {
+    const deleteAccountEntryBtn = overlay.querySelector('#opt-delete-account');
+    deleteAccountEntryBtn.addEventListener('click', async () => {
+      // El botón de Opciones todavía NO elimina nada: primero consulta reservas para decidir
+      // si puede abrir el modal. Como ese preflight puede tardar varios segundos, damos
+      // feedback inmediato con spinner pero conservamos literalmente el texto del botón.
+      // La operación destructiva sigue ocurriendo únicamente dentro del modal de confirmación.
+      const entryLabel = deleteAccountEntryBtn.textContent || '🗑️ Borrar mi cuenta (colección, puntos, todo)';
+      await withEconomyButtonPending(deleteAccountEntryBtn, async () => {
+        // 23.21.0 Mercado de Pases: una cuenta con cartas reservadas no puede borrarse.
+        // El guard real vive además en Rules 23.13.81; este preflight sólo evita una UX
+        // confusa y explica qué tiene que liberar el jugador antes de volver a intentar.
         try {
-          await deleteUserProfile(state.currentUser.uid);
-          state.userProfile = null;
-          logMsg(gameText('account.delete.success'));
-          location.reload();
+          const market = await getTradeMarket();
+          const reservation = market?.ownReservation || {};
+          if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+            showSimpleAlertModal(gameText('account.delete.tradeReserved'));
+            return;
+          }
         } catch (err) {
-          console.error('No se pudo borrar la cuenta:', err);
-          // Un permission-denied puede ser justamente el guard de reservas 23.13.81.
-          // Reconsultamos sólo para dar un mensaje útil; si no, conservamos el error genérico.
-          try {
-            const market = await getTradeMarket();
-            const reservation = market?.ownReservation || {};
-            if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
-              logMsg(gameText('account.delete.tradeReserved'));
-              return;
-            }
-          } catch {}
-          logMsg(gameText('account.delete.error'));
+          // Si el preflight no responde, no fingimos autoridad en cliente: Rules decide.
+          console.warn('No se pudo verificar reservas antes de borrar cuenta; continúa el guard server-side.', err);
         }
-      }, () => {});
+        showDeleteAccountModal(async () => {
+          try {
+            await deleteUserProfile(state.currentUser.uid);
+            state.userProfile = null;
+            logMsg(gameText('account.delete.success'));
+            location.reload();
+          } catch (err) {
+            console.error('No se pudo borrar la cuenta:', err);
+            // Un permission-denied puede ser justamente el guard de reservas 23.13.81.
+            // Reconsultamos sólo para dar un mensaje útil; si no, conservamos el error genérico.
+            try {
+              const market = await getTradeMarket();
+              const reservation = market?.ownReservation || {};
+              if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+                logMsg(gameText('account.delete.tradeReserved'));
+                return;
+              }
+            } catch {}
+            logMsg(gameText('account.delete.error'));
+          }
+        }, () => {});
+      }, {
+        pendingLabel: entryLabel,
+        slowAfterMs: 0
+      });
     });
   }
 
