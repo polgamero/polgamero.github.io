@@ -1530,8 +1530,9 @@ html.argentinia-mobile .deckbuilder-pool-card-badge {
 /* ============================================================================
    ARGENTINIA 23.13.0 — MI COFRE + RECOMPENSAS DIARIAS
    ============================================================================ */
-html.argentinia-mobile .main-menu-account-actions { gap: 4px !important; }
-html.argentinia-mobile .main-menu-reward-btn { font-size: 9px !important; padding: 4px 7px !important; border-radius: 6px !important; }
+html.argentinia-mobile .main-menu-account { --main-menu-button-height: 34px; }
+html.argentinia-mobile .main-menu-account-actions { gap: 4px !important; transform:scale(1.2195122); transform-origin:top right; margin-bottom:7px; }
+html.argentinia-mobile .main-menu-account-icon-btn { border-radius: 7px !important; }
 html.argentinia-mobile .main-menu-reward-badge { transform: scale(.9); transform-origin:center; }
 html.argentinia-mobile :is(#chest-overlay,#daily-rewards-overlay) .reward-screen-header { margin-bottom: 7px !important; gap: 8px !important; }
 html.argentinia-mobile :is(#chest-overlay,#daily-rewards-overlay) .reward-screen-title { font-size: clamp(17px,4.8dvh,22px) !important; }

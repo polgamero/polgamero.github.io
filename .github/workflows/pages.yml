@@ -39,6 +39,10 @@ jobs:
           test -f argentinia/assets/images/cards/cards-image-manifest.json
           test -f argentinia/cartas/index.html
           test -f .github/scripts/generate_image_manifest.py
+          for icon in cofre.png taller.png logros.png perfil.png daily.png mod.png; do
+            test -f "argentinia/assets/images/ui/$icon" || { echo "::error::Missing account menu icon: argentinia/assets/images/ui/$icon"; exit 1; }
+          done
+          echo "ACCOUNT_MENU_ICON_ASSETS_OK count=6"
           test ! -e functions
           test ! -e firebase.json
           test ! -e firestore.rules

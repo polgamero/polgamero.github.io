@@ -2749,7 +2749,7 @@ function injectMainMenuStyles() {
       padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
       border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
     }
-    .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; --main-menu-button-height: 40px; }
     .main-menu-login-btn {
       display: flex; align-items: center; gap: 8px;
       background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
@@ -3111,14 +3111,9 @@ function injectRewardsStyles() {
     .daily-rewards-scroll { overflow-x:auto; overflow-y:hidden; padding-bottom:4px; }
     .daily-rewards-help { margin-top:12px; text-align:center; color:#8b998f; font-size:11px; }
     .daily-admin-debug { margin:0 auto 12px; max-width:760px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; padding:8px 10px; border:1px dashed rgba(191,105,255,.65); border-radius:10px; color:#d7b8ef; background:rgba(90,38,120,.12); font-size:10px; }
-    .main-menu-account-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
-    .main-menu-reward-btn {
-      background:linear-gradient(180deg,rgba(212,175,55,.18),rgba(11,19,14,.96));
-      border:1.5px solid #d4af37; border-radius:8px; color:#f0e0b0; font-size:11px; font-weight:800;
-      padding:6px 10px; cursor:pointer; position:relative; white-space:nowrap;
-    }
-    .main-menu-reward-btn:hover { box-shadow:0 3px 14px rgba(212,175,55,.3); }
-    .main-menu-reward-badge { position:absolute; min-width:15px; height:15px; line-height:15px; padding:0 3px; box-sizing:border-box; border-radius:9px; right:-6px; top:-7px; background:#c63d34; color:#fff; font-size:9px; text-align:center; border:1px solid #ffd0cc; }
+    .main-menu-account-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; width:max-content; }
+    .main-menu-account-icon-btn { flex-shrink:0; }
+    .main-menu-reward-badge { position:absolute; z-index:4; min-width:15px; height:15px; line-height:15px; padding:0 3px; box-sizing:border-box; border-radius:9px; right:-6px; top:-7px; background:#c63d34; color:#fff; font-size:9px; text-align:center; border:1px solid #ffd0cc; pointer-events:none; }
     #daily-login-reward-modal, #reward-reveal-modal {
       position:fixed; inset:0; z-index:12050; background:rgba(0,0,0,.76); display:flex; align-items:center; justify-content:center; padding:18px;
     }
@@ -7941,23 +7936,19 @@ function renderAccountBox(container, user) {
     const inventory = normalizeInventory(state.userProfile?.inventory);
     const chestPending = inventory[CHEST_ITEM_KEYS.standardPack] + inventory[CHEST_ITEM_KEYS.guaranteedMythic];
     const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
-    // HF23.3.4 — el ADMIN ya tiene Moderación y usuarios dentro del panel de administración.
-    // No le mostramos además el centro de Moderación pensado para jugadores/reportantes.
-    const moderationBtnHTML = user.email === ADMIN_EMAIL
-      ? ''
-      : '<button class="main-menu-reward-btn" id="menu-moderation">🛡️ Moderación</button>';
+    // HF23.3.16.2.18 — Moderación vuelve a ser un acceso visible para toda sesión,
+    // incluido Admin, para mantener la fila de seis iconos propia y consistente.
+    const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`;
     const rewardActionsHTML = `
-      <div class="main-menu-account-actions">
-        <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
-        <button class="main-menu-reward-btn" id="menu-workshop">${gameTextHtml('account.workshop')}</button>
-        <button class="main-menu-reward-btn" id="menu-achievements">${gameTextHtml('account.achievements')}</button>
-        <button class="main-menu-reward-btn" id="menu-public-profile">${gameTextHtml('publicProfile.myProfile')}</button>
-        <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+      <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="${gameTextHtml('account.chest')}" aria-label="${gameTextHtml('account.chest')}"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="${gameTextHtml('account.workshop')}" aria-label="${gameTextHtml('account.workshop')}"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="${gameTextHtml('account.achievements')}" aria-label="${gameTextHtml('account.achievements')}"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="${gameTextHtml('publicProfile.myProfile')}" aria-label="${gameTextHtml('publicProfile.myProfile')}"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="${gameTextHtml('account.dailyRewards')}" aria-label="${gameTextHtml('account.dailyRewards')}"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
     container.innerHTML = `
-      ${adminBtnHTML}
-      ${rewardActionsHTML}
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
@@ -7966,6 +7957,8 @@ function renderAccountBox(container, user) {
           <button class="main-menu-logout-btn" id="menu-logout">${gameTextHtml('account.logout')}</button>
         </div>
       </div>
+      ${rewardActionsHTML}
+      ${adminBtnHTML}
     `;
     container.querySelector('#menu-chest').addEventListener('click', () => {
       if (!state.userProfile) return;
