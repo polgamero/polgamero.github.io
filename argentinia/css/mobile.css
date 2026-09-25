@@ -3373,14 +3373,19 @@ html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking:h
 }
 
 /* ============================================================================
-   HF23.3.16.2.20 — IPHONE ATTACK TAP VISUAL PARITY
-   Telemetry confirms attack declaration sets tapped=true + isAttacking=true correctly on
-   iPhone. HF23.2 intentionally kept tapped+attacking cards vertical on all mobile, which
-   made iPhone players perceive the attack tap as missing. Preserve Android/desktop exactly
-   as-is and restore the canonical 90deg tapped presentation only on iPhone/iPod surfaces.
-   Sticky iOS :hover is covered explicitly so it cannot visually un-tap the attacker.
+   HF23.3.16.2.21 — MOBILE ATTACK TAP VISUAL PARITY (ANDROID + IOS)
+   Root cause confirmed on real Android and iPhone devices: HF23.2 intentionally forced
+   .tapped.attacking back to a vertical 5:7 footprint until combat damage finished. The
+   engine had already committed tapped=true + isAttacking=true; once damage cleared the
+   attacking flag, the ordinary .tapped rule became visible and the card appeared to tap
+   "late". Supersede that presentation exception on EVERY phone surface. An attacker now
+   uses exactly the same 7:5 outer footprint + 90deg inner rotation as any other tapped
+   battlefield permanent, from declaration through the whole combat window. The combat
+   map reads live getBoundingClientRect() geometry, so arrows follow the actual footprint.
+   Sticky mobile :hover is pinned to 90deg as well.
    ============================================================================ */
-html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking {
+html.argentinia-mobile .field-row .card.tapped.attacking,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking {
   width:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
   height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
   min-width:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
@@ -3388,9 +3393,14 @@ html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking 
   min-height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
   max-height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
   aspect-ratio:7 / 5 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
 }
-html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking .card-inner,
-html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking:hover .card-inner {
+html.argentinia-mobile .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile .field-row .card.tapped.attacking:hover .card-inner,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking:hover .card-inner {
   width:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
   height:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
   min-width:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
@@ -3400,7 +3410,8 @@ html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking:
   transform:rotate(90deg) !important;
   transform-origin:center center !important;
 }
-html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking {
+/* Browser-chrome mode uses live svh variables, but the semantic geometry is identical. */
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking {
   width:var(--arg-mobile-field-card-h, 15.85024svh) !important;
   height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
   min-width:var(--arg-mobile-field-card-h, 15.85024svh) !important;
@@ -3408,14 +3419,24 @@ html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .
   min-height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
   max-height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
 }
-html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking .card-inner,
-html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking:hover .card-inner {
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking:hover .card-inner {
   width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
   height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
   min-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
   max-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
   min-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
   max-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  transform:rotate(90deg) !important;
+  transform-origin:center center !important;
+}
+
+/* Compatibility alias retained from .20 for the explicit iPhone surface contract.
+   It is redundant with the universal rule above; Android no longer depends on iOS detection. */
+html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking {
+  aspect-ratio:7 / 5 !important;
+}
+html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking:hover .card-inner {
   transform:rotate(90deg) !important;
   transform-origin:center center !important;
 }
