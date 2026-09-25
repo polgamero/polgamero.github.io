@@ -572,15 +572,6 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     svg.appendChild(group);
   });
 
-  if (validRoutes.length) {
-    const legend = document.createElement('div');
-    legend.id = 'combat-map-legend';
-    legend.style.cssText = 'position:fixed;left:50%;bottom:82px;transform:translateX(-50%);z-index:7001;pointer-events:none;background:rgba(4,8,6,.82);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:5px 11px;color:#e8e5dc;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.35);';
-    legend.textContent = model.flexible ? gameText('combat.map.legendFlexible') : gameText('combat.map.legend');
-    document.body.appendChild(legend);
-    svg.dataset.legendId = legend.id;
-  }
-
   document.body.appendChild(svg);
   return model;
 }

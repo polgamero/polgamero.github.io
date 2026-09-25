@@ -3372,6 +3372,54 @@ html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking:h
   transform-origin:center center !important;
 }
 
+/* ============================================================================
+   HF23.3.16.2.20 — IPHONE ATTACK TAP VISUAL PARITY
+   Telemetry confirms attack declaration sets tapped=true + isAttacking=true correctly on
+   iPhone. HF23.2 intentionally kept tapped+attacking cards vertical on all mobile, which
+   made iPhone players perceive the attack tap as missing. Preserve Android/desktop exactly
+   as-is and restore the canonical 90deg tapped presentation only on iPhone/iPod surfaces.
+   Sticky iOS :hover is covered explicitly so it cannot visually un-tap the attacker.
+   ============================================================================ */
+html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking {
+  width:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  min-width:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  max-width:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  min-height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  max-height:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  aspect-ratio:7 / 5 !important;
+}
+html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile.arg-mobile-ios-surface .field-row .card.tapped.attacking:hover .card-inner {
+  width:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  height:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  min-width:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  max-width:var(--arg-mobile-field-card-w, 11.3216dvh) !important;
+  min-height:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  max-height:var(--arg-mobile-field-card-h, 15.85024dvh) !important;
+  transform:rotate(90deg) !important;
+  transform-origin:center center !important;
+}
+html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking {
+  width:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  min-width:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  max-width:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  min-height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  max-height:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+}
+html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile.arg-mobile-ios-surface.arg-mobile-browser-ui .field-row .card.tapped.attacking:hover .card-inner {
+  width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  transform:rotate(90deg) !important;
+  transform-origin:center center !important;
+}
+
 html.argentinia-mobile .trade-notification-panel{width:min(94vw,700px);max-height:92svh}
 html.argentinia-mobile .trade-notification-panel .trade-pair{gap:6px}
 html.argentinia-mobile .trade-history-actions{justify-content:stretch}

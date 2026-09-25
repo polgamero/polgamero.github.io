@@ -13,6 +13,7 @@ const LANDSCAPE_CLASS = 'arg-mobile-landscape';
 const FULLSCREEN_CLASS = 'arg-mobile-is-fullscreen';
 const BROWSER_UI_CLASS = 'arg-mobile-browser-ui';
 const IOS_INSTALL_CLASS = 'arg-mobile-ios-install-fallback';
+const IOS_SURFACE_CLASS = 'arg-mobile-ios-surface';
 let forceIosInstallFallback = false;
 const FORCE_PARAM = 'ui';
 const PHONE_SHORT_SIDE_MAX = 600;
@@ -151,12 +152,13 @@ function isIPhoneSurface() {
 }
 
 function hasElementFullscreenApi() {
+  // iPhone/iPod: todos los navegadores usan WebKit y el fullscreen de elementos HTML
+  // ordinarios no es una superficie confiable para el tablero. No mostramos un botón ⛶
+  // que parezca roto: ofrecemos directamente el modo Home Screen/standalone soportado.
+  if (isIPhoneSurface()) return false;
   const request = document.documentElement?.requestFullscreen;
   if (typeof request !== 'function') return false;
-  // En iPhone exigimos confirmación POSITIVA: WebKit puede exponer superficies parciales
-  // que luego rechazan fullscreen para elementos no-video. En Android/desktop mantenemos
-  // compatibilidad con motores antiguos donde fullscreenEnabled puede ser undefined.
-  if (isIPhoneSurface()) return document.fullscreenEnabled === true;
+  // Android/desktop: compatibilidad con motores donde fullscreenEnabled puede ser undefined.
   return document.fullscreenEnabled !== false;
 }
 
@@ -691,11 +693,13 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
 
   setClassState(root, MOBILE_ROOT_CLASS, mobile);
   if (!mobile) {
-    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, BROWSER_UI_CLASS, IOS_INSTALL_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
+    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, BROWSER_UI_CLASS, IOS_INSTALL_CLASS, IOS_SURFACE_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
     const stack = document.getElementById('stack-container');
     if (stack?.classList.contains('arg-mobile-drawer-open')) stack.classList.remove('arg-mobile-drawer-open');
     return false;
   }
+
+  setClassState(root, IOS_SURFACE_CLASS, isIPhoneSurface());
 
   syncMobileViewportMetrics();
   ensureMobileGates();

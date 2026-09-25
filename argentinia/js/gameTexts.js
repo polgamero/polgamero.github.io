@@ -1988,8 +1988,6 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.debug.status.interrupted': definition('Debugging', 'Interrumpida', 'Estado de sesión sin heartbeat.'),
 
   // Combat Map — presentation-only.
-  'combat.map.legend': definition('Combate', 'Mapa de combate · grosor = daño proyectado con los valores actuales', 'Leyenda del mapa de daño cuando el reparto es determinable.'),
-  'combat.map.legendFlexible': definition('Combate', 'Mapa de combate · punteado ? = reparto todavía no fijado · grosor = daño determinable', 'Leyenda cuando Arrollar/múltiples bloqueadores dejan reparto pendiente.'),
   'combat.map.pending': definition('Combate', '?', 'Etiqueta de una ruta de daño cuyo reparto aún no fue elegido.'),
   'combat.map.prevented': definition('Combate', '{damage}→0', 'Daño asignado que actualmente sería prevenido por Protección.'),
 
