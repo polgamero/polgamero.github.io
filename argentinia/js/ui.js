@@ -3112,8 +3112,11 @@ function injectRewardsStyles() {
     .daily-rewards-help { margin-top:12px; text-align:center; color:#8b998f; font-size:11px; }
     .daily-admin-debug { margin:0 auto 12px; max-width:760px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; padding:8px 10px; border:1px dashed rgba(191,105,255,.65); border-radius:10px; color:#d7b8ef; background:rgba(90,38,120,.12); font-size:10px; }
     .main-menu-account-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; width:max-content; }
-    .main-menu-account-icon-btn { flex-shrink:0; }
-    .main-menu-reward-badge { position:absolute; z-index:4; min-width:15px; height:15px; line-height:15px; padding:0 3px; box-sizing:border-box; border-radius:9px; right:-6px; top:-7px; background:#c63d34; color:#fff; font-size:9px; text-align:center; border:1px solid #ffd0cc; pointer-events:none; }
+    /* HF23.3.16.2.19 — los badges pendientes de Cofre/Daily deben poder salir del marco
+       cuadrado. Sólo abrimos overflow en la fila de cuenta; Tienda/Ranking/Mercado conservan
+       su clipping histórico para que sus PNG sigan respetando el botón redondeado. */
+    .main-menu-account-icon-btn { flex-shrink:0; overflow:visible; }
+    .main-menu-reward-badge { position:absolute; z-index:8; min-width:15px; height:15px; line-height:15px; padding:0 3px; box-sizing:border-box; border-radius:9px; right:-6px; top:-7px; background:#c63d34; color:#fff; font-size:9px; text-align:center; border:1px solid #ffd0cc; pointer-events:none; box-shadow:0 1px 5px rgba(0,0,0,.65); }
     #daily-login-reward-modal, #reward-reveal-modal {
       position:fixed; inset:0; z-index:12050; background:rgba(0,0,0,.76); display:flex; align-items:center; justify-content:center; padding:18px;
     }
@@ -7941,11 +7944,11 @@ function renderAccountBox(container, user) {
     const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`;
     const rewardActionsHTML = `
       <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="${gameTextHtml('account.chest')}" aria-label="${gameTextHtml('account.chest')}"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="${gameTextHtml('account.workshop')}" aria-label="${gameTextHtml('account.workshop')}"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="${gameTextHtml('account.achievements')}" aria-label="${gameTextHtml('account.achievements')}"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="${gameTextHtml('publicProfile.myProfile')}" aria-label="${gameTextHtml('publicProfile.myProfile')}"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="${gameTextHtml('account.dailyRewards')}" aria-label="${gameTextHtml('account.dailyRewards')}"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="Mi Cofre" aria-label="Mi Cofre"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="Mi Taller" aria-label="Mi Taller"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="Mi Perfil" aria-label="Mi Perfil"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="Recompensas diarias" aria-label="Recompensas diarias"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
     container.innerHTML = `
@@ -8274,6 +8277,27 @@ function injectAdminPanelStyles() {
       color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 6px 10px; text-align: right;
     }
     .admin-field-input:focus { outline: none; border-color: #b06ad4; }
+    /* HF23.3.16.2.19 — selector incremental de usuarios para Regalos/BAN. La lista visual
+       queda acotada y el UID elegido vive en un input hidden, evitando <select> gigantes. */
+    .admin-user-search { position:relative; width:min(360px,58vw); flex:0 0 auto; }
+    .admin-user-search-input { width:100% !important; max-width:none !important; text-align:left !important; padding-right:30px; }
+    .admin-user-search-input.admin-user-search-selected { border-color:#7cbf7c; box-shadow:0 0 0 1px rgba(124,191,124,.18); }
+    .admin-user-search-clear { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:22px; height:22px; display:none; align-items:center; justify-content:center; border:0; background:transparent; color:#bda9cd; cursor:pointer; font-size:16px; line-height:1; z-index:4; }
+    .admin-user-search.has-selection .admin-user-search-clear { display:flex; }
+    .admin-user-search-results { position:absolute; z-index:10020; left:0; right:0; top:calc(100% + 4px); max-height:260px; overflow:auto; background:#0b130e; border:1.5px solid rgba(176,106,212,.75); border-radius:8px; box-shadow:0 14px 34px rgba(0,0,0,.72); padding:4px; }
+    .admin-user-search-results[hidden] { display:none !important; }
+    .admin-user-search-result { width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:8px 9px; border:0; border-radius:6px; background:transparent; color:#efe5f6; cursor:pointer; text-align:left; }
+    .admin-user-search-result:hover, .admin-user-search-result.active { background:rgba(176,106,212,.2); }
+    .admin-user-search-result strong { color:#f0e0b0; font-size:12px; }
+    .admin-user-search-result span { color:#bda9cd; font-size:10px; overflow-wrap:anywhere; }
+    .admin-user-search-result small { color:#8d7d99; font-size:9px; }
+    .admin-user-search-result.all-users strong { color:#f0d56a; }
+    .admin-user-search-empty { color:#a998b5; font-size:11px; padding:10px; text-align:left; }
+    @media (max-width:700px) {
+      .admin-user-search-row { flex-direction:column; align-items:stretch; gap:6px; }
+      .admin-user-search-row .admin-field-label { width:100%; }
+      .admin-user-search { width:100%; }
+    }
     /* 23.13.65 — todos los SELECT dentro del Admin usan fondo oscuro Argentinia.
        Conservamos tipografía gold pero eliminamos el popup blanco ilegible del navegador. */
     #admin-panel-overlay select {
@@ -8597,11 +8621,14 @@ export function showAdminPanel(onBack) {
           <option value="essence">${gameTextHtml('admin.gifts.essenceFuture')}</option>
         </select>
       </div>
-      <div class="admin-field-row">
+      <div class="admin-field-row admin-user-search-row">
         <span class="admin-field-label">Para</span>
-        <select class="admin-field-input" id="grant-recipient" style="text-align:left; max-width: 220px;">
-          <option value="">Entrá a esta solapa para cargar usuarios…</option>
-        </select>
+        <div class="admin-user-search" id="grant-recipient-search-wrap">
+          <input type="text" class="admin-field-input admin-user-search-input" id="grant-recipient-search" placeholder="Buscar username, email o UID…" autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="grant-recipient-results">
+          <button type="button" class="admin-user-search-clear" id="grant-recipient-clear" title="Limpiar destinatario" aria-label="Limpiar destinatario">×</button>
+          <input type="hidden" id="grant-recipient" value="">
+          <div class="admin-user-search-results" id="grant-recipient-results" role="listbox" hidden></div>
+        </div>
       </div>
       <div class="admin-field-row">
         <span class="admin-field-label">Motivo (opcional)</span>
@@ -8649,7 +8676,7 @@ export function showAdminPanel(onBack) {
     <div class="admin-section">
       <div class="admin-section-title">BANS · UID como autoridad</div>
       <div class="admin-debug-summary" style="margin-bottom:10px;">El email y username se guardan sólo como snapshot de auditoría. Un ban activo bloquea chat, desafíos y creación/aceptación de operaciones de Mercado; siempre conserva contacto con Moderación.</div>
-      <div class="admin-field-row"><span class="admin-field-label">Jugador</span><select class="admin-field-input" id="admin-community-ban-user" style="text-align:left;max-width:260px;"><option value="">Cargando usuarios…</option></select></div>
+      <div class="admin-field-row admin-user-search-row"><span class="admin-field-label">Jugador</span><div class="admin-user-search" id="admin-community-ban-user-search-wrap"><input type="text" class="admin-field-input admin-user-search-input" id="admin-community-ban-user-search" placeholder="Buscar username, email o UID…" autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="admin-community-ban-user-results"><button type="button" class="admin-user-search-clear" id="admin-community-ban-user-clear" title="Limpiar jugador" aria-label="Limpiar jugador">×</button><input type="hidden" id="admin-community-ban-user" value=""><div class="admin-user-search-results" id="admin-community-ban-user-results" role="listbox" hidden></div></div></div>
       <div class="admin-field-row"><span class="admin-field-label">Duración</span><select class="admin-field-input" id="admin-community-ban-duration"><option value="1h">1 hora</option><option value="24h">24 horas</option><option value="7d">7 días</option><option value="30d">30 días</option><option value="permanent">Permanente</option></select></div>
       <div class="admin-field-row"><span class="admin-field-label">Motivo</span><input class="admin-field-input" id="admin-community-ban-reason" maxlength="300" placeholder="Motivo obligatorio" style="text-align:left;min-width:260px;"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="admin-save-btn" id="admin-community-ban-apply">⛔ Aplicar ban</button></div>
@@ -10384,6 +10411,14 @@ Receipt: ${receiptId}
   // Admission ni Community. Todo se carga recién al entrar en la solapa.
   const recipientSelect = overlay.querySelector('#grant-recipient');
   const communityBanSelect = overlay.querySelector('#admin-community-ban-user');
+  const recipientSearchInput = overlay.querySelector('#grant-recipient-search');
+  const recipientSearchResults = overlay.querySelector('#grant-recipient-results');
+  const recipientSearchWrap = overlay.querySelector('#grant-recipient-search-wrap');
+  const recipientSearchClear = overlay.querySelector('#grant-recipient-clear');
+  const communityBanSearchInput = overlay.querySelector('#admin-community-ban-user-search');
+  const communityBanSearchResults = overlay.querySelector('#admin-community-ban-user-results');
+  const communityBanSearchWrap = overlay.querySelector('#admin-community-ban-user-search-wrap');
+  const communityBanSearchClear = overlay.querySelector('#admin-community-ban-user-clear');
   const communityWordsEl = overlay.querySelector('#admin-community-words');
   const communitySummaryEl = overlay.querySelector('#admin-community-summary');
   const communityBansEl = overlay.querySelector('#admin-community-bans');
@@ -10395,6 +10430,116 @@ Receipt: ${receiptId}
   let selectedCommunityCaseId = '';
   let messagesUsersLoaded = false;
   let messagesUsersLoading = false;
+  let adminMessageProfiles = [];
+
+  // HF23.3.16.2.19 — Autocomplete local sobre la carga admin lazy. Mantiene como autoridad
+  // un UID explícitamente elegido; escribir texto jamás alcanza para aplicar un regalo/ban.
+  // La lista visible se limita a 12 coincidencias aunque existan miles de perfiles.
+  const normalizeAdminUserSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const adminUserDisplayLabel = profile => {
+    const username = String(profile?.username || 'Sin username').trim() || 'Sin username';
+    const email = String(profile?.email || '').trim();
+    return email ? `${username} · ${email}` : username;
+  };
+  const adminUserSearchHaystack = profile => normalizeAdminUserSearch([profile?.username, profile?.usernameKey, profile?.email, profile?.uid].filter(Boolean).join(' '));
+  function createAdminUserSearch({ input, hidden, results, wrap, clearButton, allowAll = false }) {
+    if (!input || !hidden || !results || !wrap) return null;
+    let renderedEntries = [];
+    let activeIndex = -1;
+    const close = () => { results.hidden = true; activeIndex = -1; };
+    const markSelection = (uid, label) => {
+      hidden.value = String(uid || '');
+      hidden.dataset.label = String(label || '');
+      input.value = String(label || '');
+      input.classList.toggle('admin-user-search-selected', !!uid);
+      wrap.classList.toggle('has-selection', !!uid);
+      close();
+    };
+    const clearSelection = ({ focus = false } = {}) => {
+      hidden.value = ''; delete hidden.dataset.label; input.value = '';
+      input.classList.remove('admin-user-search-selected'); wrap.classList.remove('has-selection');
+      close(); if (focus) { input.focus(); render(); }
+    };
+    const scoreProfile = (profile, q) => {
+      if (!q) return 2;
+      const fields = [profile?.username, profile?.usernameKey, profile?.email, profile?.uid].map(normalizeAdminUserSearch);
+      if (fields.some(field => field && field.startsWith(q))) return 0;
+      if (fields.some(field => field && field.includes(q))) return 1;
+      return 99;
+    };
+    const render = () => {
+      if (input.disabled) { close(); return; }
+      const q = normalizeAdminUserSearch(input.value);
+      const rows = adminMessageProfiles
+        .map(profile => ({ profile, score:scoreProfile(profile,q) }))
+        .filter(row => row.score < 99)
+        .sort((a,b) => a.score-b.score || String(a.profile?.username||'').localeCompare(String(b.profile?.username||''),'es',{sensitivity:'base'}))
+        .slice(0,12)
+        .map(row => ({ kind:'user', uid:String(row.profile?.uid||''), profile:row.profile, label:adminUserDisplayLabel(row.profile) }))
+        .filter(row => row.uid);
+      const allLabel = 'Todos los usuarios';
+      const allMatch = allowAll && (!q || normalizeAdminUserSearch(allLabel).includes(q) || normalizeAdminUserSearch('todos').includes(q));
+      renderedEntries = allMatch ? [{ kind:'all', uid:'ALL', label:allLabel }, ...rows].slice(0,13) : rows;
+      activeIndex = -1;
+      if (!renderedEntries.length) {
+        results.innerHTML = `<div class="admin-user-search-empty">${messagesUsersLoading ? 'Cargando usuarios…' : 'Sin coincidencias. Probá con username, email o UID.'}</div>`;
+      } else {
+        results.innerHTML = renderedEntries.map((entry,index) => {
+          if (entry.kind === 'all') return `<button type="button" class="admin-user-search-result all-users" role="option" data-admin-user-result-index="${index}"><strong>Todos los usuarios</strong><span>Aplicar a todas las cuentas registradas</span></button>`;
+          const profile = entry.profile || {};
+          const username = escapeHtml(profile.username || 'Sin username');
+          const email = profile.email ? escapeHtml(profile.email) : 'Sin email';
+          const uid = escapeHtml(String(profile.uid || ''));
+          return `<button type="button" class="admin-user-search-result" role="option" data-admin-user-result-index="${index}"><strong>${username}</strong><span>${email}</span><small>UID …${uid.slice(-10)}</small></button>`;
+        }).join('');
+      }
+      results.hidden = false;
+    };
+    const chooseIndex = index => {
+      const entry = renderedEntries[index];
+      if (!entry) return;
+      markSelection(entry.uid, entry.label);
+    };
+    const updateActive = next => {
+      const buttons = [...results.querySelectorAll('[data-admin-user-result-index]')];
+      if (!buttons.length) return;
+      activeIndex = Math.max(0,Math.min(buttons.length-1,next));
+      buttons.forEach((button,index) => button.classList.toggle('active',index===activeIndex));
+      buttons[activeIndex]?.scrollIntoView?.({block:'nearest'});
+    };
+    input.addEventListener('focus', render);
+    input.addEventListener('input', () => {
+      // Cambiar un solo carácter invalida la selección anterior hasta elegir otra fila.
+      hidden.value = ''; delete hidden.dataset.label; input.classList.remove('admin-user-search-selected'); wrap.classList.remove('has-selection');
+      render();
+    });
+    input.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') { event.preventDefault(); if (results.hidden) render(); updateActive(activeIndex < 0 ? 0 : activeIndex + 1); }
+      else if (event.key === 'ArrowUp') { event.preventDefault(); if (results.hidden) render(); updateActive(activeIndex < 0 ? 0 : activeIndex - 1); }
+      else if (event.key === 'Enter' && !results.hidden && activeIndex >= 0) { event.preventDefault(); chooseIndex(activeIndex); }
+      else if (event.key === 'Escape') { close(); }
+    });
+    results.addEventListener('mousedown', event => event.preventDefault());
+    results.addEventListener('click', event => {
+      const button = event.target.closest('[data-admin-user-result-index]');
+      if (!button) return;
+      chooseIndex(Number(button.dataset.adminUserResultIndex));
+    });
+    input.addEventListener('blur', () => setTimeout(close, 120));
+    clearButton?.addEventListener('click', () => clearSelection({ focus:true }));
+    return {
+      render, clearSelection,
+      setLoading(loading) {
+        input.disabled = !!loading;
+        input.placeholder = loading ? 'Cargando usuarios…' : 'Buscar username, email o UID…';
+        if (loading) close(); else if (document.activeElement === input) render();
+      },
+      setError(message) { input.disabled=false; input.placeholder=String(message||'No se pudieron cargar usuarios'); close(); },
+      selectedLabel() { return String(hidden.dataset.label || input.value || hidden.value || ''); }
+    };
+  }
+  const grantUserSearch = createAdminUserSearch({ input:recipientSearchInput, hidden:recipientSelect, results:recipientSearchResults, wrap:recipientSearchWrap, clearButton:recipientSearchClear, allowAll:true });
+  const banUserSearch = createAdminUserSearch({ input:communityBanSearchInput, hidden:communityBanSelect, results:communityBanSearchResults, wrap:communityBanSearchWrap, clearButton:communityBanSearchClear, allowAll:false });
 
   const formatBanUntil = ban => ban?.permanent ? 'Permanente' : (ban?.expiresAtMs ? new Date(ban.expiresAtMs).toLocaleString('es-AR') : '—');
   const minuteToTimeInput = value => { const n=Math.max(0,Math.min(1439,Math.floor(Number(value)||0))); return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`; };
@@ -10463,18 +10608,19 @@ Receipt: ${receiptId}
     if (messagesUsersLoaded && !force) return;
     if (messagesUsersLoading) return;
     messagesUsersLoading = true;
-    recipientSelect.innerHTML = '<option value="">Cargando usuarios…</option>';
-    if (communityBanSelect) communityBanSelect.innerHTML = '<option value="">Cargando usuarios…</option>';
+    grantUserSearch?.setLoading(true);
+    banUserSearch?.setLoading(true);
     try {
       const [profiles] = await Promise.all([fetchAllUserProfiles(), ensureAdmissionStatusLoaded(force), reloadCommunityAdminDashboard()]);
-      const userOptions = profiles.map(p => `<option value="${escapeHtml(p.uid)}">${escapeHtml(p.username || 'Sin username')}${p.email ? ` · ${escapeHtml(p.email)}` : ''} · UID …${escapeHtml(String(p.uid).slice(-6))}</option>`);
-      recipientSelect.innerHTML = ['<option value="ALL">Todos los usuarios</option>', ...userOptions].join('');
-      if (communityBanSelect) communityBanSelect.innerHTML = ['<option value="">Elegí un jugador…</option>', ...userOptions].join('');
+      adminMessageProfiles = Array.isArray(profiles) ? profiles.filter(profile => profile?.uid) : [];
       messagesUsersLoaded = true;
+      grantUserSearch?.setLoading(false);
+      banUserSearch?.setLoading(false);
     } catch (err) {
       console.error('No se pudo cargar Moderación y usuarios:', err);
-      recipientSelect.innerHTML = '<option value="">No se pudo cargar la lista de usuarios</option>';
-      if (communityBanSelect) communityBanSelect.innerHTML = '<option value="">No se pudo cargar usuarios</option>';
+      adminMessageProfiles = [];
+      grantUserSearch?.setError('No se pudieron cargar usuarios');
+      banUserSearch?.setError('No se pudieron cargar usuarios');
       if (communitySummaryEl) communitySummaryEl.textContent = err?.message || 'No se pudo cargar Moderación.';
     } finally {
       messagesUsersLoading = false;
@@ -10564,8 +10710,7 @@ Receipt: ${receiptId}
       return;
     }
 
-    const recipientOption = overlay.querySelector('#grant-recipient').selectedOptions[0];
-    const recipientLabel = recipient === 'ALL' ? 'TODOS los usuarios' : (recipientOption ? recipientOption.textContent : recipient);
+    const recipientLabel = recipient === 'ALL' ? 'TODOS los usuarios' : (grantUserSearch?.selectedLabel() || recipient);
     if (!window.confirm(`¿Confirmás dar ${amount} ${currencyLabel} a ${recipientLabel}?`)) return;
 
     const sendBtn = overlay.querySelector('#admin-grant-send');
