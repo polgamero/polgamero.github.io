@@ -2963,6 +2963,12 @@ function injectMainMenuStyles() {
       cursor: pointer; width: 100%; transition: background 0.15s ease, color 0.15s ease;
     }
     .options-danger-btn:hover { background: rgba(224,122,107,0.12); color: #e07a6b; }
+    .options-legal-links {
+      margin: 12px 2px 0; display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap;
+      color:#878b83; font-size:11px; line-height:1.35; text-align:center;
+    }
+    .options-legal-links a { color:#bca967; text-decoration:none; }
+    .options-legal-links a:hover { color:#ead789; text-decoration:underline; text-underline-offset:2px; }
     .delete-confirm-input {
       width: 100%; box-sizing: border-box;
       background: rgba(255,255,255,0.05); border: 1.5px solid #6e3a33; border-radius: 8px;
@@ -3095,7 +3101,7 @@ function injectRewardsStyles() {
     .daily-reward-day.day-7.unlocked .daily-reward-circle, .daily-reward-day.day-7.claimed .daily-reward-circle { box-shadow:0 0 34px rgba(217,121,47,.38); }
     .daily-reward-label { font-size:11px; font-weight:800; color:#c8d0ca; text-transform:uppercase; }
     .daily-reward-icons { display:flex; align-items:center; justify-content:center; gap:2px; min-height:42px; max-width:82px; flex-wrap:wrap; }
-    .daily-reward-icons .coin-icon, .daily-reward-icons .ficha-icon, .daily-reward-icons .essence-icon { width:30px; height:30px; }
+    .daily-reward-icons .coin-icon, .daily-reward-icons .ficha-icon, .daily-reward-icons .essence-icon, .daily-reward-icons .mythic-icon { width:30px; height:30px; object-fit:contain; }
     .daily-reward-icons .reward-pack-icon { width:38px; height:38px; }
     .daily-reward-amount { font-size:11px; font-weight:900; color:#f0e0b0; }
     .daily-reward-check { position:absolute; right:-3px; top:-5px; width:27px; height:27px; border-radius:50%; background:#346c3d; border:2px solid #8bd397; display:flex; align-items:center; justify-content:center; color:white; font-weight:900; }
@@ -3129,9 +3135,11 @@ function injectRewardsStyles() {
     /* 23.21.6 HF3 — el resumen del modal no hereda el layout compacto de los 7 días.
        Los premios de un mismo día viven en UNA fila: sobre ×1 + moneda 100, sin wrap vertical. */
     .daily-login-reward .daily-reward-icons { max-width:none; min-height:68px; flex-wrap:nowrap; gap:7px; }
-    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon, .daily-login-reward .essence-icon { width:60px; height:60px; flex:0 0 auto; }
+    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon, .daily-login-reward .essence-icon, .daily-login-reward .mythic-icon { width:60px; height:60px; flex:0 0 auto; object-fit:contain; }
     .daily-login-reward .reward-pack-icon { width:72px; height:72px; flex:0 0 auto; }
     .daily-login-reward .daily-reward-amount { font-size:14px; margin-right:5px; white-space:nowrap; }
+    .daily-login-reward.daily-login-reward-mythic { flex-direction:column; gap:4px; }
+    .daily-login-reward.daily-login-reward-mythic .daily-reward-icons { min-height:60px; }
     .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; white-space:nowrap; }
     .daily-login-actions { display:flex; justify-content:center; align-items:stretch; gap:10px; margin-top:20px; flex-wrap:wrap; }
     /* El CTA principal tenía margin-top propio y quedaba desalineado respecto a secundarios. */
@@ -3154,7 +3162,7 @@ function rewardIconHTML(reward) {
   if (reward?.type === 'points') return `${COIN_ICON_HTML}<span class="daily-reward-amount">${amount}</span>`;
   if (reward?.type === 'fichas') return `${FICHA_ICON_HTML}<span class="daily-reward-amount">${amount}</span>`;
   if (reward?.type === 'standardPack') return `${PACK_ICON_HTML}<span class="daily-reward-amount">×${amount}</span>`;
-  if (reward?.type === 'guaranteedMythic') return `<span style="font-size:37px;filter:drop-shadow(0 0 9px rgba(217,121,47,.65))">✦</span><span class="daily-reward-amount">Mítica</span>`;
+  if (reward?.type === 'guaranteedMythic') return `${MYTHIC_ICON_HTML}<span class="daily-reward-amount">Mítica</span>`;
   return `<span class="daily-reward-amount">${amount}</span>`;
 }
 
@@ -3531,12 +3539,13 @@ export function showDailyLoginRewardModal(loginInfo) {
   const modal = document.createElement('div');
   modal.id = 'daily-login-reward-modal';
   const canClaim = !!loginInfo.rewardUnlocked && !!reward;
+  const isMythicReward = !!reward?.rewards?.some(item => item?.type === 'guaranteedMythic');
   modal.innerHTML = `
     <div class="daily-login-panel">
       <div class="daily-login-kicker">RECOMPENSA DIARIA</div>
       <div class="daily-login-title">¡Felicitaciones!</div>
       <div class="daily-login-copy">Llevás <strong>${loginInfo.streak} logueo${loginInfo.streak === 1 ? '' : 's'} seguido${loginInfo.streak === 1 ? '' : 's'} de 7</strong>.${loginInfo.streakReset ? '<br>Tu racha anterior se cortó y hoy empezaste una nueva.' : ''}</div>
-      ${reward ? `<div class="daily-login-reward"><div class="daily-reward-icons">${reward.rewards.map(rewardIconHTML).join('')}</div><div class="daily-login-reward-text">${rewardDescription(reward)}</div></div>` : ''}
+      ${reward ? `<div class="daily-login-reward${isMythicReward ? ' daily-login-reward-mythic' : ''}"><div class="daily-reward-icons">${reward.rewards.map(rewardIconHTML).join('')}</div><div class="daily-login-reward-text">${rewardDescription(reward)}</div></div>` : ''}
       <div class="daily-login-copy" id="daily-login-result">${canClaim ? 'Tu premio está listo para reclamar.' : 'Este premio ya fue reclamado en el ciclo activo.'}</div>
       <div class="daily-login-actions">
         ${canClaim ? '<button class="reward-action-btn" id="daily-login-claim">RECLAMAR PREMIO</button>' : ''}
@@ -12542,6 +12551,11 @@ export function showOptionsMenu(onBack) {
             </div>
           </div>
           ${dangerZoneHTML}
+          <div class="options-legal-links">
+            <a href="/terminos/" target="_blank" rel="noopener noreferrer">${escapeHtml(gameText('legal.terms'))}</a>
+            <span aria-hidden="true">·</span>
+            <a href="/privacidad/" target="_blank" rel="noopener noreferrer">${escapeHtml(gameText('legal.privacy'))}</a>
+          </div>
         </section>
       </div>
       <button class="main-menu-btn options-back-btn" id="opt-back">${escapeHtml(gameText('options.back'))}</button>

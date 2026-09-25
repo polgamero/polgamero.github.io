@@ -509,6 +509,13 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'account.renameActiveMatch': definition('Cuenta', 'Terminá tu partida multiplayer antes de cambiar el nombre.', 'Bloqueo de rename durante partida activa.'),
   'account.renameNeedFichas': definition('Cuenta', 'Necesitás {cost} Ficha para cambiar el nombre.', 'Bloqueo de rename por saldo insuficiente.'),
 
+  'legal.terms': definition('Cuenta', 'Términos y condiciones', 'Link a los Términos y Condiciones vigentes de Argentinia.'),
+  'legal.privacy': definition('Cuenta', 'Política de privacidad', 'Link a la Política de Privacidad vigente de Argentinia.'),
+  'legal.accept.prefix': definition('Cuenta', 'Leí y acepto los', 'Inicio del consentimiento legal obligatorio de alta.'),
+  'legal.accept.connector': definition('Cuenta', 'y la', 'Conector del consentimiento legal obligatorio de alta.'),
+  'legal.accept.required': definition('Cuenta', 'Tenés que aceptar los Términos y la Política de Privacidad para crear tu cuenta.', 'Error cuando el alta intenta continuar sin consentimiento legal.'),
+  'legal.accept.changed': definition('Cuenta', 'Los documentos legales cambiaron. Recargá Argentinia y volvé a aceptar la versión vigente.', 'Error cuando el cliente intenta aceptar una versión legal que ya no es la vigente.'),
+
   'username.setup.title': definition('Cuenta', 'Elegí tu nombre en Argentinia', 'Título de primera elección de username.'),
   'username.setup.subtitle': definition('Cuenta', 'Este será el nombre que verán los demás jugadores. Es único en todo Argentinia.', 'Explicación de primera elección de username.'),
   'username.rename.title': definition('Cuenta', 'Cambiar nombre', 'Título del modal de rename.'),

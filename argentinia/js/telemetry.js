@@ -1801,24 +1801,24 @@ function buildPanel() {
   bugsEl = document.createElement('span');
   bugsEl.className = 'telemetry-bugs';
 
-  // ENTREGA 23.13.55: el REC usa el mismo patrón colapsable en desktop y mobile.
+  // ENTREGA 23.13.55 / HF23.3.16.2.14: el acceso de bugs usa el mismo patrón colapsable en desktop y mobile.
   // El toggle nace acá (capa común), por lo que mobileUI sólo queda como fallback legacy
   // y nunca crea un segundo botón si Telemetry ya construyó el control universal.
   const recToggle = document.createElement('button');
   recToggle.id = 'arg-mobile-telemetry-toggle';
   recToggle.className = 'arg-mobile-telemetry-toggle';
   recToggle.type = 'button';
-  recToggle.textContent = '🔴 REC';
+  recToggle.textContent = '🐞';
   recToggle.setAttribute('aria-expanded', 'false');
   recToggle.setAttribute('aria-label', 'Desplegar panel de reporte de bugs');
   recToggle.addEventListener('click', () => {
     const expanded = panel.classList.toggle('arg-mobile-telemetry-expanded');
-    recToggle.textContent = expanded ? '✕ REC' : '🔴 REC';
+    recToggle.textContent = expanded ? '✕ 🐞' : '🐞';
     recToggle.setAttribute('aria-expanded', String(expanded));
     recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
   });
 
-  // HF16 — control rápido universal de Audio. Vive siempre pegado a REC tanto en menú
+  // HF16 — control rápido universal de Audio. Vive siempre pegado al acceso de bugs tanto en menú
   // como en partida y abre un mixer de dos canales en vez de mutear todo binariamente.
   gameplayMusicToggleEl = document.createElement('button');
   gameplayMusicToggleEl.id = 'arg-game-music-toggle';
@@ -1847,7 +1847,7 @@ function buildPanel() {
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeQuickAudioMixer(); });
   refreshGameplayMusicToggle();
 
-  const markBtn = button('🐞 Marcar', 'Marcar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());
+  const markBtn = button('Reportar bug', 'Reportar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());
   uploadBtn = button('☁️ Subir ahora', 'Forzar un checkpoint remoto ahora mismo', () => {
     requestRemoteTelemetryUpload('hud_manual', { kind: 'latest', capture: true }).catch(() => {});
   });

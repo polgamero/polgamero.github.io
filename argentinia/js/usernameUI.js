@@ -11,6 +11,7 @@ import {
 import { FIRESTORE_RULES_VERSION } from './version.js';
 import { gameText } from './gameTexts.js';
 import { withEconomyButtonPending } from './economyPending.js';
+import { buildCurrentLegalAcceptance, LEGAL_TERMS_URL, LEGAL_PRIVACY_URL } from './legal.js';
 
 function injectUsernameStyles() {
   if (document.getElementById('username-flow-styles')) return;
@@ -37,6 +38,14 @@ function injectUsernameStyles() {
     }
     .username-input:focus { border-color:#e4c45f; box-shadow:0 0 0 2px rgba(212,175,55,.10); }
     .username-hint { margin:8px 0 0; color:#8f9a91; font-size:11px; text-align:center; }
+    .username-legal {
+      margin:14px 0 2px; padding:11px 12px; border:1px solid rgba(212,175,55,.2); border-radius:9px;
+      background:rgba(0,0,0,.16); display:flex; align-items:flex-start; gap:9px;
+    }
+    .username-legal input { width:17px; height:17px; margin:1px 0 0; flex:0 0 auto; accent-color:#d4af37; cursor:pointer; }
+    .username-legal-copy { color:#c9c3ad; font-size:11px; line-height:1.45; }
+    .username-legal-copy a { color:#e4c45f; text-decoration:underline; text-underline-offset:2px; }
+    .username-legal-copy a:hover { color:#fff0b0; }
     .username-error { min-height:18px; margin:10px 0 0; color:#ef8d79; font-size:12px; line-height:1.35; text-align:center; }
     .username-actions { display:flex; gap:10px; margin-top:14px; }
     .username-btn {
@@ -77,6 +86,8 @@ function friendlyPersistError(error) {
   if (code === 'REGISTRATION_PAUSED') return 'El registro de nuevos jugadores está temporalmente pausado. Probá nuevamente más adelante.';
   if (code === 'REGISTRATION_CAPACITY_REACHED') return 'Argentinia alcanzó temporalmente su cupo de nuevos jugadores. Probá nuevamente más adelante.';
   if (code === 'REGISTRATION_DAILY_LIMIT_REACHED') return 'Se alcanzó el cupo de altas de hoy. Probá nuevamente más adelante.';
+  if (code === 'LEGAL_ACCEPTANCE_REQUIRED') return gameText('legal.accept.required');
+  if (code === 'LEGAL_VERSION_MISMATCH') return gameText('legal.accept.changed');
   if (code === 'permission-denied') return gameText('username.error.permission', { rulesVersion: FIRESTORE_RULES_VERSION });
   return error?.message || gameText('username.error.generic');
 }
@@ -99,6 +110,10 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
       ${!isSetup ? `<div class="username-current">${escapeText(gameText('username.rename.current', { username: currentUsername }))}</div>` : ''}
       <input class="username-input" id="username-input" type="text" maxlength="${USERNAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" placeholder="${escapeText(gameText('username.input.placeholder'))}">
       <div class="username-hint">${escapeText(gameText('username.input.hint', { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH }))}</div>
+      ${isSetup ? `<div class="username-legal">
+        <input id="username-legal-accept" type="checkbox">
+        <label class="username-legal-copy" for="username-legal-accept">${escapeText(gameText('legal.accept.prefix'))} <a href="${LEGAL_TERMS_URL}" target="_blank" rel="noopener noreferrer">${escapeText(gameText('legal.terms'))}</a> ${escapeText(gameText('legal.accept.connector'))} <a href="${LEGAL_PRIVACY_URL}" target="_blank" rel="noopener noreferrer">${escapeText(gameText('legal.privacy'))}</a>.</label>
+      </div>` : ''}
       ${!isSetup ? `<div class="username-cost">${escapeText(gameText('username.rename.cost', { available: Math.max(0, Number(fichas) || 0), cost: USERNAME_RENAME_COST }))}</div>` : ''}
       <div class="username-error" id="username-error"></div>
       <div class="username-actions">
@@ -113,6 +128,8 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
   const input = overlay.querySelector('#username-input');
   const saveBtn = overlay.querySelector('#username-save');
   const errorBox = overlay.querySelector('#username-error');
+  const legalAccept = isSetup ? overlay.querySelector('#username-legal-accept') : null;
+  if (legalAccept) saveBtn.disabled = true;
   input.value = isSetup ? '' : currentUsername;
   input.focus();
   if (!isSetup) input.select();
@@ -120,6 +137,10 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
   let busy = false;
   async function submit() {
     if (busy) return;
+    if (isSetup && !legalAccept?.checked) {
+      errorBox.textContent = gameText('legal.accept.required');
+      return;
+    }
     const validated = validateUsername(input.value);
     if (!validated.ok) {
       errorBox.textContent = friendlyValidationError(validated);
@@ -127,9 +148,11 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
     }
     busy = true;
     input.disabled = true;
+    if (legalAccept) legalAccept.disabled = true;
     errorBox.textContent = '';
+    const payload = isSetup ? { ...validated, legalAcceptance: buildCurrentLegalAcceptance() } : validated;
     try {
-      const result = await withEconomyButtonPending(saveBtn, () => onSave(validated), {
+      const result = await withEconomyButtonPending(saveBtn, () => onSave(payload), {
         pendingLabel: isSetup ? 'CREANDO CUENTA...' : 'GUARDANDO...'
       });
       overlay.remove();
@@ -139,6 +162,7 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
       errorBox.textContent = friendlyPersistError(error);
       busy = false;
       input.disabled = false;
+      if (legalAccept) legalAccept.disabled = false;
       input.focus();
     }
   }
@@ -148,6 +172,10 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
     if (event.key === 'Enter') { event.preventDefault(); submit(); }
   });
   input.addEventListener('input', () => { errorBox.textContent = ''; });
+  legalAccept?.addEventListener('change', () => {
+    errorBox.textContent = '';
+    saveBtn.disabled = !legalAccept.checked;
+  });
 
   if (isSetup) {
     overlay.querySelector('#username-exit').addEventListener('click', async () => {

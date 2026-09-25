@@ -21,6 +21,11 @@ jobs:
       - name: Checkout public repository
         uses: actions/checkout@v6
 
+      - name: Setup Python for deploy-time image inventory
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Enforce public-only repository boundary
         shell: bash
         run: |
@@ -33,12 +38,13 @@ jobs:
           test -d argentinia/assets/data
           test -f argentinia/assets/images/cards/cards-image-manifest.json
           test -f argentinia/cartas/index.html
+          test -f .github/scripts/generate_image_manifest.py
           test ! -e functions
           test ! -e firebase.json
           test ! -e firestore.rules
           test ! -d argentinia/tools
 
-          forbidden_dirs=$(find . -path './.git' -prune -o -type d \( -name trusted -o -name test -o -name tests -o -name node_modules \) -print)
+          forbidden_dirs=$(find argentinia .github -type d \( -name trusted -o -name test -o -name tests -o -name node_modules \) -print)
           if [ -n "$forbidden_dirs" ]; then
             echo "::error::Private/internal directories found in public repository:"
             printf '%s\n' "$forbidden_dirs"
@@ -57,6 +63,41 @@ jobs:
             exit 1
           fi
           echo "PUBLIC_REPOSITORY_BOUNDARY_OK runtime-only"
+
+      - name: Regenerate live image manifest from retained repository PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The release ZIP intentionally carries no card-art binaries. The real public repo does.
+          # Therefore the only truthful audit is produced here, after checkout, against the PNGs
+          # that GitHub actually retains and will publish.
+          python .github/scripts/generate_image_manifest.py --root argentinia
+
+          # The generator emits convenience TXT requisitions; keep the deployed surface runtime-only.
+          rm -f argentinia/assets/images/cards/missing-card-images.txt \
+                argentinia/assets/images/cards/missing-token-images.txt \
+                argentinia/assets/images/cards/unassigned-token-images.txt \
+                argentinia/assets/images/evolutions/missing-evolution-images.txt
+
+          python - <<'PY'
+          import json, os, pathlib
+          path = pathlib.Path('argentinia/assets/images/cards/cards-image-manifest.json')
+          manifest = json.loads(path.read_text(encoding='utf-8'))
+          images = manifest.get('images') or {}
+          existing = int(images.get('existingFileCount') or 0)
+          referenced = int(images.get('referencedFaceCount') or 0)
+          missing = int(images.get('missingCardCount') or 0)
+          if existing <= 0:
+              raise SystemExit('IMAGE_MANIFEST_DEPLOY_ERROR existingFileCount=0: deploy-time scan did not see retained card assets')
+          if referenced > 0 and missing >= referenced:
+              raise SystemExit(f'IMAGE_MANIFEST_DEPLOY_ERROR all referenced card faces appear missing ({missing}/{referenced})')
+          expected_sha = os.environ.get('GITHUB_SHA')
+          if expected_sha and manifest.get('gitSha') != expected_sha:
+              raise SystemExit(f'IMAGE_MANIFEST_DEPLOY_ERROR gitSha mismatch manifest={manifest.get("gitSha")} env={expected_sha}')
+          if len(manifest.get('missing') or []) != missing:
+              raise SystemExit('IMAGE_MANIFEST_DEPLOY_ERROR missing[] cardinality mismatch')
+          print(f'IMAGE_MANIFEST_DEPLOY_OK existing={existing} referencedFaces={referenced} missing={missing} gitSha={manifest.get("gitSha")}')
+          PY
 
       - name: Verify prebuilt public gallery and crawler assets
         shell: bash
@@ -83,6 +124,33 @@ jobs:
           for name in CNAME ads.txt robots.txt sitemap.xml .nojekyll; do
             if [ -f "$name" ]; then cp "$name" ".pages-root/$name"; fi
           done
+
+          # Este repo aloja otros sitios públicos además de Argentinia. Mantener una allowlist
+          # explícita evita volver a publicar el repo completo y conserva la frontera fail-closed.
+          for dir in band botonera clima cv top5 trivia privacidad terminos; do
+            test -d "$dir" || { echo "::error::Missing allowed public sibling: $dir"; exit 1; }
+            mkdir -p ".pages-root/$dir"
+            cp -a "$dir"/. ".pages-root/$dir"/
+          done
+          # Assets compartidos estrictamente necesarios por las páginas legales y Top 5.
+          # No se copia css/js/img completos: se enumeran los recursos conocidos para evitar
+          # colisiones con el runtime de Argentinia que ya vive en la raíz del artefacto.
+          for file in css/landing.css css/legal.css js/landing.js img/logoTop5.png; do
+            test -f "$file" || { echo "::error::Missing allowed shared asset: $file"; exit 1; }
+            mkdir -p ".pages-root/$(dirname "$file")"
+            cp "$file" ".pages-root/$file"
+          done
+          test -d img/bandas || { echo "::error::Missing Top 5 image directory: img/bandas"; exit 1; }
+          mkdir -p .pages-root/img/bandas
+          cp -a img/bandas/. .pages-root/img/bandas/
+
+          # Los documentos legales y su CSS compartido todavía pueden contener rutas
+          # absolutas del esquema histórico /argentinia/. Reescribir solo esas referencias
+          # conocidas mantiene los legales funcionando con Argentinia servido desde /.
+          sed -i 's#/argentinia/assets/#/assets/#g; s#href="/argentinia/"#href="/"#g' \
+            .pages-root/privacidad/index.html .pages-root/terminos/index.html
+          sed -i 's#/argentinia/assets/#/assets/#g' .pages-root/css/landing.css
+
           mkdir -p .pages-root/argentinia
           cat > .pages-root/argentinia/index.html <<'HTML'
           <!doctype html>
@@ -95,8 +163,18 @@ jobs:
           test -f .pages-root/index.html
           test -f .pages-root/js/main.js
           test -f .pages-root/assets/manifest.webmanifest
+          test -f .pages-root/assets/images/cards/cards-image-manifest.json
           test -f .pages-root/cartas/index.html
-          echo "PUBLIC_PAGES_ARTIFACT_OK"
+          for dir in band botonera clima cv top5 trivia privacidad terminos; do test -f ".pages-root/$dir/index.html"; done
+          test -f .pages-root/css/landing.css
+          test -f .pages-root/css/legal.css
+          test -f .pages-root/js/landing.js
+          test -f .pages-root/img/logoTop5.png
+          test -d .pages-root/img/bandas
+          ! grep -q '/argentinia/assets/' .pages-root/privacidad/index.html
+          ! grep -q '/argentinia/assets/' .pages-root/terminos/index.html
+          ! grep -q '/argentinia/assets/' .pages-root/css/landing.css
+          echo "PUBLIC_PAGES_ARTIFACT_OK root=argentinia siblings=8 legal=LIVE"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

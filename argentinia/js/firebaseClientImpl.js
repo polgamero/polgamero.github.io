@@ -33,6 +33,7 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONO
 import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
+import { isCurrentLegalAcceptance } from './legal.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
@@ -476,15 +477,25 @@ export async function loadUserProfileFromServer(uid) {
 // no existe users/{uid}, crea un perfil mínimo starterDeckPending=true en la MISMA transacción
 // que reserva usernames/{usernameKey}; si el perfil ya existía (migración), sólo agrega los
 // campos username*. Las Rules 23.13.24 enlazan ambos documentos con getAfter().
-export async function reserveInitialUsername(uid, username, usernameKey, _profileFields = {}) {
+export async function reserveInitialUsername(uid, username, usernameKey, _profileFields = {}, legalAcceptance = null) {
   const validated = assertValidUsernamePayload(username, usernameKey);
+  if (!isCurrentLegalAcceptance(legalAcceptance)) {
+    throw usernameError('LEGAL_ACCEPTANCE_REQUIRED', 'Tenés que aceptar los Términos y la Política de Privacidad para crear tu cuenta.');
+  }
   if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
   // 23.19.5.4 — el cliente oficial SIEMPRE crea/migra la cuenta por Functions. Esto hace
   // que Admission Control sea efectivo incluso mientras el rollout global sigue en shadow.
   // El bloqueo absoluto de clientes viejos/custom llega con Write Firewall 23.19.5.6.
-  const request = { username: validated.username };
+  const request = {
+    username: validated.username,
+    legalAcceptance: {
+      accepted: true,
+      termsVersion: String(legalAcceptance.termsVersion),
+      privacyVersion: String(legalAcceptance.privacyVersion)
+    }
+  };
   await runEconomyActionAuthority(uid, 'accountBootstrap', request,
-    operationId => bootstrapAccountServer(request.username, operationId));
+    operationId => bootstrapAccountServer(request.username, operationId, request.legalAcceptance));
   const serverProfile = await loadOwnProfileAfterServerMutation(uid);
   if (!serverProfile) throw new Error('ECONOMY_BOOTSTRAP_PROFILE_MISSING_AFTER_COMMIT');
   return serverProfile;

@@ -1980,12 +1980,13 @@ async function boot() {
   function requestMandatoryUsername(profile, serial) {
     return new Promise((resolve) => {
       showUsernameSetupModal({
-        onSave: async ({ username, usernameKey }) => {
+        onSave: async ({ username, usernameKey, legalAcceptance }) => {
           const saved = await reserveInitialUsername(
             state.currentUser.uid,
             username,
             usernameKey,
-            state.currentUser
+            state.currentUser,
+            legalAcceptance
           );
           if (serial !== authIdentitySerial) return saved;
           resolve(saved);

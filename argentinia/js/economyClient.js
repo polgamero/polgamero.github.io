@@ -70,11 +70,12 @@ export function getEconomyStatus() {
   return call('economyStatus');
 }
 
-export function bootstrapAccountServer(username, operationId = null) {
+export function bootstrapAccountServer(username, operationId = null, legalAcceptance = null) {
   const uid = authRef?.currentUser?.uid;
   return call('economyBootstrapAccount', {
     operationId: operationId || bootstrapOperationId(uid),
-    username: String(username || '')
+    username: String(username || ''),
+    legalAcceptance
   });
 }
 

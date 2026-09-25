@@ -1180,7 +1180,7 @@ html.argentinia-mobile .support-row .stack-badge {
   box-shadow: 0 2px 6px rgba(0,0,0,.95) !important;
 }
 
-/* 4) Telemetría/REC mobile: reutiliza el toggle universal creado por telemetry.js y
+/* 4) Reporte de bugs mobile: reutiliza el toggle universal creado por telemetry.js y
       ajusta geometría/tamaño táctil para mobile. Desktop comparte la misma lógica colapsable. */
 html.argentinia-mobile .telemetry-panel {
   left: max(4px, var(--arg-safe-left)) !important;
@@ -1307,7 +1307,7 @@ html.argentinia-mobile .phase-dot {
   box-sizing: border-box !important;
 }
 
-/* E) REC: conserva la función 23.11.10 pero deja de competir visualmente con el juego. */
+/* E) Reporte de bugs: conserva la función 23.11.10 pero deja de competir visualmente con el juego. */
 html.argentinia-mobile .telemetry-panel {
   padding: 2px !important;
   gap: 2px !important;
@@ -1396,7 +1396,7 @@ html.argentinia-mobile .basic-land-symbol-main {
   object-position: center !important;
 }
 
-/* D) REC aún más discreto; sigue desplegando el panel completo al tocarlo. */
+/* D) Acceso de bugs aún más discreto; sigue desplegando el panel completo al tocarlo. */
 html.argentinia-mobile .telemetry-panel {
   padding: 1px !important;
   gap: 1px !important;
@@ -1419,7 +1419,7 @@ html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg
   font-size: 0 !important;
 }
 html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle::before {
-  font-size: 6px !important;
+  font-size: 11px !important;
 }
 html.argentinia-mobile .arg-game-music-toggle {
   width: 20px !important;
@@ -1557,7 +1557,8 @@ html.argentinia-mobile .daily-reward-circle { width: 72px !important; height: 72
 html.argentinia-mobile .daily-reward-label { font-size: 8px !important; }
 html.argentinia-mobile .daily-reward-icons { min-height: 31px !important; max-width: 62px !important; }
 html.argentinia-mobile .daily-reward-icons .coin-icon,
-html.argentinia-mobile .daily-reward-icons .ficha-icon { width: 23px !important; height: 23px !important; }
+html.argentinia-mobile .daily-reward-icons .ficha-icon,
+html.argentinia-mobile .daily-reward-icons .mythic-icon { width: 23px !important; height: 23px !important; object-fit: contain !important; }
 html.argentinia-mobile .daily-reward-icons .reward-pack-icon { width: 29px !important; height: 29px !important; }
 html.argentinia-mobile .daily-reward-amount { font-size: 8px !important; }
 html.argentinia-mobile .daily-reward-status { min-height: 13px !important; font-size: 7px !important; }
@@ -1572,9 +1573,12 @@ html.argentinia-mobile .daily-login-reward { margin: 7px auto 2px !important; mi
 /* HF3: el modal necesita sus propias medidas; no debe heredar el max-width compacto del track de 7 días. */
 html.argentinia-mobile .daily-login-reward .daily-reward-icons { max-width:none !important; min-height:43px !important; flex-wrap:nowrap !important; gap:4px !important; }
 html.argentinia-mobile .daily-login-reward .daily-reward-icons .coin-icon,
-html.argentinia-mobile .daily-login-reward .daily-reward-icons .ficha-icon { width:36px !important; height:36px !important; }
+html.argentinia-mobile .daily-login-reward .daily-reward-icons .ficha-icon,
+html.argentinia-mobile .daily-login-reward .daily-reward-icons .mythic-icon { width:36px !important; height:36px !important; object-fit:contain !important; }
 html.argentinia-mobile .daily-login-reward .daily-reward-icons .reward-pack-icon { width:44px !important; height:44px !important; }
 html.argentinia-mobile .daily-login-reward .daily-reward-amount { font-size:9px !important; margin-right:3px !important; white-space:nowrap !important; }
+html.argentinia-mobile .daily-login-reward.daily-login-reward-mythic { flex-direction:column !important; gap:2px !important; }
+html.argentinia-mobile .daily-login-reward.daily-login-reward-mythic .daily-reward-icons { min-height:36px !important; }
 html.argentinia-mobile .daily-login-reward-text { font-size: 12px !important; }
 html.argentinia-mobile .daily-login-actions { margin-top: 8px !important; gap: 6px !important; align-items:stretch !important; }
 html.argentinia-mobile .daily-login-actions .reward-action-btn,

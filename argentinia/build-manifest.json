@@ -2,7 +2,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "dbf2b301452c5518f632",
+  "buildId": "11dfadfacb234b38ea70",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -87,6 +87,7 @@
     "./js/landGraveyard.js",
     "./js/landSearch.js",
     "./js/landStax.js",
+    "./js/legal.js",
     "./js/libraryEngine.js",
     "./js/main.js",
     "./js/manaPool.js",

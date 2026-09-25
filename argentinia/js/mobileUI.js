@@ -406,12 +406,12 @@ function ensureMobileTelemetryToggle() {
   toggle.id = 'arg-mobile-telemetry-toggle';
   toggle.className = 'arg-mobile-telemetry-toggle';
   toggle.type = 'button';
-  toggle.textContent = '🔴 REC';
+  toggle.textContent = '🐞';
   toggle.setAttribute('aria-expanded', 'false');
   toggle.setAttribute('aria-label', 'Desplegar panel de reporte de bugs');
   toggle.addEventListener('click', () => {
     const expanded = panel.classList.toggle('arg-mobile-telemetry-expanded');
-    toggle.textContent = expanded ? '✕ REC' : '🔴 REC';
+    toggle.textContent = expanded ? '✕ 🐞' : '🐞';
     toggle.setAttribute('aria-expanded', String(expanded));
     toggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
   });
