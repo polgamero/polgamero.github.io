@@ -127,8 +127,12 @@ export function transformFaceLayoutId(itemOrCard) {
   const physical = physicalDfcCard(itemOrCard);
   const id = String(physical?.id || card?.id || '').trim();
   if (!id) return '';
-  if (!physical || !normalizeTransformSpec(itemOrCard)) return id;
-  return `${id}::${currentTransformFace(itemOrCard)}`;
+  // HF23.3.16.2.22 — cada EVO tiene arte/textbox propios aunque comparta el id físico
+  // con la base. Esto permite al Admin encuadrar Base/Evo1/Evo2 independientemente.
+  const evolutionStage = Math.max(0, Math.min(2, Math.floor(Number(card?.evolutionStage) || 0)));
+  const presentationId = evolutionStage > 0 ? `${id}::evo${evolutionStage}` : id;
+  if (!physical || !normalizeTransformSpec(itemOrCard)) return presentationId;
+  return `${presentationId}::${currentTransformFace(itemOrCard)}`;
 }
 
 export function canTransformPermanent(item) {

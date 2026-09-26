@@ -4016,16 +4016,9 @@ function injectEncyclopediaStyles() {
     .encyclopedia-evolution-buttons { display:flex; justify-content:center; gap:6px; margin-top:7px; }
     .encyclopedia-evolution-btn { border:1px solid rgba(96,145,103,.58); background:#e8f0e8; color:#1f4c29; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:900; letter-spacing:.035em; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.18); }
     .encyclopedia-evolution-btn:hover { background:#d6e8d8; transform:translateY(-1px); }
-    .encyclopedia-evolution-modal { position:fixed; inset:0; z-index:10040; background:rgba(2,6,3,.84); display:flex; align-items:center; justify-content:center; padding:20px; }
-    .encyclopedia-evolution-modal-panel { width:min(560px,94vw); max-height:94vh; overflow:auto; background:linear-gradient(180deg,#172319,#0b130e); border:2px solid rgba(212,175,55,.6); border-radius:16px; padding:18px; box-shadow:0 24px 70px rgba(0,0,0,.72); color:#f0e0b0; position:relative; }
-    .encyclopedia-evolution-modal-title { text-align:center; font-size:18px; font-weight:900; margin:0 34px 12px; }
-    .encyclopedia-evolution-preview-card { display:flex; justify-content:center; --card-w:min(310px,72vw); }
-    .encyclopedia-evolution-preview-card .card { width:var(--card-w)!important; height:auto!important; aspect-ratio:5/7!important; max-width:none!important; transform:none!important; }
-    .encyclopedia-evolution-preview-card.unowned .card-art { background-color:#0b0b0b; background-image:url('./assets/images/ui/logo.png'); background-repeat:no-repeat; background-position:center; background-size:55% auto; }
-    .encyclopedia-evolution-preview-card.unowned .card-art img,
-    .encyclopedia-evolution-preview-card.unowned .card-art > div { visibility:hidden; }
-    .encyclopedia-evolution-lock-note { text-align:center; color:#c8b979; font-size:12px; font-weight:750; margin:11px auto 0; max-width:430px; }
-    .encyclopedia-evolution-close { position:absolute; top:8px; right:10px; width:30px; height:30px; border-radius:50%; border:1px solid rgba(212,175,55,.55); background:#0f1711; color:#f0e0b0; cursor:pointer; font-size:20px; line-height:26px; }
+    .encyclopedia-evolution-btn.active { background:#315f39; border-color:#d4af37; color:#fff4c2; box-shadow:0 0 0 1px rgba(212,175,55,.3),0 2px 5px rgba(0,0,0,.25); }
+    .encyclopedia-evolution-btn.locked:not(.active) { opacity:.72; }
+    .encyclopedia-evolvable-filter-icon { width:16px; height:16px; object-fit:contain; flex:0 0 16px; filter:drop-shadow(0 0 2px rgba(0,0,0,.7)); }
     .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
@@ -4088,6 +4081,7 @@ export function showEncyclopedia(onBack) {
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
   let enhancedOnly = false;
+  let evolvableOnly = false;
   // 23.21.6 HF3 — superficie operativa sólo Admin para revisar/publicar expansiones nuevas.
   let unpublishedOnly = false;
   let searchQuery = '';
@@ -4148,6 +4142,11 @@ export function showEncyclopedia(onBack) {
           <input type="checkbox" id="enc-enhanced-only">
           ${gameTextHtml('encyclopedia.filter.enhanced')}
         </label>
+        <label class="encyclopedia-filter-option">
+          <input type="checkbox" id="enc-evolvable-only">
+          <img class="encyclopedia-evolvable-filter-icon" src="./assets/images/ui/evolucionable.png" alt="" aria-hidden="true">
+          ${gameTextHtml('encyclopedia.filter.evolvable')}
+        </label>
         ${isAdminUser() ? `<label class="encyclopedia-filter-option encyclopedia-admin-publication-filter">
           <input type="checkbox" id="enc-unpublished-only">
           ${gameTextHtml('encyclopedia.filter.unpublished')}
@@ -4172,32 +4171,41 @@ export function showEncyclopedia(onBack) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  function showEncyclopediaEvolutionPreview(baseCard, stageNumber) {
-    const evolved = applyEvolutionStage(baseCard, stageNumber);
-    const discovered = isEvolutionStageDiscovered(evolutionProfile, baseCard.id, stageNumber);
-    const modal = document.createElement('div');
-    modal.className = 'encyclopedia-evolution-modal';
-    modal.setAttribute('role','dialog');
-    modal.setAttribute('aria-modal','true');
-    const panel = document.createElement('div');
-    panel.className = 'encyclopedia-evolution-modal-panel';
-    const close = document.createElement('button');
-    close.type='button'; close.className='encyclopedia-evolution-close'; close.textContent='×'; close.setAttribute('aria-label',gameText('common.close'));
-    const title = document.createElement('div');
-    title.className='encyclopedia-evolution-modal-title';
-    title.textContent=gameText('encyclopedia.evolution.previewTitle',{card:evolved.name,stage:stageNumber});
-    const cardHost=document.createElement('div');
-    cardHost.className=`encyclopedia-evolution-preview-card${discovered?'':' unowned'}`;
-    cardHost.appendChild(createCardElement(evolved,false,true,null,'encyclopedia',null));
-    const note=document.createElement('div'); note.className='encyclopedia-evolution-lock-note';
-    note.textContent=discovered?gameText('encyclopedia.evolution.discovered'):gameText('encyclopedia.evolution.locked');
-    panel.append(close,title,cardHost,note); modal.appendChild(panel); document.body.appendChild(modal);
-    const onKey=event=>{if(event.key==='Escape')destroy();};
-    const destroy=()=>{document.removeEventListener('keydown',onKey);modal.remove();};
-    close.addEventListener('click',destroy);
-    modal.addEventListener('click',event=>{if(event.target===modal)destroy();});
-    document.addEventListener('keydown',onKey);
+  // HF23.3.16.2.22 — evolución inline en Enciclopedia. Admin puede inspeccionar
+  // Base/Evo1/Evo2 sin que eso altere la colección ni el stage persistido del perfil.
+  function mountEncyclopediaTextEditor(slot, displayCard) {
+    if (!isAdminUser()) return;
+    const textBox = slot.querySelector(':scope > .card .card-text-box');
+    const textLayoutId = transformFaceLayoutId(displayCard);
+    if (!textBox || !textLayoutId) return;
+    textBox.style.position = 'relative';
+    const editTextBtn = document.createElement('button');
+    editTextBtn.type = 'button';
+    editTextBtn.className = `encyclopedia-text-edit-btn${hasCustomCardTextLayout(textLayoutId) ? ' has-custom-layout' : ''}`;
+    editTextBtn.textContent = '✏️';
+    editTextBtn.title = hasCustomCardTextLayout(textLayoutId) ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
+    editTextBtn.setAttribute('aria-label', `Ajustar presentación del texto de ${displayCard.name}`);
+    editTextBtn.dataset.textCardId = textLayoutId;
+    editTextBtn.addEventListener('click', async event => {
+      event.preventDefault(); event.stopPropagation(); editTextBtn.disabled = true;
+      try {
+        await openCardTextLayoutEditor({
+          card: displayCard, layoutId: textLayoutId,
+          renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
+          onSaved: (_layout, meta) => {
+            editTextBtn.classList.toggle('has-custom-layout', !!meta?.custom);
+            editTextBtn.title = meta?.custom ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
+            if (meta?.nameChanged) setTimeout(() => { if (overlay.isConnected) { overlay.remove(); showEncyclopedia(onBack); } }, 450);
+          }
+        });
+      } catch (error) {
+        console.error('No se pudo abrir el editor de texto:', error);
+        window.alert(`No se pudo abrir el editor de texto: ${error?.message || error}`);
+      } finally { if (editTextBtn.isConnected) editTextBtn.disabled = false; }
+    });
+    textBox.appendChild(editTextBtn);
   }
+
 
   // 23.13.15 — cada solapa se construye UNA sola vez por apertura de Enciclopedia.
   // Después, filtros/orden sólo ocultan o reordenan los mismos nodos. Volver de
@@ -4223,18 +4231,43 @@ export function showEncyclopedia(onBack) {
       const owned = isAssetTab ? true : ownedIds.has(card.id);
       const slot = document.createElement('div');
       slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}${isDfcBackTab ? ' encyclopedia-dfc-back-slot' : ''}`;
-      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+      slot.__encyclopediaDisplayCard = card;
+      slot.__encyclopediaEvolutionStage = 0;
 
-      // HF23.3.14.1 — las bases evolucionables exponen ambos stages aunque todavía no estén
-      // descubiertos. El botón existe; el arte sigue el mismo contrato de ocultamiento de
-      // Enciclopedia y sólo se revela cuando el perfil alcanzó ese stage.
+      const evolutionStageVisible = stageNumber => stageNumber === 0 || isAdminUser() || isEvolutionStageDiscovered(evolutionProfile, card.id, stageNumber);
+      const renderEncyclopediaStage = stageNumber => {
+        const normalizedStage = isEvolutionEligibleCard(card) ? Math.max(0, Math.min(2, Number(stageNumber) || 0)) : 0;
+        const displayCard = normalizedStage > 0 ? applyEvolutionStage(card, normalizedStage) : card;
+        const visible = normalizedStage === 0 ? owned : evolutionStageVisible(normalizedStage);
+        const nextCard = createCardElement(displayCard, false, true, null, 'encyclopedia', null);
+        const currentCard = slot.querySelector(':scope > .card');
+        if (currentCard) currentCard.replaceWith(nextCard); else slot.prepend(nextCard);
+        slot.__encyclopediaDisplayCard = displayCard;
+        slot.__encyclopediaEvolutionStage = normalizedStage;
+        slot.classList.toggle('unowned', !visible);
+        slot.querySelectorAll('.encyclopedia-evolution-btn').forEach(btn => {
+          const active = Number(btn.dataset.evolutionStage || 0) === normalizedStage;
+          btn.classList.toggle('active', active); btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        mountEncyclopediaTextEditor(slot, displayCard);
+        slot.dispatchEvent(new CustomEvent('encyclopedia-stage-change', { detail:{ card:displayCard, stage:normalizedStage, visible } }));
+      };
+      renderEncyclopediaStage(0);
+
+      // HF23.3.16.2.22 — Base/Evo1/Evo2 cambian la carta EN EL MISMO slot. Para jugadores
+      // el arte no descubierto sigue oculto; Admin siempre puede inspeccionar los 40 stages
+      // sin adquirirlos ni mutar users/{uid}.evolutions.
       if (!isAssetTab && isEvolutionEligibleCard(card)) {
         const evoButtons=document.createElement('div'); evoButtons.className='encyclopedia-evolution-buttons';
-        for (const stageNumber of [1,2]) {
-          const button=document.createElement('button'); button.type='button'; button.className='encyclopedia-evolution-btn';
-          button.textContent=gameText(`encyclopedia.evolution.stage${stageNumber}`);
+        for (const stageNumber of [0,1,2]) {
+          const button=document.createElement('button'); button.type='button';
+          button.className=`encyclopedia-evolution-btn${stageNumber===0?' active':''}`;
+          button.textContent=stageNumber===0?gameText('encyclopedia.evolution.base'):gameText(`encyclopedia.evolution.stage${stageNumber}`);
           button.dataset.evolutionStage=String(stageNumber);
-          button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showEncyclopediaEvolutionPreview(card,stageNumber);});
+          button.setAttribute('aria-pressed', stageNumber===0?'true':'false');
+          const visible=evolutionStageVisible(stageNumber);
+          if (!visible) { button.classList.add('locked'); button.title=gameText('encyclopedia.evolution.locked'); }
+          button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();renderEncyclopediaStage(stageNumber);});
           evoButtons.appendChild(button);
         }
         slot.appendChild(evoButtons);
@@ -4243,82 +4276,28 @@ export function showEncyclopedia(onBack) {
       // 23.13.23 — el editor existe EXCLUSIVAMENTE en Enciclopedia y sólo para Admin.
       // La seguridad real del SAVE sigue en Firestore Rules; este gate es además UX.
       if (isAdminUser() && card.image) {
-        const artLayoutId = card.isToken ? tokenArtLayoutId(card.image, card.name) : transformFaceLayoutId(card);
         const editArtBtn = document.createElement('button');
-        editArtBtn.type = 'button';
-        editArtBtn.className = `encyclopedia-art-edit-btn${hasCustomArtLayout(artLayoutId) ? ' has-custom-layout' : ''}`;
-        editArtBtn.textContent = '✏️';
-        editArtBtn.title = hasCustomArtLayout(artLayoutId)
-          ? 'Editar encuadre del arte (personalizado)'
-          : 'Editar encuadre del arte';
-        editArtBtn.setAttribute('aria-label', `Editar encuadre del arte de ${card.name}`);
-        editArtBtn.dataset.artCardId = artLayoutId;
+        editArtBtn.type = 'button'; editArtBtn.className = 'encyclopedia-art-edit-btn'; editArtBtn.textContent = '✏️';
+        const syncArtEditor = () => {
+          const displayCard = slot.__encyclopediaDisplayCard || card;
+          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : transformFaceLayoutId(displayCard);
+          editArtBtn.dataset.artCardId = artLayoutId;
+          editArtBtn.classList.toggle('has-custom-layout', hasCustomArtLayout(artLayoutId));
+          editArtBtn.title = hasCustomArtLayout(artLayoutId) ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte';
+          editArtBtn.setAttribute('aria-label', `Editar encuadre del arte de ${displayCard.name}`);
+        };
         editArtBtn.addEventListener('click', async event => {
-          event.preventDefault();
-          event.stopPropagation();
-          editArtBtn.disabled = true;
+          event.preventDefault(); event.stopPropagation(); editArtBtn.disabled = true;
+          const displayCard = slot.__encyclopediaDisplayCard || card;
+          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : transformFaceLayoutId(displayCard);
           try {
-            await openArtLayoutEditor({
-              card,
-              layoutId: artLayoutId,
-              renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
-              onSaved: (_layout, meta) => {
-                editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom);
-                editArtBtn.title = meta?.custom
-                  ? 'Editar encuadre del arte (personalizado)'
-                  : 'Editar encuadre del arte';
-              }
-            });
+            await openArtLayoutEditor({ card:displayCard, layoutId:artLayoutId, renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null), onSaved: (_layout, meta) => { editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom); editArtBtn.title = meta?.custom ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte'; } });
           } catch (error) {
-            console.error('No se pudo abrir el editor de arte:', error);
-            window.alert(`No se pudo abrir el editor de arte: ${error?.message || error}`);
-          } finally {
-            if (editArtBtn.isConnected) editArtBtn.disabled = false;
-          }
+            console.error('No se pudo abrir el editor de arte:', error); window.alert(`No se pudo abrir el editor de arte: ${error?.message || error}`);
+          } finally { if (editArtBtn.isConnected) editArtBtn.disabled = false; }
         });
-        slot.appendChild(editArtBtn);
-      }
-
-      // 23.15.10 — lápiz DENTRO del rules box. Sólo Admin y sólo presentación: no toca
-      // el contenido de los JSON. El ajuste se guarda por card.id igual que el encuadre.
-      if (isAdminUser()) {
-        const textBox = slot.querySelector('.card-text-box');
-        const textLayoutId = transformFaceLayoutId(card);
-        if (textBox && textLayoutId) {
-          textBox.style.position = 'relative';
-          const editTextBtn = document.createElement('button');
-          editTextBtn.type = 'button';
-          editTextBtn.className = `encyclopedia-text-edit-btn${hasCustomCardTextLayout(textLayoutId) ? ' has-custom-layout' : ''}`;
-          editTextBtn.textContent = '✏️';
-          editTextBtn.title = hasCustomCardTextLayout(textLayoutId)
-            ? 'Ajustar texto de la carta (personalizado)'
-            : 'Ajustar texto de la carta';
-          editTextBtn.setAttribute('aria-label', `Ajustar presentación del texto de ${card.name}`);
-          editTextBtn.dataset.textCardId = textLayoutId;
-          editTextBtn.addEventListener('click', async event => {
-            event.preventDefault();
-            event.stopPropagation();
-            editTextBtn.disabled = true;
-            try {
-              await openCardTextLayoutEditor({
-                card,
-                layoutId: textLayoutId,
-                renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
-                onSaved: (_layout, meta) => {
-                  editTextBtn.classList.toggle('has-custom-layout', !!meta?.custom);
-                  editTextBtn.title = meta?.custom ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
-                  if (meta?.nameChanged) setTimeout(() => { if (overlay.isConnected) { overlay.remove(); showEncyclopedia(onBack); } }, 450);
-                }
-              });
-            } catch (error) {
-              console.error('No se pudo abrir el editor de texto:', error);
-              window.alert(`No se pudo abrir el editor de texto: ${error?.message || error}`);
-            } finally {
-              if (editTextBtn.isConnected) editTextBtn.disabled = false;
-            }
-          });
-          textBox.appendChild(editTextBtn);
-        }
+        slot.addEventListener('encyclopedia-stage-change', syncArtEditor);
+        slot.appendChild(editArtBtn); syncArtEditor();
       }
 
       // 23.21.5 — publication authority. Admin sees the entire physical catalog; players
@@ -4362,7 +4341,7 @@ export function showEncyclopedia(onBack) {
       }
 
       fragment.appendChild(slot);
-      entry.records.push({ card, node: slot, owned, enhanced: isAssetTab ? false : enhancedIds.has(card.id), token: isTokenTab, dfcBack: isDfcBackTab, assetOnly: isAssetTab });
+      entry.records.push({ card, node: slot, owned, enhanced: isAssetTab ? false : enhancedIds.has(card.id), evolvable: !isAssetTab && isEvolutionEligibleCard(card), token: isTokenTab, dfcBack: isDfcBackTab, assetOnly: isAssetTab });
     });
     entry.pane.appendChild(fragment);
     entry.empty = document.createElement('div');
@@ -4392,6 +4371,7 @@ export function showEncyclopedia(onBack) {
           cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
           (ownershipFilter !== 'owned' || record.owned) &&
           (!enhancedOnly || record.enhanced) &&
+          (!evolvableOnly || record.evolvable) &&
           (!unpublishedOnly || card.enabled === false) &&
           (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
@@ -4454,6 +4434,11 @@ export function showEncyclopedia(onBack) {
 
   overlay.querySelector('#enc-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
+    refreshGrid();
+  });
+
+  overlay.querySelector('#enc-evolvable-only').addEventListener('change', e => {
+    evolvableOnly = !!e.target.checked;
     refreshGrid();
   });
 
@@ -6676,6 +6661,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   let activeTab = 'criaturas';
   let searchQuery = '';
   let enhancedOnly = false;
+  let evolvableOnly = false;
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
@@ -6759,6 +6745,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-enhanced-only">
           ✨ Solo mejoradas
+        </label>
+        <label class="encyclopedia-filter-option">
+          <input type="checkbox" id="deckbuilder-evolvable-only">
+          <img class="encyclopedia-evolvable-filter-icon" src="./assets/images/ui/evolucionable.png" alt="" aria-hidden="true">
+          ${gameTextHtml('encyclopedia.filter.evolvable')}
         </label>
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-new-only">
@@ -7036,6 +7027,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         cardMatchesColorFilter(card, activeColors) &&
         cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
         (!enhancedOnly || record.isEnhancedTile) &&
+        (!evolvableOnly || isEvolutionEligibleCard(card)) &&
         (!newOnly || isNewlyObtained(card.id)) &&
         (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
@@ -7256,6 +7248,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   overlay.querySelector('#deckbuilder-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
+    refreshPool();
+  });
+
+  overlay.querySelector('#deckbuilder-evolvable-only').addEventListener('change', e => {
+    evolvableOnly = !!e.target.checked;
     refreshPool();
   });
 
