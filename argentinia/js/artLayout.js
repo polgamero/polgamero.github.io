@@ -1,4 +1,4 @@
-// js/artLayout.js — Entrega 23.16.5.2 · DFC face-aware layout keys
+// js/artLayout.js — HF23.3.16.2.23 · DFC + evolution face-aware layout keys
 // Encuadre NO destructivo del arte de las cartas. Los PNG originales nunca se modifican:
 // por cardId sólo persistimos scale/x/y y createCardElement aplica ese transform al <img>.
 //
@@ -23,7 +23,7 @@ export const ART_LAYOUT_LIMITS = Object.freeze({
   maxOffset: 45
 });
 
-const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:front|back))?$/;
+const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:evo1|evo2))?(?:::(?:front|back))?$/;
 const EPSILON = 0.0005;
 
 let activeLayouts = Object.freeze({});

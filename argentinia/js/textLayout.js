@@ -1,4 +1,4 @@
-// js/textLayout.js — Entrega 23.16.5.2 · DFC face-aware layout keys
+// js/textLayout.js — HF23.3.16.2.23 · DFC + evolution face-aware layout keys
 // Ajuste NO destructivo y presentation-only del texto de cada carta.
 // El contenido sigue viniendo exclusivamente de los JSON; por cardId sólo persistimos
 // escala tipográfica, interlineado, tamaño del flavor, separación y altura del rules box.
@@ -35,7 +35,7 @@ export const TEXT_LAYOUT_LIMITS = Object.freeze({
   maxBoxHeight: 52
 });
 
-const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:front|back))?$/;
+const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:evo1|evo2))?(?:::(?:front|back))?$/;
 const EPSILON = 0.0005;
 let activeLayouts = Object.freeze({});
 let remoteLoaded = false;
