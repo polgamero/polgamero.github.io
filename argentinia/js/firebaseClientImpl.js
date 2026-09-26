@@ -30,7 +30,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { isCurrentLegalAcceptance } from './legal.js';
@@ -240,6 +240,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   enhancementCraft: 'store.craft_enhancement',
   workshopUnlock: 'workshop.unlock_machine',
   achievementClaim: 'achievement.claim',
+  achievementNotice: 'achievement.notice',
   essenceConvert: 'essence.convert',
   cardEvolution: 'workshop.evolve_card',
   industrialMix: 'workshop.mix_cards',
@@ -252,7 +253,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
   accountBootstrap: 'acctboot', starterCompletion: 'starter',
-  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', essenceConvert:'essence-convert', cardEvolution:'card-evolution', industrialMix:'industrial-mix', prebuiltPurchase: 'prebuilt',
+  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', achievementNotice:'achievement-notice', essenceConvert:'essence-convert', cardEvolution:'card-evolution', industrialMix:'industrial-mix', prebuiltPurchase: 'prebuilt',
   classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
@@ -1177,6 +1178,13 @@ export async function claimAchievement(uid, achievementId) {
   const outcome=await runEconomyActionAuthority(uid,'achievementClaim',request,operationId=>claimAchievementServer(request.achievementId,operationId));
   const profile=await loadOwnProfileAfterServerMutation(uid);
   if(!profile) throw new Error('ACHIEVEMENT_PROFILE_MISSING_AFTER_COMMIT');
+  return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
+}
+export async function acknowledgeAchievementNotice(uid, achievementId) {
+  const request={achievementId:String(achievementId||'')};
+  const outcome=await runEconomyActionAuthority(uid,'achievementNotice',request,operationId=>acknowledgeAchievementNoticeServer(request.achievementId,operationId));
+  const profile=await loadOwnProfileAfterServerMutation(uid);
+  if(!profile) throw new Error('ACHIEVEMENT_PROFILE_MISSING_AFTER_NOTICE');
   return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
 }
 export async function convertEssence(uid, quantity=1) {

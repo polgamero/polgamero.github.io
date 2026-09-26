@@ -2,7 +2,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "19fd02592bd7cc902905",
+  "buildId": "d07f70cde5b305b6def2",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",

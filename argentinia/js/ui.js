@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -7707,6 +7707,13 @@ export async function showModerationCenter(onBack = null) {
       <div style="margin-top:7px;color:#d7ddd8;line-height:1.4;">${escapeHtml(item.text || '')}</div>
       ${item.response ? `<div style="margin-top:9px;padding:8px;border-left:3px solid #d4af37;background:rgba(212,175,55,.07);"><b>Moderación:</b> ${escapeHtml(item.response)}</div>` : ''}
     </div>`).join('');
+    const unread=unreadModerationCases(cases); setCachedModerationPending(cases);
+    if(unread.length){
+      const acknowledgements=await Promise.allSettled(unread.map(item=>acknowledgeModerationCase(item.caseId)));
+      const remaining=unread.filter((_,index)=>acknowledgements[index]?.status!=='fulfilled');
+      mainMenuPendingState.moderationCount=remaining.length;
+      setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',remaining.length);
+    }
   } catch (error) {
     status.textContent = error?.message || 'No se pudieron cargar tus casos.';
   }
@@ -7730,11 +7737,22 @@ export async function showCommunityStatusAtBoot(status = null) {
     const until = ban.permanent ? 'permanente' : `hasta ${communityDateText(ban.expiresAtMs)}`;
     await showCommunityNotice({ title:'⛔ Restricción de cuenta', allowContact:true, bodyHtml:`<div>Tu cuenta tiene un ban <b>${escapeHtml(until)}</b>.</div><div><b>Motivo:</b> ${escapeHtml(ban.reason || 'Moderación')}</div><div>Mientras esté activo no podés usar chat, desafíos ni iniciar/aceptar operaciones sociales de Mercado. Podés contactar Moderación desde este aviso.</div>` });
   }
-  const answered = (Array.isArray(status?.cases) ? status.cases : []).filter(item => item.status==='resolved' && item.response && !item.acknowledgedAtMs).sort((a,b)=>(b.resolvedAtMs||b.updatedAtMs||0)-(a.resolvedAtMs||a.updatedAtMs||0));
-  if (answered.length) {
-    const item = answered[0];
-    await showCommunityNotice({ title:'🛡️ Moderación respondió', bodyHtml:`<div>${escapeHtml(item.response)}</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>` });
-    try { await acknowledgeModerationCase(item.caseId); } catch (error) { console.warn('No se pudo confirmar lectura del caso:', error); }
+  const cases=Array.isArray(status?.cases)?status.cases:[];
+  const unread=unreadModerationCases(cases).sort((a,b)=>(b.resolvedAtMs||b.updatedAtMs||0)-(a.resolvedAtMs||a.updatedAtMs||0));
+  setCachedModerationPending(cases);
+  if (unread.length) {
+    const item = unread[0];
+    const hasResponse=!!String(item.response||'').trim();
+    const title=hasResponse?'🛡️ Moderación respondió':'🛡️ Caso de Moderación cerrado';
+    const bodyHtml=hasResponse
+      ? `<div>${escapeHtml(item.response)}</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>`
+      : `<div>Moderación cerró tu caso.</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>`;
+    await showCommunityNotice({ title, bodyHtml });
+    try {
+      await acknowledgeModerationCase(item.caseId);
+      mainMenuPendingState.moderationCount=Math.max(0,unread.length-1);
+      setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',mainMenuPendingState.moderationCount);
+    } catch (error) { console.warn('No se pudo confirmar lectura del caso:', error); }
   }
 }
 
@@ -7817,6 +7835,49 @@ async function loadAchievementRuntime(){
   return {stats:stats||{},config:normalizeAchievementsConfig(rawConfig||{})};
 }
 
+const MAIN_MENU_PENDING_REFRESH_MS=5000;
+const mainMenuPendingState={uid:'',achievementCount:null,moderationCount:null,refreshedAt:0,promise:null};
+function pendingAchievementIds(runtime){
+  if(!runtime?.config?.enabled||!state.userProfile) return [];
+  const claimed=normalizeAchievementProfile(state.userProfile?.achievements).claimed;
+  const ids=[];
+  for(const family of ACHIEVEMENT_FAMILIES){
+    const current=achievementMetricValue({profile:state.userProfile,stats:runtime.stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});
+    for(const tier of ACHIEVEMENT_TIERS){const id=achievementId(family.id,tier),row=runtime.config.entries[id];if(row?.enabled&&current>=row.target&&!claimed[id])ids.push(id);}
+  }
+  return ids;
+}
+function unreadModerationCases(cases=[]){return (Array.isArray(cases)?cases:[]).filter(item=>item?.status==='resolved'&&!item?.acknowledgedAtMs);}
+function mainMenuBadgeText(count){const n=Math.max(0,Math.floor(Number(count)||0));return n>99?'99+':String(n);}
+function setMainMenuActionBadge(container,buttonId,count){
+  const btn=container?.querySelector?.(`#${buttonId}`); if(!btn)return;
+  btn.querySelector(':scope > .main-menu-reward-badge[data-account-pending]')?.remove();
+  const n=Math.max(0,Math.floor(Number(count)||0)); if(!n)return;
+  const badge=document.createElement('span');badge.className='main-menu-reward-badge';badge.dataset.accountPending='true';badge.textContent=mainMenuBadgeText(n);btn.appendChild(badge);
+}
+function setCachedModerationPending(cases){
+  if(!state.currentUser?.uid)return;
+  mainMenuPendingState.uid=state.currentUser.uid;mainMenuPendingState.moderationCount=unreadModerationCases(cases).length;
+  setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',mainMenuPendingState.moderationCount);
+}
+function invalidateMainMenuPendingAchievements(){mainMenuPendingState.achievementCount=null;mainMenuPendingState.refreshedAt=0;}
+async function refreshMainMenuPendingActions(container,user,{force=false}={}){
+  const uid=String(user?.uid||''); if(!uid||uid!==String(state.currentUser?.uid||''))return;
+  if(mainMenuPendingState.uid!==uid){mainMenuPendingState.uid=uid;mainMenuPendingState.achievementCount=null;mainMenuPendingState.moderationCount=null;mainMenuPendingState.refreshedAt=0;mainMenuPendingState.promise=null;}
+  const fresh=!force&&mainMenuPendingState.refreshedAt&&(Date.now()-mainMenuPendingState.refreshedAt)<MAIN_MENU_PENDING_REFRESH_MS;
+  if(fresh){setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);return;}
+  if(mainMenuPendingState.promise)return mainMenuPendingState.promise;
+  const promise=Promise.allSettled([loadAchievementRuntime(),getMyModerationCases()]).then(results=>{
+    if(uid!==String(state.currentUser?.uid||''))return;
+    if(results[0].status==='fulfilled')mainMenuPendingState.achievementCount=pendingAchievementIds(results[0].value).length;
+    if(results[1].status==='fulfilled')mainMenuPendingState.moderationCount=unreadModerationCases(results[1].value).length;
+    mainMenuPendingState.refreshedAt=Date.now();
+    setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);
+    setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);
+  }).finally(()=>{if(mainMenuPendingState.promise===promise)mainMenuPendingState.promise=null;});
+  mainMenuPendingState.promise=promise; return promise;
+}
+
 export function showAchievementsScreen(onBack){
   if(!state.currentUser||!state.userProfile) return;
   injectEncyclopediaStyles(); // botones/titular estándar: independiente del orden de navegación
@@ -7852,6 +7913,7 @@ export function showAchievementsScreen(onBack){
         const outcome=await withEconomyButtonPending(btn,()=>claimAchievement(state.currentUser.uid,id),{pendingLabel:gameText('achievements.claiming'),slowLabel:gameText('workshop.server.slow'),disablePeers:claimButtons.filter(node=>node!==btn)});
         if(outcome?.profile) state.userProfile=outcome.profile;
         runtime.stats=await bootstrapPlayerStatistics(state.currentUser.uid)||runtime.stats;
+        invalidateMainMenuPendingAchievements();
         showAchievementClaimRewardModal(row); render();
       }catch(err){console.error('No se pudo reclamar logro:',err);showSimpleAlertModal(escapeHtml(err?.message||gameText('achievements.error.generic')));}
       finally{achievementClaimBusy=false;}
@@ -7867,12 +7929,22 @@ async function maybeShowAchievementUnlockNotice(openAchievements){
   achievementNoticeBusy=true;
   try{
     const {stats,config}=await loadAchievementRuntime(); if(!config.enabled) return;
-    const claimed=normalizeAchievementProfile(state.userProfile?.achievements).claimed;
-    const storageKey=`argentinia.achievementNotices.v1.${uid}`; let notified={}; try{notified=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
+    const achievementState=normalizeAchievementProfile(state.userProfile?.achievements),claimed=achievementState.claimed,serverNotified=achievementState.notified;
+    // Compatibilidad de migración: avisos que ya se mostraron antes de HF23.3.16.2.24
+    // siguen silenciados en este navegador mientras el nuevo ledger server-side gobierna los nuevos.
+    const storageKey=`argentinia.achievementNotices.v1.${uid}`; let legacyNotified={}; try{legacyNotified=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
     let found=null;
-    for(const family of ACHIEVEMENT_FAMILIES){const current=achievementMetricValue({profile:state.userProfile,stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});for(const tier of ACHIEVEMENT_TIERS){const id=achievementId(family.id,tier),row=config.entries[id];if(row?.enabled&&current>=row.target&&!claimed[id]&&!notified[id]){found={id,row,family,tier};break;}}if(found)break;}
+    for(const family of ACHIEVEMENT_FAMILIES){const current=achievementMetricValue({profile:state.userProfile,stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});for(const tier of ACHIEVEMENT_TIERS){const id=achievementId(family.id,tier),row=config.entries[id];if(row?.enabled&&current>=row.target&&!claimed[id]&&!serverNotified[id]&&!legacyNotified[id]){found={id,row,family,tier};break;}}if(found)break;}
     if(!found) return;
-    notified[found.id]=Date.now(); try{localStorage.setItem(storageKey,JSON.stringify(notified));}catch{}
+    // Persistimos ANTES de abrir el modal: un F5, otro navegador o un segundo dispositivo
+    // nunca deben volver a disparar el mismo "LOGRO OBTENIDO". Si el ACK falla, no mostramos
+    // el modal y el pill de Mis Logros sigue dejando visible la recompensa pendiente.
+    let noticeOutcome=null;
+    try{noticeOutcome=await acknowledgeAchievementNotice(uid,found.id);}catch(error){console.warn('No se pudo persistir el aviso único de Logros; se omite el modal para evitar repeticiones:',error);return;}
+    if(noticeOutcome?.profile)state.userProfile=noticeOutcome.profile;
+    mainMenuPendingState.uid=uid; mainMenuPendingState.achievementCount=pendingAchievementIds({stats,config}).length; mainMenuPendingState.refreshedAt=Date.now();
+    setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-achievements',mainMenuPendingState.achievementCount);
+    legacyNotified[found.id]=Date.now();try{localStorage.setItem(storageKey,JSON.stringify(legacyNotified));}catch{}
     injectAchievementStyles();
     injectMulliganStyles(); // modal/botones estándar: no depende de haber abierto Taller u otra pantalla
     const modal=document.createElement('div');
@@ -7936,14 +8008,16 @@ function renderAccountBox(container, user) {
     const inventory = normalizeInventory(state.userProfile?.inventory);
     const chestPending = inventory[CHEST_ITEM_KEYS.standardPack] + inventory[CHEST_ITEM_KEYS.guaranteedMythic];
     const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
+    const cachedAchievementPending = mainMenuPendingState.uid===user.uid ? Math.max(0,Number(mainMenuPendingState.achievementCount)||0) : 0;
+    const cachedModerationPending = mainMenuPendingState.uid===user.uid ? Math.max(0,Number(mainMenuPendingState.moderationCount)||0) : 0;
     // HF23.3.16.2.18 — Moderación vuelve a ser un acceso visible para toda sesión,
     // incluido Admin, para mantener la fila de seis iconos propia y consistente.
-    const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`;
+    const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedModerationPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedModerationPending)}</span>` : ''}</button>`;
     const rewardActionsHTML = `
       <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="Mi Cofre" aria-label="Mi Cofre"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="Mi Taller" aria-label="Mi Taller"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedAchievementPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedAchievementPending)}</span>` : ''}</button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="Mi Perfil" aria-label="Mi Perfil"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="Recompensas diarias" aria-label="Recompensas diarias"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
@@ -8007,6 +8081,7 @@ function renderAccountBox(container, user) {
       if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
       void showModerationCenter(() => { if (mainMenuOverlay) mainMenuOverlay.style.display = ''; });
     });
+    void refreshMainMenuPendingActions(container,user);
     if (user.email === ADMIN_EMAIL) {
       container.querySelector('#menu-admin').addEventListener('click', () => {
         const mainMenuOverlay = document.getElementById('main-menu-overlay');

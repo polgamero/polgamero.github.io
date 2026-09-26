@@ -134,6 +134,12 @@ export function claimAchievementServer(achievementId, operationId = null) {
     action: 'claimAchievement', achievementId:String(achievementId || '')
   });
 }
+export function acknowledgeAchievementNoticeServer(achievementId, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('achievement-notice'),
+    action: 'acknowledgeAchievementNotice', achievementId:String(achievementId || '')
+  });
+}
 export function convertEssenceServer(quantity = 1, operationId = null) {
   return call('economyCraftEnhancement', {
     operationId: operationId || createEconomyOperationId('essence-convert'),

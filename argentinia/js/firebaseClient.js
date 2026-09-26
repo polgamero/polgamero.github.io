@@ -303,6 +303,7 @@ export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug
 export const craftEnhancement = asyncProxy('craftEnhancement');
 export const unlockWorkshopMachine = asyncProxy('unlockWorkshopMachine');
 export const claimAchievement = asyncProxy('claimAchievement');
+export const acknowledgeAchievementNotice = asyncProxy('acknowledgeAchievementNotice');
 export const convertEssence = asyncProxy('convertEssence');
 export const evolveCard = asyncProxy('evolveCard');
 export const mixCards = asyncProxy('mixCards');
