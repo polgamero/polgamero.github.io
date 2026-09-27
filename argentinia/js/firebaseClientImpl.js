@@ -2726,8 +2726,9 @@ export async function fetchTelemetrySessionArchive(sessionId) {
   const summaryLines = [
     'Argentinia — Diagnóstico de partida (reconstruido desde Firestore)',
     `Sesión: ${sessionId}`,
+    `Versión publicada: ${meta.releaseVersion || index.telemetryVersion || '?'}`,
     `Motor base: ${index.engineBaseline || '?'}`,
-    `Telemetría: ${index.telemetryVersion || '?'} / schema ${index.schemaVersion || '?'}`,
+    `Telemetría/motor: ${index.telemetryVersion || '?'} / schema ${index.schemaVersion || '?'}`,
     `Inicio: ${index.startedAtClient || '?'}`,
     `Fin: ${index.endedAtClient || '(sesión todavía abierta)'}`,
     `Modo: ${index.mode || meta.mode || '?'}`,

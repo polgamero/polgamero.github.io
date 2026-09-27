@@ -60,7 +60,7 @@ import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
 import { checkpointSoloRecovery } from './soloRecovery.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, RELEASE_DISPLAY_VERSION } from './version.js';
 import { withEconomyButtonPending, ensureEconomyPendingStyles } from './economyPending.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
@@ -4173,10 +4173,12 @@ export function showEncyclopedia(onBack) {
 
   // HF23.3.16.2.22 — evolución inline en Enciclopedia. Admin puede inspeccionar
   // Base/Evo1/Evo2 sin que eso altere la colección ni el stage persistido del perfil.
+  function encyclopediaPresentationLayoutId(card) { return transformFaceLayoutId(card); }
+
   function mountEncyclopediaTextEditor(slot, displayCard) {
     if (!isAdminUser()) return;
     const textBox = slot.querySelector(':scope > .card .card-text-box');
-    const textLayoutId = transformFaceLayoutId(displayCard);
+    const textLayoutId = encyclopediaPresentationLayoutId(displayCard);
     if (!textBox || !textLayoutId) return;
     textBox.style.position = 'relative';
     const editTextBtn = document.createElement('button');
@@ -4280,7 +4282,7 @@ export function showEncyclopedia(onBack) {
         editArtBtn.type = 'button'; editArtBtn.className = 'encyclopedia-art-edit-btn'; editArtBtn.textContent = '✏️';
         const syncArtEditor = () => {
           const displayCard = slot.__encyclopediaDisplayCard || card;
-          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : transformFaceLayoutId(displayCard);
+          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : encyclopediaPresentationLayoutId(displayCard);
           editArtBtn.dataset.artCardId = artLayoutId;
           editArtBtn.classList.toggle('has-custom-layout', hasCustomArtLayout(artLayoutId));
           editArtBtn.title = hasCustomArtLayout(artLayoutId) ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte';
@@ -4289,9 +4291,9 @@ export function showEncyclopedia(onBack) {
         editArtBtn.addEventListener('click', async event => {
           event.preventDefault(); event.stopPropagation(); editArtBtn.disabled = true;
           const displayCard = slot.__encyclopediaDisplayCard || card;
-          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : transformFaceLayoutId(displayCard);
+          const artLayoutId = displayCard.isToken ? tokenArtLayoutId(displayCard.image, displayCard.name) : encyclopediaPresentationLayoutId(displayCard);
           try {
-            await openArtLayoutEditor({ card:displayCard, layoutId:artLayoutId, renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null), onSaved: (_layout, meta) => { editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom); editArtBtn.title = meta?.custom ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte'; } });
+            await openArtLayoutEditor({ card:displayCard, layoutId: artLayoutId, renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null), onSaved: (_layout, meta) => { editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom); editArtBtn.title = meta?.custom ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte'; } });
           } catch (error) {
             console.error('No se pudo abrir el editor de arte:', error); window.alert(`No se pudo abrir el editor de arte: ${error?.message || error}`);
           } finally { if (editArtBtn.isConnected) editArtBtn.disabled = false; }
@@ -8849,7 +8851,7 @@ export function showAdminPanel(onBack) {
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
-      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Motor ${ENGINE_VERSION}</span></div>
+      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Release ${RELEASE_DISPLAY_VERSION} · Motor ${ENGINE_VERSION}</span></div>
     </div>
     <div class="admin-body">
       <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>
@@ -11886,7 +11888,7 @@ function injectTournamentStyles() {
     .tournament-status{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}.tournament-badge{border:1px solid rgba(212,175,55,.42);border-radius:999px;padding:5px 10px;font-size:12px}.tournament-practice{border-color:#7b7b99;color:#c9c9ef}.tournament-next{font-size:16px;font-weight:800;margin:7px 0}.tournament-warning{color:#f0b47a;font-size:12px;line-height:1.45}
     .tournament-recovery-banner{margin:10px 0 0;padding:11px 13px;border:1px solid rgba(240,180,122,.55);border-radius:10px;background:rgba(91,50,24,.2);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.tournament-recovery-banner.pending{border-color:rgba(212,175,55,.65);background:rgba(80,58,21,.23)}.tournament-recovery-copy{font-size:12px;line-height:1.45;color:#e9d7b4;max-width:900px}.tournament-recovery-actions{display:flex;gap:8px;flex-wrap:wrap}
     .tournament-fixture-panel{margin-top:12px;padding:12px}.tournament-fixture-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.tournament-fixture-head h2{font-size:16px;margin:0}.tournament-drag-hint{font-size:10px;color:#8f846b;white-space:nowrap}
-    .tournament-fixture-wrap{overflow:auto;max-width:100%;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:radial-gradient(circle at 50% 45%,rgba(43,83,111,.16),transparent 31%),linear-gradient(180deg,rgba(14,24,30,.5),rgba(9,12,13,.55));cursor:grab;scrollbar-width:thin;overscroll-behavior:contain}.tournament-fixture-wrap.drag-scroll-active{cursor:grabbing;user-select:none}.tournament-fixture-wrap img{-webkit-user-drag:none;user-drag:none}
+    .tournament-fixture-wrap{overflow-x:auto;overflow-y:hidden;max-width:100%;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:radial-gradient(circle at 50% 45%,rgba(43,83,111,.16),transparent 31%),linear-gradient(180deg,rgba(14,24,30,.5),rgba(9,12,13,.55));cursor:grab;scrollbar-width:thin;overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}.tournament-fixture-wrap.drag-scroll-active{cursor:grabbing;user-select:none}.tournament-fixture-wrap img{-webkit-user-drag:none;user-drag:none}
     .tournament-bracket-board{position:relative;width:1420px;height:560px;margin:0 auto;isolation:isolate;overflow:hidden}.tournament-bracket-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}.tournament-bracket-connectors path{fill:none;stroke:rgba(98,176,222,.55);stroke-width:2}.tournament-bracket-connectors path.final-line{stroke:rgba(212,175,55,.62);stroke-width:2.2}
     .tournament-round-column{position:absolute;top:0;height:560px;width:170px;z-index:2}.tournament-round-column.r16-left{left:20px}.tournament-round-column.qf-left{left:230px}.tournament-round-column.sf-left{left:440px}.tournament-round-column.sf-right{left:810px}.tournament-round-column.qf-right{left:1020px}.tournament-round-column.r16-right{left:1230px}.tournament-round-label{position:absolute;top:8px;left:0;right:0;text-align:center;color:#e8c85b;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;text-shadow:0 2px 6px #000}.tournament-round-reward{display:block;margin-top:2px;font-size:8px;font-weight:600;letter-spacing:0;color:#a8a08d;text-transform:none;white-space:nowrap}
     .tournament-match{position:absolute;left:0;width:170px;min-height:92px;transform:translateY(-50%);box-sizing:border-box;border:1px solid rgba(115,187,228,.28);border-radius:10px;padding:6px;background:linear-gradient(180deg,rgba(17,39,52,.92),rgba(10,20,27,.96));box-shadow:0 8px 22px rgba(0,0,0,.23);display:grid;grid-template-columns:1fr 14px 1fr;align-items:center;gap:3px}.tournament-match.final{position:relative;left:auto;top:auto!important;transform:none;width:184px;min-height:100px;border-color:rgba(212,175,55,.55);background:linear-gradient(180deg,rgba(70,51,18,.74),rgba(17,22,21,.96));box-shadow:0 0 24px rgba(212,175,55,.12),0 8px 22px rgba(0,0,0,.3)}.tournament-vs{font-size:8px;font-weight:900;color:#728a99;text-align:center}.tournament-match.final .tournament-vs{color:#d1b958}
@@ -11894,7 +11896,7 @@ function injectTournamentStyles() {
     .tournament-center-stage{position:absolute;left:618px;top:14px;width:184px;height:532px;z-index:3;display:flex;flex-direction:column;align-items:center}.tournament-final-label{font-size:12px;color:#f0d56a;font-weight:900;letter-spacing:1px;margin:2px 0 7px}.tournament-final-slot{height:108px;display:flex;align-items:flex-start;justify-content:center}.tournament-cup-wrap{width:164px;height:250px;display:flex;align-items:center;justify-content:center;position:relative}.tournament-cup-image{max-width:150px;max-height:238px;width:auto;height:auto;object-fit:contain;filter:drop-shadow(0 14px 18px rgba(0,0,0,.38))}.tournament-cup-fallback{font-size:112px;line-height:1;filter:drop-shadow(0 10px 14px rgba(0,0,0,.38))}.tournament-champion-name{position:absolute;top:0;left:50%;transform:translate(-50%,-35%);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:4px 9px;border:1px solid rgba(212,175,55,.55);border-radius:999px;background:rgba(16,14,9,.9);color:#fff0bf;font-size:10px;font-weight:900}
     .tournament-final-rewards{width:184px;border:1px solid rgba(212,175,55,.38);border-radius:10px;background:rgba(14,18,15,.8);padding:8px 8px 7px;box-sizing:border-box;text-align:center}.tournament-final-rewards-title{font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:#b9ab86;font-weight:900;margin-bottom:5px}.tournament-final-reward-row{display:flex;align-items:center;justify-content:center;gap:8px}.tournament-final-reward-item{display:flex;align-items:center;gap:3px;color:#f5df9c;font-size:11px;font-weight:900}.tournament-final-reward-item .coin-icon{width:24px;height:24px;object-fit:contain}.tournament-final-reward-item .reward-pack-icon{width:30px;height:30px;object-fit:contain}.tournament-final-loss{font-size:8px;color:#a99e83;margin-top:3px}
     @media(max-width:900px){.tournament-rules-grid{grid-template-columns:1fr}.tournament-drag-hint{display:none}}
-    @media(max-width:700px){#tournament-overlay{padding:10px}.tournament-title{font-size:22px}.tournament-header{align-items:center;gap:9px}.tournament-rules-hero{align-items:flex-start;padding:14px}.tournament-rules-trophy{font-size:34px}.tournament-panel{padding:10px}.tournament-bracket-board{transform-origin:top left}.tournament-fixture-wrap{touch-action:pan-x pan-y}}
+    @media(max-width:700px){#tournament-overlay{padding:10px}.tournament-title{font-size:22px}.tournament-header{align-items:center;gap:9px}.tournament-rules-hero{align-items:flex-start;padding:14px}.tournament-rules-trophy{font-size:34px}.tournament-panel{padding:10px}.tournament-bracket-board{transform-origin:top left}}
   `;
   document.head.appendChild(style);
 }
@@ -11981,7 +11983,48 @@ export function showTournamentScreen(onBack, onPlayMatch) {
 
   const bindFixtureDrag=()=>{
     const wrap=body.querySelector('.tournament-fixture-wrap');
-    if(wrap)enableDesktopDragScroll(wrap,{axis:'both'});
+    if(!wrap)return;
+    // HF23.3.16.2.25 — la llave sólo necesita desplazamiento horizontal propio.
+    // El eje vertical pertenece a la pantalla de Torneo; no debe quedar atrapado dentro
+    // del scroller horizontal (rueda desktop ni gesto vertical touch).
+    enableDesktopDragScroll(wrap,{axis:'x'});
+
+    wrap.addEventListener('wheel',event=>{
+      if(Math.abs(event.deltaY)<=Math.abs(event.deltaX)||!event.deltaY)return;
+      const before=overlay.scrollTop;
+      overlay.scrollTop+=event.deltaY;
+      if(overlay.scrollTop!==before)event.preventDefault();
+    },{passive:false});
+
+    let touchStartX=0;
+    let touchStartY=0;
+    let overlayStartTop=0;
+    let touchMode='';
+    wrap.addEventListener('touchstart',event=>{
+      const touch=event.touches?.[0];
+      if(!touch)return;
+      touchStartX=touch.clientX;
+      touchStartY=touch.clientY;
+      overlayStartTop=overlay.scrollTop;
+      touchMode='';
+    },{passive:true});
+    wrap.addEventListener('touchmove',event=>{
+      const touch=event.touches?.[0];
+      if(!touch)return;
+      const dx=touch.clientX-touchStartX;
+      const dy=touch.clientY-touchStartY;
+      if(!touchMode && Math.abs(dx)+Math.abs(dy)>=7){
+        touchMode=Math.abs(dy)>Math.abs(dx)*1.08?'vertical':'horizontal';
+      }
+      if(touchMode!=='vertical')return;
+      const maxTop=Math.max(0,overlay.scrollHeight-overlay.clientHeight);
+      const next=Math.max(0,Math.min(maxTop,overlayStartTop-dy));
+      if(next!==overlay.scrollTop)overlay.scrollTop=next;
+      event.preventDefault();
+    },{passive:false});
+    const clearTouchMode=()=>{touchMode='';};
+    wrap.addEventListener('touchend',clearTouchMode,{passive:true});
+    wrap.addEventListener('touchcancel',clearTouchMode,{passive:true});
   };
 
   const retryPendingSettlement=async(tournament,pending)=>{

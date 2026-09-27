@@ -1,8 +1,11 @@
 {
+  "releaseVersion": "23.22.0",
+  "releaseHotfix": "",
+  "releaseDisplayVersion": "23.22.0",
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "d07f70cde5b305b6def2",
+  "buildId": "3902633f76465277f320",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",

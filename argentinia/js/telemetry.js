@@ -16,7 +16,7 @@
 // En multiplayer la mano/mazo rival siguen siendo sólo cantidades/placeholders, exactamente
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
-import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
+import { ENGINE_VERSION, ENGINE_BASELINE, RELEASE_DISPLAY_VERSION } from './version.js';
 import { getAudioRuntimeStatus, setQuickMusicLevel, setQuickSfxLevel } from './audioManager.js';
 import { gameText } from './gameTexts.js';
 import { getGameRngSnapshot } from './gameRng.js';
@@ -1268,6 +1268,7 @@ export function startTelemetrySession(meta = {}) {
   currentSession = {
     schemaVersion: TELEMETRY_SCHEMA_VERSION,
     telemetryVersion: TELEMETRY_VERSION,
+    releaseVersion: RELEASE_DISPLAY_VERSION,
     engineBaseline: ENGINE_BASELINE,
     sessionId: makeId('game'),
     startedAt: nowIso(),
@@ -1286,6 +1287,7 @@ export function startTelemetrySession(meta = {}) {
       segmentIndex: Number.isFinite(Number(meta.segmentIndex)) ? Number(meta.segmentIndex) : null,
       activeElapsedBaseMs: Math.max(0, Number(meta.activeElapsedBaseMs) || 0),
       engineVersion: ENGINE_VERSION,
+      releaseVersion: RELEASE_DISPLAY_VERSION,
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       page: typeof location !== 'undefined' ? location.pathname : null,
       localPlayerName: typeof providers.getLocalPlayerName === 'function' ? providers.getLocalPlayerName() : null,
@@ -1533,8 +1535,9 @@ function humanSummary(session) {
   return [
     `Argentinia — Diagnóstico de partida`,
     `Sesión: ${session.sessionId}`,
+    `Versión publicada: ${session.releaseVersion || session.meta?.releaseVersion || session.telemetryVersion || '?'}`,
     `Motor base: ${session.engineBaseline}`,
-    `Telemetría: ${session.telemetryVersion} / schema ${session.schemaVersion}`,
+    `Telemetría/motor: ${session.telemetryVersion} / schema ${session.schemaVersion}`,
     session.replay ? `Replay: v${session.replay.formatVersion} · ${session.replay.hashAlgorithm} · seed ${session.replay.rngAtSessionStart?.seedHex || session.replay.rngAtSessionStart?.seed || '?'}` : null,
     `Inicio: ${session.startedAt}`,
     `Fin: ${session.endedAt || '(sesión todavía abierta)'}`,
@@ -1576,6 +1579,7 @@ function exportableSession(session) {
   const clean = {
     schemaVersion: session.schemaVersion,
     telemetryVersion: session.telemetryVersion,
+    releaseVersion: session.releaseVersion || session.meta?.releaseVersion || null,
     engineBaseline: session.engineBaseline,
     sessionId: session.sessionId,
     startedAt: session.startedAt,
@@ -1810,12 +1814,13 @@ function buildPanel() {
   recToggle.type = 'button';
   recToggle.textContent = '🐞';
   recToggle.setAttribute('aria-expanded', 'false');
-  recToggle.setAttribute('aria-label', 'Desplegar panel de reporte de bugs');
+  recToggle.setAttribute('aria-label', `Desplegar panel de reporte de bugs · Argentinia ${RELEASE_DISPLAY_VERSION}`);
+  recToggle.title = `Reportar bug · Argentinia ${RELEASE_DISPLAY_VERSION}`;
   recToggle.addEventListener('click', () => {
     const expanded = panel.classList.toggle('arg-mobile-telemetry-expanded');
     recToggle.textContent = expanded ? '✕ 🐞' : '🐞';
     recToggle.setAttribute('aria-expanded', String(expanded));
-    recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
+    recToggle.setAttribute('aria-label', expanded ? `Colapsar panel de reporte de bugs · Argentinia ${RELEASE_DISPLAY_VERSION}` : `Desplegar panel de reporte de bugs · Argentinia ${RELEASE_DISPLAY_VERSION}`);
   });
 
   // HF16 — control rápido universal de Audio. Vive siempre pegado al acceso de bugs tanto en menú
@@ -1864,11 +1869,11 @@ function updatePanelStatus() {
   if (!statusEl || !bugsEl) return;
   refreshGameplayMusicToggle();
   if (!currentSession) {
-    statusEl.textContent = `🧪 v${ENGINE_VERSION_SHORT}`;
+    statusEl.textContent = `🧪 v${RELEASE_DISPLAY_VERSION}`;
     bugsEl.textContent = '🐞 0';
   } else {
     const ended = !!currentSession.endedAt;
-    statusEl.textContent = ended ? `🧪 v${ENGINE_VERSION_SHORT} · ${currentSession.events.length}` : `🔴 v${ENGINE_VERSION_SHORT} · ${currentSession.events.length}`;
+    statusEl.textContent = ended ? `🧪 v${RELEASE_DISPLAY_VERSION} · ${currentSession.events.length}` : `🔴 v${RELEASE_DISPLAY_VERSION} · ${currentSession.events.length}`;
     bugsEl.textContent = `🐞 ${currentSession.bugCandidates.length}`;
   }
 
