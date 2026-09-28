@@ -317,6 +317,7 @@ function ensureMobileTouchUI() {
     <div id="arg-mobile-card-preview-stage"></div>
     <div class="arg-mobile-preview-actions">
       <button id="arg-mobile-preview-action" class="arg-mobile-preview-action-btn" type="button">USAR</button>
+      <button id="arg-mobile-preview-secondary-action" class="arg-mobile-preview-action-btn hidden" type="button">ACTIVAR HABILIDAD</button>
       <button id="arg-mobile-preview-suspend" class="arg-mobile-preview-action-btn arg-mobile-preview-suspend-btn hidden" type="button">⏳ EN ESPERA</button>
       <button id="arg-mobile-preview-close" class="arg-mobile-preview-close-btn" type="button">CERRAR</button>
     </div>`;
@@ -555,6 +556,9 @@ function getPreviewActionForCard(card) {
   if (zone.id === 'local-hand') return { label: 'JUGAR CARTA', clickTarget: card };
   if (zone.id === 'local-planeswalkers') return { label: 'HABILIDADES', clickTarget: card };
   if (zone.id === 'local-support') return { label: 'ACTIVAR / USAR', clickTarget: card };
+  if (zone.id === 'local-lands' && card.dataset.mobileLandSplitActions === '1') {
+    return { label: 'GENERAR MANÁ', clickTarget: card, landSplit: true };
+  }
   if (zone.id === 'local-lands') return { label: 'USAR TIERRA', clickTarget: card };
   if (zone.id === 'local-combat') return { label: 'ACCIONAR', clickTarget: card };
   return null;
@@ -565,8 +569,9 @@ function openCardPreview(card) {
   closeMobileLayers({ keepPreview: true });
   const stage = document.getElementById('arg-mobile-card-preview-stage');
   const actionBtn = document.getElementById('arg-mobile-preview-action');
+  const secondaryActionBtn = document.getElementById('arg-mobile-preview-secondary-action');
   const suspendPreviewBtn = document.getElementById('arg-mobile-preview-suspend');
-  if (!stage || !actionBtn || !suspendPreviewBtn) return;
+  if (!stage || !actionBtn || !secondaryActionBtn || !suspendPreviewBtn) return;
 
   const clone = card.cloneNode(true);
   clone.classList.remove('tapped', 'targetable', 'mana-payable', 'paying', 'attacking', 'blocking', 'selected-blocker', 'crewing-selected', 'card-with-instant-action');
@@ -579,9 +584,17 @@ function openCardPreview(card) {
 
   const action = getPreviewActionForCard(card);
   actionBtn.classList.toggle('hidden', !action);
+  secondaryActionBtn.classList.toggle('hidden', !action?.landSplit);
+  secondaryActionBtn.onclick = null;
   if (action) {
     actionBtn.textContent = action.label;
-    actionBtn.onclick = () => invokeOriginalAction(action.clickTarget || card);
+    if (action.landSplit) {
+      actionBtn.onclick = () => invokeMobileLandAction(action.clickTarget || card, 'mana');
+      secondaryActionBtn.textContent = 'ACTIVAR HABILIDAD';
+      secondaryActionBtn.onclick = () => invokeMobileLandAction(action.clickTarget || card, 'ability');
+    } else {
+      actionBtn.onclick = () => invokeOriginalAction(action.clickTarget || card);
+    }
   } else {
     actionBtn.onclick = null;
   }
@@ -596,6 +609,16 @@ function openCardPreview(card) {
   suspendPreviewBtn.onclick = suspendAvailable && !originalSuspend.disabled ? () => invokeOriginalAction(originalSuspend) : null;
 
   document.documentElement.classList.add(CARD_PREVIEW_OPEN_CLASS);
+}
+
+function invokeMobileLandAction(target, action) {
+  closeMobileLayers();
+  if (!target?.isConnected) return;
+  target.dispatchEvent(new CustomEvent('argentinia:mobile-land-action', {
+    bubbles: false,
+    cancelable: true,
+    detail: { action }
+  }));
 }
 
 function invokeOriginalAction(target) {

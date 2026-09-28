@@ -806,17 +806,33 @@ export async function contactModeration({ subject = '', text = '' } = {}) {
   const response = await communityActionServer('contact', { subject:String(subject||''), text:String(text||'') });
   return response?.case || null;
 }
-export async function reportCommunityUser(targetUid, reason = '') {
-  const response = await communityActionServer('report_user', { targetUid:String(targetUid||''), reason:String(reason||'') });
+export async function reportCommunityUser(targetUid, reason = '', subject = '') {
+  const response = await communityActionServer('report_user', { targetUid:String(targetUid||''), reason:String(reason||''), subject:String(subject||'') });
   return response?.case || null;
 }
-export async function reportLobbyMessage(messageSeq, reason = '') {
-  const response = await communityActionServer('report_lobby_message', { messageSeq:Math.floor(Number(messageSeq)||0), reason:String(reason||'') });
+export async function reportLobbyMessage(messageSeq, reason = '', subject = '') {
+  const response = await communityActionServer('report_lobby_message', { messageSeq:Math.floor(Number(messageSeq)||0), reason:String(reason||''), subject:String(subject||'') });
   return response?.case || null;
 }
 export async function getMyModerationCases() {
   const response = await communityActionServer('my_cases');
   return Array.isArray(response?.cases) ? response.cases : [];
+}
+export async function getModerationCaseThread(caseId) {
+  const response = await communityActionServer('case_thread', { caseId:String(caseId||'') });
+  return response?.thread || { case:null, messages:[] };
+}
+export async function markModerationCaseRead(caseId) {
+  const response = await communityActionServer('mark_case_read', { caseId:String(caseId||'') });
+  return response?.acknowledgement || null;
+}
+export async function replyModerationCase(caseId, text) {
+  const response = await communityActionServer('case_reply', { caseId:String(caseId||''), text:String(text||'') });
+  return response?.case || null;
+}
+export async function closeModerationCase(caseId) {
+  const response = await communityActionServer('close_case', { caseId:String(caseId||'') });
+  return response?.case || null;
 }
 export async function acknowledgeModerationCase(caseId) {
   const response = await communityActionServer('ack_case', { caseId:String(caseId||'') });
@@ -830,13 +846,21 @@ export async function acknowledgeTradeNotification(notificationId) {
   const response = await communityActionServer('ack_trade_notification', { notificationId:String(notificationId||'') });
   return response?.acknowledgement || null;
 }
-export async function createTradeDispute(tradeId, reason = '') {
-  const response = await communityActionServer('trade_dispute', { tradeId:String(tradeId||''), reason:String(reason||''), subject:'Disputa de Mercado de Pases' });
+export async function createTradeDispute(tradeId, reason = '', subject = 'Disputa de Mercado de Pases') {
+  const response = await communityActionServer('trade_dispute', { tradeId:String(tradeId||''), reason:String(reason||''), subject:String(subject||'Disputa de Mercado de Pases') });
   return response?.case || null;
+}
+export async function adminGetModerationPendingCount() {
+  const response = await communityActionServer('admin_pending_cases');
+  return Math.max(0,Math.floor(Number(response?.count)||0));
+}
+export async function adminGetModerationCases() {
+  const response = await communityActionServer('admin_cases');
+  return Array.isArray(response?.cases) ? response.cases : [];
 }
 export async function adminGetCommunityDashboard() {
   const response = await communityActionServer('admin_dashboard');
-  return response?.dashboard || { policy:{blockedWords:[]}, bans:[], cases:[] };
+  return response?.dashboard || { policy:{blockedWords:[]}, bans:[], cases:[], pendingAdminCount:0 };
 }
 export async function adminSetCommunityBlockedWords(blockedWords = []) {
   const response = await communityActionServer('admin_set_blocked_words', { blockedWords:Array.isArray(blockedWords)?blockedWords:[] });
@@ -850,8 +874,16 @@ export async function adminUnbanCommunityUser(targetUid, reason = '') {
   const response = await communityActionServer('admin_unban', { targetUid:String(targetUid||''), reason:String(reason||'') });
   return response?.ban || null;
 }
-export async function adminResolveCommunityCase(caseId, responseText) {
-  const response = await communityActionServer('admin_resolve_case', { caseId:String(caseId||''), response:String(responseText||'') });
+export async function adminReplyModerationCase(caseId, text) {
+  const response = await communityActionServer('admin_case_reply', { caseId:String(caseId||''), text:String(text||'') });
+  return response?.case || null;
+}
+export async function adminResolveCommunityCase(caseId, resolutionReason = 'resolved', resolutionNote = '') {
+  const response = await communityActionServer('admin_resolve_case', { caseId:String(caseId||''), resolutionReason:String(resolutionReason||'resolved'), resolutionNote:String(resolutionNote||'') });
+  return response?.case || null;
+}
+export async function adminReopenModerationCase(caseId) {
+  const response = await communityActionServer('admin_reopen_case', { caseId:String(caseId||'') });
   return response?.case || null;
 }
 export async function refreshLobbyDirectoryAuthority() {

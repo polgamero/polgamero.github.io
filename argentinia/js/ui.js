@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -106,7 +106,7 @@ import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, descr
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation, queueWorkshopUnlockAnimation } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
-import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
+import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
 import { isSagaCard, sagaUiState } from './sagaEngine.js';
 import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from './botDifficulty.js';
 import * as headlessChoice from './headlessChoiceEngine.js';
@@ -1795,6 +1795,20 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const card = itemObj.card || itemObj;
   const isBattlefieldLand = !!itemObj?.card && isLandPermanent(itemObj) && (zone === 'land' || zone === 'combat' || zone === 'support');
   const el = document.createElement('div');
+
+  // 23.22.0 HF1 — Mobile preview puede ofrecer maná/utilidad directamente sin abrir
+  // el selector intermedio. La decisión se deriva de las características EFECTIVAS de
+  // la Tierra (Blood Moon/tipos básicos incluidos), no sólo de su texto impreso.
+  if (isLocal && zone === 'land' && isBattlefieldLand) {
+    const hasEffectiveMana = !!getEffectiveLandManaAbility(state, itemObj, true);
+    const hasEffectiveUtility = getEffectiveLandActivatedAbilities(state, itemObj, true).length > 0;
+    if (hasEffectiveMana && hasEffectiveUtility) el.dataset.mobileLandSplitActions = '1';
+    el.addEventListener('argentinia:mobile-land-action', event => {
+      const action = event?.detail?.action;
+      if (action !== 'mana' && action !== 'ability') return;
+      tapLocalLand(itemObj, action);
+    });
+  }
   
   // HF23.3.5 — una criatura puede conservar el flag histórico de mareo pero recibir
   // Apuro dinámicamente (Aura/Equipo/efecto). La UI debe reflejar la legalidad efectiva.
@@ -7648,7 +7662,40 @@ function communityDateText(ms) {
   return value ? new Date(value).toLocaleString('es-AR') : '—';
 }
 
-function showModerationComposer({ title = 'Contactar Moderación', placeholder = 'Contanos qué pasó…', submitLabel = 'ENVIAR', onSubmit } = {}) {
+function ensureModerationInboxStyles(){
+  if(document.getElementById('moderation-inbox-hf2-styles'))return;
+  const style=document.createElement('style');style.id='moderation-inbox-hf2-styles';style.textContent=`@media(max-width:760px){.moderation-center-grid,.moderation-admin-grid{grid-template-columns:1fr!important}.moderation-admin-grid>div:first-child{max-height:34vh;overflow:auto}}`;document.head.appendChild(style);
+}
+const MODERATION_RESOLUTION_LABELS=Object.freeze({
+  resolved:'Resuelto',no_action_needed:'Sin acción necesaria',insufficient_information:'Información insuficiente',
+  unverified:'No se pudo comprobar',duplicate:'Duplicado',out_of_scope:'Fuera de alcance',
+  moderation_action:'Medida de moderación aplicada',other:'Otro',closed_by_user:'Cerrado por el jugador'
+});
+function moderationResolutionLabel(key){return MODERATION_RESOLUTION_LABELS[String(key||'')]||'Resuelto';}
+function moderationCaseStatusText(item={},admin=false){
+  if(item.status==='resolved') return `✅ Resuelto${item.resolutionReason?` · ${moderationResolutionLabel(item.resolutionReason)}`:''}`;
+  if(item.pendingRole==='admin') return admin?'🟠 Pendiente de respuesta':'🟡 Abierto · Esperando Moderación';
+  return admin?'🟡 Abierto · Esperando al jugador':'🟢 Abierto · Esperando tu respuesta';
+}
+function moderationMessageHtml(row={},admin=false){
+  const role=String(row.senderRole||'system');
+  const who=role==='user'?(admin?'Jugador':'Vos'):role==='moderation'?'Moderación':'Sistema';
+  const accent=role==='moderation'?'#d4af37':role==='user'?'#80b8ff':'#9aa59d';
+  return `<div style="padding:10px 11px;border-left:3px solid ${accent};background:rgba(255,255,255,.035);border-radius:7px;">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;"><b>${escapeHtml(who)}</b><span style="font-size:11px;color:#9ea99f;">${escapeHtml(communityDateText(row.createdAtMs))}</span></div>
+    <div style="margin-top:5px;color:#d7ddd8;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(row.body||'')}</div>
+  </div>`;
+}
+function renderAdminModerationCaseList(container,cases=[],onSelect){
+  if(!container)return;
+  container.innerHTML=cases.length?`<div style="display:grid;gap:7px;">${cases.map(item=>`<button type="button" data-community-case-id="${escapeHtml(item.caseId||'')}" style="text-align:left;width:100%;border:1px solid ${item.status==='open'&&item.pendingRole==='admin'?'rgba(226,156,62,.65)':'rgba(212,175,55,.24)'};border-radius:9px;background:rgba(255,255,255,.025);color:#e8e1cb;padding:9px 10px;cursor:pointer;">
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:flex-start;"><b>${escapeHtml(item.subject||'Caso de Moderación')}</b><span style="font-size:11px;color:#9ea99f;white-space:nowrap;">${escapeHtml(communityDateText(item.updatedAtMs||item.createdAtMs))}</span></div>
+    <div style="margin-top:4px;font-size:12px;color:#c7d0c9;">${escapeHtml(moderationCaseStatusText(item,true))} · ${escapeHtml(item.reporterUsername||item.reporterUid||'Jugador')} · ${escapeHtml(item.kind||'consulta')}</div>
+  </button>`).join('')}</div>`:'<div class="admin-debug-empty">No hay casos con esos filtros.</div>';
+  container.querySelectorAll?.('[data-community-case-id]').forEach(btn=>btn.addEventListener('click',()=>onSelect?.(btn.dataset.communityCaseId||'')));
+}
+
+function showModerationComposer({ title = 'Contactar Moderación', subject = '', subjectPlaceholder = 'Asunto', placeholder = 'Contanos qué pasó…', submitLabel = 'ENVIAR', onSubmit } = {}) {
   injectMulliganStyles();
   const layer = document.createElement('div');
   layer.className = 'gy-modal-overlay';
@@ -7656,70 +7703,78 @@ function showModerationComposer({ title = 'Contactar Moderación', placeholder =
   layer.innerHTML = `<div class="gy-modal-content" style="max-width:520px;width:min(92vw,520px);">
     <div class="gy-modal-header"><h3>🛡️ ${escapeHtml(title)}</h3></div>
     <div style="display:flex;flex-direction:column;gap:10px;padding:16px;">
+      <input id="moderation-compose-subject" maxlength="100" value="${escapeHtml(subject)}" placeholder="${escapeHtml(subjectPlaceholder)}" style="width:100%;box-sizing:border-box;background:#111a14;color:#efe4bc;border:1px solid rgba(212,175,55,.5);border-radius:8px;padding:10px;">
       <textarea id="moderation-compose-text" maxlength="1000" rows="6" placeholder="${escapeHtml(placeholder)}" style="width:100%;box-sizing:border-box;background:#111a14;color:#efe4bc;border:1px solid rgba(212,175,55,.5);border-radius:8px;padding:10px;resize:vertical;"></textarea>
       <div id="moderation-compose-status" style="min-height:18px;color:#e5c978;font-size:12px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;"><button class="mulligan-btn mulligan-btn-mull" id="moderation-compose-cancel">CANCELAR</button><button class="mulligan-btn mulligan-btn-keep" id="moderation-compose-send">${escapeHtml(submitLabel)}</button></div>
     </div>
   </div>`;
   document.body.appendChild(layer);
-  const text = layer.querySelector('#moderation-compose-text');
-  const status = layer.querySelector('#moderation-compose-status');
-  const send = layer.querySelector('#moderation-compose-send');
+  const subjectEl=layer.querySelector('#moderation-compose-subject'),text=layer.querySelector('#moderation-compose-text'),status=layer.querySelector('#moderation-compose-status'),send=layer.querySelector('#moderation-compose-send');
   layer.querySelector('#moderation-compose-cancel')?.addEventListener('click', () => layer.remove());
   send?.addEventListener('click', async () => {
+    const cleanSubject=String(subjectEl?.value||'').replace(/\s+/g,' ').trim();
     const value = String(text?.value || '').replace(/\s+/g,' ').trim();
-    if (!value) { status.textContent = 'Escribí un mensaje antes de enviar.'; return; }
+    if (!cleanSubject) { status.textContent = 'Escribí un asunto.'; subjectEl?.focus?.(); return; }
+    if (!value) { status.textContent = 'Escribí un mensaje antes de enviar.'; text?.focus?.(); return; }
     send.disabled = true; status.textContent = 'Enviando…';
-    try {
-      await onSubmit?.(value);
-      status.textContent = '✓ Enviado a Moderación.';
-      setTimeout(() => layer.remove(), 650);
-    } catch (error) {
-      status.textContent = error?.message || 'No se pudo enviar. Probá de nuevo.';
-      send.disabled = false;
-    }
+    try { await onSubmit?.({subject:cleanSubject,text:value}); status.textContent = '✓ Enviado a Moderación.'; setTimeout(() => layer.remove(), 650); }
+    catch (error) { status.textContent = error?.message || 'No se pudo enviar. Probá de nuevo.'; send.disabled = false; }
   });
-  setTimeout(() => text?.focus?.(), 0);
+  setTimeout(() => (subjectEl?.value?text:subjectEl)?.focus?.(), 0);
   return layer;
 }
 
-export async function showModerationCenter(onBack = null) {
-  injectMulliganStyles();
-  injectAdminPanelStyles();
-  injectEncyclopediaStyles();
-  document.getElementById('moderation-center-overlay')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'moderation-center-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
-  overlay.innerHTML = `<div style="max-width:780px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><h2 style="margin:0;color:#f0e0b0;flex:1 1 auto;min-width:150px;">🛡️ Moderación</h2><button class="admin-save-btn" id="moderation-center-new" style="width:auto;max-width:220px;flex:0 0 auto;margin:0 0 0 auto;white-space:nowrap;padding:10px 18px;">✉️ Nuevo mensaje</button></div>
-    <div class="admin-section"><div class="admin-section-title">TUS CASOS Y RESPUESTAS</div><div id="moderation-center-status" class="admin-debug-summary">Cargando…</div><div id="moderation-center-cases" style="display:grid;gap:10px;margin-top:12px;"></div></div>
-  </div>`;
-  document.body.appendChild(overlay);
-  const close = () => { overlay.remove(); onBack?.(); };
-  overlay.querySelector('#moderation-center-back')?.addEventListener('click', close);
-  overlay.querySelector('#moderation-center-new')?.addEventListener('click', () => showModerationComposer({ onSubmit:text => contactModeration({ subject:'Mensaje del jugador', text }) }));
-  const status = overlay.querySelector('#moderation-center-status');
-  const list = overlay.querySelector('#moderation-center-cases');
-  try {
-    const cases = await getMyModerationCases();
-    status.textContent = cases.length ? `${cases.length} caso${cases.length===1?'':'s'} registrado${cases.length===1?'':'s'}.` : 'Todavía no tenés casos.';
-    list.innerHTML = cases.map(item => `<div style="border:1px solid rgba(212,175,55,.24);border-radius:9px;padding:11px;background:rgba(255,255,255,.025);">
-      <div style="display:flex;gap:8px;justify-content:space-between;"><b>${item.status==='resolved'?'✅ Resuelto':'🟡 Abierto'} · ${escapeHtml(item.kind || 'consulta')}</b><span style="font-size:11px;color:#9ea99f;">${escapeHtml(communityDateText(item.createdAtMs))}</span></div>
-      <div style="margin-top:7px;color:#d7ddd8;line-height:1.4;">${escapeHtml(item.text || '')}</div>
-      ${item.response ? `<div style="margin-top:9px;padding:8px;border-left:3px solid #d4af37;background:rgba(212,175,55,.07);"><b>Moderación:</b> ${escapeHtml(item.response)}</div>` : ''}
-    </div>`).join('');
-    const unread=unreadModerationCases(cases); setCachedModerationPending(cases);
-    if(unread.length){
-      const acknowledgements=await Promise.allSettled(unread.map(item=>acknowledgeModerationCase(item.caseId)));
-      const remaining=unread.filter((_,index)=>acknowledgements[index]?.status!=='fulfilled');
-      mainMenuPendingState.moderationCount=remaining.length;
-      setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',remaining.length);
-    }
-  } catch (error) {
-    status.textContent = error?.message || 'No se pudieron cargar tus casos.';
-  }
+async function renderModerationThreadDetail(container,caseId,{admin=false,onChanged}={}){
+  if(!container||!caseId)return;
+  container.innerHTML='<div class="admin-debug-summary">Cargando conversación…</div>';
+  try{
+    const thread=await getModerationCaseThread(caseId); const item=thread?.case||{}; const messages=Array.isArray(thread?.messages)?thread.messages:[];
+    await markModerationCaseRead(caseId).catch(()=>null);
+    const evidence=item.messageSnapshot?.text?`<div style="margin-top:8px;padding:8px;border:1px solid rgba(255,255,255,.12);border-radius:7px;"><b>Mensaje reportado:</b> “${escapeHtml(item.messageSnapshot.text)}”</div>`:'';
+    const trade=item.tradeSnapshot?`<div style="margin-top:8px;font-size:12px;color:#aab5ad;">Disputa vinculada al intercambio ${escapeHtml(item.tradeId||'')}</div>`:'';
+    const canReply=item.status==='open';
+    container.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;"><div><h3 style="margin:0;color:#f0e0b0;">${escapeHtml(item.subject||'Caso de Moderación')}</h3><div style="margin-top:4px;font-size:12px;color:#aab5ad;">${escapeHtml(moderationCaseStatusText(item,admin))} · Caso ${escapeHtml(item.caseId||'')}</div>${admin?`<div style="margin-top:3px;font-size:12px;color:#aab5ad;">${escapeHtml(item.reporterUsername||'Jugador')} · ${escapeHtml(item.reporterEmailSnapshot||item.reporterUid||'')}</div>`:''}</div></div>
+      ${evidence}${trade}<div style="display:grid;gap:8px;margin-top:12px;max-height:44vh;overflow:auto;padding-right:3px;">${messages.map(row=>moderationMessageHtml(row,admin)).join('')||'<div class="admin-debug-empty">Sin mensajes.</div>'}</div>
+      ${canReply?`<div style="margin-top:12px;"><textarea id="moderation-thread-reply" maxlength="1000" rows="4" placeholder="${admin?'Responder al jugador…':'Responder a Moderación…'}" style="width:100%;box-sizing:border-box;background:#111a14;color:#efe4bc;border:1px solid rgba(212,175,55,.45);border-radius:8px;padding:10px;resize:vertical;"></textarea></div>`:''}
+      <div id="moderation-thread-action-status" style="min-height:18px;margin-top:7px;color:#e5c978;font-size:12px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px;">${canReply?`<button class="admin-save-btn" id="moderation-thread-reply-send" style="width:auto;margin:0;">ENVIAR RESPUESTA</button>`:''}${!admin&&canReply?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-close">CERRAR MI CASO</button>':''}${admin&&canReply?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-resolve">RESOLVER CASO</button>':''}${admin&&item.status==='resolved'?'<button class="admin-save-btn" id="moderation-thread-reopen" style="width:auto;margin:0;">REABRIR CASO</button>':''}</div>`;
+    const actionStatus=container.querySelector('#moderation-thread-action-status');
+    container.querySelector('#moderation-thread-reply-send')?.addEventListener('click',async e=>{const body=container.querySelector('#moderation-thread-reply')?.value?.trim()||'';if(!body){actionStatus.textContent='Escribí una respuesta.';return;}e.currentTarget.disabled=true;actionStatus.textContent='Enviando…';try{if(admin)await adminReplyModerationCase(caseId,body);else await replyModerationCase(caseId,body);await onChanged?.(caseId);}catch(err){actionStatus.textContent=err?.message||'No se pudo responder.';e.currentTarget.disabled=false;}});
+    container.querySelector('#moderation-thread-close')?.addEventListener('click',async e=>{if(!window.confirm('¿Cerrar este caso? El historial seguirá visible.'))return;e.currentTarget.disabled=true;try{await closeModerationCase(caseId);await onChanged?.(caseId);}catch(err){actionStatus.textContent=err?.message||'No se pudo cerrar el caso.';e.currentTarget.disabled=false;}});
+    container.querySelector('#moderation-thread-resolve')?.addEventListener('click',()=>showModerationResolveDialog(caseId,onChanged));
+    container.querySelector('#moderation-thread-reopen')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;try{await adminReopenModerationCase(caseId);await onChanged?.(caseId);}catch(err){actionStatus.textContent=err?.message||'No se pudo reabrir el caso.';e.currentTarget.disabled=false;}});
+  }catch(error){container.innerHTML=`<div class="admin-debug-empty">${escapeHtml(error?.message||'No se pudo cargar la conversación.')}</div>`;}
 }
+function showModerationResolveDialog(caseId,onChanged){
+  injectMulliganStyles(); const layer=document.createElement('div');layer.className='gy-modal-overlay';layer.style.zIndex='26050';
+  const opts=Object.entries(MODERATION_RESOLUTION_LABELS).filter(([k])=>k!=='closed_by_user').map(([k,v])=>`<option value="${k}">${escapeHtml(v)}</option>`).join('');
+  layer.innerHTML=`<div class="gy-modal-content" style="max-width:520px;"><div class="gy-modal-header"><h3>Resolver caso</h3></div><div style="padding:16px;display:grid;gap:10px;"><label>Razón de cierre<select id="moderation-resolve-reason" class="admin-field-input" style="width:100%;margin-top:5px;">${opts}</select></label><label>Comentario final opcional<textarea id="moderation-resolve-note" maxlength="1000" rows="4" class="admin-field-input" style="width:100%;box-sizing:border-box;text-align:left;resize:vertical;margin-top:5px;"></textarea></label><div id="moderation-resolve-status" style="min-height:18px;color:#e5c978;font-size:12px;"></div><div style="display:flex;justify-content:flex-end;gap:8px;"><button class="mulligan-btn mulligan-btn-mull" id="moderation-resolve-cancel">CANCELAR</button><button class="mulligan-btn mulligan-btn-keep" id="moderation-resolve-confirm">RESOLVER</button></div></div></div>`;
+  document.body.appendChild(layer);layer.querySelector('#moderation-resolve-cancel')?.addEventListener('click',()=>layer.remove());
+  layer.querySelector('#moderation-resolve-confirm')?.addEventListener('click',async e=>{e.currentTarget.disabled=true;const status=layer.querySelector('#moderation-resolve-status');status.textContent='Resolviendo…';try{await adminResolveCommunityCase(caseId,layer.querySelector('#moderation-resolve-reason')?.value||'resolved',layer.querySelector('#moderation-resolve-note')?.value?.trim()||'');layer.remove();await onChanged?.(caseId);}catch(err){status.textContent=err?.message||'No se pudo resolver el caso.';e.currentTarget.disabled=false;}});
+}
+
+export async function showModerationCenter(onBack = null) {
+  injectMulliganStyles();injectAdminPanelStyles();injectEncyclopediaStyles();ensureModerationInboxStyles();document.getElementById('moderation-center-overlay')?.remove();
+  const overlay=document.createElement('div');overlay.id='moderation-center-overlay';overlay.style.cssText='position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
+  overlay.innerHTML=`<div style="max-width:980px;margin:0 auto;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><h2 style="margin:0;color:#f0e0b0;flex:1 1 auto;min-width:150px;">🛡️ Moderación</h2><button class="admin-save-btn" id="moderation-center-new" style="width:auto;max-width:220px;flex:0 0 auto;margin:0 0 0 auto;white-space:nowrap;padding:10px 18px;">✉️ Nuevo mensaje</button></div><div class="admin-section"><div class="admin-section-title">TUS CASOS</div><div id="moderation-center-status" class="admin-debug-summary">Cargando…</div><div style="display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.5fr);gap:12px;margin-top:12px;" class="moderation-center-grid"><div id="moderation-center-cases" style="display:grid;gap:8px;align-content:start;"></div><div id="moderation-center-detail" style="border:1px solid rgba(212,175,55,.18);border-radius:10px;padding:12px;min-height:180px;"><div class="admin-debug-empty">Elegí un caso para ver la conversación.</div></div></div></div></div>`;
+  document.body.appendChild(overlay);const close=()=>{overlay.remove();onBack?.();};overlay.querySelector('#moderation-center-back')?.addEventListener('click',close);
+  overlay.querySelector('#moderation-center-new')?.addEventListener('click',()=>showModerationComposer({onSubmit:({subject,text})=>contactModeration({subject,text})}));
+  const status=overlay.querySelector('#moderation-center-status'),list=overlay.querySelector('#moderation-center-cases'),detail=overlay.querySelector('#moderation-center-detail');let selected='';
+  const load=async(preselect='')=>{try{const cases=await getMyModerationCases();setCachedModerationPending(cases);status.textContent=cases.length?`${cases.length} caso${cases.length===1?'':'s'} registrado${cases.length===1?'':'s'}.`:'Todavía no tenés casos.';list.innerHTML=cases.map(item=>`<button type="button" data-user-case-id="${escapeHtml(item.caseId||'')}" style="text-align:left;border:1px solid ${item.hasUserUnread?'rgba(212,175,55,.75)':'rgba(212,175,55,.24)'};border-radius:9px;padding:10px;background:rgba(255,255,255,.025);color:#e8e1cb;cursor:pointer;"><div style="display:flex;gap:8px;justify-content:space-between;"><b>${escapeHtml(item.subject||'Caso de Moderación')}</b>${item.hasUserUnread?'<span class="main-menu-reward-badge" style="position:static;">!</span>':''}</div><div style="margin-top:4px;font-size:12px;color:#aab5ad;">${escapeHtml(moderationCaseStatusText(item,false))} · ${escapeHtml(communityDateText(item.updatedAtMs||item.createdAtMs))}</div></button>`).join('')||'<div class="admin-debug-empty">Sin casos.</div>';list.querySelectorAll('[data-user-case-id]').forEach(btn=>btn.addEventListener('click',()=>{selected=btn.dataset.userCaseId||'';void renderModerationThreadDetail(detail,selected,{admin:false,onChanged:load});}));const wanted=preselect||selected;if(wanted&&cases.some(x=>x.caseId===wanted)){selected=wanted;await renderModerationThreadDetail(detail,wanted,{admin:false,onChanged:load});const refreshed=await getMyModerationCases().catch(()=>cases);setCachedModerationPending(refreshed);}else if(!cases.length)detail.innerHTML='<div class="admin-debug-empty">Creá un mensaje nuevo cuando necesites contactar Moderación.</div>';}
+    catch(error){status.textContent=error?.message||'No se pudieron cargar tus casos.';}};
+  await load();
+}
+
+export async function showAdminModerationInbox(onBack=null){
+  injectMulliganStyles();injectAdminPanelStyles();injectEncyclopediaStyles();ensureModerationInboxStyles();document.getElementById('moderation-center-overlay')?.remove();const overlay=document.createElement('div');overlay.id='moderation-center-overlay';overlay.style.cssText='position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
+  overlay.innerHTML=`<div style="max-width:1180px;margin:0 auto;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><div><h2 style="margin:0;color:#f0e0b0;">🛡️ Moderación — Bandeja</h2><div style="font-size:12px;color:#aab5ad;margin-top:3px;">Casos de jugadores y conversaciones pendientes</div></div></div><div class="admin-section"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><select id="admin-inbox-state" class="admin-field-input"><option value="pending">Pendientes</option><option value="open">Abiertos</option><option value="resolved">Resueltos</option><option value="all">Todos</option></select><select id="admin-inbox-kind" class="admin-field-input"><option value="all">Todos los tipos</option><option value="contact">Consulta</option><option value="report_user">Reporte de usuario</option><option value="report_lobby_message">Reporte de mensaje</option><option value="dispute">Disputa de Mercado</option></select><input id="admin-inbox-search" class="admin-field-input" placeholder="Buscar username, email, UID, asunto o caso" style="text-align:left;min-width:280px;flex:1;"><button class="admin-save-btn" id="admin-inbox-refresh" style="width:auto;margin:0;">↻ Actualizar</button></div><div id="admin-inbox-summary" class="admin-debug-summary">Cargando…</div><div class="moderation-admin-grid" style="display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.5fr);gap:12px;margin-top:12px;"><div id="admin-inbox-list"></div><div id="admin-inbox-detail" style="border:1px solid rgba(212,175,55,.18);border-radius:10px;padding:12px;min-height:220px;"><div class="admin-debug-empty">Elegí un caso para abrir el hilo.</div></div></div></div></div>`;document.body.appendChild(overlay);overlay.querySelector('#moderation-center-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
+  const list=overlay.querySelector('#admin-inbox-list'),detail=overlay.querySelector('#admin-inbox-detail'),summary=overlay.querySelector('#admin-inbox-summary'),stateFilter=overlay.querySelector('#admin-inbox-state'),kindFilter=overlay.querySelector('#admin-inbox-kind'),search=overlay.querySelector('#admin-inbox-search');let cases=[],selected='';
+  const apply=()=>{const q=String(search?.value||'').trim().toLowerCase(),sf=stateFilter?.value||'pending',kf=kindFilter?.value||'all';const filtered=cases.filter(item=>{if(sf==='pending'&&!(item.status==='open'&&item.pendingRole==='admin'))return false;if(sf==='open'&&item.status!=='open')return false;if(sf==='resolved'&&item.status!=='resolved')return false;if(kf!=='all'&&item.kind!==kf)return false;if(q){const hay=[item.caseId,item.subject,item.reporterUsername,item.reporterEmailSnapshot,item.reporterUid].join(' ').toLowerCase();if(!hay.includes(q))return false;}return true;});renderAdminModerationCaseList(list,filtered,id=>{selected=id;void renderModerationThreadDetail(detail,id,{admin:true,onChanged:load});});};
+  const load=async(preselect='')=>{summary.textContent='Cargando bandeja…';try{cases=await adminGetModerationCases();const pending=cases.filter(x=>x.status==='open'&&x.pendingRole==='admin').length;mainMenuPendingState.moderationCount=pending;setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',pending);summary.innerHTML=`<b>${pending}</b> pendientes · <b>${cases.filter(x=>x.status==='open').length}</b> abiertos · <b>${cases.filter(x=>x.status==='resolved').length}</b> resueltos`;apply();const wanted=preselect||selected;if(wanted&&cases.some(x=>x.caseId===wanted)){selected=wanted;await renderModerationThreadDetail(detail,wanted,{admin:true,onChanged:load});}}catch(err){summary.textContent=err?.message||'No se pudo cargar la bandeja.';}};
+  [stateFilter,kindFilter].forEach(el=>el?.addEventListener('change',apply));search?.addEventListener('input',apply);overlay.querySelector('#admin-inbox-refresh')?.addEventListener('click',()=>void load(selected));await load();
+}
+
 
 function showCommunityNotice({ title, bodyHtml, allowContact = false } = {}) {
   injectMulliganStyles();
@@ -7729,7 +7784,7 @@ function showCommunityNotice({ title, bodyHtml, allowContact = false } = {}) {
     document.body.appendChild(layer);
     const done=()=>{ layer.remove(); resolve(); };
     layer.querySelector('#community-notice-ok')?.addEventListener('click',done);
-    layer.querySelector('#community-notice-contact')?.addEventListener('click',()=>{ layer.remove(); showModerationComposer({ onSubmit:text=>contactModeration({subject:'Reclamo de moderación',text}) }); resolve(); });
+    layer.querySelector('#community-notice-contact')?.addEventListener('click',()=>{ layer.remove(); showModerationComposer({ subject:'Reclamo de moderación', onSubmit:({subject,text})=>contactModeration({subject,text}) }); resolve(); });
   });
 }
 
@@ -7745,10 +7800,9 @@ export async function showCommunityStatusAtBoot(status = null) {
   if (unread.length) {
     const item = unread[0];
     const hasResponse=!!String(item.response||'').trim();
-    const title=hasResponse?'🛡️ Moderación respondió':'🛡️ Caso de Moderación cerrado';
-    const bodyHtml=hasResponse
-      ? `<div>${escapeHtml(item.response)}</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>`
-      : `<div>Moderación cerró tu caso.</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>`;
+    const title=item.status==='resolved'?'🛡️ Caso de Moderación resuelto':(hasResponse?'🛡️ Moderación respondió':'🛡️ Actividad en Moderación');
+    const activity=String(item.lastMessagePreview||item.response||'').trim();
+    const bodyHtml=`<div>${escapeHtml(activity || (item.status==='resolved'?`Caso resuelto: ${moderationResolutionLabel(item.resolutionReason)}.`:'Hay una actualización en tu caso.'))}</div><div style="font-size:12px;color:#aab5ad;">${escapeHtml(item.subject||'Caso de Moderación')} · ${escapeHtml(item.caseId || '')}</div>`;
     await showCommunityNotice({ title, bodyHtml });
     try {
       await acknowledgeModerationCase(item.caseId);
@@ -7849,7 +7903,7 @@ function pendingAchievementIds(runtime){
   }
   return ids;
 }
-function unreadModerationCases(cases=[]){return (Array.isArray(cases)?cases:[]).filter(item=>item?.status==='resolved'&&!item?.acknowledgedAtMs);}
+function unreadModerationCases(cases=[]){return (Array.isArray(cases)?cases:[]).filter(item=>item?.hasUserUnread===true||(item?.hasUserUnread==null&&item?.status==='resolved'&&!item?.acknowledgedAtMs));}
 function mainMenuBadgeText(count){const n=Math.max(0,Math.floor(Number(count)||0));return n>99?'99+':String(n);}
 function setMainMenuActionBadge(container,buttonId,count){
   const btn=container?.querySelector?.(`#${buttonId}`); if(!btn)return;
@@ -7869,10 +7923,11 @@ async function refreshMainMenuPendingActions(container,user,{force=false}={}){
   const fresh=!force&&mainMenuPendingState.refreshedAt&&(Date.now()-mainMenuPendingState.refreshedAt)<MAIN_MENU_PENDING_REFRESH_MS;
   if(fresh){setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);return;}
   if(mainMenuPendingState.promise)return mainMenuPendingState.promise;
-  const promise=Promise.allSettled([loadAchievementRuntime(),getMyModerationCases()]).then(results=>{
+  const moderationPendingPromise=isAdminUser(user)?adminGetModerationPendingCount():getMyModerationCases();
+  const promise=Promise.allSettled([loadAchievementRuntime(),moderationPendingPromise]).then(results=>{
     if(uid!==String(state.currentUser?.uid||''))return;
     if(results[0].status==='fulfilled')mainMenuPendingState.achievementCount=pendingAchievementIds(results[0].value).length;
-    if(results[1].status==='fulfilled')mainMenuPendingState.moderationCount=unreadModerationCases(results[1].value).length;
+    if(results[1].status==='fulfilled')mainMenuPendingState.moderationCount=isAdminUser(user)?Math.max(0,Number(results[1].value)||0):unreadModerationCases(results[1].value).length;
     mainMenuPendingState.refreshedAt=Date.now();
     setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);
     setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);
@@ -8012,8 +8067,8 @@ function renderAccountBox(container, user) {
     const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
     const cachedAchievementPending = mainMenuPendingState.uid===user.uid ? Math.max(0,Number(mainMenuPendingState.achievementCount)||0) : 0;
     const cachedModerationPending = mainMenuPendingState.uid===user.uid ? Math.max(0,Number(mainMenuPendingState.moderationCount)||0) : 0;
-    // HF23.3.16.2.18 — Moderación vuelve a ser un acceso visible para toda sesión,
-    // incluido Admin, para mantener la fila de seis iconos propia y consistente.
+    // 23.22.0 HF2 — el acceso sigue visible para todos, pero en Admin abre la bandeja
+    // operativa de casos; el pill Admin cuenta conversaciones abiertas pendientes de Moderación.
     const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedModerationPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedModerationPending)}</span>` : ''}</button>`;
     const rewardActionsHTML = `
       <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
@@ -8081,7 +8136,8 @@ function renderAccountBox(container, user) {
     container.querySelector('#menu-moderation')?.addEventListener('click', () => {
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
       if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
-      void showModerationCenter(() => { if (mainMenuOverlay) mainMenuOverlay.style.display = ''; });
+      const openModeration=isAdminUser(user)?showAdminModerationInbox:showModerationCenter;
+      void openModeration(() => { if (mainMenuOverlay) mainMenuOverlay.style.display = ''; renderAccountBox(container,state.currentUser); });
     });
     void refreshMainMenuPendingActions(container,user);
     if (user.email === ADMIN_EMAIL) {
@@ -8759,14 +8815,10 @@ export function showAdminPanel(onBack) {
       <div class="admin-debug-table-wrap" id="admin-community-bans" style="margin-top:12px;"><div class="admin-debug-empty">Sin cargar.</div></div>
     </div>
     <div class="admin-section">
-      <div class="admin-section-title">CASOS · Reportes y mensajes a Moderación</div>
-      <div class="admin-debug-toolbar"><div class="admin-debug-summary">Casos abiertos primero; la respuesta queda visible para quien reportó.</div><button class="admin-save-btn" id="admin-community-refresh">🔄 Actualizar</button></div>
+      <div class="admin-section-title">CASOS · Bandeja de Moderación</div>
+      <div class="admin-debug-toolbar"><div class="admin-debug-summary">La misma bandeja del acceso 🛡️: responder y resolver son acciones independientes.</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="admin-save-btn" id="admin-community-open-inbox" style="width:auto;">🛡️ Abrir bandeja</button><button class="admin-save-btn" id="admin-community-refresh" style="width:auto;">🔄 Actualizar</button></div></div>
       <div class="admin-debug-table-wrap" id="admin-community-cases" style="margin-top:10px;"><div class="admin-debug-empty">Sin cargar.</div></div>
-      <div id="admin-community-case-editor" class="hidden" style="margin-top:12px;padding:10px;border:1px solid rgba(212,175,55,.25);border-radius:8px;">
-        <div class="admin-debug-summary" id="admin-community-case-selected"></div>
-        <textarea class="admin-field-input" id="admin-community-case-response" rows="4" maxlength="1000" placeholder="Respuesta / resolución para el usuario" style="width:100%;text-align:left;resize:vertical;margin:8px 0;"></textarea>
-        <button class="admin-save-btn" id="admin-community-case-resolve">✓ Resolver y responder</button>
-      </div>
+      <div id="admin-community-case-editor" class="hidden" style="margin-top:12px;padding:10px;border:1px solid rgba(212,175,55,.25);border-radius:8px;"></div>
       <div class="admin-success-msg" id="admin-community-case-status"></div>
     </div>`;
 
@@ -10498,8 +10550,6 @@ Receipt: ${receiptId}
   const communityBansEl = overlay.querySelector('#admin-community-bans');
   const communityCasesEl = overlay.querySelector('#admin-community-cases');
   const communityCaseEditor = overlay.querySelector('#admin-community-case-editor');
-  const communityCaseSelected = overlay.querySelector('#admin-community-case-selected');
-  const communityCaseResponse = overlay.querySelector('#admin-community-case-response');
   let communityDashboard = { policy:{ blockedWords:[] }, bans:[], cases:[], bots:{config:{},botUids:[],profiles:[],runtime:{}} };
   let selectedCommunityCaseId = '';
   let messagesUsersLoaded = false;
@@ -10640,7 +10690,8 @@ Receipt: ${receiptId}
     const bans = Array.isArray(communityDashboard?.bans) ? communityDashboard.bans : [];
     const cases = Array.isArray(communityDashboard?.cases) ? communityDashboard.cases : [];
     const openCount = cases.filter(item => item.status !== 'resolved').length;
-    if (communitySummaryEl) communitySummaryEl.innerHTML = `<b>${words.length}</b> palabras ADMIN · <b>${bans.length}</b> bans activos · <b>${openCount}</b> casos abiertos`;
+    const pendingCount = cases.filter(item => item.status==='open' && item.pendingRole==='admin').length;
+    if (communitySummaryEl) communitySummaryEl.innerHTML = `<b>${words.length}</b> palabras ADMIN · <b>${bans.length}</b> bans activos · <b>${openCount}</b> casos abiertos · <b>${pendingCount}</b> pendientes`;
     if (communityBansEl) communityBansEl.innerHTML = bans.length ? `<table class="admin-debug-table"><thead><tr><th>Usuario</th><th>Hasta</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>${bans.map(ban => `<tr><td>${escapeHtml(ban.usernameSnapshot || ban.uid)}${ban.emailSnapshot ? `<br><small>${escapeHtml(ban.emailSnapshot)}</small>` : ''}<br><small>UID …${escapeHtml(String(ban.uid||'').slice(-10))}</small></td><td>${escapeHtml(formatBanUntil(ban))}</td><td>${escapeHtml(ban.reason || '—')}</td><td><button type="button" class="admin-save-btn" data-community-unban-uid="${escapeHtml(ban.uid || '')}" data-community-unban-label="${escapeHtml(ban.usernameSnapshot || ban.emailSnapshot || ban.uid || 'jugador')}" style="width:auto;min-width:110px;padding:6px 10px;margin:0;white-space:nowrap;">✅ Quitar ban</button></td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay bans activos.</div>';
     communityBansEl?.querySelectorAll?.('[data-community-unban-uid]').forEach(btn => btn.addEventListener('click', async () => {
       const targetUid = btn.dataset.communityUnbanUid || '';
@@ -10660,15 +10711,16 @@ Receipt: ${receiptId}
         btn.disabled = false;
       }
     }));
-    if (communityCasesEl) communityCasesEl.innerHTML = cases.length ? `<table class="admin-debug-table"><thead><tr><th>Estado</th><th>Usuario</th><th>Tipo</th><th>Detalle</th><th></th></tr></thead><tbody>${cases.map(item => `<tr><td>${item.status==='resolved'?'✅ Resuelto':'🟡 Abierto'}</td><td>${escapeHtml(item.reporterUsername || item.reporterUid || 'Jugador')}</td><td>${escapeHtml(item.kind || '')}</td><td>${escapeHtml((item.subject || item.text || '').slice(0,120))}</td><td><button type="button" class="admin-save-btn" data-community-case-id="${escapeHtml(item.caseId || '')}" style="padding:5px 8px;">Ver</button></td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay casos.</div>';
-    communityCasesEl?.querySelectorAll?.('[data-community-case-id]').forEach(btn => btn.addEventListener('click', () => {
-      selectedCommunityCaseId = btn.dataset.communityCaseId || '';
-      const item = cases.find(row => row.caseId === selectedCommunityCaseId);
-      if (!item) return;
+    renderAdminModerationCaseList(communityCasesEl,cases,id=>{
+      selectedCommunityCaseId=id;
       communityCaseEditor?.classList.remove('hidden');
-      if (communityCaseSelected) communityCaseSelected.innerHTML = `<b>${escapeHtml(item.reporterUsername || item.reporterUid || 'Jugador')}</b> · ${escapeHtml(item.kind || '')}<br>${escapeHtml(item.text || '')}${item.messageSnapshot?.text ? `<br><br><b>Mensaje reportado:</b> “${escapeHtml(item.messageSnapshot.text)}”` : ''}${item.response ? `<br><br><b>Respuesta actual:</b> ${escapeHtml(item.response)}` : ''}`;
-      if (communityCaseResponse) communityCaseResponse.value = item.response || '';
-    }));
+      void renderModerationThreadDetail(communityCaseEditor,id,{admin:true,onChanged:async changedId=>{
+        await reloadCommunityAdminDashboard();
+        selectedCommunityCaseId=changedId||id;
+        communityCaseEditor?.classList.remove('hidden');
+        await renderModerationThreadDetail(communityCaseEditor,selectedCommunityCaseId,{admin:true,onChanged:async againId=>{await reloadCommunityAdminDashboard();selectedCommunityCaseId=againId||selectedCommunityCaseId;}});
+      }});
+    });
   }
 
   async function reloadCommunityAdminDashboard() {
@@ -10751,13 +10803,7 @@ Receipt: ${receiptId}
     try { await adminBanCommunityUser(targetUid,duration,reason); await reloadCommunityAdminDashboard(); status.textContent='✓ Ban aplicado por UID.'; }
     catch(err){ status.textContent=err?.message||'No se pudo aplicar el ban.'; }
   });
-  overlay.querySelector('#admin-community-case-resolve')?.addEventListener('click', async () => {
-    const status = overlay.querySelector('#admin-community-case-status'); status.textContent='';
-    const response = communityCaseResponse?.value?.trim() || '';
-    if (!selectedCommunityCaseId || !response) { status.textContent='Seleccioná un caso y escribí una respuesta.'; return; }
-    try { await adminResolveCommunityCase(selectedCommunityCaseId,response); selectedCommunityCaseId=''; communityCaseEditor?.classList.add('hidden'); await reloadCommunityAdminDashboard(); status.textContent='✓ Caso resuelto y respuesta guardada.'; }
-    catch(err){ status.textContent=err?.message||'No se pudo resolver el caso.'; }
-  });
+  overlay.querySelector('#admin-community-open-inbox')?.addEventListener('click',()=>void showAdminModerationInbox());
 
   overlay.querySelector('#admin-grant-send').addEventListener('click', async () => {
     const grantErrorBox = overlay.querySelector('#admin-grant-error');
@@ -11392,7 +11438,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const targetUid = event.currentTarget.dataset.reportPlayer || uid;
       const targetName = anchorEl.dataset.playerName || 'Jugador';
       closePlayerStatsPopover();
-      showModerationComposer({ title:`Reportar a ${targetName}`, placeholder:'Explicá brevemente el motivo del reporte…', submitLabel:'REPORTAR', onSubmit:reason=>reportCommunityUser(targetUid,reason) });
+      showModerationComposer({ title:`Reportar a ${targetName}`, subject:`Reporte de ${targetName}`, placeholder:'Explicá brevemente el motivo del reporte…', submitLabel:'REPORTAR', onSubmit:({subject,text})=>reportCommunityUser(targetUid,text,subject) });
     });
     const r = anchorEl.getBoundingClientRect(); const pr = pop.getBoundingClientRect();
     pop.style.left = `${Math.max(8, Math.min(window.innerWidth-pr.width-8, r.left))}px`;
@@ -11632,7 +11678,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     list.querySelectorAll('[data-report-chat-seq]').forEach(button => button.addEventListener('click', event => {
       event.stopPropagation();
       const seq=Math.floor(Number(button.dataset.reportChatSeq)||0); if(!seq) return;
-      showModerationComposer({ title:'Reportar mensaje del Lobby', placeholder:'Explicá brevemente por qué reportás este mensaje…', submitLabel:'REPORTAR', onSubmit:reason=>reportLobbyMessage(seq,reason) });
+      showModerationComposer({ title:'Reportar mensaje del Lobby', subject:'Reporte de mensaje del Lobby', placeholder:'Explicá brevemente por qué reportás este mensaje…', submitLabel:'REPORTAR', onSubmit:({subject,text})=>reportLobbyMessage(seq,text,subject) });
     }));
     list.scrollTop = list.scrollHeight;
   }
@@ -12552,7 +12598,7 @@ export function showTradeMarketScreen(onBack) {
         title:gameText('trade.dispute.title'),
         placeholder:gameText('trade.dispute.placeholder',{username:other||gameText('ranking.playerFallback')}),
         submitLabel:gameText('trade.dispute.submit'),
-        onSubmit:text=>createTradeDispute(tradeId,text)
+        onSubmit:({subject,text})=>createTradeDispute(tradeId,text,subject)
       });
     }));
   }

@@ -281,6 +281,32 @@ function hiddenZoneSummary(zone, reveal) {
   return { count: zone.length, cards: zone.map(card => cardSummary(card?.card || card)) };
 }
 
+export function summarizeTelemetryTarget(targetObj) {
+  if (!targetObj) return null;
+  if (targetObj.type === 'multi') {
+    return {
+      type: 'multi',
+      targets: Array.isArray(targetObj.targets) ? targetObj.targets.map(summarizeTelemetryTarget) : []
+    };
+  }
+  if (targetObj.type === 'stack') {
+    return { type:'stack', stackId:targetObj.stackId ?? null };
+  }
+  if (targetObj.type === 'player') {
+    return { type:'player', side:targetObj.isLocal === false ? 'rival' : 'local' };
+  }
+  const item = targetObj.item || null;
+  const card = item?.card || targetObj.card || (targetObj.name ? targetObj : null);
+  return {
+    type: targetObj.type || (card ? 'permanent' : 'unknown'),
+    side: targetObj.isLocal === false ? 'rival' : targetObj.isLocal === true ? 'local' : null,
+    index: Number.isInteger(targetObj.index) ? targetObj.index : null,
+    card: card ? cardSummary(card) : null,
+    instanceId: card?.instanceId ?? item?.card?.instanceId ?? null,
+    syncObjectId: item?.syncObjectId ?? null
+  };
+}
+
 function stackItemSummary(item) {
   if (!item) return null;
   return {
@@ -289,9 +315,13 @@ function stackItemSummary(item) {
     abilityKind: item.abilityKind ?? null,
     card: cardSummary(item.card),
     isLocal: item.isLocal ?? null,
-    target: item.targetObj?.card ? cardSummary(item.targetObj.card)
+    target: item.targetObj?.item?.card ? cardSummary(item.targetObj.item.card)
+      : item.targetObj?.card ? cardSummary(item.targetObj.card)
       : item.targetObj?.name ? cardSummary(item.targetObj)
+      : item.targetObj?.type === 'player' ? { type:'player', side:item.targetObj.isLocal === false ? 'rival' : 'local' }
+      : item.targetObj?.type === 'stack' ? { type:'stack', stackId:item.targetObj.stackId ?? null }
       : item.targetObj ? '[target]' : null,
+    targetDetail: summarizeTelemetryTarget(item.targetObj),
     effect: compactEffect(item.ability?.effect || item.card?.effect),
     xValue: item.xValue ?? null,
     kicked: !!item.kicked,
@@ -815,7 +845,7 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
       code: 'ABANDON_CLEANUP_TIMEOUT',
       severity: 'warning',
       message: 'El cierre de abandono agotó su deadline; la salida continuó por fallback.',
-      details: { taskCount: data?.taskCount || 0 }
+      details: { taskCount: data?.taskCount || 0, deadlineMs:data?.deadlineMs || 0, pendingTasks:Array.isArray(data?.pendingTasks)?data.pendingTasks:[], taskStatuses:Array.isArray(data?.taskStatuses)?data.taskStatuses:[] }
     }, event.seq);
   }
 

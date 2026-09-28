@@ -1300,6 +1300,21 @@ function hookGameplayButtons() {
             return;
           }
           const cleanupTasks = [];
+          const cleanupTaskStates = [];
+          const trackCleanupTask = (name, promiseLike) => {
+            const meta = { name, status:'pending' };
+            cleanupTaskStates.push(meta);
+            const wrapped = Promise.resolve(promiseLike).then(
+              value => { meta.status = 'fulfilled'; return value; },
+              err => {
+                meta.status = 'rejected';
+                meta.error = { name:err?.name || 'Error', message:err?.message || String(err) };
+                throw err;
+              }
+            );
+            cleanupTasks.push(wrapped);
+            return wrapped;
+          };
           let timedOut = false;
 
           // 23.13.40 — cinturón de seguridad TOTAL: no alcanza con poner timeout a Promises.
@@ -1323,11 +1338,9 @@ function hookGameplayButtons() {
             if (state.currentMatch) {
               state.abandonedBy = 'local';
               try {
-                abandonEvidencePromise = Promise.resolve(publishMatchState({ force: true }));
-                cleanupTasks.push(abandonEvidencePromise);
+                abandonEvidencePromise = trackCleanupTask('publish_match_state', publishMatchState({ force: true }));
               } catch (err) {
-                abandonEvidencePromise = Promise.reject(err);
-                cleanupTasks.push(abandonEvidencePromise);
+                abandonEvidencePromise = trackCleanupTask('publish_match_state', Promise.reject(err));
               }
             }
 
@@ -1335,7 +1348,7 @@ function hookGameplayButtons() {
               try {
                 const abandonReceiptId = state.currentMatch?.matchId || getActiveSoloGameId() || getTelemetryStatus().sessionId || 'solo';
                 const abandonDurationMs = state.currentMatch ? (getTelemetryStatus().elapsedMs || 0) : currentSoloLifecycleDurationMs();
-                cleanupTasks.push(
+                trackCleanupTask('apply_abandon_penalty',
                   abandonEvidencePromise
                     .then(() => applyAbandonPenalty(state.currentUser.uid, {
                       mode: state.currentMatch ? 'multiplayer' : 'solo',
@@ -1345,22 +1358,31 @@ function hookGameplayButtons() {
                     }))
                     .catch(err => {
                       console.error('No se pudo aplicar la penalidad de abandono:', err);
-                      return null;
+                      throw err;
                     })
                 );
               } catch (err) {
                 console.error('No se pudo preparar la penalidad de abandono:', err);
-                cleanupTasks.push(Promise.resolve(null));
+                trackCleanupTask('apply_abandon_penalty_prepare_fallback', Promise.resolve(null));
               }
             }
 
-            const settle = Promise.allSettled(cleanupTasks);
-            const deadline = sleep(3000).then(() => { timedOut = true; return null; });
-            await Promise.race([settle, deadline]);
+            const cleanupDeadlineMs = 3000;
+            const settle = Promise.allSettled(cleanupTasks).then(() => 'settled');
+            const deadline = sleep(3000).then(() => 'timeout');
+            const outcome = await Promise.race([settle, deadline]);
+            timedOut = outcome === 'timeout';
+            const taskStatuses = cleanupTaskStates.map(task => ({
+              name:task.name, status:task.status, ...(task.error ? { error:task.error } : {})
+            }));
+            const pendingTasks = taskStatuses.filter(task => task.status === 'pending').map(task => task.name);
 
             recordTelemetryEvent('abandon_cleanup_end', {
               timedOut,
-              taskCount: cleanupTasks.length
+              taskCount: cleanupTasks.length,
+              deadlineMs: cleanupDeadlineMs,
+              pendingTasks,
+              taskStatuses
             }, timedOut ? 'warning' : 'info');
           } catch (err) {
             console.error('Error inesperado durante el cleanup de abandono:', err);
@@ -1368,7 +1390,8 @@ function hookGameplayButtons() {
               recordTelemetryEvent('abandon_cleanup_exception', {
                 name: err?.name || 'Error',
                 message: err?.message || String(err),
-                taskCount: cleanupTasks.length
+                taskCount: cleanupTasks.length,
+                taskStatuses:cleanupTaskStates.map(task => ({name:task.name,status:task.status}))
               }, 'error');
             } catch {}
           } finally {
@@ -5358,66 +5381,73 @@ function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controller
   return !!rules[`allow${sameSide ? 'Local' : 'Rival'}${suffix}`];
 }
 
-export function isResolvedEffectTargetLegal(targetObj, options) {
-  if (!targetObj || (!options?.effect && !options?.cardLike)) return false;
+export function explainResolvedEffectTargetLegality(targetObj, options) {
+  if (!targetObj || (!options?.effect && !options?.cardLike)) return { legal:false, reason:'missing_target_or_effect' };
   const controllerIsLocal = options.controllerIsLocal !== false;
   const sourceCard = options.sourceCard || options.cardLike || { name: options.cardName || 'Efecto', colors: [] };
   const cardLike = options.cardLike || resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
   const rules = getTargetRules(cardLike);
 
-  if (!controllerAllowsTargetSide(rules, targetObj.type, targetObj.isLocal, controllerIsLocal)) return false;
-  if (targetObj.type === 'player' && options.effect.target === 'opponent_player' && targetObj.isLocal === controllerIsLocal) return false;
+  if (!controllerAllowsTargetSide(rules, targetObj.type, targetObj.isLocal, controllerIsLocal)) return { legal:false, reason:'controller_scope' };
+  if (targetObj.type === 'player' && options.effect?.target === 'opponent_player' && targetObj.isLocal === controllerIsLocal) return { legal:false, reason:'opponent_player_scope' };
 
   if (targetObj.type === 'creature') {
     const unit = targetObj.item;
-    if (!unit) return false;
+    if (!unit) return { legal:false, reason:'missing_item' };
     const board = targetObj.isLocal ? state.localCombat : state.rivalCombat;
-    if (!board.includes(unit)) return false;
-    // Intocable sólo impide ser objetivo de un OPONENTE. Protección de color impide el
-    // target sin importar quién controle la fuente, igual que en el selector normal.
-    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(unit, 'hexproof')) return false;
-    if (getProtectionMatch(unit, sourceCard.colors || [])) return false;
-    if (rules.creatureFilter && !unit.card.type.includes(rules.creatureFilter)) return false;
-    if (rules.subtypeFilter && !cardHasSubtype(unit.card,rules.subtypeFilter)) return false;
-    if (rules.sharedCreatureTypeWithSource && !cardsShareCreatureType(unit.card,sourceCard)) return false;
-    if (rules.transformableOnly && !canTransformPermanent(unit)) return false;
-    if (options.effect?.type === 'grant_keyword_temp' && options.effect.keyword && hasKeyword(unit, options.effect.keyword)) return false;
-    return true;
+    if (!board.includes(unit)) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(unit, 'hexproof')) return { legal:false, reason:'hexproof' };
+    if (getProtectionMatch(unit, sourceCard.colors || [])) return { legal:false, reason:'protection' };
+    if (rules.creatureFilter && !unit.card.type.includes(rules.creatureFilter)) return { legal:false, reason:'creature_filter' };
+    if (rules.subtypeFilter && !cardHasSubtype(unit.card,rules.subtypeFilter)) return { legal:false, reason:'subtype_filter' };
+    if (rules.sharedCreatureTypeWithSource && !cardsShareCreatureType(unit.card,sourceCard)) return { legal:false, reason:'shared_creature_type_filter' };
+    if (rules.transformableOnly && !canTransformPermanent(unit)) return { legal:false, reason:'transformable_only' };
+    if (options.effect?.type === 'grant_keyword_temp' && options.effect.keyword && hasKeyword(unit, options.effect.keyword)) return { legal:false, reason:'keyword_already_present' };
+    return { legal:true, reason:'ok' };
   }
 
   if (targetObj.type === 'permanent') {
     const zone = targetObj.isLocal ? state.localSupport : state.rivalSupport;
-    if (!targetObj.item || !zone.includes(targetObj.item)) return false;
-    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
-    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
-    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return false;
-    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return false;
-    if (rules.sharedCreatureTypeWithSource && !cardsShareCreatureType(targetObj.item.card,sourceCard)) return false;
-    return !rules.permanentFilter || targetObj.item.card.type.includes(rules.permanentFilter);
+    if (!targetObj.item) return { legal:false, reason:'missing_item' };
+    if (!zone.includes(targetObj.item)) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return { legal:false, reason:'hexproof' };
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return { legal:false, reason:'protection' };
+    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return { legal:false, reason:'transformable_only' };
+    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return { legal:false, reason:'subtype_filter' };
+    if (rules.sharedCreatureTypeWithSource && !cardsShareCreatureType(targetObj.item.card,sourceCard)) return { legal:false, reason:'shared_creature_type_filter' };
+    if (rules.permanentFilter && !targetObj.item.card.type.includes(rules.permanentFilter)) return { legal:false, reason:'permanent_filter' };
+    return { legal:true, reason:'ok' };
   }
 
   if (targetObj.type === 'land') {
     const lands = targetObj.isLocal ? state.localLands : state.rivalLands;
     const combat = targetObj.isLocal ? state.localCombat : state.rivalCombat;
-    if (!targetObj.item || (!lands.includes(targetObj.item) && !(combat.includes(targetObj.item) && isLandPermanent(targetObj.item)))) return false;
-    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
-    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
-    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return false;
-    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return false;
-    return landMatchesEffectiveFilter(state, targetObj.item, targetObj.isLocal, rules.landFilter || 'any');
+    if (!targetObj.item) return { legal:false, reason:'missing_item' };
+    if (!lands.includes(targetObj.item) && !(combat.includes(targetObj.item) && isLandPermanent(targetObj.item))) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return { legal:false, reason:'hexproof' };
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return { legal:false, reason:'protection' };
+    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return { legal:false, reason:'transformable_only' };
+    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return { legal:false, reason:'subtype_filter' };
+    if (!landMatchesEffectiveFilter(state, targetObj.item, targetObj.isLocal, rules.landFilter || 'any')) return { legal:false, reason:'land_filter' };
+    return { legal:true, reason:'ok' };
   }
 
   if (targetObj.type === 'planeswalker') {
     const zone = targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
-    if (!targetObj.item || !zone.includes(targetObj.item)) return false;
-    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
-    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
-    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return false;
-    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return false;
-    return true;
+    if (!targetObj.item) return { legal:false, reason:'missing_item' };
+    if (!zone.includes(targetObj.item)) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return { legal:false, reason:'hexproof' };
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return { legal:false, reason:'protection' };
+    if (rules.transformableOnly && !canTransformPermanent(targetObj.item)) return { legal:false, reason:'transformable_only' };
+    if (rules.subtypeFilter && !cardHasSubtype(targetObj.item.card,rules.subtypeFilter)) return { legal:false, reason:'subtype_filter' };
+    return { legal:true, reason:'ok' };
   }
 
-  return targetObj.type === 'player';
+  return targetObj.type === 'player' ? { legal:true, reason:'ok' } : { legal:false, reason:'unsupported_target_type' };
+}
+
+export function isResolvedEffectTargetLegal(targetObj, options) {
+  return explainResolvedEffectTargetLegality(targetObj, options).legal;
 }
 
 export function getResolvedEffectTargetCandidates(options) {
@@ -9935,7 +9965,7 @@ function sendCounterspellAway(pc) {
   }
 }
 
-export function tapLocalLand(item) {
+export function tapLocalLand(item, explicitAction = null) {
   if (state.gameOver) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
   if (state.pendingSacrificeChoice) { tryResolveSacrificeChoice(item, true); return; }
@@ -9981,6 +10011,24 @@ export function tapLocalLand(item) {
     chooseAndProduceMana(item, true);
     return;
   }
+
+  // 23.22.0 HF1 — el preview mobile puede expresar la intención sin abrir el segundo
+  // selector. Revalidamos acá TODO el estado real; el dataset de UI nunca autoriza reglas.
+  if (explicitAction === 'mana') {
+    if (!hasMana) return;
+    if (!canActivateLocalManaAbility(item)) { logMsg(gameText('mana.noWindow')); return; }
+    chooseAndProduceMana(item, true);
+    return;
+  }
+  if (explicitAction === 'ability') {
+    if (landAbilities.length === 0) return;
+    const index = state.localLands.indexOf(item);
+    const options = buildPermanentActivatedAbilityOptions(item, true, index);
+    if (!options.length) return;
+    presentActivatedAbilityChoice(item.card.name, options);
+    return;
+  }
+
   if (landAbilities.length > 0 && hasMana && canActivateLocalManaAbility(item)) {
     const index = state.localLands.indexOf(item);
     showManaOrAbilityChoiceModal(item.card.name, () => chooseAndProduceMana(item, true), () => presentActivatedAbilityChoice(item.card.name, buildPermanentActivatedAbilityOptions(item, true, index)));

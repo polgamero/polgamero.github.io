@@ -1,5 +1,5 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
-import { recordTelemetryEvent, recordTelemetryBugCandidate } from './telemetry.js';
+import { recordTelemetryEvent, recordTelemetryBugCandidate, summarizeTelemetryTarget } from './telemetry.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { getProliferateCandidates } from './utils.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
@@ -35,6 +35,8 @@ import {
   cardMatchesGraveyardFilter,
   chooseResolvedEffectTarget,
   getResolvedEffectTargetCandidates,
+  isResolvedEffectTargetLegal,
+  explainResolvedEffectTargetLegality,
   waitForDiscardEffects,
   canPayCastCompositeNonManaCosts,
   payCastCompositeNonManaCosts,
@@ -1399,6 +1401,33 @@ function hasPendingBotActivatedAbility(sourceItem, abilityIndex) {
     && Number(entry?.source?.abilityIndex) === Number(abilityIndex));
 }
 
+function botTargetThreatScore(target) {
+  const item = target?.item;
+  const card = item?.card || {};
+  if (!item) return 0;
+  if (target.type === 'creature') {
+    let score = (Math.max(0, getEffectivePower(item)) + Math.max(0, getEffectiveToughness(item))) * 2 + Number(card.cmc || 0);
+    if (hasKeyword(item, 'deathtouch')) score += 4;
+    if (hasKeyword(item, 'double_strike')) score += 5;
+    if (hasKeyword(item, 'lifelink')) score += 3;
+    if (hasKeyword(item, 'indestructible')) score += 5;
+    if (hasKeyword(item, 'flying')) score += 2;
+    return score;
+  }
+  if (target.type === 'planeswalker') return Number(item.loyalty || 0) * 2 + Number(card.cmc || 0) + 3;
+  if (target.type === 'permanent') return Number(card.cmc || 0) + 3 + (getActivatedAbilities(card).length ? 3 : 0);
+  if (target.type === 'land') return 1 + (getEffectiveLandActivatedAbilities(state, item, true).length ? 5 : 0) + (botManaOptions(item, true).length > 1 ? 2 : 0);
+  return Number(card.cmc || 0);
+}
+
+function bestLegalBotEffectTarget(effect, sourceCard) {
+  const candidates = getResolvedEffectTargetCandidates({
+    effect, sourceCard, controllerIsLocal:false, chooserIsLocal:false, cardName:sourceCard?.name
+  });
+  if (!candidates.length) return null;
+  return [...candidates].sort((a,b) => botTargetThreatScore(b) - botTargetThreatScore(a))[0] || null;
+}
+
 // NUEVO: Evaluación táctica para activar artefactos y soporte
 export function tryActivateBotAbilities({ instantOnly = false } = {}) {
   // Recorremos artefactos Y tierras de utilidad del Tano. Cada permanente puede exponer
@@ -1570,6 +1599,27 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           shouldActivate = true;
         }
       }
+      else if (['destroy_creature','exile_creature','exile_and_return','bounce','cant_attack_next_turn'].includes(effect.type)) {
+        let legalTargets = getResolvedEffectTargetCandidates({
+          effect, sourceCard:card, controllerIsLocal:false, chooserIsLocal:false, cardName:card.name
+        }).filter(target => target?.type === 'creature' && target.isLocal === true);
+        // Destruir una Irrompible es legal pero estratégicamente nulo; Exiliar/Rebotar sí sirven.
+        if (effect.type === 'destroy_creature') legalTargets = legalTargets.filter(target => !hasKeyword(target.item, 'indestructible'));
+        if (legalTargets.length) {
+          legalTargets.sort((a,b) => botTargetThreatScore(b) - botTargetThreatScore(a));
+          const chosen = legalTargets[0];
+          const threat = botTargetThreatScore(chosen);
+          const urgentCombat = state.activePlayer === 'local' && ['combat_attackers','combat_blockers'].includes(state.phase) && !!chosen.item?.isAttacking;
+          const safeWindow = (state.activePlayer === 'rival' && state.phase === 'main2') || (state.activePlayer === 'local' && state.phase === 'end_step');
+          // Trampa para Fantasmas y removal utility deben poder reaccionar a una amenaza
+          // importante aun fuera de Main2/End step; el umbral evita sacrificar recursos por
+          // cualquier 1/1 irrelevante apenas recupera prioridad.
+          if (urgentCombat || safeWindow || threat >= 8) {
+            aiTargetObj = chosen;
+            shouldActivate = true;
+          }
+        }
+      }
       else if (effect.type === 'damage') {
         if (state.localCombat.length > 0) {
           const vulnerable = state.localCombat.find(c =>
@@ -1619,6 +1669,14 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       }
 
       if (!shouldActivate) continue;
+
+      if (aiTargetObj) {
+        recordTelemetryEvent('bot_target_selected', {
+          source:'activated_ability', card:{id:card?.id || null,name:card?.name || null},
+          effectType:effect.type || null, targetDetail:summarizeTelemetryTarget(aiTargetObj),
+          threatScore:botTargetThreatScore(aiTargetObj), turnCount:state.turnCount, phase:state.phase
+        });
+      }
 
       const strategicAvailableManaBefore = getRivalTotalAvailableMana();
       const strategicHandBefore = state.rivalHand.length;
@@ -1961,7 +2019,7 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
 
   // Remoción/freno: su heurística sólo los usa sobre una criatura rival válida.
   if (['destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot'].includes(effect.type)) {
-    return state.localCombat.some(c => isValidBotTarget(c, card.colors));
+    return getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name}).length > 0;
   }
   if (effect.type === 'destroy_land' || effect.type === 'destroy_nonbasic_land') {
     return getBotLandDestructionTargets(effect, card.colors).length > 0;
@@ -2538,34 +2596,25 @@ export async function takeBotPriorityAction() {
         }
         // LÓGICA NUEVA: REMOCIÓN DE CRIATURA (Yuyo del Loco, etc.)
         else if (cardToPlay.effect && (cardToPlay.effect.type === 'destroy_creature' || cardToPlay.effect.type === 'exile_creature' || cardToPlay.effect.type === 'exile_and_return')) {
-          const validTargets = state.localCombat.filter(c => isValidBotTarget(c, cardToPlay.colors));
-          if (validTargets.length > 0) {
-            // El Tano apunta a tu criatura más grande (poder + resistencia) — si es
-            // Exilio, además prioriza una Irrompible (a esa, "destruir" no le sirve
-            // de nada, pero Exilio no le pregunta nada).
-            const indestructibleTargets = validTargets.filter(c => hasKeyword(c, 'indestructible'));
-            const pool = ((cardToPlay.effect.type === 'exile_creature' || cardToPlay.effect.type === 'exile_and_return') && indestructibleTargets.length > 0) ? indestructibleTargets : validTargets;
-            const chosen = pool.reduce((prev, current) =>
-              (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
-            );
-            aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
+          let candidates = getResolvedEffectTargetCandidates({
+            effect:cardToPlay.effect, sourceCard:cardToPlay, controllerIsLocal:false, chooserIsLocal:false, cardName:cardToPlay.name
+          }).filter(target => target?.type === 'creature' && target.isLocal === true);
+          if (cardToPlay.effect.type === 'destroy_creature') candidates = candidates.filter(target => !hasKeyword(target.item, 'indestructible'));
+          if (candidates.length > 0) {
+            candidates.sort((a,b)=>botTargetThreatScore(b)-botTargetThreatScore(a));
+            aiTargetObj = candidates[0];
           } else {
             validPlay = false;
             logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         }
         else if (cardToPlay.effect && (cardToPlay.effect.type === 'gain_control' || cardToPlay.effect.type === 'gain_control_until_eot')) {
-          const anyPermanent = cardToPlay.effect.targetKind === 'any_permanent';
-          const candidates = [
-            ...state.localCombat.map(item=>({type:'creature',item,score:(getEffectivePower(item)+getEffectiveToughness(item))*2+Number(item.card?.cmc||0)})),
-            ...(anyPermanent ? state.localPlaneswalkers.map(item=>({type:'planeswalker',item,score:Number(item.loyalty||0)*2+Number(item.card?.cmc||0)})) : []),
-            ...(anyPermanent ? state.localSupport.map(item=>({type:'permanent',item,score:Number(item.card?.cmc||0)+3})) : []),
-            ...(anyPermanent ? state.localLands.map(item=>({type:'land',item,score:Number(item.card?.activatedAbility?4:1)})) : [])
-          ];
-          if (candidates.length) {
-            candidates.sort((a,b)=>b.score-a.score);
-            const chosen=candidates[0]; aiTargetObj={type:chosen.type,isLocal:true,item:chosen.item};
-          } else { validPlay=false; logMsg(gameText('bot.cast.noTargets',{card:cardToPlay.name})); }
+          // 23.22.0 HF1 — la heurística vieja puntuaba primero y validaba nunca: podía
+          // elegir La Luz Mala (Intocable), pagar {4}{U}{U} y recién descubrir al resolver
+          // que Intervención Federal nunca tuvo un objetivo legal. Enumerar por el target
+          // universal garantiza legalidad ANTES de comprometer recursos.
+          aiTargetObj = bestLegalBotEffectTarget(cardToPlay.effect, cardToPlay);
+          if (!aiTargetObj) { validPlay=false; logMsg(gameText('bot.cast.noTargets',{card:cardToPlay.name})); }
         }
         // LÓGICA NUEVA: REBOTE (Vuelto en Mano, etc.)
         else if (cardToPlay.effect && cardToPlay.effect.type === 'bounce') {
@@ -2726,6 +2775,26 @@ export async function takeBotPriorityAction() {
         }
       }
 
+      // 23.22.0 HF1 — última barrera universal antes de comprometer carta/maná. Las
+      // heurísticas específicas pueden evolucionar, pero ninguna propuesta targeteada del
+      // bot debe llegar a 601.2f con un objetivo que el resolvedor ya considera ilegal.
+      if (validPlay && aiTargetObj && !['multi','stack'].includes(aiTargetObj.type)
+          && !isResolvedEffectTargetLegal(aiTargetObj, {
+            cardLike:cardToPlay, effect:cardToPlay.effect || cardToPlay.etbEffect,
+            sourceCard:cardToPlay, controllerIsLocal:false, cardName:cardToPlay.name
+          })) {
+        const legality = explainResolvedEffectTargetLegality(aiTargetObj, {
+          cardLike:cardToPlay, effect:cardToPlay.effect || cardToPlay.etbEffect,
+          sourceCard:cardToPlay, controllerIsLocal:false, cardName:cardToPlay.name
+        });
+        recordTelemetryEvent('bot_cast_proposal_rejected', {
+          cardId:cardToPlay?.id || null, cardName:cardToPlay?.name || null,
+          reason:'illegal_target_before_commit', targetReason:legality.reason,
+          targetDetail:summarizeTelemetryTarget(aiTargetObj), phase:state.phase
+        }, 'warning');
+        validPlay = false;
+      }
+
       if (!validPlay) {
         // 601.2e: propuesta ilegal -> rewind completo. En 23.11.3 la carta ni siquiera salió
         // de la mano. Este camino debería ser excepcional porque el pre-flight ya filtró las
@@ -2744,6 +2813,13 @@ export async function takeBotPriorityAction() {
         recordTelemetryEvent('bot_cast_proposal_rejected', { cardId: originalCardToPlay?.id || null, cardName: originalCardToPlay?.name || null, reason: 'card_missing_before_commit', phase: state.phase });
         passPriority('rival');
         return;
+      }
+      if (aiTargetObj) {
+        recordTelemetryEvent('bot_target_selected', {
+          source:'spell', card:{id:cardToPlay?.id || null,name:cardToPlay?.name || null},
+          effectType:cardToPlay?.effect?.type || null, targetDetail:summarizeTelemetryTarget(aiTargetObj),
+          threatScore:botTargetThreatScore(aiTargetObj), turnCount:state.turnCount, phase:state.phase
+        });
       }
       state.rivalHand.splice(committedHandIndex, 1);
 

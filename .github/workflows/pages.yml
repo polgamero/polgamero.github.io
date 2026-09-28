@@ -131,22 +131,25 @@ jobs:
 
           # Este repo aloja otros sitios públicos además de Argentinia. Mantener una allowlist
           # explícita evita volver a publicar el repo completo y conserva la frontera fail-closed.
-          for dir in band botonera clima cv top5 trivia privacidad terminos; do
+          for dir in band botonera clima curso_js curso_react cv top5 trivia privacidad terminos; do
             test -d "$dir" || { echo "::error::Missing allowed public sibling: $dir"; exit 1; }
             mkdir -p ".pages-root/$dir"
             cp -a "$dir"/. ".pages-root/$dir"/
           done
-          # Assets compartidos estrictamente necesarios por las páginas legales y Top 5.
-          # No se copia css/js/img completos: se enumeran los recursos conocidos para evitar
-          # colisiones con el runtime de Argentinia que ya vive en la raíz del artefacto.
-          for file in css/landing.css css/legal.css js/landing.js img/logoTop5.png; do
+          # Assets compartidos de las páginas legales y de los sitios hermanos. CSS/JS se
+          # enumeran para no colisionar con el runtime de Argentinia; img/ se conserva completo
+          # porque es un namespace raíz separado y es usado por Top 5 y curso_js.
+          for file in css/landing.css css/legal.css js/landing.js; do
             test -f "$file" || { echo "::error::Missing allowed shared asset: $file"; exit 1; }
             mkdir -p ".pages-root/$(dirname "$file")"
             cp "$file" ".pages-root/$file"
           done
+          test -d img || { echo "::error::Missing retained root image directory: img"; exit 1; }
+          test -f img/logoTop5.png || { echo "::error::Missing Top 5 root image: img/logoTop5.png"; exit 1; }
+          test -f img/logo.png || { echo "::error::Missing curso_js favicon: img/logo.png"; exit 1; }
           test -d img/bandas || { echo "::error::Missing Top 5 image directory: img/bandas"; exit 1; }
-          mkdir -p .pages-root/img/bandas
-          cp -a img/bandas/. .pages-root/img/bandas/
+          mkdir -p .pages-root/img
+          cp -a img/. .pages-root/img/
 
           # Los documentos legales y su CSS compartido todavía pueden contener rutas
           # absolutas del esquema histórico /argentinia/. Reescribir solo esas referencias
@@ -169,16 +172,19 @@ jobs:
           test -f .pages-root/assets/manifest.webmanifest
           test -f .pages-root/assets/images/cards/cards-image-manifest.json
           test -f .pages-root/cartas/index.html
-          for dir in band botonera clima cv top5 trivia privacidad terminos; do test -f ".pages-root/$dir/index.html"; done
+          for dir in band botonera clima curso_js cv top5 trivia privacidad terminos; do test -f ".pages-root/$dir/index.html"; done
+          test -d .pages-root/curso_react
+          test -f .pages-root/curso_react/package.json
           test -f .pages-root/css/landing.css
           test -f .pages-root/css/legal.css
           test -f .pages-root/js/landing.js
           test -f .pages-root/img/logoTop5.png
+          test -f .pages-root/img/logo.png
           test -d .pages-root/img/bandas
           ! grep -q '/argentinia/assets/' .pages-root/privacidad/index.html
           ! grep -q '/argentinia/assets/' .pages-root/terminos/index.html
           ! grep -q '/argentinia/assets/' .pages-root/css/landing.css
-          echo "PUBLIC_PAGES_ARTIFACT_OK root=argentinia siblings=8 legal=LIVE"
+          echo "PUBLIC_PAGES_ARTIFACT_OK root=argentinia siblings=10 rootImg=FULL legal=LIVE"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

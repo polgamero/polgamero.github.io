@@ -5,7 +5,7 @@ import { buildCopiedCard, buildStackCopy, buildPermanentCopyToken, buildBecameCo
 import { initializeTransformPermanentItem, transformPermanent, canTransformPermanent, currentTransformFace } from './transformEngine.js';
 import { landMatchesEffectiveFilter } from './landCharacteristics.js';
 import { normalizeLandGraveyardReturnEffect, landGraveyardFilterMatches } from './landGraveyard.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, removeCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, repairCombatLinksAfterZoneRemoval, dispatchGameEvent, dispatchReplacementCounterRemoval, exileTopCardsWithPlayPermission, resolveSuspendRemoveTimeEffect, resolveSuspendCastFromExile, adjustSuspendedTimeCounters, handleCounteredSuspendTrigger, chooseCreatureTypeForEffect, settleWardForCommittedStackItem } from './main.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, removeCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, explainResolvedEffectTargetLegality, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, repairCombatLinksAfterZoneRemoval, dispatchGameEvent, dispatchReplacementCounterRemoval, exileTopCardsWithPlayPermission, resolveSuspendRemoveTimeEffect, resolveSuspendCastFromExile, adjustSuspendedTimeCounters, handleCounteredSuspendTrigger, chooseCreatureTypeForEffect, settleWardForCommittedStackItem } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { stampPermanentController } from './controlEngine.js';
@@ -15,7 +15,7 @@ import { hasKeyword, getProtectionMatch } from './keywords.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority, checkGameOver, resetPriorityClock } from './turnManager.js';
-import { recordTelemetryEvent } from './telemetry.js';
+import { recordTelemetryEvent, summarizeTelemetryTarget } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
@@ -370,6 +370,7 @@ export function addToStack(item) {
     eventCard: item.source?.eventCard ? { id: item.source.eventCard.id ?? null, name: item.source.eventCard.name ?? null } : null,
     card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
     isLocal: item.isLocal ?? null,
+    targetDetail: summarizeTelemetryTarget(item.targetObj),
     stackDepth: spellStack.length
   });
   if (item.abilityKind === 'triggered') {
@@ -403,6 +404,7 @@ export async function resolveTopStackItem() {
     type: item.type || null,
     abilityKind: item.abilityKind || null,
     card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
+    targetDetail: summarizeTelemetryTarget(item.targetObj),
     stackDepthAfterPop: spellStack.length
   });
   logMsg(gameText('stack.resolve', { card: item.card.name }));
@@ -2289,6 +2291,16 @@ export async function resolveGameEffect(effect, context) {
     if (targetObj.type !== 'stack' && !isResolvedEffectTargetLegal(targetObj, {
       effect: effectToApply, sourceCard: card, controllerIsLocal: isLocal, cardName: card.name
     })) {
+      const legality = explainResolvedEffectTargetLegality(targetObj, {
+        effect: effectToApply, sourceCard: card, controllerIsLocal: isLocal, cardName: card.name
+      });
+      recordTelemetryEvent('stack_target_illegal_on_resolve', {
+        stackId: item?.id ?? null,
+        card: { id:card?.id ?? null, name:card?.name ?? null },
+        effectType: effectToApply?.type || null,
+        reason: legality.reason,
+        targetDetail: summarizeTelemetryTarget(targetObj)
+      }, 'info');
       logMsg(gameText('stack.targetIllegalOnResolve', { kind:'hechizo o habilidad', ability:'', card:card.name }));
       return { handled:true, targetIllegal:true };
     }
@@ -2420,9 +2432,14 @@ async function executeStackItem(item) {
   if (type === 'aura' && targetObj && targetObj.item) {
     // Un Aura es un hechizo dirigido mientras está en la Stack. Revalida Intocable,
     // Protección, lado permitido y presencia en battlefield justo antes de anexarse.
-    if (!isResolvedEffectTargetLegal(targetObj, {
+    const auraLegality = explainResolvedEffectTargetLegality(targetObj, {
       cardLike: card, sourceCard: card, controllerIsLocal: isLocal, cardName: card.name
-    })) {
+    });
+    if (!auraLegality.legal) {
+      recordTelemetryEvent('stack_target_illegal_on_resolve', {
+        stackId:item?.id ?? null, card:{id:card?.id ?? null,name:card?.name ?? null},
+        effectType:'aura', reason:auraLegality.reason, targetDetail:summarizeTelemetryTarget(targetObj)
+      }, 'info');
       logMsg(gameText('stack.targetIllegalOnResolve', { kind:'Aura', ability:'', card:card.name }));
       sendResolvedCardAway();
       return;
@@ -2482,13 +2499,18 @@ async function executeStackItem(item) {
     // Stack, pero ese objetivo se revalida al resolver. La fuente NO necesita seguir en
     // mesa: una Loyalty sigue existiendo aunque pagar el costo haya matado al Planeswalker.
     if (type === 'ability' && ['triggered', 'loyalty'].includes(item.abilityKind) && targetObj && targetObj.type !== 'stack') {
-      const targetStillLegal = isResolvedEffectTargetLegal(targetObj, {
+      const targetLegality = explainResolvedEffectTargetLegality(targetObj, {
         effect: effectToApply,
         sourceCard: card,
         controllerIsLocal: isLocal,
         cardName: card.name
       });
-      if (!targetStillLegal) {
+      if (!targetLegality.legal) {
+        recordTelemetryEvent('stack_target_illegal_on_resolve', {
+          stackId:item?.id ?? null, card:{id:card?.id ?? null,name:card?.name ?? null},
+          effectType:effectToApply?.type || null, reason:targetLegality.reason,
+          targetDetail:summarizeTelemetryTarget(targetObj)
+        }, 'info');
         const kindLabel = item.abilityKind === 'loyalty' ? 'habilidad de Creencia' : 'habilidad disparada';
         const abilityLabel = item.abilityKind === 'loyalty' && item.ability?.name ? ` "${item.ability.name}"` : '';
         logMsg(gameText('stack.targetIllegalOnResolve', { kind: kindLabel, ability: abilityLabel, card: card.name }));

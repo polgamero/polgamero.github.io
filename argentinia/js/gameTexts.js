@@ -1504,7 +1504,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'mana.pool.rivalFloating': definition('Habilidades y costos', 'Rival: {amount} {mana} flotando', 'Tooltip del mana pool rival.'),
   'mana.chooseColor.title': definition('Habilidades y costos', '{card}: elegí qué maná agregar', 'Título al activar una fuente multicolor.'),
   'mana.sourceChoice.title': definition('Habilidades y costos', '{card}: ¿qué querés activar?', 'Título para permanentes que producen maná y además tienen otra habilidad.'),
-  'mana.sourceChoice.addMana': definition('Habilidades y costos', 'Agregar maná', 'Opción de activar la habilidad de maná.'),
+  'mana.sourceChoice.addMana': definition('Habilidades y costos', 'Generar maná', 'Opción de activar la habilidad de maná.'),
   'mana.sourceChoice.ability': definition('Habilidades y costos', 'Activar habilidad', 'Opción de activar la habilidad no-maná.'),
   'mana.color.W': definition('Habilidades y costos', 'Blanco', 'Nombre humano del maná blanco.'),
   'mana.color.U': definition('Habilidades y costos', 'Azul', 'Nombre humano del maná azul.'),
