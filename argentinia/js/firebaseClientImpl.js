@@ -895,6 +895,38 @@ export async function adminSetCommunityBots(botConfig = {}) {
   return response?.bots || { config:{}, botUids:[], profiles:[], runtime:{} };
 }
 
+export async function adminGetNotificationCenter() {
+  const response=await communityActionServer('admin_notifications_get');
+  return response?.notifications || null;
+}
+export async function adminSaveNotificationSettings(payload={}) {
+  const response=await communityActionServer('admin_notifications_save_settings',{notificationPayload:payload});return response?.settings||null;
+}
+export async function adminSaveNotificationRecipient(payload={}) {
+  const response=await communityActionServer('admin_notifications_save_recipient',{notificationPayload:payload});return response?.recipient||null;
+}
+export async function adminDeleteNotificationRecipient(id='') {
+  const response=await communityActionServer('admin_notifications_delete_recipient',{notificationPayload:{id}});return response?.result||null;
+}
+export async function adminSaveNotificationEvent(payload={}) {
+  const response=await communityActionServer('admin_notifications_save_event',{notificationPayload:payload});return response?.event||null;
+}
+export async function adminSaveNotificationTemplate(payload={}) {
+  const response=await communityActionServer('admin_notifications_save_template',{notificationPayload:payload});return response?.template||null;
+}
+export async function adminRestoreNotificationTemplate(templateId='') {
+  const response=await communityActionServer('admin_notifications_restore_template',{notificationPayload:{templateId}});return response?.template||null;
+}
+export async function adminRestoreNotificationTemplateVersion(templateId='',versionId='') {
+  const response=await communityActionServer('admin_notifications_restore_version',{notificationPayload:{templateId,versionId}});return response?.template||null;
+}
+export async function adminSendNotificationTest(payload={}) {
+  const response=await communityActionServer('admin_notifications_test',{notificationPayload:payload});return response?.result||null;
+}
+export async function adminRetryNotification(notificationId='') {
+  const response=await communityActionServer('admin_notifications_retry',{notificationPayload:{notificationId}});return response?.result||null;
+}
+
 const PENDING_ABANDON_PENALTIES_KEY = 'argentinia.pendingAbandonPenalties.v1';
 function readPendingAbandonPenalties() {
   try {

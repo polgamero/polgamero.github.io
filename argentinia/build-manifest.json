@@ -1,11 +1,11 @@
 {
   "releaseVersion": "23.22.0",
-  "releaseHotfix": "HF2",
-  "releaseDisplayVersion": "23.22.0 HF2",
+  "releaseHotfix": "HF3.1",
+  "releaseDisplayVersion": "23.22.0 HF3.1",
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "7c372cfd1a67b2c9b745",
+  "buildId": "7ed17f8084b0892c4f85",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -103,6 +103,7 @@
     "./js/multiplayerReliability.js",
     "./js/multiplayerSocial.js",
     "./js/newsPanel.js",
+    "./js/notificationsAdmin.js",
     "./js/packCardInspector.js",
     "./js/packOpening.js",
     "./js/permanentTypes.js",

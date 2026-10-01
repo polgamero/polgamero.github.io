@@ -354,7 +354,7 @@
     "colors": [
       "U"
     ],
-    "text": "Exilia a la criatura objetivo. Devolvela al campo de batalla bajo el control de su dueño al comienzo del próximo Paso Final de su controlador.",
+    "text": "Exiliá la criatura objetivo. En el próximo Paso Final de su propietario, devolvela al campo de batalla bajo su control como una criatura nueva.",
     "flavorText": "Un instante desaparece del barrio entero. Después, nadie recuerda haber visto nada raro.",
     "requiresTarget": true,
     "image": "espejismo_colectivo.png",

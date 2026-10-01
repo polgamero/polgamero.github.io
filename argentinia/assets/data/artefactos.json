@@ -986,7 +986,7 @@
     "cmc": 5,
     "rarity": "Mythic",
     "colors": [],
-    "text": "{3}, {T}: Exiliá la criatura objetivo y devolvela al campo de batalla.",
+    "text": "{3}, {T}: Exiliá la criatura objetivo. En el próximo Paso Final de su propietario, devolvela al campo de batalla bajo su control como una criatura nueva.",
     "flavorText": "La función termina, la pantalla queda blanca y alguien vuelve distinto.",
     "image": "proyector_del_cine_cerrado.png",
     "keywords": [],

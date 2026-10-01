@@ -99,6 +99,7 @@ import { mountAdminEmotesPane } from './emotesAdmin.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
+import { mountAdminNotificationsPane } from './notificationsAdmin.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
@@ -8893,6 +8894,7 @@ export function showAdminPanel(onBack) {
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MODERACIÓN Y USUARIOS' },
+    { key: 'notifications', label: 'NOTIFICACIONES' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
     { key: 'stats', label: gameText('admin.tab.statistics') },
     { key: 'economyAudit', label: gameText('admin.tab.economyAudit') },
@@ -8947,6 +8949,10 @@ export function showAdminPanel(onBack) {
           ${admissionAdminHTML}
           ${grantHTML}
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="notifications">
+        <div id="admin-notifications-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="campaigns">
@@ -9115,6 +9121,7 @@ export function showAdminPanel(onBack) {
   // oculta; Usuarios y Campañas además disparaban reads de Firestore sin que el admin entrara.
   let gameTextsAdminPane = null;
   let gameTextsAdminLoaded = false;
+  let adminNotificationsController = null;
   function ensureGameTextsAdminPane() {
     if (gameTextsAdminPane) return gameTextsAdminPane;
     gameTextsAdminPane = createGameTextsAdminPane({
@@ -10374,6 +10381,10 @@ Receipt: ${receiptId}
       void ensureGameTextsAdminPane().load();
     }
     if (key === 'messages') void ensureAdminMessageUsers();
+    if (key === 'notifications') {
+      if (!adminNotificationsController) adminNotificationsController = mountAdminNotificationsPane(overlay.querySelector('#admin-notifications-root'));
+      void adminNotificationsController?.load?.();
+    }
     if (key === 'workshop') void ensureAdminWorkshopPane();
     if (key === 'achievements') void ensureAdminAchievementsPane();
     if (key === 'campaigns') ensureAdminCampaignsPane();

@@ -1005,7 +1005,7 @@
     "power": 3,
     "toughness": 3,
     "keywords": [],
-    "text": "{2}{U}: Exilia a la criatura objetivo. Volvé al campo de batalla bajo el control de su dueño al comienzo del próximo Paso Final de su controlador.",
+    "text": "{2}{U}: Exiliá la criatura objetivo. En el próximo Paso Final de su propietario, devolvela al campo de batalla bajo su control como una criatura nueva.",
     "flavorText": "Abre una puerta a ningún lado — hasta que decide que ya alcanzó.",
     "image": "guardiana_umbral.png",
     "activatedAbility": {
