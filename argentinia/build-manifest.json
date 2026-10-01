@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "7ed17f8084b0892c4f85",
+  "buildId": "168c779819fd16385ef2",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -35,6 +35,7 @@
     "./assets/images/ui/uncommon.png",
     "./assets/manifest.webmanifest",
     "./css/mobile.css",
+    "./css/public-info.css",
     "./css/style.css",
     "./index.html",
     "./js/achievements.js",

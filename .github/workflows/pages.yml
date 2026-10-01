@@ -115,8 +115,13 @@ jobs:
           test -f argentinia/cartas/public-cards.css
           test -f argentinia/cartas/public-cards.js
           test "$(find argentinia/cartas -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "180"
-          test "$(grep -c '<loc>' sitemap.xml)" = "182"
-          echo "PUBLIC_ARTIFACTS_OK gallery=180 sitemap=182"
+          test "$(grep -c '<loc>' sitemap.xml)" = "6"
+          test -f argentinia/aboutUs.html
+          test -f argentinia/manual.html
+          test -f argentinia/leyendas.html
+          grep -q 'noindex,follow' argentinia/cartas/index.html
+          ! grep -q '/cartas/' sitemap.xml
+          echo "PUBLIC_ARTIFACTS_OK gallery=180-noindex editorial=3 sitemap=6"
 
       - name: Build public Pages artifact
         shell: bash

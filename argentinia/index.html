@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = '7ed17f8084b0892c4f85';
+      const BUILD_ID = '168c779819fd16385ef2';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -150,6 +150,19 @@
     }
     #arg-mobile-boot-diag-panel { margin-top:12px; text-align:left; }
     #arg-mobile-boot-diag-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:42dvh; overflow:auto; padding:10px; border:1px solid rgba(212,175,55,.45); border-radius:8px; background:#050806; color:#d9f6d8; font:11px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; }
+
+    .arg-portrait-public { display:none; }
+    @media (orientation: portrait) {
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-mobile-boot-fallback-card { max-height:92dvh; overflow:auto; overscroll-behavior:contain; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public { display:block; margin-top:18px; padding-top:16px; border-top:1px solid rgba(212,175,55,.28); text-align:left; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-intro,
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-hint { display:block!important; margin:0 0 11px; color:#c7c4b8; font-size:13px; line-height:1.5; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-intro strong { color:#f0d56a; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-links { display:grid; gap:8px; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-links a { display:block; padding:10px 11px; border:1px solid rgba(212,175,55,.3); border-radius:9px; background:rgba(3,8,5,.38); color:#f0e0b0; font-size:13px; font-weight:800; text-decoration:none; }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-portrait-public-links a:focus-visible { outline:2px solid #74acdf; outline-offset:2px; }
+    }
+
     .arg-mobile-boot-portrait-icon, .arg-mobile-boot-portrait-copy { display:none; }
     @media (orientation: portrait) { .arg-mobile-boot-landscape-copy { display:none; } .arg-mobile-boot-portrait-copy { display:block; } }
   </style>
@@ -352,6 +365,17 @@
       <p class="arg-mobile-boot-landscape-copy">Cargando el motor del juego…</p>
       <div class="arg-mobile-boot-portrait-icon" aria-hidden="true">📱↻</div>
       <p class="arg-mobile-boot-portrait-copy"><strong>Girá el celular.</strong><br>Argentinia se juega exclusivamente en horizontal.</p>
+      <section class="arg-portrait-public" aria-label="Conocé Argentinia">
+        <p class="arg-portrait-public-intro"><strong>Argentinia — Magia y Leyenda</strong> es un juego de cartas coleccionables argentino para navegador, con más de 900 cartas originales, partidas contra IA, multijugador, torneos, colección y construcción de mazos.</p>
+        <p class="arg-portrait-public-hint">Podés girar el celular en cualquier momento para entrar al juego. Si preferís conocerlo primero:</p>
+        <nav class="arg-portrait-public-links" aria-label="Información pública de Argentinia">
+          <a href="/aboutUs.html">¿Qué es Argentinia?</a>
+          <a href="/manual.html">¿Cómo se juega?</a>
+          <a href="/leyendas.html">Mitos y leyendas que inspiraron Argentinia</a>
+          <a href="/terminos/">Términos y condiciones</a>
+          <a href="/privacidad/">Privacidad</a>
+        </nav>
+      </section>
       <p id="arg-mobile-boot-fallback-status" class="arg-mobile-boot-fallback-status">Preparando cartas y conexión…</p>
       <button id="arg-mobile-boot-fallback-retry" type="button" hidden onclick="location.reload()">REINTENTAR</button>
       <button id="arg-mobile-boot-fallback-diag" type="button" hidden onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.showDiag()">DIAGNÓSTICO</button>
