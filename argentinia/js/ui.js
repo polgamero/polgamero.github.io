@@ -2767,42 +2767,43 @@ function injectMainMenuStyles() {
     .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; --main-menu-button-height: 40px; }
     /* Auth UI polish — Google-recognizable light button. The click/auth flow is unchanged. */
     .main-menu-login-btn {
-      width: 310px;
-      max-width: calc(100vw - 64px);
-      min-height: 54px;
-      display: grid;
-      grid-template-columns: 30px minmax(0, 1fr);
+      width: auto;
+      max-width: min(420px, calc(100vw - 64px));
+      min-height: 56px;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
+      gap: 14px;
       box-sizing: border-box;
       background: #fff;
-      border: 1px solid #747775;
-      border-radius: 8px;
+      border: 1px solid #dadce0;
+      border-radius: 16px;
       color: #1f1f1f;
       font-family: Roboto, Arial, sans-serif;
-      font-size: 17px;
-      font-weight: 500;
-      line-height: 20px;
-      padding: 10px 16px 10px 12px;
+      font-size: 21px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 0 22px;
       cursor: pointer;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.42);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.36);
       transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+      white-space: nowrap;
     }
     .main-menu-login-google-icon {
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       display: block;
-      justify-self: start;
+      flex: 0 0 30px;
       object-fit: contain;
     }
     .main-menu-login-label {
-      justify-self: center;
-      padding-right: 30px;
+      display: block;
       white-space: nowrap;
     }
     .main-menu-login-btn:hover {
       background: #f7f8f8;
-      border-color: #5f6368;
-      box-shadow: 0 7px 22px rgba(0,0,0,0.46);
+      border-color: #c6c9cc;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.40);
       transform: translateY(-1px);
     }
     .main-menu-login-btn:focus-visible {
@@ -2815,6 +2816,21 @@ function injectMainMenuStyles() {
       opacity: 0.72;
       transform: none;
       box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+    }
+    @media (max-width: 640px) {
+      .main-menu-login-btn {
+        max-width: min(360px, calc(100vw - 32px));
+        min-height: 52px;
+        gap: 12px;
+        padding: 0 18px;
+        border-radius: 14px;
+        font-size: 19px;
+      }
+      .main-menu-login-google-icon {
+        width: 26px;
+        height: 26px;
+        flex-basis: 26px;
+      }
     }
     .main-menu-account-info {
       display: flex; align-items: center; gap: 10px;
