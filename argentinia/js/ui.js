@@ -2765,16 +2765,57 @@ function injectMainMenuStyles() {
       border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
     }
     .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; --main-menu-button-height: 40px; }
+    /* Auth UI polish — Google-recognizable light button. The click/auth flow is unchanged. */
     .main-menu-login-btn {
-      display: flex; align-items: center; gap: 8px;
-      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
-      border: 2px solid var(--gold, #d4af37);
-      border-radius: 10px;
-      color: #f0e0b0; font-size: 14px; font-weight: 700;
-      padding: 9px 16px; cursor: pointer;
-      transition: background 0.15s ease, box-shadow 0.15s ease;
+      width: 310px;
+      max-width: calc(100vw - 64px);
+      min-height: 54px;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      box-sizing: border-box;
+      background: #fff;
+      border: 1px solid #747775;
+      border-radius: 8px;
+      color: #1f1f1f;
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 20px;
+      padding: 10px 16px 10px 12px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.42);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
     }
-    .main-menu-login-btn:hover { background: rgba(212,175,55,0.18); box-shadow: 0 4px 18px rgba(212,175,55,0.3); }
+    .main-menu-login-google-icon {
+      width: 24px;
+      height: 24px;
+      display: block;
+      justify-self: start;
+      object-fit: contain;
+    }
+    .main-menu-login-label {
+      justify-self: center;
+      padding-right: 30px;
+      white-space: nowrap;
+    }
+    .main-menu-login-btn:hover {
+      background: #f7f8f8;
+      border-color: #5f6368;
+      box-shadow: 0 7px 22px rgba(0,0,0,0.46);
+      transform: translateY(-1px);
+    }
+    .main-menu-login-btn:focus-visible {
+      outline: 3px solid rgba(66,133,244,0.55);
+      outline-offset: 3px;
+    }
+    .main-menu-login-btn:active { transform: translateY(0); }
+    .main-menu-login-btn:disabled {
+      cursor: wait;
+      opacity: 0.72;
+      transform: none;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+    }
     .main-menu-account-info {
       display: flex; align-items: center; gap: 10px;
       background: rgba(11,19,14,0.75);
@@ -4028,8 +4069,34 @@ function injectEncyclopediaStyles() {
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-progress { display:none; }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
     .encyclopedia-dfc-back-slot .card-inner { box-shadow:0 0 0 1px rgba(120,190,255,.28), 0 10px 25px rgba(0,0,0,.25); }
-    .encyclopedia-evolution-buttons { display:flex; justify-content:center; gap:6px; margin-top:7px; }
-    .encyclopedia-evolution-btn { border:1px solid rgba(96,145,103,.58); background:#e8f0e8; color:#1f4c29; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:900; letter-spacing:.035em; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+    /* 23.22.0 HF3.1 UI polish — Base/Evo acompaña exactamente al ancho de la carta.
+       Los tres controles nunca pueden ensanchar el slot; tipografía, gaps y padding escalan
+       con --card-w. En cartas muy pequeñas el container query muestra B/E1/E2. */
+    .encyclopedia-card-slot.has-evolution-switcher {
+      width:var(--card-w); min-width:0; container-type:inline-size; container-name:encyclopedia-evolution-slot;
+    }
+    .encyclopedia-evolution-buttons {
+      width:100%; max-width:100%; box-sizing:border-box; display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:clamp(2px,calc(var(--card-w) * .022),6px);
+      margin-top:clamp(3px,calc(var(--card-w) * .025),7px);
+    }
+    .encyclopedia-evolution-btn {
+      min-width:0; width:100%; box-sizing:border-box; overflow:hidden; white-space:nowrap; text-overflow:clip;
+      border:1px solid rgba(96,145,103,.58); background:#e8f0e8; color:#1f4c29;
+      border-radius:clamp(4px,calc(var(--card-w) * .026),7px);
+      padding:clamp(2px,calc(var(--card-w) * .014),4px) clamp(2px,calc(var(--card-w) * .022),8px);
+      font-size:clamp(7px,calc(var(--card-w) * .040),10px); line-height:1.15;
+      font-weight:900; letter-spacing:clamp(0em,calc(var(--card-w) * .00012),.035em); cursor:pointer;
+      box-shadow:0 1px 3px rgba(0,0,0,.18);
+    }
+    .encyclopedia-evolution-label-short { display:none; }
+    @container encyclopedia-evolution-slot (max-width: 124px) {
+      .encyclopedia-evolution-label-full { display:none; }
+      .encyclopedia-evolution-label-short { display:inline; }
+      .encyclopedia-evolution-btn { font-size:clamp(7px,9cqw,9px); padding-inline:1px; letter-spacing:0; }
+      .encyclopedia-evolution-buttons { gap:2px; }
+    }
     .encyclopedia-evolution-btn:hover { background:#d6e8d8; transform:translateY(-1px); }
     .encyclopedia-evolution-btn.active { background:#315f39; border-color:#d4af37; color:#fff4c2; box-shadow:0 0 0 1px rgba(212,175,55,.3),0 2px 5px rgba(0,0,0,.25); }
     .encyclopedia-evolution-btn.locked:not(.active) { opacity:.72; }
@@ -4275,15 +4342,22 @@ export function showEncyclopedia(onBack) {
       // el arte no descubierto sigue oculto; Admin siempre puede inspeccionar los 40 stages
       // sin adquirirlos ni mutar users/{uid}.evolutions.
       if (!isAssetTab && isEvolutionEligibleCard(card)) {
+        slot.classList.add('has-evolution-switcher');
         const evoButtons=document.createElement('div'); evoButtons.className='encyclopedia-evolution-buttons';
         for (const stageNumber of [0,1,2]) {
           const button=document.createElement('button'); button.type='button';
           button.className=`encyclopedia-evolution-btn${stageNumber===0?' active':''}`;
-          button.textContent=stageNumber===0?gameText('encyclopedia.evolution.base'):gameText(`encyclopedia.evolution.stage${stageNumber}`);
+          const fullLabel=stageNumber===0?gameText('encyclopedia.evolution.base'):gameText(`encyclopedia.evolution.stage${stageNumber}`);
+          const compactLabel=stageNumber===0?'B':`E${stageNumber}`;
+          const fullLabelSpan=document.createElement('span'); fullLabelSpan.className='encyclopedia-evolution-label-full'; fullLabelSpan.textContent=fullLabel;
+          const compactLabelSpan=document.createElement('span'); compactLabelSpan.className='encyclopedia-evolution-label-short'; compactLabelSpan.textContent=compactLabel; compactLabelSpan.setAttribute('aria-hidden','true');
+          button.append(fullLabelSpan,compactLabelSpan);
           button.dataset.evolutionStage=String(stageNumber);
+          button.setAttribute('aria-label', fullLabel);
           button.setAttribute('aria-pressed', stageNumber===0?'true':'false');
           const visible=evolutionStageVisible(stageNumber);
           if (!visible) { button.classList.add('locked'); button.title=gameText('encyclopedia.evolution.locked'); }
+          else button.title=fullLabel;
           button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();renderEncyclopediaStage(stageNumber);});
           evoButtons.appendChild(button);
         }
@@ -8160,9 +8234,9 @@ function renderAccountBox(container, user) {
       });
     });
   } else {
-    container.innerHTML = `<button class="main-menu-login-btn" id="menu-login">${gameTextHtml('account.loginGoogle')}</button>`;
+    container.innerHTML = `<button class="main-menu-login-btn" id="menu-login"><img class="main-menu-login-google-icon" src="./assets/images/ui/google.png" alt="" aria-hidden="true"><span class="main-menu-login-label">${gameTextHtml('account.loginGoogle')}</span></button>`;
     container.querySelector('#menu-login').addEventListener('click', () => {
-      container.innerHTML = `<button class="main-menu-login-btn" id="menu-login" disabled>${gameTextHtml('account.connecting')}</button>`;
+      container.innerHTML = `<button class="main-menu-login-btn" id="menu-login" disabled><img class="main-menu-login-google-icon" src="./assets/images/ui/google.png" alt="" aria-hidden="true"><span class="main-menu-login-label">${gameTextHtml('account.connecting')}</span></button>`;
       signInWithGoogle().catch(err => {
         // El caso más común acá ni siquiera es un error real: el jugador cerró el popup
         // sin elegir cuenta (auth/popup-closed-by-user) — no hace falta asustarlo por eso.

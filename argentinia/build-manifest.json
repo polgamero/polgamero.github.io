@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "buildId": "168c779819fd16385ef2",
+  "buildId": "a3d9a2735519fc0debfd",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -25,6 +25,7 @@
     "./assets/images/ui/copa_argentinia.png",
     "./assets/images/ui/esencia.png",
     "./assets/images/ui/evolucionable.png",
+    "./assets/images/ui/google.png",
     "./assets/images/ui/maquina1.png",
     "./assets/images/ui/maquina2.png",
     "./assets/images/ui/maquina3.png",

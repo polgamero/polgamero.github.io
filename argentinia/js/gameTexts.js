@@ -503,7 +503,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'account.points': definition('Cuenta', '{points} puntos', 'Saldo de puntos mostrado junto al avatar.'),
   'account.rename': definition('Cuenta', '✏️ Cambiar nombre · {cost} Ficha', 'Botón para cambiar username.'),
   'account.logout': definition('Cuenta', 'Cerrar sesión', 'Botón para cerrar sesión.'),
-  'account.loginGoogle': definition('Cuenta', '🔵 Iniciar sesión con Google', 'Botón de login Google.'),
+  'account.loginGoogle': definition('Cuenta', 'Iniciar sesión con Google', 'Botón de login Google.'),
   'account.connecting': definition('Cuenta', 'Conectando…', 'Estado del botón mientras se abre Auth.'),
   'account.loginError': definition('Cuenta', 'No se pudo iniciar sesión. Probá de nuevo.', 'Error visible de login.'),
   'account.renameActiveMatch': definition('Cuenta', 'Terminá tu partida multiplayer antes de cambiar el nombre.', 'Bloqueo de rename durante partida activa.'),
