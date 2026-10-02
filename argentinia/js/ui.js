@@ -2768,22 +2768,22 @@ function injectMainMenuStyles() {
     /* Auth UI polish — Google-recognizable light button. The click/auth flow is unchanged. */
     .main-menu-login-btn {
       width: auto;
-      max-width: min(420px, calc(100vw - 64px));
-      min-height: 56px;
+      max-width: min(336px, calc(100vw - 64px));
+      min-height: 45px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 14px;
+      gap: 11px;
       box-sizing: border-box;
       background: #fff;
       border: 1px solid #dadce0;
-      border-radius: 16px;
+      border-radius: 13px;
       color: #1f1f1f;
       font-family: Roboto, Arial, sans-serif;
-      font-size: 21px;
+      font-size: 16.8px;
       font-weight: 600;
       line-height: 1;
-      padding: 0 22px;
+      padding: 0 18px;
       cursor: pointer;
       box-shadow: 0 8px 24px rgba(0,0,0,0.36);
       transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
@@ -2819,12 +2819,12 @@ function injectMainMenuStyles() {
     }
     @media (max-width: 640px) {
       .main-menu-login-btn {
-        max-width: min(360px, calc(100vw - 32px));
-        min-height: 52px;
-        gap: 12px;
-        padding: 0 18px;
-        border-radius: 14px;
-        font-size: 19px;
+        max-width: min(288px, calc(100vw - 32px));
+        min-height: 42px;
+        gap: 10px;
+        padding: 0 14px;
+        border-radius: 11px;
+        font-size: 15.2px;
       }
       .main-menu-login-google-icon {
         width: 26px;
