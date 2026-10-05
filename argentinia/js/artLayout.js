@@ -10,7 +10,8 @@
 // real necesita el layout o cuando el Admin abre el editor. Una cache local permite aplicar
 // de inmediato el último encuadre conocido sin bloquear el render mientras llega Firestore.
 
-import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
+import { loadPublicGameConfigDocument, saveAdminGameConfigDocument, adminSaveDiscoveryPresentation } from './firebaseClient.js';
+import { isDiscoveryCardId } from './discoveryCards.js';
 
 export const ART_LAYOUT_SCHEMA_VERSION = 1;
 export const ART_LAYOUT_DOCUMENT_ID = 'artLayouts';
@@ -27,6 +28,7 @@ const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:evo1|evo2))?(?:::(?:front|back))
 const EPSILON = 0.0005;
 
 let activeLayouts = Object.freeze({});
+let privateDiscoveryLayouts = Object.freeze({});
 let remoteLoaded = false;
 let loadPromise = null;
 let lastLoadError = null;
@@ -113,6 +115,18 @@ activeLayouts = freezeLayouts(readLocalCache());
 export function getArtLayoutsSnapshot() {
   return Object.fromEntries(Object.entries(activeLayouts).map(([id, layout]) => [id, { ...layout }]));
 }
+export function injectPrivateDiscoveryArtLayouts(cards = []) {
+  const next={};
+  for(const card of Array.isArray(cards)?cards:[]){
+    const id=String(card?.id||'').trim(); if(!isDiscoveryCardId(id))continue;
+    const layout=normalizeArtLayout(card?.discoveryPresentation?.artLayout);
+    next[id]=layout;
+  }
+  privateDiscoveryLayouts=freezeLayouts(next);
+  applyAllArtLayoutsToVisibleCardImages();
+  return Object.keys(next).length;
+}
+export function clearPrivateDiscoveryArtLayouts(){privateDiscoveryLayouts=Object.freeze({});}
 
 function legacyFrontLayoutId(id) {
   return String(id || '').endsWith('::front') ? String(id).slice(0, -7) : '';
@@ -120,6 +134,8 @@ function legacyFrontLayoutId(id) {
 
 export function getArtLayout(cardId) {
   const id = String(cardId || '');
+  const privateExplicit=privateDiscoveryLayouts[id] || privateDiscoveryLayouts[legacyFrontLayoutId(id)];
+  if(privateExplicit) return { ...privateExplicit };
   const explicit = activeLayouts[id];
   if (explicit) return { ...explicit };
   const legacyId = legacyFrontLayoutId(id);
@@ -129,6 +145,8 @@ export function getArtLayout(cardId) {
 
 export function hasCustomArtLayout(cardId) {
   const id = String(cardId || '');
+  const privateLayout=privateDiscoveryLayouts[id] || (legacyFrontLayoutId(id) && privateDiscoveryLayouts[legacyFrontLayoutId(id)]);
+  if(privateLayout) return !isDefaultArtLayout(privateLayout);
   return !!activeLayouts[id] || !!(legacyFrontLayoutId(id) && activeLayouts[legacyFrontLayoutId(id)]);
 }
 
@@ -238,6 +256,14 @@ export function registerCardArtImage(img, cardId) {
 export async function saveArtLayout(cardId, layoutOrNull) {
   const id = String(cardId || '').trim();
   if (!CARD_ID_RE.test(id)) throw new Error('ART_LAYOUT_INVALID_CARD_ID');
+  if(isDiscoveryCardId(id)){
+    const baseId=legacyFrontLayoutId(id)||id;
+    const normalized=layoutOrNull==null?{...ART_LAYOUT_DEFAULT}:normalizeArtLayout(layoutOrNull);
+    await adminSaveDiscoveryPresentation(baseId,{artLayout:isDefaultArtLayout(normalized)?null:normalized});
+    privateDiscoveryLayouts=freezeLayouts({...privateDiscoveryLayouts,[baseId]:normalized});
+    applyArtLayoutToVisibleCardImages(id);
+    return {...normalized};
+  }
 
   let baseLayouts = getArtLayoutsSnapshot();
   try {

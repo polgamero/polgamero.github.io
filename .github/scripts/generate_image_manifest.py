@@ -95,6 +95,8 @@ def load_pool_contract(root: Path) -> tuple[str, str, int, dict[str, int]]:
         raise ValueError("no se pudo leer CURRENT_POOL_MILESTONE en js/poolContract.js")
 
     milestone = current_match.group(1)
+    public_match = re.search(r"export\s+const\s+PUBLIC_POOL_BASELINE\s*=\s*POOL_MILESTONES\.([A-Za-z0-9_]+)\s*;", text)
+    if public_match: milestone = public_match.group(1)
     milestone_re = re.compile(
         rf"\b{re.escape(milestone)}\s*:\s*makeMilestone\(\s*"
         rf"['\"]([^'\"]+)['\"]\s*,\s*(\d+)\s*,\s*\{{(.*?)\}}\s*\)",

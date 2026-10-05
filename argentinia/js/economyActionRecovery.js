@@ -8,7 +8,7 @@ const VALID_TYPES = new Set([
   'accountBootstrap','starterCompletion',
   'packPurchase','enhancementCraft','workshopUnlock','achievementClaim','achievementNotice','essenceConvert',
   'cardEvolution','industrialMix','prebuiltPurchase','emotePurchase','classifiedPurchase',
-  'classifiedBasicLandPackPurchase','usernameRename','dailyClaim'
+  'classifiedBasicLandPackPurchase','usernameRename','dailyClaim','sanctuaryBarcodeClaim','sanctuaryResonanceClaim'
 ]);
 
 function safeRead() {

@@ -30,7 +30,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { isCurrentLegalAcceptance } from './legal.js';
@@ -249,12 +249,14 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   classifiedPurchase: 'store.purchase_classified',
   classifiedBasicLandPackPurchase: 'store.purchase_basic_land_pack',
   usernameRename: 'account.rename_username',
-  dailyClaim: 'daily.claim'
+  dailyClaim: 'daily.claim',
+  sanctuaryBarcodeClaim: 'sanctuary.claim_barcode',
+  sanctuaryResonanceClaim: 'sanctuary.claim_resonance'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
   accountBootstrap: 'acctboot', starterCompletion: 'starter',
   packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', achievementNotice:'achievement-notice', essenceConvert:'essence-convert', cardEvolution:'card-evolution', industrialMix:'industrial-mix', prebuiltPurchase: 'prebuilt',
-  classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
+  classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim', sanctuaryBarcodeClaim:'sanctuary-claim', sanctuaryResonanceClaim:'sanctuary-resonance-claim'
 });
 
 // 23.19.5.3 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
@@ -778,6 +780,124 @@ export async function flushPendingGameRewards(uid) {
     }
   }
   return { attempted: pending.length, settled, failed, latestTotal, results };
+}
+
+let discoveryPresentationMigrationChecked=false;
+export async function loadAuthorizedDiscoveryCards() {
+  const uid=auth.currentUser?.uid; if(!uid) return [];
+  let response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
+  if(response?.discoveryAccessScope==='admin'&&!discoveryPresentationMigrationChecked){
+    discoveryPresentationMigrationChecked=true;
+    const migrated=await adminMigrateDiscoveryPresentationServer().catch(error=>{console.warn('[DISCOVERY_PRESENTATION_MIGRATION_SKIPPED]',error?.message||error);return null;});
+    if(Number(migrated?.discoveryPresentationMigration?.total||0)>0) response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
+  }
+  const cards=Array.isArray(response?.authorizedDiscoveryCards)?response.authorizedDiscoveryCards:[];
+  cardDb.injectAuthorizedDiscoveryCards(cards);
+  return cards;
+}
+
+export async function getSanctuaryStatus() {
+  const response = await getSanctuaryStatusServer({includeDiscoveryAssets:false});
+  return response?.status || null;
+}
+
+export async function resolveSanctuaryBarcode(gtin) {
+  const response = await resolveSanctuaryBarcodeServer(gtin);
+  return response?.resolution || null;
+}
+
+export async function claimSanctuaryBarcode(gtin) {
+  const uid=auth.currentUser?.uid;
+  if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
+  const request={gtin:String(gtin||'')};
+  const outcome=await runEconomyActionAuthority(uid,'sanctuaryBarcodeClaim',request,operationId=>claimSanctuaryBarcodeServer(request.gtin,operationId));
+  if(outcome?.result?.card) cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]),outcome.result.card]);
+  return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
+}
+
+export async function resolveSanctuaryResonance(signature) {
+  const response = await resolveSanctuaryResonanceServer(signature);
+  return response?.resolution || null;
+}
+
+export async function claimSanctuaryResonance(signature) {
+  const uid=auth.currentUser?.uid;
+  if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
+  const request={signature:String(signature||'')};
+  const outcome=await runEconomyActionAuthority(uid,'sanctuaryResonanceClaim',request,operationId=>claimSanctuaryResonanceServer(request.signature,operationId));
+  if(outcome?.result?.card) cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]),outcome.result.card]);
+  return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
+}
+
+export async function adminPreviewSanctuary(type, input) {
+  const response = await adminPreviewSanctuaryServer(type, input);
+  return response?.preview || null;
+}
+
+export async function adminGetSanctuaryHistory(filters = {}) {
+  const payload={
+    query:String(filters?.query||'').trim().slice(0,120),
+    source:['barcode','resonance'].includes(String(filters?.source||'').toLowerCase())?String(filters.source).toLowerCase():'all',
+    actor:['player','admin'].includes(String(filters?.actor||'').toLowerCase())?String(filters.actor).toLowerCase():'all',
+    limit:Math.max(10,Math.min(100,Math.floor(Number(filters?.limit)||50)))
+  };
+  const response = await adminPreviewSanctuaryServer('history', JSON.stringify(payload));
+  return response?.preview || null;
+}
+
+export async function adminSaveDiscoveryPresentation(cardId, patch = {}) {
+  const response=await adminSaveDiscoveryPresentationServer(cardId,patch);
+  await loadAuthorizedDiscoveryCards();
+  return response?.discoveryPresentation || null;
+}
+
+const discoveryArtUploadInflight=new Map();
+export async function adminUploadDiscoveryArt(cardId, file) {
+  const id=String(cardId||'').trim();
+  if(!id) throw new Error('DISCOVERY_CARD_ID_REQUIRED');
+  if(!(file instanceof Blob)) throw new Error('DISCOVERY_PNG_REQUIRED');
+  if(file.type && file.type!=='image/png') throw new Error('DISCOVERY_ART_MUST_BE_PNG');
+  if(Number(file.size||0)<=0 || Number(file.size||0)>12*1024*1024) throw new Error('DISCOVERY_ART_SIZE_INVALID');
+  if(discoveryArtUploadInflight.has(id)) return discoveryArtUploadInflight.get(id);
+  const task=(async()=>{
+    let target=null; let upload=null;
+    for(let attempt=0;attempt<2;attempt+=1){
+      const response=await adminCreateDiscoveryArtUploadServer(id);
+      target=response?.discoveryAssetUpload;
+      if(!target?.uploadUrl||!target?.uploadId||!target?.uploadObjectPath) throw new Error('DISCOVERY_UPLOAD_URL_UNAVAILABLE');
+      upload=await fetch(target.uploadUrl,{method:'PUT',headers:{'Content-Type':'image/png'},body:file,cache:'no-store'});
+      if(upload.ok)break;
+      if(attempt===0 && (upload.status===401||upload.status===403))continue;
+      throw new Error(`DISCOVERY_ART_UPLOAD_FAILED_${upload.status}`);
+    }
+    if(!upload?.ok) throw new Error('DISCOVERY_ART_UPLOAD_FAILED');
+    const finalized=await adminFinalizeDiscoveryArtUploadServer(id,target.uploadId,target.uploadObjectPath);
+    if(finalized?.discoveryAssetFinalize?.assetReady!==true) throw new Error('DISCOVERY_ART_FINALIZE_FAILED');
+    const cards=await loadAuthorizedDiscoveryCards();
+    return {ok:true,target,finalized:finalized.discoveryAssetFinalize,card:cards.find(card=>String(card?.id||'')===id)||null};
+  })();
+  discoveryArtUploadInflight.set(id,task);
+  try{return await task;}finally{if(discoveryArtUploadInflight.get(id)===task)discoveryArtUploadInflight.delete(id);}
+}
+
+export async function adminSetSanctuaryConfig(config = {}) {
+  const response = await adminSetSanctuaryConfigServer(config);
+  return response?.status || null;
+}
+
+export async function adminSetSanctuaryBarcodeBuckets(barcodeBuckets = []) {
+  const response = await adminSetSanctuaryBarcodeBucketsServer(barcodeBuckets);
+  return response?.status || null;
+}
+
+export async function adminSetSanctuaryResonanceBuckets(resonanceBuckets = []) {
+  const response = await adminSetSanctuaryResonanceBucketsServer(resonanceBuckets);
+  return response?.status || null;
+}
+
+export async function adminSetSanctuaryBarcodeEasterEggs(barcodeEasterEggs = []) {
+  const response = await adminSetSanctuaryBarcodeEasterEggsServer(barcodeEasterEggs);
+  return response?.status || null;
 }
 
 export async function getAdmissionStatus() {

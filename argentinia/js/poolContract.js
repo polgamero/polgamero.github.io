@@ -135,7 +135,21 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 110,
     planeswalkers: 8
   }),
+  sanctuary_discovery_1000: makeMilestone('23.22.0 HF3.1 · Sanctuary Stage 19', 1000, {
+    tierras: 68,
+    artefactos: 99,
+    criaturas: 417,
+    instantaneos: 164,
+    conjuros: 119,
+    encantamientos: 125,
+    planeswalkers: 8
+  }),
 });
 
-export const CURRENT_POOL_MILESTONE = 'dragons_buenos_aires_900';
+export const CURRENT_POOL_MILESTONE = 'sanctuary_discovery_1000';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];
+
+// Santuario Stage22: el pool físico/server sigue en 1000, pero el bootstrap público
+// contiene sólo las 900 cartas no-Discovery. Las 100 Discovery se hidratan con autoridad.
+export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.dragons_buenos_aires_900;
+export const PHYSICAL_POOL_BASELINE = POOL_BASELINE;

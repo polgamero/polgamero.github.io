@@ -7,6 +7,7 @@ import { formatDuration } from './statistics.js';
 import { cardDb } from './cardLoader.js';
 import { gameText } from './gameTexts.js';
 import { ensureEconomyPendingStyles } from './economyPending.js';
+import { isDiscoveryCard } from './discoveryCards.js';
 
 const esc=value=>{const d=document.createElement('div');d.textContent=value==null?'':String(value);return d.innerHTML;};
 const n=value=>Math.max(0,Math.floor(Number(value)||0));
@@ -73,7 +74,7 @@ function realOwnedCards(){
   const counts={}; for(const raw of ownedCardIds()){const id=String(raw||'');if(id)counts[id]=(counts[id]||0)+1;}
   const enhancements=localEnhancements(); const evolutions=localEvolutions(); const rows=[];
   for(const baseId of Object.keys(counts)){
-    const card=cardDb.getById(baseId); if(!card||(typeof cardDb.isEnabled==='function'&&!cardDb.isEnabled(card.id)))continue;
+    const card=cardDb.getById(baseId); if(!card||isDiscoveryCard(card)||(typeof cardDb.isEnabled==='function'&&!cardDb.isEnabled(card.id)))continue;
     const enhancedKeyword=String(enhancements[baseId]||'').trim();
     const evoRow=evolutions[baseId]; const evoStage=Math.max(0,Math.min(2,Math.floor(Number(evoRow?.stage??evoRow)||0)));
     const special=(enhancedKeyword?1:0)+(evoStage>0?1:0);

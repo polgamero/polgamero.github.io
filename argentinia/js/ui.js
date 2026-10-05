@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots, getSanctuaryStatus, resolveSanctuaryBarcode, claimSanctuaryBarcode, resolveSanctuaryResonance, claimSanctuaryResonance, loadAuthorizedDiscoveryCards, adminUploadDiscoveryArt } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -86,6 +86,13 @@ import { gameText } from './gameTexts.js';
 import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, achievementTrophyPath, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
 import { EVOLUTION_PATHS, normalizeEvolutionProfile, evolutionStageForProfile, evolutionVariantId, parseEvolutionVariantId, applyEvolutionStage, isEvolutionEligibleCard, isEvolutionStageDiscovered } from './evolution.js';
+import { isDiscoveryCard, DISCOVERY_ICON_GLYPH, DISCOVERY_ICON_ASSET } from './discoveryCards.js';
+import { discoveryCatalogForEncyclopedia, discoveryEncyclopediaProgress, buildDiscoveryEncyclopediaEntry, discoveryEntrySearchText } from './discoveryEncyclopedia.js';
+import { sanctuaryCameraSupported, openSanctuaryCamera, stopSanctuaryCameraStream, nextSanctuaryVideoInput, sanctuaryCameraErrorKind } from './sanctuaryCamera.js';
+import { startSanctuaryBarcodeScan, stopSanctuaryBarcodeScan } from './sanctuaryBarcode.js';
+import { startSanctuaryResonanceScan, stopSanctuaryResonanceScan } from './sanctuaryResonance.js';
+import { runSanctuaryBarcodeRitual, cancelSanctuaryRitual } from './sanctuaryRitual.js';
+import { createSanctuarySourceArbiter, SANCTUARY_BARCODE_PRIORITY_WINDOW_MS } from './sanctuaryArbiter.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { showPublicPlayerProfile, configurePublicProfileUI } from './publicProfileUI.js';
@@ -100,6 +107,9 @@ import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
 import { mountAdminNotificationsPane } from './notificationsAdmin.js';
+import { mountAdminSanctuaryPane } from './sanctuaryAdmin.js';
+import { mountAppearanceAdminPane } from './appearanceAdmin.js';
+import { applyCachedPublishedAppearance } from './appearance.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
@@ -2149,20 +2159,26 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const evolvableIconHTML = isEvolutionEligibleCard(card) && !card.evolutionStage
     ? `<img class="evolvable-icon" src="./assets/images/ui/evolucionable.png" alt="${gameTextHtml('card.evolvable.icon')}" title="${gameTextHtml('card.evolvable.icon')}" decoding="async" draggable="false" onerror="this.style.visibility='hidden'">`
     : '';
+  const discoveryIconHTML = isDiscoveryCard(card)
+    ? `<span class="discovery-card-icon" role="img" aria-label="${gameTextHtml('card.discovery.icon')}" title="${gameTextHtml('card.discovery.icon')}"><span class="discovery-card-icon-fallback" aria-hidden="true">${DISCOVERY_ICON_GLYPH}</span><img class="discovery-card-icon-image" src="${DISCOVERY_ICON_ASSET}" alt="" decoding="async" draggable="false" onload="this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></span>`
+    : '';
   const cardImageRoot = card.imageRoot === 'evolutions' ? 'evolutions' : 'cards';
+  const trustedRuntimeImageUrl = isDiscoveryCard(card) && /^https:\/\//i.test(String(card.runtimeImageUrl || ''))
+    ? String(card.runtimeImageUrl) : '';
+  const cardImageSrc = isDiscoveryCard(card) ? trustedRuntimeImageUrl : (card.image ? `./assets/images/${cardImageRoot}/${card.image}` : '');
 
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" data-auto-name-cqw="${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div class="card-art-fallback" aria-hidden="true">${icon}</div>
-        ${card.image ? `<img class="card-art-image" src="./assets/images/${cardImageRoot}/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${cardImageSrc ? `<img class="card-art-image" src="${cardImageSrc}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
         ${counterBadgeHTML}
         ${sagaChapterHTML}
         ${dfcBadgeHTML}
         ${typalChoiceBadgeHTML}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span>${rarityIconHTML}${evolvableIconHTML}</div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span>${rarityIconHTML}${evolvableIconHTML}${discoveryIconHTML}</div>
       ${formattedTextHTML}
       ${hasDisplayCombatStats ? `<div class="card-pt${hasVehiclePrintedStats && !hasCreatureStats ? ' vehicle-printed-pt' : ''}"${hasVehiclePrintedStats && !hasCreatureStats ? ' title="Poder/Resistencia al tripular este Transporte" aria-label="Poder/Resistencia al tripular este Transporte"' : ''}>${ptText}</div>` : ''}
       ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
@@ -4081,6 +4097,45 @@ function injectEncyclopediaStyles() {
     .encyclopedia-card-slot.unowned .card-art > div {
       visibility: hidden;
     }
+    /* Santuario Stage21 — una Discovery no descubierta NO usa el renderer de cartas.
+       El placeholder sólo contiene el ícono contractual y la pista; ninguna propiedad de
+       identidad/mecánica/arte se copia al DOM. */
+    .encyclopedia-discovery-slot { width:var(--card-w); min-width:0; }
+    .encyclopedia-discovery-mystery {
+      width:100%; aspect-ratio:5/7; box-sizing:border-box; border-radius:12px;
+      border:2px solid rgba(212,175,55,.58);
+      background:
+        radial-gradient(circle at 50% 24%, rgba(212,175,55,.13), transparent 36%),
+        linear-gradient(160deg,#111811 0%,#09100c 58%,#15120b 100%);
+      box-shadow:0 10px 26px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.035);
+      color:#efe3bd; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:clamp(8px,calc(var(--card-w) * .05),16px); padding:clamp(12px,calc(var(--card-w) * .075),24px);
+      text-align:center; overflow:hidden; position:relative;
+    }
+    .encyclopedia-discovery-mystery::before {
+      content:''; position:absolute; inset:10px; border:1px solid rgba(212,175,55,.16); border-radius:8px; pointer-events:none;
+    }
+    .encyclopedia-discovery-icon {
+      width:clamp(46px,calc(var(--card-w) * .30),96px); height:clamp(46px,calc(var(--card-w) * .30),96px);
+      display:flex; align-items:center; justify-content:center; font-size:clamp(38px,calc(var(--card-w) * .22),76px);
+      filter:drop-shadow(0 4px 10px rgba(0,0,0,.65)); line-height:1;
+    }
+    .encyclopedia-discovery-state {
+      color:#f0e0b0; font-size:clamp(10px,calc(var(--card-w) * .055),16px); font-weight:950;
+      letter-spacing:.09em; text-transform:uppercase;
+    }
+    .encyclopedia-discovery-hint-label {
+      color:#bda96f; font-size:clamp(9px,calc(var(--card-w) * .044),13px); font-weight:900;
+      letter-spacing:.12em; text-transform:uppercase; margin-top:2px;
+    }
+    .encyclopedia-discovery-clue {
+      margin:0; color:#e8dfc8; font-size:clamp(9px,calc(var(--card-w) * .046),14px);
+      line-height:1.38; font-weight:650; max-width:95%;
+    }
+    #encyclopedia-overlay.encyclopedia-discovery-mode .encyclopedia-standard-filter,
+    #encyclopedia-overlay.encyclopedia-discovery-mode .encyclopedia-admin-publication-filter { display:none !important; }
+    #encyclopedia-overlay.encyclopedia-admin-discoverables-mode .encyclopedia-title::after { content:' · ADMIN'; color:#d4af37; font-size:.48em; margin-left:8px; letter-spacing:.08em; vertical-align:middle; }
+    .encyclopedia-admin-discoverable-slot { box-shadow:0 0 0 1px rgba(212,175,55,.28); border-radius:8px; }
     .encyclopedia-token-slot .card-inner { box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 25px rgba(0,0,0,.25); }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-progress { display:none; }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
@@ -4167,11 +4222,20 @@ export function showEncyclopedia(onBack) {
   injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
+  // Stage21: Discovery nunca usa el fallback histórico de `getOwnedCardIds()` que trata el
+  // pool habilitado como poseído cuando no hay perfil. Un descubrimiento sólo cuenta si el
+  // ID está realmente en users/{uid}.collection; Admin puede inspeccionar sin falsear progreso.
+  const discoveryCollection = state.currentUser && Array.isArray(state.userProfile?.collection) ? state.userProfile.collection : [];
+  const discoveryOwnedIds = new Set(discoveryCollection.map(id => String(id || '')));
+  const discoveryProgress = discoveryEncyclopediaProgress(cardDb.discoveryPublicCatalog, cardDb.allCards, discoveryCollection);
   const evolutionProfile = normalizeEvolutionProfile(state.userProfile?.evolutions);
   const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
+  const adminEncyclopedia = isAdminUser();
   const encyclopediaTabs = [
+    ...(!adminEncyclopedia ? [{ key: 'discovery', label: gameText('sanctuary.encyclopedia.title') }] : []),
+    ...(adminEncyclopedia ? [{ key: 'admin-discoverables', label: gameText('sanctuary.encyclopedia.adminDiscoverables') }] : []),
     ...ENCYCLOPEDIA_TABS,
-    ...(isAdminUser() ? [
+    ...(adminEncyclopedia ? [
       { key: 'dfc-backs', label: gameText('encyclopedia.tab.dfcBacks') },
       { key: 'tokens', label: gameText('encyclopedia.tab.tokens') }
     ] : [])
@@ -4210,7 +4274,7 @@ export function showEncyclopedia(onBack) {
     <div class="encyclopedia-header">
       <button class="encyclopedia-back-btn" id="enc-back">← ${gameTextHtml('common.back')}</button>
       <div class="encyclopedia-title">${gameTextHtml('encyclopedia.title')}</div>
-      <div class="encyclopedia-progress">${gameTextHtml('encyclopedia.progress', { owned: state.userProfile ? new Set(state.userProfile.collection || []).size : 0, total: POOL_BASELINE.total })}</div>
+      <div class="encyclopedia-progress" id="enc-progress">${gameTextHtml('encyclopedia.progress', { owned: state.userProfile ? new Set(state.userProfile.collection || []).size : 0, total: POOL_BASELINE.total })}</div>
     </div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <div class="encyclopedia-body">
@@ -4222,8 +4286,8 @@ export function showEncyclopedia(onBack) {
           <input type="range" id="enc-card-zoom" min="${encyclopediaMinZoom}" max="45" step="1" value="${defaultZoom}">
           <span id="enc-card-zoom-value">${defaultZoom}</span>
         </div>
-        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.sort')}</div>
-        <div class="card-browser-sort">
+        <div class="encyclopedia-filter-section-title encyclopedia-standard-filter">${gameTextHtml('encyclopedia.filter.sort')}</div>
+        <div class="card-browser-sort encyclopedia-standard-filter">
           <select id="enc-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
           <button type="button" id="enc-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
         </div>
@@ -4236,11 +4300,11 @@ export function showEncyclopedia(onBack) {
           <input type="radio" name="enc-ownership" value="owned">
           ${gameTextHtml('encyclopedia.filter.owned')}
         </label>
-        <label class="encyclopedia-filter-option">
+        <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-enhanced-only">
           ${gameTextHtml('encyclopedia.filter.enhanced')}
         </label>
-        <label class="encyclopedia-filter-option">
+        <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-evolvable-only">
           <img class="encyclopedia-evolvable-filter-icon" src="./assets/images/ui/evolucionable.png" alt="" aria-hidden="true">
           ${gameTextHtml('encyclopedia.filter.evolvable')}
@@ -4249,14 +4313,14 @@ export function showEncyclopedia(onBack) {
           <input type="checkbox" id="enc-unpublished-only">
           ${gameTextHtml('encyclopedia.filter.unpublished')}
         </label>` : ''}
-        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.color')}</div>
-        <div class="card-browser-filter-grid">${browserColorFiltersHTML('enc')}</div>
-        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.rarity')}</div>
-        <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
-        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.archetype')}</div>
-        <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('enc')}</div>
-        <div class="encyclopedia-filter-section-title">Mecánicas</div>
-        <div class="card-browser-filter-grid archetypes">${browserMechanicFiltersHTML('enc')}</div>
+        <div class="encyclopedia-filter-section-title encyclopedia-standard-filter">${gameTextHtml('encyclopedia.filter.color')}</div>
+        <div class="card-browser-filter-grid encyclopedia-standard-filter">${browserColorFiltersHTML('enc')}</div>
+        <div class="encyclopedia-filter-section-title encyclopedia-standard-filter">${gameTextHtml('encyclopedia.filter.rarity')}</div>
+        <div class="card-browser-filter-grid encyclopedia-standard-filter">${rarityFiltersHTML}</div>
+        <div class="encyclopedia-filter-section-title encyclopedia-standard-filter">${gameTextHtml('encyclopedia.filter.archetype')}</div>
+        <div class="card-browser-filter-grid archetypes encyclopedia-standard-filter">${browserArchetypeFiltersHTML('enc')}</div>
+        <div class="encyclopedia-filter-section-title encyclopedia-standard-filter">Mecánicas</div>
+        <div class="card-browser-filter-grid archetypes encyclopedia-standard-filter">${browserMechanicFiltersHTML('enc')}</div>
       </div>
     </div>
   `;
@@ -4272,6 +4336,24 @@ export function showEncyclopedia(onBack) {
   // HF23.3.16.2.22 — evolución inline en Enciclopedia. Admin puede inspeccionar
   // Base/Evo1/Evo2 sin que eso altere la colección ni el stage persistido del perfil.
   function encyclopediaPresentationLayoutId(card) { return transformFaceLayoutId(card); }
+
+  async function validateDiscoveryAdminPng(file) {
+    if (!(file instanceof Blob) || (file.type && file.type !== 'image/png')) throw new Error('Elegí un archivo PNG.');
+    if (!file.size || file.size > 12 * 1024 * 1024) throw new Error('El PNG debe pesar entre 1 byte y 12 MB.');
+    let width=0, height=0, bitmap=null;
+    try {
+      if (typeof createImageBitmap === 'function') { bitmap=await createImageBitmap(file); width=bitmap.width; height=bitmap.height; }
+      else {
+        const url=URL.createObjectURL(file);
+        try { const img=await new Promise((resolve,reject)=>{const el=new Image();el.onload=()=>resolve(el);el.onerror=()=>reject(new Error('No se pudo leer el PNG.'));el.src=url;}); width=img.naturalWidth; height=img.naturalHeight; }
+        finally { URL.revokeObjectURL(url); }
+      }
+    } finally { try { bitmap?.close?.(); } catch {} }
+    if (!width || !height) throw new Error('No se pudieron validar las dimensiones del PNG.');
+    const ratio=width/height;
+    if (Math.abs(ratio-(4/3))>0.015) throw new Error(`El arte debe ser 4:3. Este archivo es ${width}×${height}.`);
+    return {width,height};
+  }
 
   function mountEncyclopediaTextEditor(slot, displayCard) {
     if (!isAdminUser()) return;
@@ -4319,18 +4401,78 @@ export function showEncyclopedia(onBack) {
     const fragment = document.createDocumentFragment();
     const isTokenTab = tabKey === 'tokens';
     const isDfcBackTab = tabKey === 'dfc-backs';
+    const isDiscoveryTab = tabKey === 'discovery';
+    const isAdminDiscoverablesTab = tabKey === 'admin-discoverables' && adminEncyclopedia;
     const isAssetTab = isTokenTab || isDfcBackTab;
     const sourceCards = isTokenTab
       ? buildTokenCatalog(cardDb.allCards)
       : isDfcBackTab
         ? cardDb.allCards.filter(isTransformingDoubleFacedCard).map(card => buildTransformFaceCard(card, 'back'))
-        : cardDb.getByCategory(tabKey, { includeDisabled: isAdminUser() });
+        : isAdminDiscoverablesTab
+          // Stage24: bóveda completa sólo Admin. `authorizedDiscoveryCards` llega de autoridad
+          // server-side y para Admin contiene exactamente las 100 definiciones completas.
+          ? (cardDb.authorizedDiscoveryCards || []).filter(isDiscoveryCard)
+          : isDiscoveryTab
+            ? discoveryCatalogForEncyclopedia(cardDb.discoveryPublicCatalog, cardDb.allCards)
+            // Para jugadores, Discovery existe únicamente en su solapa spoiler-safe.
+            // El Admin usa la solapa Descubribles y las categorías normales nunca duplican Discovery.
+            : cardDb.getByCategory(tabKey, { includeDisabled: isAdminUser() }).filter(card => !isDiscoveryCard(card));
     sourceCards.forEach(card => {
+      const discoveryOwned = isDiscoveryTab && discoveryOwnedIds.has(String(card?.id || ''));
+      const discoveryEntry = isDiscoveryTab
+        ? buildDiscoveryEncyclopediaEntry(card, { discovered:discoveryOwned, admin:false })
+        : null;
+
+      // Stage21: no usamos createCardElement() para una Discovery secreta. El nodo nace desde
+      // el descriptor enmascarado y nunca recibe cardId/nombre/arte/reglas/rareza/color/coste/P/T.
+      if (isDiscoveryTab && discoveryEntry && !discoveryEntry.discovered) {
+        const slot = document.createElement('div');
+        slot.className = 'encyclopedia-card-slot encyclopedia-discovery-slot';
+        slot.setAttribute('aria-label', gameText('sanctuary.encyclopedia.undiscovered'));
+
+        const mystery = document.createElement('article');
+        mystery.className = 'encyclopedia-discovery-mystery';
+        const icon = document.createElement('div');
+        icon.className = 'encyclopedia-discovery-icon';
+        // Stage24 es dueño de descubribles.png. Hasta que exista el asset final usamos el
+        // fallback contractual 📷 sin generar un 404 deliberado en cada apertura.
+        icon.textContent = discoveryEntry.iconGlyph || DISCOVERY_ICON_GLYPH;
+        icon.setAttribute('aria-hidden','true');
+        const stateLabel = document.createElement('div');
+        stateLabel.className = 'encyclopedia-discovery-state';
+        stateLabel.textContent = gameText('sanctuary.encyclopedia.undiscovered');
+        const hintLabel = document.createElement('div');
+        hintLabel.className = 'encyclopedia-discovery-hint-label';
+        hintLabel.textContent = gameText('sanctuary.encyclopedia.hint');
+        const clue = document.createElement('p');
+        clue.className = 'encyclopedia-discovery-clue';
+        clue.textContent = discoveryEntry.clue || gameText('sanctuary.encyclopedia.hidden');
+        mystery.append(icon,stateLabel,hintLabel,clue);
+        slot.appendChild(mystery);
+
+        fragment.appendChild(slot);
+        entry.records.push({
+          card:null,
+          node:slot,
+          owned:false,
+          enhanced:false,
+          evolvable:false,
+          token:false,
+          dfcBack:false,
+          assetOnly:false,
+          discovery:true,
+          discoverySearchText:discoveryEntrySearchText(discoveryEntry),
+          discoverySortText:String(discoveryEntry.clue || '')
+        });
+        return;
+      }
+
       // Tokens y reversos DFC son superficies Admin de assets, no objetos adicionales de
       // colección: siempre se renderizan a pleno color y no participan de "poseo".
-      const owned = isAssetTab ? true : ownedIds.has(card.id);
+      // Discovery revelada usa la colección real; Admin conserva su laboratorio full-pool.
+      const owned = (isAssetTab || isAdminDiscoverablesTab) ? true : isDiscoveryTab ? discoveryOwned : ownedIds.has(card.id);
       const slot = document.createElement('div');
-      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}${isDfcBackTab ? ' encyclopedia-dfc-back-slot' : ''}`;
+      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}${isDfcBackTab ? ' encyclopedia-dfc-back-slot' : ''}${isDiscoveryTab ? ' encyclopedia-discovery-slot encyclopedia-discovery-revealed' : ''}${isAdminDiscoverablesTab ? ' encyclopedia-admin-discoverable-slot' : ''}`;
       slot.__encyclopediaDisplayCard = card;
       slot.__encyclopediaEvolutionStage = 0;
 
@@ -4357,7 +4499,7 @@ export function showEncyclopedia(onBack) {
       // HF23.3.16.2.22 — Base/Evo1/Evo2 cambian la carta EN EL MISMO slot. Para jugadores
       // el arte no descubierto sigue oculto; Admin siempre puede inspeccionar los 40 stages
       // sin adquirirlos ni mutar users/{uid}.evolutions.
-      if (!isAssetTab && isEvolutionEligibleCard(card)) {
+      if (!isAssetTab && !isDiscoveryTab && isEvolutionEligibleCard(card)) {
         slot.classList.add('has-evolution-switcher');
         const evoButtons=document.createElement('div'); evoButtons.className='encyclopedia-evolution-buttons';
         for (const stageNumber of [0,1,2]) {
@@ -4407,9 +4549,33 @@ export function showEncyclopedia(onBack) {
         slot.appendChild(editArtBtn); syncArtEditor();
       }
 
+      if (isAdminDiscoverablesTab) {
+        const uploadArtBtn=document.createElement('button');
+        uploadArtBtn.type='button'; uploadArtBtn.className='encyclopedia-discovery-upload-btn'; uploadArtBtn.textContent='🖼️';
+        uploadArtBtn.title='Subir o reemplazar PNG privado 4:3';
+        uploadArtBtn.setAttribute('aria-label', `Subir arte privado de ${card.name}`);
+        const input=document.createElement('input'); input.type='file'; input.accept='image/png,.png'; input.hidden=true;
+        input.addEventListener('change', async()=>{
+          const file=input.files?.[0]; input.value=''; if(!file)return;
+          uploadArtBtn.disabled=true; const previous=uploadArtBtn.textContent; uploadArtBtn.textContent='⏳';
+          try {
+            await validateDiscoveryAdminPng(file);
+            await adminUploadDiscoveryArt(card.id,file);
+            uploadArtBtn.textContent='✅'; uploadArtBtn.title='PNG privado actualizado';
+            setTimeout(()=>{ if(overlay.isConnected){ overlay.remove(); showEncyclopedia(onBack); } },350);
+          } catch(error) {
+            console.error('No se pudo subir el arte Discovery:',error);
+            uploadArtBtn.textContent='⚠️'; uploadArtBtn.title=String(error?.message||error||'No se pudo subir el PNG privado');
+            setTimeout(()=>{ if(uploadArtBtn.isConnected){uploadArtBtn.textContent=previous;uploadArtBtn.title='Subir o reemplazar PNG privado 4:3';} },2600);
+          } finally { if(uploadArtBtn.isConnected)uploadArtBtn.disabled=false; }
+        });
+        uploadArtBtn.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();input.click();});
+        slot.append(uploadArtBtn,input);
+      }
+
       // 23.21.5 — publication authority. Admin sees the entire physical catalog; players
       // only receive enabled cards. Historical 880 default enabled, future IDs default OFF.
-      if (isAdminUser() && !isAssetTab) {
+      if (adminEncyclopedia && !isAssetTab && !isAdminDiscoverablesTab) {
         const publication = document.createElement('label');
         publication.className = `encyclopedia-publication-control${card.enabled === false ? ' unpublished' : ''}`;
         const checkbox = document.createElement('input');
@@ -4448,7 +4614,20 @@ export function showEncyclopedia(onBack) {
       }
 
       fragment.appendChild(slot);
-      entry.records.push({ card, node: slot, owned, enhanced: isAssetTab ? false : enhancedIds.has(card.id), evolvable: !isAssetTab && isEvolutionEligibleCard(card), token: isTokenTab, dfcBack: isDfcBackTab, assetOnly: isAssetTab });
+      entry.records.push({
+        card,
+        node:slot,
+        owned,
+        enhanced:isAssetTab || isDiscoveryTab ? false : enhancedIds.has(card.id),
+        evolvable:!isAssetTab && !isDiscoveryTab && isEvolutionEligibleCard(card),
+        token:isTokenTab,
+        dfcBack:isDfcBackTab,
+        assetOnly:isAssetTab,
+        discovery:isDiscoveryTab,
+        adminDiscoverable:isAdminDiscoverablesTab,
+        discoverySearchText:isDiscoveryTab ? discoveryEntrySearchText(discoveryEntry) : '',
+        discoverySortText:isDiscoveryTab ? String(discoveryEntry?.clue || '') : ''
+      });
     });
     entry.pane.appendChild(fragment);
     entry.empty = document.createElement('div');
@@ -4467,38 +4646,65 @@ export function showEncyclopedia(onBack) {
     sortByTab.set(activeTab, sort);
     syncBrowserSortControls(overlay, 'enc', activeTab, sort);
 
-    entry.records.sort((a, b) => compareCardsForBrowser(a.card, b.card, sort));
+    const discoveryMode = activeTab === 'discovery';
+    const adminDiscoverablesMode = activeTab === 'admin-discoverables' && adminEncyclopedia;
+    if (discoveryMode) {
+      entry.records.sort((a,b) => normalizeSearch(a.discoverySortText).localeCompare(normalizeSearch(b.discoverySortText), 'es'));
+    } else {
+      entry.records.sort((a, b) => compareCardsForBrowser(a.card, b.card, sort));
+    }
     let visible = 0;
     entry.records.forEach(record => {
       const card = record.card;
-      const matches = record.assetOnly
-        ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
-        : activeRarities.has(card.rarity) &&
-          cardMatchesColorFilter(card, activeColors) &&
-          cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
-          (ownershipFilter !== 'owned' || record.owned) &&
-          (!enhancedOnly || record.enhanced) &&
-          (!evolvableOnly || record.evolvable) &&
-          (!unpublishedOnly || card.enabled === false) &&
-          (!query || normalizeSearch(card.name).includes(query));
+      const matches = record.discovery
+        // Stage21 anti-oracle: una incógnita sólo puede filtrarse por su PISTA permitida y
+        // por poseída/no poseída. No se evalúa rareza/color/CMC/arquetipo/mecánica/nombre real.
+        ? (ownershipFilter !== 'owned' || record.owned) &&
+          (!query || normalizeSearch(record.discoverySearchText).includes(query))
+        : record.assetOnly
+          ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
+          : activeRarities.has(card.rarity) &&
+            cardMatchesColorFilter(card, activeColors) &&
+            cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
+            (ownershipFilter !== 'owned' || record.owned) &&
+            (!enhancedOnly || record.enhanced) &&
+            (!evolvableOnly || record.evolvable) &&
+            (!unpublishedOnly || card.enabled === false) &&
+            (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
       if (matches) visible += 1;
       entry.pane.appendChild(record.node); // mueve el nodo existente; no recrea su <img>
     });
-    entry.empty.textContent = activeTab === 'tokens'
-      ? gameText('encyclopedia.tokens.empty')
-      : activeTab === 'dfc-backs'
-        ? gameText('encyclopedia.dfcBacks.empty')
-        : gameText('encyclopedia.empty');
+    entry.empty.textContent = adminDiscoverablesMode
+      ? gameText('sanctuary.encyclopedia.adminDiscoverablesEmpty')
+      : discoveryMode
+        ? gameText('sanctuary.encyclopedia.empty')
+        : activeTab === 'tokens'
+        ? gameText('encyclopedia.tokens.empty')
+        : activeTab === 'dfc-backs'
+          ? gameText('encyclopedia.dfcBacks.empty')
+          : gameText('encyclopedia.empty');
     entry.empty.hidden = visible !== 0;
     entry.pane.appendChild(entry.empty);
     overlay.classList.toggle('encyclopedia-asset-mode', activeTab === 'tokens' || activeTab === 'dfc-backs');
+    overlay.classList.toggle('encyclopedia-discovery-mode', discoveryMode);
+    overlay.classList.toggle('encyclopedia-admin-discoverables-mode', adminDiscoverablesMode);
+    const progress = overlay.querySelector('#enc-progress');
+    if (progress) progress.textContent = adminDiscoverablesMode
+      ? gameText('sanctuary.encyclopedia.adminDiscoverablesProgress', { count:entry.records.length, total:100 })
+      : discoveryMode
+        ? gameText('sanctuary.encyclopedia.progress', { count:discoveryProgress.count, total:discoveryProgress.total })
+        : gameText('encyclopedia.progress', { owned:state.userProfile ? new Set(state.userProfile.collection || []).size : 0, total:POOL_BASELINE.total });
     const searchInput = overlay.querySelector('#enc-search');
-    if (searchInput) searchInput.placeholder = activeTab === 'tokens'
-      ? gameText('encyclopedia.tokens.search.placeholder')
-      : activeTab === 'dfc-backs'
-        ? gameText('encyclopedia.dfcBacks.search.placeholder')
-        : gameText('encyclopedia.search.placeholder');
+    if (searchInput) searchInput.placeholder = adminDiscoverablesMode
+      ? gameText('encyclopedia.search.placeholder')
+      : discoveryMode
+        ? gameText('sanctuary.encyclopedia.searchPlaceholder')
+        : activeTab === 'tokens'
+        ? gameText('encyclopedia.tokens.search.placeholder')
+        : activeTab === 'dfc-backs'
+          ? gameText('encyclopedia.dfcBacks.search.placeholder')
+          : gameText('encyclopedia.search.placeholder');
   }
 
   const debouncedSearch = debounce(value => {
@@ -6074,6 +6280,1306 @@ export function showEnhancementCraftScreen(onBack, options = {}) {
 }
 
 
+
+function injectSanctuaryStyles() {
+  if (document.getElementById('sanctuary-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'sanctuary-styles';
+  style.textContent = `
+    #sanctuary-overlay {
+      position:fixed; inset:0; z-index:10032; overflow:hidden;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(116,82,25,.28) 0 12%, rgba(32,26,12,.72) 34%, rgba(4,5,5,.98) 72%),
+        #030403;
+      color:#f4e8be;
+      isolation:isolate;
+    }
+    .sanctuary-stage {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      overflow:visible; pointer-events:none;
+    }
+    .sanctuary-bg {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:fill;
+      user-select:none; -webkit-user-drag:none; pointer-events:none;
+    }
+    .sanctuary-vignette {
+      position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(circle at 50% 50%, transparent 0 28%, rgba(0,0,0,.08) 45%, rgba(0,0,0,.66) 100%);
+    }
+    .sanctuary-topbar {
+      position:absolute; z-index:35; left:18px; right:18px; top:16px;
+      display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px;
+      pointer-events:none;
+    }
+    .sanctuary-topbar > * { pointer-events:auto; }
+    .sanctuary-back {
+      justify-self:start; appearance:none; border:1px solid rgba(212,175,55,.72);
+      border-radius:10px; background:rgba(5,7,5,.82); color:#f4e4ad;
+      padding:9px 14px; font:800 13px/1.1 inherit; cursor:pointer;
+      box-shadow:0 5px 18px rgba(0,0,0,.42); backdrop-filter:blur(5px);
+    }
+    .sanctuary-back:hover { background:rgba(62,48,17,.86); border-color:#efd36f; }
+    .sanctuary-back:focus-visible { outline:2px solid #efd36f; outline-offset:3px; }
+    .sanctuary-title {
+      justify-self:center; margin:0; color:#f4dfa0;
+      font:900 clamp(19px,2.4vw,32px)/1.05 Georgia,serif;
+      letter-spacing:.13em; text-transform:uppercase;
+      text-shadow:0 2px 10px #000,0 0 24px rgba(234,195,83,.28);
+      white-space:nowrap;
+    }
+    .sanctuary-admin-chip {
+      justify-self:end; border:1px solid rgba(181,126,224,.62); border-radius:999px;
+      padding:7px 10px; background:rgba(23,10,31,.78); color:#ecd8ff;
+      font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
+      box-shadow:0 4px 16px rgba(0,0,0,.42);
+    }
+    /* Contract: this anchor is the exact geometric center of fondosantuario.png. */
+    .sanctuary-ritual-anchor {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      z-index:20; width:min(46vmin,430px); aspect-ratio:1;
+      display:grid; place-items:center; pointer-events:none;
+    }
+    .sanctuary-ritual-ring {
+      position:absolute; inset:5%; border-radius:50%;
+      border:1px solid rgba(240,206,103,.35);
+      box-shadow:inset 0 0 42px rgba(230,184,69,.08),0 0 36px rgba(222,174,53,.12);
+    }
+    .sanctuary-ritual-ring::before,
+    .sanctuary-ritual-ring::after {
+      content:''; position:absolute; border-radius:50%; pointer-events:none;
+    }
+    .sanctuary-ritual-ring::before {
+      inset:10%; border:1px dashed rgba(236,209,124,.24);
+      animation:sanctuary-shell-spin 24s linear infinite;
+    }
+    .sanctuary-ritual-ring::after {
+      inset:25%; border:1px solid rgba(255,245,204,.14);
+      box-shadow:0 0 30px rgba(255,224,116,.08);
+    }
+    .sanctuary-ritual-core {
+      position:relative; z-index:2; width:58%; min-width:150px; max-width:255px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; text-align:center; padding:20px 16px; box-sizing:border-box;
+      border-radius:50%; aspect-ratio:1;
+      background:radial-gradient(circle,rgba(29,24,11,.90),rgba(8,8,6,.76) 62%,rgba(0,0,0,.08) 72%);
+      text-shadow:0 2px 8px #000;
+    }
+    .sanctuary-ritual-glyph {
+      font-size:clamp(30px,5vmin,58px); line-height:1; filter:drop-shadow(0 0 12px rgba(244,211,115,.30));
+    }
+    .sanctuary-ritual-kicker { color:#d9bf73; font-size:10px; font-weight:900; letter-spacing:.18em; text-transform:uppercase; }
+    .sanctuary-ritual-message { color:#fff0bc; font-size:clamp(15px,2.2vmin,23px); font-weight:900; line-height:1.12; }
+    .sanctuary-ritual-note { max-width:220px; color:#bdb7a1; font-size:11px; line-height:1.35; }
+    .sanctuary-shell-dock {
+      position:absolute; z-index:35; left:50%; bottom:16px; transform:translateX(-50%);
+      width:min(620px,calc(100vw - 28px)); box-sizing:border-box;
+      display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center;
+      padding:12px 14px; border:1px solid rgba(212,175,55,.48); border-radius:15px;
+      background:rgba(5,6,5,.86); box-shadow:0 14px 38px rgba(0,0,0,.58); backdrop-filter:blur(7px);
+    }
+    .sanctuary-shell-status { min-width:0; }
+    .sanctuary-shell-label { color:#c8b36f; font-size:10px; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
+    .sanctuary-shell-countdown {
+      display:flex; gap:7px; align-items:baseline; margin-top:3px;
+      color:#f6e7b2; font-variant-numeric:tabular-nums; font-weight:900;
+    }
+    .sanctuary-shell-countdown strong { font-size:18px; letter-spacing:.05em; }
+    .sanctuary-shell-countdown span { color:#999786; font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+    .sanctuary-camera-shell {
+      position:absolute; z-index:6; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(122%,560px); aspect-ratio:4/3; overflow:hidden; border-radius:18px;
+      border:1px solid rgba(240,206,103,.60); background:#020302;
+      box-shadow:0 0 0 1px rgba(0,0,0,.55),0 16px 42px rgba(0,0,0,.72),0 0 34px rgba(231,188,66,.12);
+      pointer-events:auto;
+    }
+    .sanctuary-camera-shell[hidden] { display:none!important; }
+    .sanctuary-camera-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+    .sanctuary-camera-shade { position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 60px rgba(0,0,0,.42); }
+    .sanctuary-camera-frame {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:70%; height:54%;
+      border:1px solid rgba(255,232,153,.64); border-radius:12px; pointer-events:none;
+      box-shadow:0 0 22px rgba(239,203,92,.18),inset 0 0 18px rgba(0,0,0,.18);
+    }
+    .sanctuary-camera-frame::before,.sanctuary-camera-frame::after {
+      content:''; position:absolute; width:28px; height:28px; border-color:#f4d77e; border-style:solid; pointer-events:none;
+    }
+    .sanctuary-camera-frame::before { left:-2px; top:-2px; border-width:3px 0 0 3px; border-radius:9px 0 0 0; }
+    .sanctuary-camera-frame::after { right:-2px; bottom:-2px; border-width:0 3px 3px 0; border-radius:0 0 9px 0; }
+    .sanctuary-camera-hint {
+      position:absolute; left:50%; bottom:52px; transform:translateX(-50%); width:min(86%,420px);
+      padding:6px 9px; border-radius:999px; background:rgba(0,0,0,.64); color:#f5e7b3;
+      font-size:10px; font-weight:800; text-align:center; text-shadow:0 1px 4px #000; pointer-events:none;
+    }
+    .sanctuary-camera-seal-status {
+      position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:4;
+      max-width:min(88%,430px); padding:6px 10px; border:1px solid rgba(240,210,112,.62); border-radius:999px;
+      background:rgba(3,5,3,.76); color:#f5e6ae; font-size:10px; font-weight:900; letter-spacing:.035em;
+      text-align:center; text-shadow:0 1px 4px #000; box-shadow:0 4px 16px rgba(0,0,0,.35); pointer-events:none;
+    }
+    .sanctuary-camera-seal-status[data-kind="found"] { color:#d9ffd7; border-color:rgba(123,232,133,.72); background:rgba(5,28,10,.82); }
+    .sanctuary-camera-seal-status[data-kind="invalid"] { color:#ffe0a6; border-color:rgba(239,178,72,.72); background:rgba(40,24,4,.82); }
+    .sanctuary-camera-seal-status[data-kind="error"] { color:#ffd0c5; border-color:rgba(235,112,88,.72); background:rgba(43,10,7,.84); }
+    .sanctuary-camera-seal-status[hidden] { display:none!important; }
+    .sanctuary-camera-resonance-status {
+      position:absolute; right:9px; top:43px; z-index:4; max-width:min(72%,420px);
+      padding:5px 8px; border:1px solid rgba(174,199,234,.50); border-radius:10px;
+      background:rgba(5,8,12,.74); color:#d7e8ff; font-size:9px; font-weight:900; letter-spacing:.035em;
+      text-align:center; line-height:1.2; text-shadow:0 1px 4px #000; box-shadow:0 4px 14px rgba(0,0,0,.30); pointer-events:none;
+    }
+    .sanctuary-camera-resonance-status[data-stable="true"] { color:#f8e9ae; border-color:rgba(242,207,104,.72); background:rgba(30,24,7,.84); }
+    .sanctuary-camera-resonance-status[hidden] { display:none!important; }
+    .sanctuary-camera-controls {
+      position:absolute; left:50%; bottom:9px; transform:translateX(-50%); display:flex; gap:8px; align-items:center; justify-content:center;
+      width:calc(100% - 18px);
+    }
+    .sanctuary-camera-btn {
+      appearance:none; border:1px solid rgba(224,193,91,.65); border-radius:9px; background:rgba(7,8,6,.82); color:#f2df9e;
+      padding:7px 10px; font:900 10px/1 inherit; letter-spacing:.04em; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.42);
+    }
+    .sanctuary-camera-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .sanctuary-camera-btn:focus-visible { outline:2px solid #f0d36e; outline-offset:2px; }
+    .sanctuary-shell-action {
+      appearance:none; min-width:150px; border:1px solid rgba(212,175,55,.46); border-radius:10px;
+      background:linear-gradient(180deg,rgba(93,70,21,.50),rgba(38,28,10,.72));
+      color:#d9c98f; padding:10px 15px; font-weight:900; letter-spacing:.05em;
+    }
+    .sanctuary-shell-action:disabled { opacity:.55; cursor:not-allowed; }
+    @keyframes sanctuary-shell-spin { to { transform:rotate(360deg); } }
+    @media (prefers-reduced-motion:reduce) { .sanctuary-ritual-ring::before { animation:none; } }
+    @media(max-width:760px) {
+      .sanctuary-topbar { left:8px; right:8px; top:8px; gap:7px; }
+      .sanctuary-back { padding:7px 9px; font-size:11px; }
+      .sanctuary-title { font-size:17px; letter-spacing:.08em; }
+      .sanctuary-admin-chip { padding:5px 7px; font-size:8px; }
+      .sanctuary-ritual-anchor { width:min(55vmin,330px); }
+      .sanctuary-ritual-core { min-width:120px; padding:13px 10px; gap:5px; }
+      .sanctuary-ritual-note { max-width:175px; font-size:9px; }
+      .sanctuary-shell-dock { bottom:8px; padding:9px 10px; gap:8px; width:min(96vw,620px); }
+      .sanctuary-shell-action { min-width:118px; padding:8px 10px; font-size:11px; }
+      .sanctuary-shell-countdown strong { font-size:14px; }
+      .sanctuary-shell-countdown span { font-size:8px; }
+      .sanctuary-camera-shell { width:min(138%,520px); border-radius:13px; }
+      .sanctuary-camera-hint { bottom:45px; font-size:9px; }
+      .sanctuary-camera-seal-status { top:7px; font-size:9px; padding:5px 8px; }
+      .sanctuary-camera-resonance-status { right:7px; top:39px; font-size:8px; padding:4px 7px; }
+      .sanctuary-camera-btn { padding:6px 8px; font-size:9px; }
+    }
+    @media(max-height:520px) {
+      .sanctuary-ritual-anchor { width:min(48vmin,250px); }
+      .sanctuary-shell-dock { bottom:6px; }
+      .sanctuary-title { font-size:15px; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function applySanctuaryStageCover(stage, image, host = window) {
+  if (!stage || !image) return () => {};
+  const sync = () => {
+    const vw = Math.max(1, host.innerWidth || document.documentElement.clientWidth || 1);
+    const vh = Math.max(1, host.innerHeight || document.documentElement.clientHeight || 1);
+    const iw = Math.max(1, image.naturalWidth || 16);
+    const ih = Math.max(1, image.naturalHeight || 9);
+    const imageRatio = iw / ih;
+    const viewportRatio = vw / vh;
+    let width, height;
+    if (viewportRatio > imageRatio) { width = vw; height = width / imageRatio; }
+    else { height = vh; width = height * imageRatio; }
+    stage.style.width = `${width}px`;
+    stage.style.height = `${height}px`;
+  };
+  if (image.complete) sync(); else image.addEventListener('load', sync, { once:true });
+  window.addEventListener('resize', sync);
+  sync();
+  return () => window.removeEventListener('resize', sync);
+}
+
+
+
+function sanitizeSanctuaryStatus(rawStatus = {}) {
+  const access = rawStatus && typeof rawStatus.access === 'object' ? rawStatus.access : {};
+  const config = rawStatus && typeof rawStatus.config === 'object' ? rawStatus.config : {};
+  const playerState = rawStatus && typeof rawStatus.playerState === 'object' ? rawStatus.playerState : {};
+  const availability = rawStatus && typeof rawStatus.availability === 'object' ? rawStatus.availability : {};
+  const serverNowMs=Number(rawStatus?.serverNowMs)||Date.now();
+  return {
+    stage: Number(rawStatus?.stage) || 13,
+    serverNowMs,
+    clientReceivedAtMs:Date.now(),
+    config: {
+      masterEnabled: !!config.masterEnabled,
+      maintenanceEnabled: !!config.maintenanceEnabled,
+      cooldownDays: Math.max(1, Number(config.cooldownDays) || 7),
+      barcodeEnabled: !!config.barcodeEnabled,
+      resonanceEnabled: !!config.resonanceEnabled
+    },
+    playerState:{
+      totalClaims:Math.max(0,Number(playerState.totalClaims)||0),
+      playerClaims:Math.max(0,Number(playerState.playerClaims)||0),
+      adminDebugClaims:Math.max(0,Number(playerState.adminDebugClaims)||0),
+      lastClaimAtMs:Number(playerState.lastClaimAtMs)||null,
+      nextAvailableAtMs:Number(playerState.nextAvailableAtMs)||null
+    },
+    availability:{
+      claimAvailable:!!availability.claimAvailable,
+      nextAvailableAtMs:Number(availability.nextAvailableAtMs)||null,
+      cooldownRemainingMs:Math.max(0,Number(availability.cooldownRemainingMs)||0)
+    },
+    access: {
+      allowed: !!access.allowed,
+      mode: String(access.mode || 'disabled'),
+      bypassAdmin: !!access.bypassAdmin,
+      masterEnabled: !!access.masterEnabled,
+      maintenanceEnabled: !!access.maintenanceEnabled,
+      unlimited: !!access.unlimited,
+      cooldownEnabled: !!access.cooldownEnabled
+    }
+  };
+}
+
+function sanctuaryEstimatedServerNow(status) {
+  const base=Number(status?.serverNowMs)||Date.now();
+  const received=Number(status?.clientReceivedAtMs)||Date.now();
+  return base + Math.max(0,Date.now()-received);
+}
+
+function setSanctuaryCountdown(countdownEl, status) {
+  if (!countdownEl) return;
+  const access = status?.access || {};
+  if (access.bypassAdmin && access.unlimited) {
+    countdownEl.setAttribute('aria-label', gameText('sanctuary.countdown.unlimitedAria'));
+    countdownEl.innerHTML = `<strong>∞</strong><span>${gameTextHtml('sanctuary.status.adminUnlimited')}</span>`;
+    return;
+  }
+  const next=Number(status?.availability?.nextAvailableAtMs)||0;
+  const remaining=Math.max(0,next-sanctuaryEstimatedServerNow(status));
+  if(!next || remaining<=0){
+    countdownEl.setAttribute('aria-label', gameText('sanctuary.cooldown.availableNow'));
+    countdownEl.innerHTML = `<strong>✓</strong><span>${gameTextHtml('sanctuary.cooldown.availableNow')}</span>`;
+    return;
+  }
+  const totalSeconds=Math.ceil(remaining/1000);
+  const days=Math.floor(totalSeconds/86400);
+  const hours=Math.floor((totalSeconds%86400)/3600);
+  const minutes=Math.floor((totalSeconds%3600)/60);
+  const seconds=totalSeconds%60;
+  countdownEl.setAttribute('aria-label', gameText('sanctuary.cooldown.remaining'));
+  countdownEl.innerHTML = `<strong>${days}</strong><span>${gameTextHtml('sanctuary.countdown.days')}</span><strong>${String(hours).padStart(2,'0')}</strong><span>${gameTextHtml('sanctuary.countdown.hours')}</span><strong>${String(minutes).padStart(2,'0')}</strong><span>${gameTextHtml('sanctuary.countdown.minutes')}</span><strong>${String(seconds).padStart(2,'0')}</strong><span>${gameTextHtml('sanctuary.countdown.seconds')}</span>`;
+}
+
+function startSanctuaryCountdownTicker(overlay){
+  if(!overlay) return;
+  if(overlay.__sanctuaryCountdownTimer) clearInterval(overlay.__sanctuaryCountdownTimer);
+  const tick=()=>{
+    if(!document.body.contains(overlay)){clearInterval(overlay.__sanctuaryCountdownTimer);overlay.__sanctuaryCountdownTimer=null;return;}
+    const status=overlay.__sanctuaryStatus;
+    if(!status) return;
+    setSanctuaryCountdown(overlay.querySelector('.sanctuary-shell-countdown'),status);
+    const remaining=Math.max(0,(Number(status?.availability?.nextAvailableAtMs)||0)-sanctuaryEstimatedServerNow(status));
+    if(!status.access?.bypassAdmin && status.access?.allowed && remaining<=0 && status.availability && !status.availability.claimAvailable){
+      status.availability.claimAvailable=true;
+      status.availability.cooldownRemainingMs=0;
+      if(!overlay.__sanctuaryCamera?.stream) applySanctuaryStatusToOverlay(overlay,status);
+    }
+  };
+  tick();
+  overlay.__sanctuaryCountdownTimer=setInterval(tick,1000);
+}
+
+function applySanctuaryStatusToOverlay(overlay, rawStatus) {
+  if (!overlay) return;
+  const status = sanitizeSanctuaryStatus(rawStatus);
+  overlay.__sanctuaryStatus = status;
+  const access = status.access;
+  const sourceEnabled = !!(status.config.barcodeEnabled || status.config.resonanceEnabled);
+  const claimAvailable = !!(access.bypassAdmin || status.availability?.claimAvailable);
+  const canUseCamera = !!(access.allowed && claimAvailable && (sourceEnabled || access.bypassAdmin));
+  overlay.dataset.sanctuaryStage = '18';
+  overlay.dataset.sanctuaryShellState = String(access.mode || 'disabled').toUpperCase();
+  const chip = overlay.querySelector('.sanctuary-admin-chip');
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  const countdownEl = overlay.querySelector('.sanctuary-shell-countdown');
+  const actionBtn = overlay.querySelector('.sanctuary-shell-action');
+  if (chip) chip.textContent = access.bypassAdmin ? gameText('sanctuary.admin.unlimitedBadge') : gameText('sanctuary.admin.previewBadge');
+  let message = gameText('sanctuary.status.disabled');
+  let note = gameText('sanctuary.center.closedNote');
+  if (access.maintenanceEnabled && !access.bypassAdmin) {
+    message = gameText('sanctuary.status.maintenance');
+    note = gameText('sanctuary.status.readOnly');
+  } else if (!sourceEnabled && !access.bypassAdmin && access.masterEnabled) {
+    message = gameText('sanctuary.camera.sourcesDisabled');
+    note = gameText('sanctuary.center.closedNote');
+  } else if (access.bypassAdmin) {
+    message = gameText('sanctuary.status.adminAvailable');
+    note = gameText('sanctuary.status.adminUnlimited');
+  } else if (access.masterEnabled && !claimAvailable) {
+    message = gameText('sanctuary.status.cooldown');
+    note = gameText('sanctuary.cooldown.remaining');
+  } else if (access.masterEnabled) {
+    message = gameText('sanctuary.status.available');
+    note = gameText('sanctuary.camera.privacy');
+  }
+  if (messageEl) messageEl.textContent = message;
+  if (noteEl) noteEl.textContent = note;
+  setSanctuaryCountdown(countdownEl, status);
+  startSanctuaryCountdownTicker(overlay);
+  if (actionBtn) {
+    actionBtn.textContent = gameText('sanctuary.action.openCamera');
+    actionBtn.disabled = !canUseCamera;
+    actionBtn.title = canUseCamera ? gameText('sanctuary.camera.permissionBody') : message;
+    actionBtn.setAttribute('aria-label', actionBtn.title);
+  }
+}
+
+async function hydrateSanctuaryOverlay(overlay) {
+  if (!overlay) return;
+  overlay.dataset.sanctuaryShellState = 'SYNCING';
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  if (messageEl) messageEl.textContent = gameText('sanctuary.center.syncing');
+  if (noteEl) noteEl.textContent = gameText('sanctuary.center.readOnlyNote');
+  try {
+    const status = await getSanctuaryStatus();
+    applySanctuaryStatusToOverlay(overlay, status);
+  } catch (error) {
+    overlay.dataset.sanctuaryShellState = 'ERROR';
+    if (messageEl) messageEl.textContent = gameText('sanctuary.status.maintenance');
+    if (noteEl) noteEl.textContent = gameText('sanctuary.center.readOnlyNote');
+    setSanctuaryCountdown(overlay.querySelector('.sanctuary-shell-countdown'), { access:{ bypassAdmin:false, unlimited:false } });
+    const actionBtn = overlay.querySelector('.sanctuary-shell-action');
+    if (actionBtn) {
+      actionBtn.disabled = true;
+      actionBtn.title = gameText('sanctuary.status.readOnly');
+      actionBtn.setAttribute('aria-label', gameText('sanctuary.status.readOnly'));
+    }
+    console.warn('Sanctuary status unavailable', error);
+  }
+}
+
+function showSanctuaryCameraPermissionModal(onConfirm, onCancel) {
+  injectMulliganStyles();
+  const modal = document.createElement('div');
+  modal.className = 'gy-modal-overlay';
+  modal.dataset.sanctuaryCameraPermission = 'true';
+  modal.innerHTML = `
+    <div class="gy-modal-content" style="max-width:470px;">
+      <div class="gy-modal-header"><h3>📷 ${gameTextHtml('sanctuary.camera.permissionTitle')}</h3></div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;">
+        <p style="color:#cfe0d4;font-size:13px;margin:0;line-height:1.5;">${gameTextHtml('sanctuary.camera.permissionBody')}</p>
+        <p style="color:#e7d899;font-size:12px;margin:0;line-height:1.45;">${gameTextHtml('sanctuary.camera.privacy')}</p>
+        <button id="sanctuary-camera-permission-confirm" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.permissionConfirm')}</button>
+        <button id="sanctuary-camera-permission-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.camera.permissionCancel')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('#sanctuary-camera-permission-confirm')?.addEventListener('click', () => { close(); onConfirm?.(); });
+  modal.querySelector('#sanctuary-camera-permission-cancel')?.addEventListener('click', () => { close(); onCancel?.(); });
+}
+
+function sanctuaryCameraErrorText(error) {
+  const kind = sanctuaryCameraErrorKind(error);
+  const key = kind === 'denied' ? 'sanctuary.camera.denied'
+    : kind === 'no_device' || kind === 'constraint' ? 'sanctuary.camera.noDevice'
+    : kind === 'busy' ? 'sanctuary.camera.busy'
+    : kind === 'unsupported' ? 'sanctuary.camera.unsupported'
+    : 'sanctuary.camera.error';
+  return gameTextHtml(key);
+}
+
+function showSanctuaryFullscreenRestoreModal() {
+  if (!document.documentElement?.requestFullscreen || document.fullscreenElement) return;
+  injectMulliganStyles();
+  const modal = document.createElement('div');
+  modal.className = 'gy-modal-overlay';
+  modal.dataset.sanctuaryFullscreenRestore = 'true';
+  modal.innerHTML = `
+    <div class="gy-modal-content" style="max-width:430px;">
+      <div class="gy-modal-header"><h3>${gameTextHtml('sanctuary.title')}</h3></div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;">
+        <p style="color:#cfe0d4;font-size:13px;margin:0;line-height:1.5;">${gameTextHtml('sanctuary.camera.fullscreenRestore')}</p>
+        <button id="sanctuary-fullscreen-restore" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.fullscreenRestoreAction')}</button>
+        <button id="sanctuary-fullscreen-skip" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.action.cancel')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#sanctuary-fullscreen-restore')?.addEventListener('click', async () => {
+    try { await document.documentElement.requestFullscreen({ navigationUI:'hide' }); } catch {}
+    modal.remove();
+  });
+  modal.querySelector('#sanctuary-fullscreen-skip')?.addEventListener('click', () => modal.remove());
+}
+
+
+
+function stopSanctuarySourceArbiter(overlay) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  try { state.arbiter?.abort?.(); } catch {}
+  state.arbiter = null;
+  overlay.__sanctuaryCamera = state;
+}
+
+function freezeSanctuaryScannersForResolution(overlay) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  stopSanctuaryBarcodeScan(state.barcodeScanner);
+  stopSanctuaryResonanceScan(state.resonanceScanner);
+  state.barcodeScanner = null;
+  state.resonanceScanner = null;
+  state.resonanceResolving = state.resolutionType === 'resonance';
+  overlay.__sanctuaryCamera = state;
+}
+
+function handleSanctuaryArbiterDecision(overlay, decision) {
+  if (!overlay || !decision?.source || !decision?.input) return;
+  const state = overlay.__sanctuaryCamera || {};
+  if (!state.stream || state.claimBusy) return;
+  const snapshot = state.arbiter?.snapshot?.();
+  if (!snapshot || snapshot.resolutionType !== decision.source || snapshot.resolutionInput !== decision.input) return;
+  state.resolutionReady = false;
+  state.serverResolution = null;
+  state.resolutionType = String(decision.source);
+  if (decision.source === 'barcode') {
+    state.lastGtin = String(decision.input);
+    state.lastResonanceSignature = '';
+  } else {
+    state.lastResonanceSignature = String(decision.input);
+    state.lastGtin = '';
+  }
+  overlay.__sanctuaryCamera = state;
+  freezeSanctuaryScannersForResolution(overlay);
+  if (decision.source === 'barcode') {
+    overlay.dataset.sanctuaryShellState = 'SEAL_FOUND_LOCAL';
+    const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+    const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+    const hintEl = overlay.querySelector('.sanctuary-camera-hint');
+    if (messageEl) messageEl.textContent = gameText('sanctuary.seal.found');
+    if (noteEl) noteEl.textContent = gameText('sanctuary.seal.localFoundNote');
+    if (hintEl) hintEl.textContent = gameText('sanctuary.seal.foundGtin', { gtin: decision.input });
+    setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.reading'), 'searching');
+    void resolveFoundSanctuaryBarcode(overlay, String(decision.input));
+    return;
+  }
+  overlay.dataset.sanctuaryShellState = 'RESONANCE_FALLBACK_SELECTED';
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  if (messageEl) messageEl.textContent = gameText('sanctuary.seal.fallbackResonance');
+  if (noteEl) noteEl.textContent = gameText('sanctuary.resonance.serverPrivacy');
+  void resolveFoundSanctuaryResonance(overlay, String(decision.input));
+}
+
+function startSanctuarySourceArbiter(overlay) {
+  if (!overlay) return null;
+  const state = overlay.__sanctuaryCamera || {};
+  try { state.arbiter?.abort?.(); } catch {}
+  const shrineStatus = overlay.__sanctuaryStatus || {};
+  const barcodeEnabled = !!(shrineStatus?.config?.barcodeEnabled || shrineStatus?.access?.bypassAdmin);
+  const resonanceEnabled = !!(shrineStatus?.config?.resonanceEnabled || shrineStatus?.access?.bypassAdmin);
+  const arbiter = createSanctuarySourceArbiter({
+    barcodeEnabled,
+    resonanceEnabled,
+    priorityWindowMs: SANCTUARY_BARCODE_PRIORITY_WINDOW_MS,
+    onDecision: decision => handleSanctuaryArbiterDecision(overlay, decision),
+    onFallbackOpen: () => {
+      const latest = overlay.__sanctuaryCamera || {};
+      if (!latest.stream || latest.resolutionType) return;
+      overlay.dataset.sanctuaryShellState = 'RESONANCE_FALLBACK_OPEN';
+      const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+      const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+      if (messageEl) messageEl.textContent = gameText('sanctuary.seal.fallbackResonance');
+      if (noteEl) noteEl.textContent = gameText('sanctuary.arbiter.fallbackOpen');
+    }
+  });
+  state.arbiter = arbiter;
+  state.resolutionReady = false;
+  state.serverResolution = null;
+  state.resolutionType = '';
+  state.lastGtin = '';
+  state.lastResonanceSignature = '';
+  overlay.__sanctuaryCamera = state;
+  arbiter.start();
+  overlay.dataset.sanctuaryPriorityWindowMs = String(SANCTUARY_BARCODE_PRIORITY_WINDOW_MS);
+  return arbiter;
+}
+
+function restartSanctuaryDiscoveryScanners(overlay) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  if (!state.stream || state.claimBusy) return;
+  stopSanctuaryBarcodeScan(state.barcodeScanner);
+  stopSanctuaryResonanceScan(state.resonanceScanner);
+  state.barcodeScanner = null;
+  state.resonanceScanner = null;
+  state.resonanceColor = null;
+  state.resonanceFingerprint = null;
+  state.resonanceStable = false;
+  state.resonanceResolving = false;
+  state.resolutionReady = false;
+  state.serverResolution = null;
+  state.resolutionType = '';
+  state.lastGtin = '';
+  state.lastResonanceSignature = '';
+  state.resolveSeq = (Number(state.resolveSeq) || 0) + 1;
+  overlay.__sanctuaryCamera = state;
+  startSanctuarySourceArbiter(overlay);
+  startSanctuaryResonanceScanner(overlay);
+  void startSanctuaryBarcodeScanner(overlay);
+}
+
+function stopSanctuaryBarcodeScanner(overlay) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  stopSanctuaryBarcodeScan(state.barcodeScanner);
+  state.barcodeScanner = null;
+  state.lastGtin = '';
+  state.resolutionReady = false;
+  state.serverResolution = null;
+  state.resolutionType = '';
+  state.resolveSeq = (Number(state.resolveSeq) || 0) + 1;
+  overlay.__sanctuaryCamera = state;
+  const statusEl = overlay.querySelector('#sanctuary-camera-seal-status');
+  const rescanBtn = overlay.querySelector('#sanctuary-camera-rescan');
+  if (statusEl) {
+    statusEl.hidden = true;
+    statusEl.dataset.kind = 'searching';
+    statusEl.textContent = '';
+  }
+  if (rescanBtn) rescanBtn.hidden = true;
+}
+
+function setSanctuaryBarcodeStatus(overlay, text, kind = 'searching') {
+  const statusEl = overlay?.querySelector('#sanctuary-camera-seal-status');
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  statusEl.dataset.kind = kind;
+  statusEl.textContent = String(text || '');
+}
+
+
+function sanctuaryResonanceAffinityText(affinity) {
+  const key = ({ W:'sanctuary.resonance.affinityW', U:'sanctuary.resonance.affinityU', B:'sanctuary.resonance.affinityB', R:'sanctuary.resonance.affinityR', G:'sanctuary.resonance.affinityG' })[String(affinity || '').toUpperCase()];
+  return key ? gameText(key) : String(affinity || '');
+}
+
+function sanctuaryResonanceTraitText(result) {
+  const bins = result?.secondaryBins || {};
+  return `Y${Number(bins.brightness)||0} · K${Number(bins.contrast)||0} · E${Number(bins.edges)||0} · H${Number(bins.entropy)||0} · S${Number(bins.symmetry)||0}`;
+}
+
+function setSanctuaryResonanceStatus(overlay, result, { stable = false } = {}) {
+  const statusEl = overlay?.querySelector('#sanctuary-camera-resonance-status');
+  if (!statusEl) return;
+  if (!result?.affinity) {
+    statusEl.hidden = true;
+    statusEl.dataset.stable = 'false';
+    statusEl.textContent = '';
+    return;
+  }
+  const affinity = sanctuaryResonanceAffinityText(result.affinity);
+  const traits = sanctuaryResonanceTraitText(result);
+  statusEl.hidden = false;
+  statusEl.dataset.stable = stable ? 'true' : 'false';
+  statusEl.dataset.affinity = String(result.affinity || '');
+  statusEl.dataset.signature = String(result?.resonanceSignature || '');
+  statusEl.textContent = gameText(stable ? 'sanctuary.resonance.signatureStable' : 'sanctuary.resonance.signatureUnstable', { affinity, traits });
+}
+
+function stopSanctuaryResonanceScanner(overlay, { clearStatus = true } = {}) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  stopSanctuaryResonanceScan(state.resonanceScanner);
+  state.resonanceScanner = null;
+  state.resonanceColor = null;
+  state.resonanceFingerprint = null;
+  state.resonanceStable = false;
+  state.resonanceResolving = false;
+  if (state.resolutionType === 'resonance') {
+    state.resolutionReady = false;
+    state.serverResolution = null;
+    state.resolutionType = '';
+    state.lastResonanceSignature = '';
+    state.resolveSeq = (Number(state.resolveSeq) || 0) + 1;
+  }
+  overlay.__sanctuaryCamera = state;
+  if (clearStatus) setSanctuaryResonanceStatus(overlay, null);
+}
+
+function startSanctuaryResonanceScanner(overlay) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || {};
+  const shrineStatus = overlay.__sanctuaryStatus || {};
+  const resonanceEnabled = !!(shrineStatus?.config?.resonanceEnabled || shrineStatus?.access?.bypassAdmin);
+  const barcodeEnabled = !!(shrineStatus?.config?.barcodeEnabled || shrineStatus?.access?.bypassAdmin);
+  const video = overlay.querySelector('#sanctuary-camera-video');
+  stopSanctuaryResonanceScan(state.resonanceScanner);
+  state.resonanceScanner = null;
+  state.resonanceColor = null;
+  state.resonanceFingerprint = null;
+  state.resonanceStable = false;
+  state.resonanceResolving = false;
+  state.lastResonanceSignature = '';
+  if (state.resolutionType === 'resonance') {
+    state.resolutionReady = false;
+    state.serverResolution = null;
+    state.resolutionType = '';
+    state.resolveSeq = (Number(state.resolveSeq) || 0) + 1;
+  }
+  overlay.__sanctuaryCamera = state;
+  if (!state.stream || !video || !resonanceEnabled) {
+    setSanctuaryResonanceStatus(overlay, null);
+    return;
+  }
+
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  if (!barcodeEnabled) {
+    if (messageEl) messageEl.textContent = gameText('sanctuary.resonance.signatureReading');
+    if (noteEl) noteEl.textContent = gameText('sanctuary.resonance.signatureLocalOnly');
+    overlay.dataset.sanctuaryShellState = 'RESONANCE_SIGNATURE_READING';
+  } else {
+    if (noteEl) noteEl.textContent = gameText('sanctuary.arbiter.priorityWindow', { seconds:(SANCTUARY_BARCODE_PRIORITY_WINDOW_MS/1000).toFixed(1) });
+  }
+
+  try {
+    const scanner = startSanctuaryResonanceScan({
+      video,
+      onReading: result => {
+        const latest = overlay.__sanctuaryCamera || {};
+        if (!latest.stream) return;
+        latest.resonanceColor = result;
+        latest.resonanceFingerprint = result;
+        latest.resonanceStable = false;
+        overlay.__sanctuaryCamera = latest;
+        setSanctuaryResonanceStatus(overlay, result, { stable:false });
+      },
+      onStable: result => {
+        const latest = overlay.__sanctuaryCamera || {};
+        if (!latest.stream) return;
+        latest.resonanceColor = result;
+        latest.resonanceFingerprint = result;
+        latest.resonanceStable = true;
+        latest.lastResonanceSignature = String(result?.resonanceSignature || '');
+        overlay.__sanctuaryCamera = latest;
+        overlay.dataset.sanctuaryResonanceAffinity = String(result?.affinity || '');
+        overlay.dataset.sanctuaryResonanceColorSignature = String(result?.colorSignature || '');
+        overlay.dataset.sanctuaryResonanceSignature = String(result?.resonanceSignature || '');
+        setSanctuaryResonanceStatus(overlay, result, { stable:true });
+        const signature = latest.lastResonanceSignature;
+        const arbiter = latest.arbiter;
+        const decision = signature ? arbiter?.offerResonance?.(signature) : null;
+        const arbiterState = arbiter?.snapshot?.();
+        if (!decision && barcodeEnabled && arbiterState?.state === 'RESONANCE_CANDIDATE') {
+          overlay.dataset.sanctuaryShellState = 'RESONANCE_CANDIDATE_WAITING';
+          if (messageEl) messageEl.textContent = gameText('sanctuary.seal.searching');
+          if (noteEl) noteEl.textContent = gameText('sanctuary.arbiter.resonanceWaiting');
+        }
+      },
+      onUnstable: result => {
+        const latest = overlay.__sanctuaryCamera || {};
+        if (!latest.stream) return;
+        latest.resonanceColor = result;
+        latest.resonanceFingerprint = result;
+        latest.resonanceStable = false;
+        overlay.__sanctuaryCamera = latest;
+      },
+      onError: error => {
+        console.warn('Sanctuary local resonance signature error', error);
+        if (!barcodeEnabled) {
+          if (messageEl) messageEl.textContent = gameText('sanctuary.camera.ready');
+          if (noteEl) noteEl.textContent = gameText('sanctuary.resonance.signatureUnavailable');
+        }
+      }
+    });
+    const latest = overlay.__sanctuaryCamera || {};
+    if (latest.stream) latest.resonanceScanner = scanner;
+    else stopSanctuaryResonanceScan(scanner);
+    overlay.__sanctuaryCamera = latest;
+  } catch (error) {
+    console.warn('Sanctuary resonance signature scanner unavailable', error);
+    setSanctuaryResonanceStatus(overlay, null);
+    if (!barcodeEnabled) {
+      if (messageEl) messageEl.textContent = gameText('sanctuary.camera.ready');
+      if (noteEl) noteEl.textContent = gameText('sanctuary.resonance.signatureUnavailable');
+    }
+  }
+}
+
+function sanctuaryResonanceServerErrorText(error) {
+  const code=String(error?.code||'').replace(/^functions\//,'');
+  if (code==='SANCTUARY_DISABLED') return gameText('sanctuary.error.disabled');
+  if (code==='SANCTUARY_MAINTENANCE') return gameText('sanctuary.status.maintenance');
+  if (code==='SANCTUARY_RESONANCE_DISABLED') return gameText('sanctuary.resonance.serverDisabled');
+  if (code==='SANCTUARY_RESONANCE_INVALID') return gameText('sanctuary.resonance.serverInvalid');
+  if (code==='SANCTUARY_RESONANCE_UNRESOLVED') return gameText('sanctuary.resonance.serverUnresolved');
+  if (code==='SANCTUARY_COOLDOWN') return gameText('sanctuary.error.cooldown');
+  if (code==='SANCTUARY_CARD_UNAVAILABLE') return gameText('sanctuary.claim.cardUnavailable');
+  if (code==='SANCTUARY_CARD_NOT_DISCOVERY') return gameText('sanctuary.claim.discoveryRequired');
+  return gameText('sanctuary.resonance.serverUnavailable');
+}
+
+async function resolveFoundSanctuaryResonance(overlay, signature) {
+  if (!overlay || !signature) return;
+  const state=overlay.__sanctuaryCamera || {};
+  const seq=(Number(state.resolveSeq)||0)+1;
+  state.resolveSeq=seq;
+  state.resolutionReady=false;
+  state.serverResolution=null;
+  state.resolutionType='resonance';
+  state.lastResonanceSignature=String(signature);
+  overlay.__sanctuaryCamera=state;
+  const messageEl=overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl=overlay.querySelector('.sanctuary-ritual-note');
+  const hintEl=overlay.querySelector('.sanctuary-camera-hint');
+  const rescanBtn=overlay.querySelector('#sanctuary-camera-rescan');
+  if(rescanBtn) rescanBtn.hidden=true;
+  if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.serverResolving');
+  if(noteEl) noteEl.textContent=gameText('sanctuary.resonance.serverPrivacy');
+  if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverPreparing');
+  overlay.dataset.sanctuaryShellState='RESONANCE_RESOLVING_SERVER';
+  try{
+    const resolution=await resolveSanctuaryResonance(signature);
+    const latest=overlay.__sanctuaryCamera || {};
+    if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq || latest.lastResonanceSignature!==signature) return;
+    if(!resolution?.ready || resolution?.cardHidden!==true || resolution?.type!=='resonance') throw new Error('SANCTUARY_RESONANCE_RESOLUTION_INVALID');
+    latest.resolutionReady=true;
+    latest.resonanceResolving=false;
+    latest.serverResolution=resolution;
+    latest.resolutionType='resonance';
+    latest.arbiter?.markPrepared?.('resonance');
+    latest.lastResonanceSignature=String(resolution.normalizedInput||signature);
+    overlay.__sanctuaryCamera=latest;
+    overlay.dataset.sanctuaryShellState='RESONANCE_READY_SERVER';
+    overlay.dataset.sanctuaryBindingState=String(resolution.bindingState||'pending_claim');
+    if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.serverReady');
+    if(noteEl) noteEl.textContent=gameText('sanctuary.resonance.serverHidden');
+    if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverPrepared');
+    const actionBtn=overlay.querySelector('.sanctuary-shell-action');
+    if(actionBtn){
+      actionBtn.textContent=gameText('sanctuary.action.reveal');
+      actionBtn.disabled=false;
+      actionBtn.title=gameText('sanctuary.claim.ready');
+      actionBtn.setAttribute('aria-label',gameText('sanctuary.claim.ready'));
+    }
+    if(rescanBtn) rescanBtn.hidden=false;
+  }catch(error){
+    const latest=overlay.__sanctuaryCamera || {};
+    if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq) return;
+    latest.resolutionReady=false;
+    latest.resonanceResolving=false;
+    latest.serverResolution=null;
+    latest.resolutionType='';
+    latest.arbiter?.abort?.();
+    overlay.__sanctuaryCamera=latest;
+    overlay.dataset.sanctuaryShellState='RESONANCE_SERVER_ERROR';
+    const text=sanctuaryResonanceServerErrorText(error);
+    if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.stable');
+    if(noteEl) noteEl.textContent=text;
+    if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverTryAgain');
+    if(rescanBtn) rescanBtn.hidden=false;
+    console.warn('Sanctuary resonance resolver unavailable',error);
+  }
+}
+
+
+async function refreshSanctuaryPostClaimStateBestEffort(overlay) {
+  try {
+    const fresh = state.currentUser?.uid ? await loadUserProfileFromServer(state.currentUser.uid) : null;
+    if (fresh) state.userProfile = fresh;
+  } catch (error) {
+    console.warn('Sanctuary post-claim profile refresh failed', error);
+  }
+  try {
+    const status = await getSanctuaryStatus();
+    if (overlay && document.body.contains(overlay)) applySanctuaryStatusToOverlay(overlay, status);
+  } catch (error) {
+    console.warn('Sanctuary post-claim status refresh failed', error);
+  }
+}
+
+async function claimPreparedSanctuaryResonance(overlay){
+  const cameraState=overlay?.__sanctuaryCamera||{};
+  const signature=String(cameraState.lastResonanceSignature||'');
+  if(!overlay||!cameraState.resolutionReady||cameraState.resolutionType!=='resonance'||!signature) return;
+  if(cameraState.arbiter && !cameraState.arbiter.markClaiming?.('resonance')) return;
+  const actionBtn=overlay.querySelector('.sanctuary-shell-action');
+  const messageEl=overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl=overlay.querySelector('.sanctuary-ritual-note');
+  cameraState.claimBusy=true;
+  overlay.__sanctuaryCamera=cameraState;
+  if(actionBtn){actionBtn.disabled=true;actionBtn.textContent=gameText('sanctuary.claim.committing');}
+  if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committing');
+  if(noteEl) noteEl.textContent=gameText('sanctuary.error.recoverable');
+  overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_COMMITTING';
+  let committed=false;
+  try{
+    const result=await claimSanctuaryResonance(signature);
+    if(!result?.granted||!result?.cardId||result?.type!=='resonance') throw new Error('SANCTUARY_RESONANCE_CLAIM_RESULT_INVALID');
+    committed=true;
+    cameraState.arbiter?.markRitual?.('resonance');
+    const card=cardDb.getById(String(result.cardId||''));
+    if(!card) throw new Error('SANCTUARY_RESONANCE_CARD_MISSING');
+    stopSanctuaryCameraPreview(overlay,{restoreStatus:false});
+    const committedState=overlay.__sanctuaryCamera||{};
+    committedState.claimBusy=false;
+    committedState.resolutionReady=false;
+    committedState.serverResolution=null;
+    committedState.resolutionType='';
+    committedState.lastResonanceSignature='';
+    committedState.resonanceResolving=false;
+    overlay.__sanctuaryCamera=committedState;
+    overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_COMMITTED';
+    await runSanctuaryBarcodeRitual({
+      overlay,
+      card,
+      source:'resonance',
+      adminBypass:!!result.adminBypass,
+      renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
+      onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
+    });
+  }catch(error){
+    const stateNow=overlay.__sanctuaryCamera||{};
+    stateNow.claimBusy=false;
+    if(committed){
+      overlay.__sanctuaryCamera=stateNow;
+      overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_COMMITTED_RITUAL_ERROR';
+      if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committed');
+      if(noteEl) noteEl.textContent=gameText('sanctuary.claim.committedRevealError');
+      if(actionBtn){actionBtn.disabled=true;actionBtn.textContent=gameText('sanctuary.action.reveal');}
+      void refreshSanctuaryPostClaimStateBestEffort(overlay);
+      console.error('Sanctuary resonance claim committed but reveal failed',error);
+      return;
+    }
+    stateNow.arbiter?.markPrepared?.('resonance');
+    overlay.__sanctuaryCamera=stateNow;
+    const text=sanctuaryResonanceServerErrorText(error)||gameText('sanctuary.claim.failed');
+    if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.serverReady');
+    if(noteEl) noteEl.textContent=text;
+    if(actionBtn){actionBtn.disabled=false;actionBtn.textContent=gameText('sanctuary.action.reveal');}
+    overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_ERROR';
+    console.warn('Sanctuary resonance claim failed',error);
+  }
+}
+
+function sanctuaryBarcodeServerErrorText(error) {
+  const code=String(error?.code||'').replace(/^functions\//,'');
+  if (code==='SANCTUARY_DISABLED') return gameText('sanctuary.error.disabled');
+  if (code==='SANCTUARY_MAINTENANCE') return gameText('sanctuary.status.maintenance');
+  if (code==='SANCTUARY_BARCODE_DISABLED') return gameText('sanctuary.seal.serverDisabled');
+  if (code==='SANCTUARY_BARCODE_INVALID') return gameText('sanctuary.error.invalidInput');
+  if (code==='SANCTUARY_BARCODE_UNRESOLVED') return gameText('sanctuary.seal.serverUnresolved');
+  if (code==='SANCTUARY_COOLDOWN') return gameText('sanctuary.error.cooldown');
+  if (code==='SANCTUARY_CARD_UNAVAILABLE') return gameText('sanctuary.claim.cardUnavailable');
+  if (code==='SANCTUARY_CARD_NOT_DISCOVERY') return gameText('sanctuary.claim.discoveryRequired');
+  return gameText('sanctuary.seal.serverUnavailable');
+}
+
+async function resolveFoundSanctuaryBarcode(overlay, gtin) {
+  if (!overlay || !gtin) return;
+  const state=overlay.__sanctuaryCamera || {};
+  const seq=(Number(state.resolveSeq)||0)+1;
+  state.resolveSeq=seq;
+  state.resolutionReady=false;
+  state.serverResolution=null;
+  overlay.__sanctuaryCamera=state;
+  const messageEl=overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl=overlay.querySelector('.sanctuary-ritual-note');
+  const hintEl=overlay.querySelector('.sanctuary-camera-hint');
+  const rescanBtn=overlay.querySelector('#sanctuary-camera-rescan');
+  if(rescanBtn) rescanBtn.hidden=true;
+  overlay.dataset.sanctuaryShellState='SEAL_RESOLVING_SERVER';
+  if(messageEl) messageEl.textContent=gameText('sanctuary.seal.serverResolving');
+  if(noteEl) noteEl.textContent=gameText('sanctuary.seal.serverPrivacy');
+  if(hintEl) hintEl.textContent=gameText('sanctuary.seal.foundGtin',{gtin});
+  setSanctuaryBarcodeStatus(overlay,gameText('sanctuary.seal.serverResolving'),'searching');
+  try{
+    const resolution=await resolveSanctuaryBarcode(gtin);
+    const latest=overlay.__sanctuaryCamera || {};
+    if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq || latest.lastGtin!==gtin) return;
+    if(!resolution?.ready || resolution?.cardHidden!==true) throw new Error('SANCTUARY_BARCODE_RESOLUTION_INVALID');
+    latest.resolutionReady=true;
+    latest.serverResolution=resolution;
+    latest.resolutionType='barcode';
+    latest.arbiter?.markPrepared?.('barcode');
+    latest.lastGtin=String(resolution.normalizedInput||gtin);
+    overlay.__sanctuaryCamera=latest;
+    overlay.dataset.sanctuaryShellState='SEAL_READY_SERVER';
+    overlay.dataset.sanctuaryBindingState=String(resolution.bindingState||'pending_claim');
+    if(messageEl) messageEl.textContent=gameText('sanctuary.seal.serverReady');
+    if(noteEl) noteEl.textContent=gameText('sanctuary.seal.serverHidden');
+    if(hintEl) hintEl.textContent=gameText('sanctuary.seal.foundGtin',{gtin:latest.lastGtin});
+    setSanctuaryBarcodeStatus(overlay,gameText('sanctuary.seal.serverPrepared'),'found');
+    const actionBtn=overlay.querySelector('.sanctuary-shell-action');
+    if(actionBtn){
+      actionBtn.textContent=gameText('sanctuary.action.reveal');
+      actionBtn.disabled=false;
+      actionBtn.title=gameText('sanctuary.claim.ready');
+      actionBtn.setAttribute('aria-label',gameText('sanctuary.claim.ready'));
+    }
+    if(rescanBtn) rescanBtn.hidden=false;
+  }catch(error){
+    const latest=overlay.__sanctuaryCamera || {};
+    if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq) return;
+    latest.resolutionReady=false;
+    latest.serverResolution=null;
+    latest.resolutionType='';
+    latest.arbiter?.abort?.();
+    overlay.__sanctuaryCamera=latest;
+    overlay.dataset.sanctuaryShellState='SEAL_SERVER_ERROR';
+    const text=sanctuaryBarcodeServerErrorText(error);
+    if(messageEl) messageEl.textContent=gameText('sanctuary.seal.found');
+    if(noteEl) noteEl.textContent=text;
+    if(hintEl) hintEl.textContent=gameText('sanctuary.seal.foundGtin',{gtin});
+    setSanctuaryBarcodeStatus(overlay,text,'error');
+    if(rescanBtn) rescanBtn.hidden=false;
+    console.warn('Sanctuary barcode resolver unavailable',error);
+  }
+}
+
+
+async function claimPreparedSanctuaryBarcode(overlay){
+  const cameraState=overlay?.__sanctuaryCamera||{};
+  const gtin=String(cameraState.lastGtin||'');
+  if(!overlay||!cameraState.resolutionReady||cameraState.resolutionType!=='barcode'||!gtin) return;
+  if(cameraState.arbiter && !cameraState.arbiter.markClaiming?.('barcode')) return;
+  const actionBtn=overlay.querySelector('.sanctuary-shell-action');
+  const messageEl=overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl=overlay.querySelector('.sanctuary-ritual-note');
+  cameraState.claimBusy=true;
+  overlay.__sanctuaryCamera=cameraState;
+  if(actionBtn){actionBtn.disabled=true;actionBtn.textContent=gameText('sanctuary.claim.committing');}
+  if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committing');
+  if(noteEl) noteEl.textContent=gameText('sanctuary.error.recoverable');
+  overlay.dataset.sanctuaryShellState='CLAIM_COMMITTING';
+  let committed=false;
+  try{
+    const result=await claimSanctuaryBarcode(gtin);
+    if(!result?.granted||!result?.cardId) throw new Error('SANCTUARY_CLAIM_RESULT_INVALID');
+    committed=true;
+    cameraState.arbiter?.markRitual?.('barcode');
+    const card=cardDb.getById(String(result.cardId||''));
+    if(!card) throw new Error('SANCTUARY_RITUAL_CARD_MISSING');
+    stopSanctuaryCameraPreview(overlay,{restoreStatus:false});
+    const committedState=overlay.__sanctuaryCamera||{};
+    committedState.claimBusy=false;
+    committedState.resolutionReady=false;
+    committedState.serverResolution=null;
+    committedState.lastGtin='';
+    overlay.__sanctuaryCamera=committedState;
+    overlay.dataset.sanctuaryShellState='CLAIM_COMMITTED';
+    await runSanctuaryBarcodeRitual({
+      overlay,
+      card,
+      source:'barcode',
+      adminBypass:!!result.adminBypass,
+      renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
+      onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
+    });
+  }catch(error){
+    const stateNow=overlay.__sanctuaryCamera||{};
+    stateNow.claimBusy=false;
+    if(committed){
+      overlay.__sanctuaryCamera=stateNow;
+      overlay.dataset.sanctuaryShellState='CLAIM_COMMITTED_RITUAL_ERROR';
+      if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committed');
+      if(noteEl) noteEl.textContent=gameText('sanctuary.claim.committedRevealError');
+      if(actionBtn){actionBtn.disabled=true;actionBtn.textContent=gameText('sanctuary.action.reveal');}
+      void refreshSanctuaryPostClaimStateBestEffort(overlay);
+      console.error('Sanctuary barcode claim committed but reveal failed',error);
+      return;
+    }
+    stateNow.arbiter?.markPrepared?.('barcode');
+    overlay.__sanctuaryCamera=stateNow;
+    const text=sanctuaryBarcodeServerErrorText(error)||gameText('sanctuary.claim.failed');
+    if(messageEl) messageEl.textContent=gameText('sanctuary.seal.serverReady');
+    if(noteEl) noteEl.textContent=text;
+    setSanctuaryBarcodeStatus(overlay,text,'error');
+    if(actionBtn){actionBtn.disabled=false;actionBtn.textContent=gameText('sanctuary.action.reveal');}
+    overlay.dataset.sanctuaryShellState='CLAIM_ERROR';
+    console.warn('Sanctuary claim failed',error);
+  }
+}
+
+async function startSanctuaryBarcodeScanner(overlay) {
+  if (!overlay) return;
+  const cameraState = overlay.__sanctuaryCamera || {};
+  const shrineStatus = overlay.__sanctuaryStatus || {};
+  const barcodeEnabled = !!(shrineStatus?.config?.barcodeEnabled || shrineStatus?.access?.bypassAdmin);
+  const video = overlay.querySelector('#sanctuary-camera-video');
+  if (!cameraState.stream || !video || !barcodeEnabled) {
+    const statusEl = overlay.querySelector('#sanctuary-camera-seal-status');
+    if (statusEl) statusEl.hidden = true;
+    return;
+  }
+  stopSanctuaryBarcodeScan(cameraState.barcodeScanner);
+  cameraState.barcodeScanner = null;
+  cameraState.lastGtin = '';
+  cameraState.resolutionReady = false;
+  cameraState.serverResolution = null;
+  cameraState.resolutionType = '';
+  cameraState.resolveSeq = (Number(cameraState.resolveSeq) || 0) + 1;
+  overlay.__sanctuaryCamera = cameraState;
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  const hintEl = overlay.querySelector('.sanctuary-camera-hint');
+  const rescanBtn = overlay.querySelector('#sanctuary-camera-rescan');
+  if (rescanBtn) rescanBtn.hidden = true;
+  const resonanceEnabled = !!(shrineStatus?.config?.resonanceEnabled || shrineStatus?.access?.bypassAdmin);
+  if (messageEl) messageEl.textContent = gameText('sanctuary.seal.searching');
+  if (noteEl) noteEl.textContent = resonanceEnabled
+    ? gameText('sanctuary.arbiter.priorityWindow', { seconds:(SANCTUARY_BARCODE_PRIORITY_WINDOW_MS/1000).toFixed(1) })
+    : gameText('sanctuary.seal.localOnly');
+  if (hintEl) hintEl.textContent = gameText('sanctuary.seal.scanHint');
+  setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.searching'), 'searching');
+  overlay.dataset.sanctuaryShellState = 'SEAL_SEARCHING';
+  try {
+    const scanner = await startSanctuaryBarcodeScan({
+      video,
+      onEngine: ({ engine }) => {
+        overlay.dataset.sanctuaryBarcodeEngine = String(engine || '');
+        if (engine === 'zxing_loading') {
+          setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.fallbackLoading'), 'searching');
+          return;
+        }
+        const engineKey = engine === 'barcode_detector' ? 'sanctuary.seal.engineNative' : 'sanctuary.seal.engineFallback';
+        setSanctuaryBarcodeStatus(overlay, `${gameText('sanctuary.seal.searching')} · ${gameText(engineKey)}`, 'searching');
+      },
+      onCandidate: candidate => {
+        if (!candidate?.valid) return;
+        setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.reading'), 'searching');
+      },
+      onInvalid: () => {
+        setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.invalidContinue'), 'invalid');
+      },
+      onFound: result => {
+        const latest = overlay.__sanctuaryCamera || {};
+        latest.lastGtin = String(result?.gtin14 || '');
+        latest.barcodeScanner = null;
+        overlay.__sanctuaryCamera = latest;
+        if (latest.arbiter?.offerBarcode) latest.arbiter.offerBarcode(latest.lastGtin);
+        else handleSanctuaryArbiterDecision(overlay,{source:'barcode',input:latest.lastGtin,reason:'legacy_fallback'});
+      },
+      onError: error => {
+        console.warn('Sanctuary barcode scanner error', error);
+      }
+    });
+    const latest = overlay.__sanctuaryCamera || {};
+    const arbiterState = latest.arbiter?.snapshot?.();
+    const arbiterStillScanning = !arbiterState || !arbiterState.resolutionType;
+    if (latest.stream && !latest.lastGtin && arbiterStillScanning) latest.barcodeScanner = scanner;
+    else stopSanctuaryBarcodeScan(scanner);
+    overlay.__sanctuaryCamera = latest;
+  } catch (error) {
+    console.warn('Sanctuary barcode fallback unavailable', error);
+    const resonanceActive = !!(shrineStatus?.config?.resonanceEnabled || shrineStatus?.access?.bypassAdmin);
+    const latest = overlay.__sanctuaryCamera || {};
+    if (resonanceActive) latest.arbiter?.openFallback?.(Date.now());
+    if (latest.arbiter?.snapshot?.()?.resolutionType) return;
+    overlay.dataset.sanctuaryShellState = resonanceActive ? 'RESONANCE_SIGNATURE_READING' : 'SEAL_SCANNER_UNAVAILABLE';
+    if (messageEl) messageEl.textContent = resonanceActive ? gameText('sanctuary.resonance.signatureReading') : gameText('sanctuary.camera.ready');
+    if (noteEl) noteEl.textContent = resonanceActive ? gameText('sanctuary.resonance.signatureLocalOnly') : gameText('sanctuary.seal.fallbackUnavailable');
+    if (hintEl) hintEl.textContent = gameText('sanctuary.camera.align');
+    setSanctuaryBarcodeStatus(overlay, gameText('sanctuary.seal.fallbackUnavailable'), 'error');
+  }
+}
+
+function stopSanctuaryCameraPreview(overlay, { restoreStatus = true } = {}) {
+  if (!overlay) return;
+  stopSanctuarySourceArbiter(overlay);
+  stopSanctuaryBarcodeScanner(overlay);
+  stopSanctuaryResonanceScanner(overlay);
+  const state = overlay.__sanctuaryCamera || {};
+  stopSanctuaryCameraStream(state.stream);
+  state.stream = null;
+  state.track = null;
+  state.busy = false;
+  overlay.__sanctuaryCamera = state;
+  const video = overlay.querySelector('#sanctuary-camera-video');
+  if (video) {
+    try { video.pause(); } catch {}
+    try { video.srcObject = null; } catch {}
+  }
+  const shell = overlay.querySelector('#sanctuary-camera-shell');
+  const core = overlay.querySelector('.sanctuary-ritual-core');
+  if (shell) shell.hidden = true;
+  if (core) core.hidden = false;
+  if (restoreStatus && overlay.__sanctuaryStatus) applySanctuaryStatusToOverlay(overlay, overlay.__sanctuaryStatus);
+}
+
+async function openSanctuaryCameraPreview(overlay, { deviceId = '' } = {}) {
+  if (!overlay) return;
+  const state = overlay.__sanctuaryCamera || { stream:null, track:null, deviceId:'', devices:[], busy:false, barcodeScanner:null, resonanceScanner:null, resonanceColor:null, resonanceFingerprint:null, resonanceStable:false, resonanceResolving:false, lastGtin:'', lastResonanceSignature:'', resolutionType:'', arbiter:null };
+  if (state.busy) return;
+  state.busy = true;
+  overlay.__sanctuaryCamera = state;
+  const messageEl = overlay.querySelector('.sanctuary-ritual-message');
+  const noteEl = overlay.querySelector('.sanctuary-ritual-note');
+  const actionBtn = overlay.querySelector('.sanctuary-shell-action');
+  if (messageEl) messageEl.textContent = gameText('sanctuary.camera.opening');
+  if (noteEl) noteEl.textContent = gameText('sanctuary.camera.privacy');
+  if (actionBtn) actionBtn.disabled = true;
+  overlay.dataset.sanctuaryShellState = 'CAMERA_OPENING';
+  const wasFullscreen = !!document.fullscreenElement;
+  try {
+    if (!sanctuaryCameraSupported()) {
+      const error = new Error('SANCTUARY_CAMERA_UNSUPPORTED');
+      error.name = 'UNSUPPORTED';
+      throw error;
+    }
+    stopSanctuaryCameraStream(state.stream);
+    const opened = await openSanctuaryCamera({ deviceId });
+    state.stream = opened.stream;
+    state.track = opened.track;
+    state.deviceId = opened.deviceId;
+    state.devices = opened.devices;
+    state.busy = false;
+    const video = overlay.querySelector('#sanctuary-camera-video');
+    if (video) {
+      video.srcObject = opened.stream;
+      try { await video.play(); } catch {}
+    }
+    const core = overlay.querySelector('.sanctuary-ritual-core');
+    const shell = overlay.querySelector('#sanctuary-camera-shell');
+    if (core) core.hidden = true;
+    if (shell) shell.hidden = false;
+    const changeBtn = overlay.querySelector('#sanctuary-camera-change');
+    if (changeBtn) {
+      changeBtn.disabled = state.devices.length < 2;
+      changeBtn.title = state.devices.length < 2 ? gameText('sanctuary.camera.singleDevice') : gameText('sanctuary.action.changeCamera');
+    }
+    if (messageEl) messageEl.textContent = gameText('sanctuary.camera.ready');
+    if (noteEl) noteEl.textContent = gameText('sanctuary.camera.previewOnly');
+    if (actionBtn) {
+      actionBtn.textContent = gameText('sanctuary.camera.ready');
+      actionBtn.disabled = true;
+      actionBtn.title = gameText('sanctuary.camera.previewOnly');
+    }
+    overlay.dataset.sanctuaryShellState = 'CAMERA_READY';
+    if (wasFullscreen && !document.fullscreenElement) showSanctuaryFullscreenRestoreModal();
+    startSanctuarySourceArbiter(overlay);
+    startSanctuaryResonanceScanner(overlay);
+    await startSanctuaryBarcodeScanner(overlay);
+  } catch (error) {
+    state.busy = false;
+    stopSanctuaryCameraPreview(overlay, { restoreStatus:true });
+    showSimpleAlertModal(sanctuaryCameraErrorText(error));
+  }
+}
+
+async function changeSanctuaryCameraPreview(overlay) {
+  const state = overlay?.__sanctuaryCamera;
+  if (!overlay || !state || state.busy) return;
+  const next = nextSanctuaryVideoInput(state.devices, state.deviceId);
+  if (!next) {
+    showSimpleAlertModal(gameTextHtml('sanctuary.camera.singleDevice'));
+    return;
+  }
+  stopSanctuaryCameraPreview(overlay, { restoreStatus:false });
+  await openSanctuaryCameraPreview(overlay, { deviceId: next.deviceId });
+}
+
+export function showSanctuaryScreen(onBack) {
+  injectSanctuaryStyles();
+  document.getElementById('sanctuary-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'sanctuary-overlay';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label', gameText('sanctuary.menu.title'));
+  overlay.dataset.sanctuaryStage = '18';
+  overlay.dataset.sanctuaryShellState = 'SYNCING';
+  overlay.__sanctuaryCamera = { stream:null, track:null, deviceId:'', devices:[], busy:false, barcodeScanner:null, resonanceScanner:null, resonanceColor:null, resonanceFingerprint:null, resonanceStable:false, resonanceResolving:false, lastGtin:'', lastResonanceSignature:'', resolutionType:'', resolveSeq:0, resolutionReady:false, serverResolution:null, claimBusy:false, arbiter:null };
+  overlay.innerHTML = `
+    <div class="sanctuary-stage" id="sanctuary-stage">
+      <img class="sanctuary-bg" id="sanctuary-bg" src="./assets/images/ui/fondosantuario.png" alt="" onerror="this.style.display='none'">
+      <div class="sanctuary-vignette"></div>
+      <div class="sanctuary-ritual-anchor" id="sanctuary-ritual-anchor">
+        <div class="sanctuary-ritual-ring"></div>
+        <div class="sanctuary-ritual-core">
+          <div class="sanctuary-ritual-glyph">✦</div>
+          <div class="sanctuary-ritual-kicker">${gameTextHtml('sanctuary.center.kicker')}</div>
+          <div class="sanctuary-ritual-message">${gameTextHtml('sanctuary.center.syncing')}</div>
+          <div class="sanctuary-ritual-note">${gameTextHtml('sanctuary.center.readOnlyNote')}</div>
+        </div>
+        <div class="sanctuary-camera-shell" id="sanctuary-camera-shell" hidden>
+          <video class="sanctuary-camera-video" id="sanctuary-camera-video" autoplay muted playsinline aria-label="${gameTextHtml('sanctuary.camera.ready')}"></video>
+          <div class="sanctuary-camera-shade" aria-hidden="true"></div>
+          <div class="sanctuary-camera-frame" aria-hidden="true"></div>
+          <div class="sanctuary-camera-seal-status" id="sanctuary-camera-seal-status" data-kind="searching" hidden></div>
+          <div class="sanctuary-camera-resonance-status" id="sanctuary-camera-resonance-status" data-stable="false" hidden></div>
+          <div class="sanctuary-camera-hint">${gameTextHtml('sanctuary.camera.align')}</div>
+          <div class="sanctuary-camera-controls">
+            <button class="sanctuary-camera-btn" id="sanctuary-camera-rescan" type="button" hidden>${gameTextHtml('sanctuary.seal.rescan')}</button>
+            <button class="sanctuary-camera-btn" id="sanctuary-camera-change" type="button">${gameTextHtml('sanctuary.action.changeCamera')}</button>
+            <button class="sanctuary-camera-btn" id="sanctuary-camera-close" type="button">${gameTextHtml('sanctuary.action.closeCamera')}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sanctuary-topbar">
+      <button class="sanctuary-back" id="sanctuary-back" type="button">${gameTextHtml('sanctuary.back')}</button>
+      <h2 class="sanctuary-title">${gameTextHtml('sanctuary.title')}</h2>
+      <div class="sanctuary-admin-chip">${gameTextHtml('sanctuary.admin.previewBadge')}</div>
+    </div>
+    <div class="sanctuary-shell-dock" aria-label="${gameTextHtml('sanctuary.status.regionLabel')}">
+      <div class="sanctuary-shell-status">
+        <div class="sanctuary-shell-label">${gameTextHtml('sanctuary.status.nextReveal')}</div>
+        <div class="sanctuary-shell-countdown" aria-label="${gameTextHtml('sanctuary.countdown.pendingAria')}">
+          <strong>--</strong><span>${gameTextHtml('sanctuary.countdown.days')}</span><strong>--</strong><span>${gameTextHtml('sanctuary.countdown.hours')}</span><strong>--</strong><span>${gameTextHtml('sanctuary.countdown.minutes')}</span><strong>--</strong><span>${gameTextHtml('sanctuary.countdown.seconds')}</span>
+        </div>
+      </div>
+      <button class="sanctuary-shell-action" type="button" disabled data-discover-label="${gameTextHtml('sanctuary.action.discover')}" title="${gameTextHtml('sanctuary.center.syncing')}" aria-label="${gameTextHtml('sanctuary.center.syncing')}">${gameTextHtml('sanctuary.action.openCamera')}</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const stage = overlay.querySelector('#sanctuary-stage');
+  const bg = overlay.querySelector('#sanctuary-bg');
+  const cleanupStage = applySanctuaryStageCover(stage, bg);
+  const cleanupTransientModals = () => {
+    document.querySelectorAll('[data-sanctuary-camera-permission="true"],[data-sanctuary-fullscreen-restore="true"]').forEach(node => node.remove());
+  };
+  const stopForPageHide = () => stopSanctuaryCameraPreview(overlay, { restoreStatus:false });
+  const close = () => {
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('pagehide', stopForPageHide);
+    cleanupTransientModals();
+    cancelSanctuaryRitual(overlay);
+    if(overlay.__sanctuaryCountdownTimer) clearInterval(overlay.__sanctuaryCountdownTimer);
+    stopSanctuaryCameraPreview(overlay, { restoreStatus:false });
+    cleanupStage();
+    overlay.remove();
+    onBack?.();
+  };
+  const onKeyDown = event => {
+    if (event.key === 'Escape') {
+      const transient = document.querySelector('[data-sanctuary-camera-permission="true"],[data-sanctuary-fullscreen-restore="true"]');
+      if (transient) { transient.remove(); return; }
+      if (overlay.__sanctuaryCamera?.stream) { stopSanctuaryCameraPreview(overlay); return; }
+      close();
+    }
+  };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('pagehide', stopForPageHide);
+  overlay.querySelector('#sanctuary-back')?.addEventListener('click', close);
+  overlay.querySelector('.sanctuary-shell-action')?.addEventListener('click', () => {
+    const actionBtn = overlay.querySelector('.sanctuary-shell-action');
+    const cameraState=overlay.__sanctuaryCamera||{};
+    if (actionBtn?.disabled || cameraState.busy || cameraState.claimBusy) return;
+    if(cameraState.stream && cameraState.resolutionReady && cameraState.resolutionType==='barcode' && cameraState.lastGtin){ void claimPreparedSanctuaryBarcode(overlay); return; }
+    if(cameraState.stream && cameraState.resolutionReady && cameraState.resolutionType==='resonance' && cameraState.lastResonanceSignature){ void claimPreparedSanctuaryResonance(overlay); return; }
+    if(cameraState.stream) return;
+    showSanctuaryCameraPermissionModal(
+      () => { void openSanctuaryCameraPreview(overlay); },
+      () => {}
+    );
+  });
+  overlay.querySelector('#sanctuary-camera-rescan')?.addEventListener('click', () => restartSanctuaryDiscoveryScanners(overlay));
+  overlay.querySelector('#sanctuary-camera-change')?.addEventListener('click', () => { void changeSanctuaryCameraPreview(overlay); });
+  overlay.querySelector('#sanctuary-camera-close')?.addEventListener('click', () => stopSanctuaryCameraPreview(overlay));
+  requestAnimationFrame(() => overlay.querySelector('#sanctuary-back')?.focus());
+  void hydrateSanctuaryOverlay(overlay);
+}
+
 function injectWorkshopStyles() {
   if (document.getElementById('workshop-styles')) return;
   const style = document.createElement('style');
@@ -6303,7 +7809,7 @@ export function showWorkshopScreen(onBack, options = {}) {
       card:cardDb.getById(path.baseId),
       stage:evolutionStageForProfile(evolutions,path.baseId),
       owned:ownedCounts[path.baseId]||0
-    })).filter(row=>row.card&&row.owned>0&&row.stage<2);
+    })).filter(row=>row.card&&!isDiscoveryCard(row.card)&&row.owned>0&&row.stage<2);
     panel.hidden=false;
     if(!candidates.length){
       panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.evolution.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.evolution.empty')}</div><div class="workshop-panel-actions"><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div>`;
@@ -6368,7 +7874,7 @@ export function showWorkshopScreen(onBack, options = {}) {
     selectedMachineId='machine3';
     panel.classList.add('workshop-panel--machine-detail');
     const ownedCounts={}; for(const id of (state.userProfile?.collection||[]))ownedCounts[id]=(ownedCounts[id]||0)+1;
-    const candidates=(cardDb.enabledCards||cardDb.allCards||[]).filter(card=>['Common','Uncommon','Rare'].includes(card?.rarity)).map(card=>{
+    const candidates=(cardDb.enabledCards||cardDb.allCards||[]).filter(card=>!isDiscoveryCard(card)&&['Common','Uncommon','Rare'].includes(card?.rarity)).map(card=>{
       const owned=ownedCounts[card.id]||0,protectedCopies=clientMixerProtectedCopies(card.id),freeEstimate=Math.max(0,owned-protectedCopies);
       return {card,owned,protectedCopies,freeEstimate};
     }).filter(row=>row.freeEstimate>=3).sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es'));
@@ -8163,10 +9669,17 @@ function renderAccountBox(container, user) {
     // 23.22.0 HF2 — el acceso sigue visible para todos, pero en Admin abre la bandeja
     // operativa de casos; el pill Admin cuenta conversaciones abiertas pendientes de Moderación.
     const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedModerationPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedModerationPending)}</span>` : ''}</button>`;
+    // Santuario Stage 4: el acceso ya es visible para cualquier cuenta autenticada;
+    // la autoridad real de habilitación la resuelve Functions con master kill switch y
+    // bypass exclusivo para Admin.
+    const sanctuaryBtnHTML = user?.uid
+      ? `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-sanctuary" title="${gameTextHtml('sanctuary.menu.tooltip')}" aria-label="${gameTextHtml('sanctuary.menu.tooltip')}"><span class="main-menu-icon-fallback" aria-hidden="true">⛩️</span><img class="main-menu-icon-image" src="./assets/images/ui/santuario.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`
+      : '';
     const rewardActionsHTML = `
       <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="Mi Cofre" aria-label="Mi Cofre"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="Mi Taller" aria-label="Mi Taller"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        ${sanctuaryBtnHTML}
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedAchievementPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedAchievementPending)}</span>` : ''}</button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="Mi Perfil" aria-label="Mi Perfil"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="Recompensas diarias" aria-label="Recompensas diarias"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
@@ -8198,6 +9711,15 @@ function renderAccountBox(container, user) {
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
       if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
       showWorkshopScreen(() => {
+        if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        renderAccountBox(container, state.currentUser);
+      });
+    });
+    container.querySelector('#menu-sanctuary')?.addEventListener('click', () => {
+      if (!state.userProfile) return;
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      showSanctuaryScreen(() => {
         if (mainMenuOverlay) mainMenuOverlay.style.display = '';
         renderAccountBox(container, state.currentUser);
       });
@@ -8978,8 +10500,10 @@ export function showAdminPanel(onBack) {
 
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'appearance', label: 'APARIENCIA' },
     { key: 'workshop', label: gameText('admin.tab.workshop') },
     { key: 'achievements', label: gameText('admin.tab.achievements') },
+    { key: 'sanctuary', label: gameText('sanctuary.admin.tab') },
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
@@ -9013,12 +10537,20 @@ export function showAdminPanel(onBack) {
         </div>
       </div>
 
+      <div class="admin-tab-pane hidden" data-admin-pane="appearance">
+        <div id="admin-appearance-root"></div>
+      </div>
+
       <div class="admin-tab-pane hidden" data-admin-pane="workshop">
         ${workshopAdminHTML}
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="achievements">
         ${achievementsAdminHTML}
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="sanctuary">
+        <div id="admin-sanctuary-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="animations">
@@ -10463,6 +11995,9 @@ Receipt: ${receiptId}
     });
   }
 
+  let adminSanctuaryController=null;
+  let adminAppearanceController=null;
+
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
@@ -10475,8 +12010,16 @@ Receipt: ${receiptId}
       if (!adminNotificationsController) adminNotificationsController = mountAdminNotificationsPane(overlay.querySelector('#admin-notifications-root'));
       void adminNotificationsController?.load?.();
     }
+    if (key === 'appearance') {
+      if (!adminAppearanceController) adminAppearanceController = mountAppearanceAdminPane(overlay.querySelector('#admin-appearance-root'));
+      void adminAppearanceController?.load?.();
+    }
     if (key === 'workshop') void ensureAdminWorkshopPane();
     if (key === 'achievements') void ensureAdminAchievementsPane();
+    if (key === 'sanctuary') {
+      if (!adminSanctuaryController) adminSanctuaryController = mountAdminSanctuaryPane(overlay.querySelector('#admin-sanctuary-root'));
+      void adminSanctuaryController?.load?.();
+    }
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'economyAudit') activateEconomySubtab(economySubtab);
@@ -12305,7 +13848,7 @@ function tradeCardMatchesCriterion(card,c){
   return true;
 }
 function tradeCardMatchesListing(card,listing){return listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c));}
-function tradeAllCardsSorted(){ return [...cardDb.enabledCards].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
+function tradeAllCardsSorted(){ return [...cardDb.enabledCards].filter(card=>!isDiscoveryCard(card)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
 function tradeFindCardsByNameQuery(value,{limit=18}={}){
   const needle=tradeNormalizeSearch(value);
   if(!needle)return [];
@@ -12332,7 +13875,7 @@ function tradeFindCardByName(value){
 }
 function tradeTradableEntries(market,listing=null){
   return Object.entries(market?.tradableCounts||{})
-    .filter(([id,n])=>Number(n)>0&&(!listing||tradeCardMatchesListing(tradeCard(id),listing)))
+    .filter(([id,n])=>Number(n)>0&&!isDiscoveryCard(tradeCard(id))&&(!listing||tradeCardMatchesListing(tradeCard(id),listing)))
     .map(([id,n])=>({card:tradeCard(id),id:String(id),n:Number(n)}))
     .filter(x=>x.card)
     .sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es'));
@@ -12719,6 +14262,8 @@ export function showTradeMarketScreen(onBack) {
 
 export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   clearAnimationLayer('main_menu');
+  // Appearance V1 sólo entra en vigor en transiciones seguras al menú.
+  applyCachedPublishedAppearance();
   injectMainMenuStyles();
   injectRewardsStyles();
   prepareGameManualUI();

@@ -263,6 +263,104 @@ export function adminDailyDebugServer(mode) {
   return call('economyAdminDailyDebug', { mode: String(mode || '') });
 }
 
+export function getSanctuaryStatusServer({includeDiscoveryAssets=false}={}) {
+  return call('economyGetSanctuaryStatus',{includeDiscoveryAssets:includeDiscoveryAssets===true});
+}
+
+
+export function resolveSanctuaryBarcodeServer(gtin) {
+  return call('economyResolveSanctuaryBarcode', { gtin: String(gtin || '') });
+}
+
+export function claimSanctuaryBarcodeServer(gtin, operationId = null) {
+  return call('economyClaimSanctuaryBarcode', {
+    operationId: operationId || createEconomyOperationId('sanctuary-claim'),
+    gtin: String(gtin || '')
+  });
+}
+
+export function resolveSanctuaryResonanceServer(signature) {
+  return call('economyResolveSanctuaryResonance', { signature: String(signature || '') });
+}
+
+export function claimSanctuaryResonanceServer(signature, operationId = null) {
+  return call('economyClaimSanctuaryResonance', {
+    operationId: operationId || createEconomyOperationId('sanctuary-resonance-claim'),
+    signature: String(signature || '')
+  });
+}
+
+export function adminPreviewSanctuaryServer(type, input) {
+  return call('economyAdminPreviewSanctuary', {
+    type: String(type || ''),
+    input: String(input || '')
+  });
+}
+
+export function adminMigrateDiscoveryPresentationServer() {
+  return call('economyAdminSetSanctuaryConfig',{action:'discovery_presentation_migrate'});
+}
+
+export function adminSaveDiscoveryPresentationServer(cardId, patch = {}) {
+  const payload={action:'discovery_presentation',cardId:String(cardId||'').trim()};
+  if(Object.prototype.hasOwnProperty.call(patch,'name')) payload.name=String(patch.name??'');
+  if(Object.prototype.hasOwnProperty.call(patch,'artLayout')) payload.artLayout=patch.artLayout;
+  if(Object.prototype.hasOwnProperty.call(patch,'textLayout')) payload.textLayout=patch.textLayout;
+  return call('economyAdminSetSanctuaryConfig',payload);
+}
+
+export function adminCreateDiscoveryArtUploadServer(cardId) {
+  return call('economyAdminSetSanctuaryConfig',{action:'discovery_asset_upload',cardId:String(cardId||'').trim()});
+}
+
+export function adminFinalizeDiscoveryArtUploadServer(cardId, uploadId, uploadObjectPath) {
+  return call('economyAdminSetSanctuaryConfig',{
+    action:'discovery_asset_finalize',
+    cardId:String(cardId||'').trim(),
+    uploadId:String(uploadId||'').trim(),
+    uploadObjectPath:String(uploadObjectPath||'').trim()
+  });
+}
+
+export function adminSetSanctuaryConfigServer(config = {}) {
+  return call('economyAdminSetSanctuaryConfig', {
+    action: 'general',
+    masterEnabled: config.masterEnabled === true,
+    cooldownDays: Number(config.cooldownDays),
+    barcodeEnabled: config.barcodeEnabled === true,
+    resonanceEnabled: config.resonanceEnabled === true
+  });
+}
+
+export function adminSetSanctuaryBarcodeBucketsServer(barcodeBuckets = []) {
+  return call('economyAdminSetSanctuaryConfig', {
+    action: 'barcode_buckets',
+    barcodeBuckets: Array.isArray(barcodeBuckets) ? barcodeBuckets.map(value=>String(value ?? '').trim()) : []
+  });
+}
+
+export function adminSetSanctuaryResonanceBucketsServer(resonanceBuckets = []) {
+  return call('economyAdminSetSanctuaryConfig', {
+    action: 'resonance_buckets',
+    resonanceBuckets: Array.isArray(resonanceBuckets) ? resonanceBuckets.map(value=>String(value ?? '').trim()) : []
+  });
+}
+
+export function adminSetSanctuaryBarcodeEasterEggsServer(barcodeEasterEggs = []) {
+  return call('economyAdminSetSanctuaryConfig', {
+    action: 'barcode_easter_eggs',
+    barcodeEasterEggs: Array.isArray(barcodeEasterEggs) ? barcodeEasterEggs.map(row=>({
+      id:String(row?.id||'').trim(),
+      enabled:row?.enabled===true,
+      label:String(row?.label||'').trim(),
+      note:String(row?.note||'').trim(),
+      priority:Number(row?.priority),
+      cardId:String(row?.cardId||'').trim(),
+      gtins:Array.isArray(row?.gtins)?row.gtins.map(value=>String(value??'').trim()):[]
+    })) : []
+  });
+}
+
 export function getAdmissionStatusServer() {
   return call('economyGetAdmissionStatus');
 }

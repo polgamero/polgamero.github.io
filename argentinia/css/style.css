@@ -2985,3 +2985,42 @@ button.mana-pool-chip:disabled { opacity: 1; }
   user-select: none;
 }
 .trade-profile-link{border:0;background:none;padding:0 0 0 5px;color:#d6bd69;font:inherit;font-weight:900;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.trade-profile-link:hover,.trade-profile-link:focus-visible{color:#fff0ad;outline:none}
+
+/* Santuario Stage 3.1 — Carta Discovery: primero intenta el asset contractual
+   `assets/images/ui/descubribles.png` y, si falta, cae al glifo local 📷. */
+.discovery-card-icon {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  width: 1.1em;
+  height: 1.1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  position: relative;
+  font-size: 0.9em;
+  line-height: 1;
+  filter: drop-shadow(0px 0px 3px black);
+  pointer-events: none;
+  user-select: none;
+}
+.discovery-card-icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.discovery-card-icon-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Stage24 · Descubribles Admin — carga privada de arte. */
+.encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn{position:absolute;right:7px;bottom:7px;z-index:8;width:30px;height:30px;border:1px solid rgba(219,199,118,.72);border-radius:50%;background:rgba(10,10,12,.88);color:#f4e5ad;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.45);font-size:15px}
+.encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:hover{transform:scale(1.06)}
+.encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:disabled{opacity:.65;cursor:wait}

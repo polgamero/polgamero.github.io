@@ -13,6 +13,7 @@
 // materializa únicamente el Admin; este módulo sólo define la matemática reproducible.
 
 import { REWARD_TIMEZONE_OFFSET_MINUTES, rewardWeekStartStamp, weekKeyFromDate } from './rewards.js';
+import { isDiscoveryCard } from './discoveryCards.js';
 import {
   CLASSIFIEDS_COMMON_POINTS,
   CLASSIFIEDS_COMMON_FICHAS,
@@ -73,6 +74,10 @@ function shuffledCopy(items, rng) {
   return out;
 }
 
+export function classifiedsEligibleCards(cards) {
+  return (Array.isArray(cards) ? cards : []).filter(card => !isDiscoveryCard(card));
+}
+
 function assertCardPool(cards) {
   if (!Array.isArray(cards) || !cards.length) throw new Error('CLASSIFIEDS_CARD_POOL_EMPTY');
   const seen = new Set();
@@ -89,8 +94,9 @@ export function isClassifiedsLand(card) {
 }
 
 export function classifiedsPoolFingerprint(cards) {
-  assertCardPool(cards);
-  const canonical = cards
+  const eligible = classifiedsEligibleCards(cards);
+  assertCardPool(eligible);
+  const canonical = eligible
     .map(card => `${card.id}|${card.rarity || ''}|${card.type || ''}`)
     .sort()
     .join('\n');
@@ -173,6 +179,7 @@ function priceForRarity(rarity, economy) {
 }
 
 export function buildWeeklyClassifieds(cards, date = new Date(), economy = getClassifiedsEconomySnapshot()) {
+  cards = classifiedsEligibleCards(cards);
   assertCardPool(cards);
   const weekStart = classifiedsWeekStartStamp(date);
   const weekKey = classifiedsWeekKey(date);
@@ -242,6 +249,7 @@ export function buildClassifiedsScheduleWindow(cards, now = new Date(), economy 
   historyWeeks = CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS,
   horizonWeeks = CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS
 } = {}) {
+  cards = classifiedsEligibleCards(cards);
   assertCardPool(cards);
   const currentStart = classifiedsWeekStartStamp(now);
   const weeks = {};

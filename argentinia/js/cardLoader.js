@@ -4,10 +4,13 @@ import { expectedEvolutionArtEntries } from './evolution.js';
 // IMPORTANTE: el runtime NO hace HEAD/GET por carta. GitHub Actions genera un único manifest
 // estático con los archivos existentes y el navegador lo consulta una sola vez.
 
-import { POOL_BASELINE } from './poolContract.js';
+import { PUBLIC_POOL_BASELINE } from './poolContract.js';
 import { ensureCardCatalogLoaded, applyCardCatalogToPool, subscribeCardCatalog } from './cardPublication.js';
+import { injectPrivateDiscoveryArtLayouts } from './artLayout.js';
+import { injectPrivateDiscoveryTextLayouts } from './textLayout.js';
 
 const IMAGE_MANIFEST_URL = './assets/images/cards/cards-image-manifest.json';
+const DISCOVERY_PUBLIC_URL = './assets/data/discovery-public.json';
 
 const DATA_FILES = {
   tierras: './assets/data/tierras.json',
@@ -28,7 +31,7 @@ function poolContractError(message, details = {}) {
 
 function validateLoadedPool(cardsByCategory, allCards) {
   const actualCounts = {};
-  for (const [category, expected] of Object.entries(POOL_BASELINE.categories)) {
+  for (const [category, expected] of Object.entries(PUBLIC_POOL_BASELINE.categories)) {
     const cards = cardsByCategory[category];
     if (!Array.isArray(cards)) {
       throw poolContractError(`La categoría ${category} no es un array.`, { category });
@@ -42,10 +45,10 @@ function validateLoadedPool(cardsByCategory, allCards) {
     }
   }
 
-  if (allCards.length !== POOL_BASELINE.total) {
+  if (allCards.length !== PUBLIC_POOL_BASELINE.total) {
     throw poolContractError(
-      `Total esperado ${POOL_BASELINE.total}, recibido ${allCards.length}.`,
-      { expected: POOL_BASELINE.total, actual: allCards.length, actualCounts }
+      `Total público esperado ${PUBLIC_POOL_BASELINE.total}, recibido ${allCards.length}.`,
+      { expected: PUBLIC_POOL_BASELINE.total, actual: allCards.length, actualCounts }
     );
   }
 
@@ -80,6 +83,8 @@ class CardDatabase {
     this.isLoaded = false;
     this.loadPromise = null;
     this.imageManifest = null;
+    this.discoveryPublicCatalog = [];
+    this.authorizedDiscoveryCards = [];
     this.imageManifestPromise = null;
     subscribeCardCatalog(() => { if (this.rawAllCards.length) this.refreshPublicationState(); });
   }
@@ -104,7 +109,7 @@ class CardDatabase {
   async #loadAllOnce() {
     const keys = Object.keys(DATA_FILES);
     const fetchPromises = keys.map(async (key) => {
-      const response = await fetch(DATA_FILES[key]);
+      const response = await fetch(DATA_FILES[key], { cache:'no-store' });
       if (!response.ok) {
         const error = new Error(`Error al cargar ${DATA_FILES[key]}: HTTP ${response.status} ${response.statusText}`);
         error.code = response.status === 429 ? 'GITHUB_PAGES_RATE_LIMIT' : 'CARD_DATA_HTTP_ERROR';
@@ -119,7 +124,15 @@ class CardDatabase {
       return data;
     });
 
-    const results = await Promise.all(fetchPromises);
+    const discoveryPublicPromise = fetch(DISCOVERY_PUBLIC_URL, { cache:'no-store' }).then(async response => {
+      if (!response.ok) throw new Error(`DISCOVERY_PUBLIC_HTTP_ERROR:${response.status}`);
+      const rows = await response.json();
+      if (!Array.isArray(rows) || rows.length !== 100 || rows.some(row => !row || typeof row.clue !== 'string' || !row.clue.trim() || Object.keys(row).some(key => key !== 'clue'))) {
+        throw poolContractError('El catálogo público Discovery debe contener exactamente 100 pistas anónimas.', { actual:Array.isArray(rows)?rows.length:null });
+      }
+      return rows.map(row => Object.freeze({ clue:String(row.clue).trim() }));
+    });
+    const [results, discoveryPublicCatalog] = await Promise.all([Promise.all(fetchPromises), discoveryPublicPromise]);
 
     // Construcción transaccional: no tocamos el estado compartido hasta que las siete
     // categorías estén descargadas y validadas. Una carga parcial jamás contamina el pool.
@@ -134,6 +147,7 @@ class CardDatabase {
 
     // 23.21.5 publication/identity layer. Historical 880 default enabled; future IDs fail closed.
     await ensureCardCatalogLoaded({ allowCachedFallback: true });
+    this.discoveryPublicCatalog = discoveryPublicCatalog;
     this.rawCardsByCategory = nextByCategory;
     this.rawAllCards = nextAllCards;
     this.refreshPublicationState();
@@ -242,6 +256,31 @@ class CardDatabase {
         console.warn('[CardDatabase] No se pudo leer la auditoría de imágenes (el juego continúa normalmente):', error);
       }
     }
+  }
+
+  injectAuthorizedDiscoveryCards(cards = []) {
+    const rows = Array.isArray(cards) ? cards : [];
+    const allowedClues = new Set((this.discoveryPublicCatalog || []).map(row => String(row?.clue || '')));
+    const clean = [];
+    const seen = new Set();
+    for (const card of rows) {
+      const id = String(card?.id || '').trim();
+      const clue = String(card?.discovery?.clue || '').trim();
+      if (!id || seen.has(id) || String(card?.acquisition?.type || '').toLowerCase() !== 'discovery' || !allowedClues.has(clue)) continue;
+      seen.add(id); clean.push(Object.freeze({...card}));
+    }
+    this.authorizedDiscoveryCards = clean;
+    injectPrivateDiscoveryArtLayouts(clean);
+    injectPrivateDiscoveryTextLayouts(clean);
+    const base = [];
+    for (const cards of Object.values(this.rawCardsByCategory || {})) base.push(...cards);
+    this.rawAllCards = [...base, ...clean];
+    this.refreshPublicationState();
+    return clean.length;
+  }
+
+  clearAuthorizedDiscoveryCards() {
+    return this.injectAuthorizedDiscoveryCards([]);
   }
 
   refreshPublicationState() {

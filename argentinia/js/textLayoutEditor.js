@@ -8,6 +8,8 @@ import {
   applyCardTextLayoutToBox, saveCardTextLayout
 } from './textLayout.js';
 import { saveCardCatalogOverride } from './cardPublication.js';
+import { isDiscoveryCard } from './discoveryCards.js';
+import { adminSaveDiscoveryPresentation, loadAuthorizedDiscoveryCards } from './firebaseClient.js';
 import { cardDb } from './cardLoader.js';
 
 function injectStyles() {
@@ -159,9 +161,17 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
     try{
       const cleanName=String(draftName||'').replace(/\s+/g,' ').trim();
       if(!cleanName) throw new Error('El nombre no puede quedar vacío.');
-      const identity=await saveCardCatalogOverride(card,{name:cleanName},{allCards:cardDb.allCards});
-      cardDb.refreshPublicationState();
-      const saved=await saveCardTextLayout(layoutKey,draft);
+      let identity=null; let saved=null;
+      if(isDiscoveryCard(card)){
+        await adminSaveDiscoveryPresentation(card.id,{name:cleanName,textLayout:draft});
+        await loadAuthorizedDiscoveryCards();
+        saved={...getCardTextLayout(layoutKey)};
+        identity={cardId:card.id,name:cleanName,privateDiscovery:true};
+      }else{
+        identity=await saveCardCatalogOverride(card,{name:cleanName},{allCards:cardDb.allCards});
+        cardDb.refreshPublicationState();
+        saved=await saveCardTextLayout(layoutKey,draft);
+      }
       onSaved?.(saved,{custom:!layoutsEqual(saved,TEXT_LAYOUT_DEFAULT),identity,nameChanged:cleanName!==String(card.name||'')});
       saveBtn.textContent='✅ Guardado'; setTimeout(()=>{if(overlay.isConnected)close();},350);
     }catch(error){ console.error('No se pudo guardar el ajuste de texto:',error); errorEl.textContent=`No se pudo guardar: ${error?.message || error}`; saveBtn.textContent='💾 Guardar'; }

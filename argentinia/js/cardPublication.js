@@ -4,6 +4,7 @@
 
 import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
 import { PUBLISHED_CARD_BASELINE_SET, PUBLISHED_CARD_BASELINE_VERSION } from './publishedCardBaseline.js';
+import { isDiscoveryCard } from './discoveryCards.js';
 
 export const CARD_CATALOG_SCHEMA_VERSION = 1;
 export const CARD_CATALOG_DOCUMENT_ID = 'cardCatalog';
@@ -82,7 +83,7 @@ function replaceOwnName(value, oldName, newName, key='') {
 export function applyCardCatalogToCard(rawCard) {
   if (!rawCard || typeof rawCard !== 'object') return rawCard;
   const state = getCardPublicationState(rawCard);
-  const canonicalName = String(rawCard.name || rawCard.id || '');
+  const canonicalName = String(rawCard.canonicalName || rawCard.name || rawCard.id || '');
   const displayName = state.nameOverride || canonicalName;
   const effective = replaceOwnName(rawCard, canonicalName, displayName);
   effective.name = displayName;
@@ -126,6 +127,7 @@ function assertUniqueDisplayName(cardId, desiredName, allCards=[]) {
 }
 export async function saveCardCatalogOverride(card, changes={}, {allCards=[]}={}) {
   const id = String(card?.id || card || '').trim();
+  if (typeof card === 'object' && isDiscoveryCard(card)) throw new Error('DISCOVERY_PUBLICATION_SERVER_ONLY');
   if (!CARD_ID_RE.test(id)) throw new Error('CARD_CATALOG_INVALID_CARD_ID');
   let base;
   try { base = normalizeDocument(await loadPublicGameConfigDocument(CARD_CATALOG_DOCUMENT_ID)); }

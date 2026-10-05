@@ -7,7 +7,8 @@
 // - cualquiera puede leer (todas las superficies renderizan igual)
 // - sólo Admin puede escribir (Firestore Rules ya protegen gameConfig)
 
-import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
+import { loadPublicGameConfigDocument, saveAdminGameConfigDocument, adminSaveDiscoveryPresentation } from './firebaseClient.js';
+import { isDiscoveryCardId } from './discoveryCards.js';
 
 export const TEXT_LAYOUT_SCHEMA_VERSION = 2;
 export const TEXT_LAYOUT_DOCUMENT_ID = 'textLayouts';
@@ -38,6 +39,7 @@ export const TEXT_LAYOUT_LIMITS = Object.freeze({
 const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:evo1|evo2))?(?:::(?:front|back))?$/;
 const EPSILON = 0.0005;
 let activeLayouts = Object.freeze({});
+let privateDiscoveryLayouts = Object.freeze({});
 let remoteLoaded = false;
 let loadPromise = null;
 let lastLoadError = null;
@@ -95,11 +97,24 @@ activeLayouts = freezeLayouts(readLocalCache());
 export function getCardTextLayoutsSnapshot() {
   return Object.fromEntries(Object.entries(activeLayouts).map(([id, layout]) => [id, { ...layout }]));
 }
+export function injectPrivateDiscoveryTextLayouts(cards = []) {
+  const next={};
+  for(const card of Array.isArray(cards)?cards:[]){
+    const id=String(card?.id||'').trim(); if(!isDiscoveryCardId(id))continue;
+    next[id]=normalizeCardTextLayout(card?.discoveryPresentation?.textLayout);
+  }
+  privateDiscoveryLayouts=freezeLayouts(next);
+  applyAllCardTextLayoutsToVisibleBoxes();
+  return Object.keys(next).length;
+}
+export function clearPrivateDiscoveryTextLayouts(){privateDiscoveryLayouts=Object.freeze({});}
 function legacyFrontLayoutId(id) {
   return String(id || '').endsWith('::front') ? String(id).slice(0, -7) : '';
 }
 export function getCardTextLayout(cardId) {
   const id = String(cardId || '');
+  const privateExplicit=privateDiscoveryLayouts[id] || privateDiscoveryLayouts[legacyFrontLayoutId(id)];
+  if(privateExplicit) return { ...privateExplicit };
   const explicit = activeLayouts[id];
   if (explicit) return { ...explicit };
   const legacyId = legacyFrontLayoutId(id);
@@ -108,6 +123,8 @@ export function getCardTextLayout(cardId) {
 }
 export function hasCustomCardTextLayout(cardId) {
   const id = String(cardId || '');
+  const privateLayout=privateDiscoveryLayouts[id] || (legacyFrontLayoutId(id) && privateDiscoveryLayouts[legacyFrontLayoutId(id)]);
+  if(privateLayout) return !isDefaultCardTextLayout(privateLayout);
   return !!activeLayouts[id] || !!(legacyFrontLayoutId(id) && activeLayouts[legacyFrontLayoutId(id)]);
 }
 
@@ -199,6 +216,14 @@ export function registerCardTextBox(box, cardId) {
 export async function saveCardTextLayout(cardId, layoutOrNull) {
   const id = String(cardId || '').trim();
   if (!CARD_ID_RE.test(id)) throw new Error('TEXT_LAYOUT_INVALID_CARD_ID');
+  if(isDiscoveryCardId(id)){
+    const baseId=legacyFrontLayoutId(id)||id;
+    const normalized=layoutOrNull==null?{...TEXT_LAYOUT_DEFAULT}:normalizeCardTextLayout(layoutOrNull);
+    await adminSaveDiscoveryPresentation(baseId,{textLayout:isDefaultCardTextLayout(normalized)?null:normalized});
+    privateDiscoveryLayouts=freezeLayouts({...privateDiscoveryLayouts,[baseId]:normalized});
+    applyCardTextLayoutToVisibleBoxes(id);
+    return {...normalized};
+  }
 
   let baseLayouts = getCardTextLayoutsSnapshot();
   try {

@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, loadAuthorizedDiscoveryCards, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
@@ -19,6 +19,7 @@ import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, r
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
 import { applyGameTextOverrides, gameText, setGameTextRuntimeVariablesProvider } from './gameTexts.js';
+import { loadPublishedAppearance, applyCachedPublishedAppearance } from './appearance.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
 import { showStartingCoinToss } from './startingCoin.js';
@@ -2045,10 +2046,18 @@ async function boot() {
 
     if (state.currentUser) {
       if (phoneBoot) {
-        loadGameConfig()
-          .then(config => {
+        Promise.all([
+          loadGameConfig(),
+          loadPublishedAppearance({ force: true, apply: false }).catch(err => {
+            console.warn('[Appearance V1] No se pudo precargar apariencia tras autenticar en mobile:', err);
+            return null;
+          })
+        ])
+          .then(([config]) => {
             applyGameConfig(config);
             applyTournamentConfig(config);
+            // Cambio visual sólo en una superficie segura. Nunca repintamos una partida activa.
+            if (document.querySelector('#main-menu-overlay')) applyCachedPublishedAppearance();
             globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_config_loaded_after_auth_mobile');
           })
           .catch(err => {
@@ -2070,6 +2079,10 @@ async function boot() {
         state.userProfile = profile;
         applyUsernameIdentity(profile);
         updateAccountUI(state.currentUser);
+        // Stage22: las definiciones Discovery no viven en el bundle público. Sólo después
+        // de autenticar/perfilar pedimos al servidor las cartas que ESTA cuenta puede conocer.
+        try { await cardDb.loadAll(); await loadAuthorizedDiscoveryCards(); }
+        catch (error) { console.warn('[Santuario Stage22] Vault Discovery no disponible; se conserva modo spoiler-safe.', error); }
 
         // 23.13.25 — no bloquea el login ni el boot: para usuarios normales devuelve
         // inmediatamente `not_admin`; para Admin mantiene publicada una ventana semanal
@@ -2192,6 +2205,7 @@ async function boot() {
       stopGlobalDirectChallengeBridge();
       void stopPlayerPresence({ remove:false });
       state.userProfile = null;
+      cardDb.clearAuthorizedDiscoveryCards?.();
       state.authIdentityReady = true;
       userProfileLoadPromise = Promise.resolve();
       updateAccountUI(null);
@@ -2219,8 +2233,18 @@ async function boot() {
       } catch (err) {
         console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
       }
+      try {
+        await loadPublishedAppearance({ apply: true });
+      } catch (err) {
+        console.warn('[Appearance V1] No se pudo cargar la apariencia publicada — se conserva Clásico Argentinia:', err);
+      }
     } else {
       globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_config_deferred_mobile');
+      // No bloquea el boot mobile. Si termina mientras seguimos en menú, se aplica allí;
+      // si ya empezó una partida, queda cacheada para el próximo retorno seguro al menú.
+      void loadPublishedAppearance({ apply: false }).then(() => {
+        if (document.querySelector('#main-menu-overlay')) applyCachedPublishedAppearance();
+      }).catch(() => {});
     }
   } catch (err) {
     console.error('[BOOT_FATAL] No se pudo cargar/validar el pool de cartas:', err);
