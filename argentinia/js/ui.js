@@ -46,6 +46,7 @@ import {
 } from './main.js';
 import { canTransformPermanent, isTransformingDoubleFacedCard, currentTransformFace, normalizeTransformSpec, buildTransformFaceCard, transformFaceLayoutId } from './transformEngine.js';
 import { cardHasSubtype, cardsShareCreatureType, resolveSubtypeReference, getChosenCreatureType } from './typalEngine.js';
+import { requestImmersiveMode } from './mobileUI.js';
 
 import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuation } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
@@ -4046,7 +4047,8 @@ function injectEncyclopediaStyles() {
     gap: 20px;
 }
     .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; position:relative; }
-    .encyclopedia-card-slot .card-inner { border-width: 6px; }
+    /* HF3.3: usa exactamente el marco canónico de carta (3px/4px). El antiguo borde de 6px con radio 4px generaba esquinas visualmente recortadas en mobile. */
+    .encyclopedia-card-slot .card-inner { border-width: 3px; border-radius: 4px; }
     .encyclopedia-publication-control { margin-top:7px; display:flex; align-items:center; justify-content:center; gap:7px; padding:5px 8px; border-radius:7px; border:1px solid rgba(45,77,52,.25); background:#eef2eb; color:#233225; font-size:11px; font-weight:850; letter-spacing:.04em; user-select:none; }
     .encyclopedia-publication-control.unpublished { background:#fff0ec; color:#8b2b22; border-color:rgba(139,43,34,.35); }
     .encyclopedia-publication-control input { accent-color:#347a43; }
@@ -4135,7 +4137,7 @@ function injectEncyclopediaStyles() {
     #encyclopedia-overlay.encyclopedia-discovery-mode .encyclopedia-standard-filter,
     #encyclopedia-overlay.encyclopedia-discovery-mode .encyclopedia-admin-publication-filter { display:none !important; }
     #encyclopedia-overlay.encyclopedia-admin-discoverables-mode .encyclopedia-title::after { content:' · ADMIN'; color:#d4af37; font-size:.48em; margin-left:8px; letter-spacing:.08em; vertical-align:middle; }
-    .encyclopedia-admin-discoverable-slot { box-shadow:0 0 0 1px rgba(212,175,55,.28); border-radius:8px; }
+    .encyclopedia-admin-discoverable-slot { box-shadow:none; border-radius:0; overflow:visible; }
     .encyclopedia-token-slot .card-inner { box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 25px rgba(0,0,0,.25); }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-progress { display:none; }
     #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
@@ -6333,6 +6335,16 @@ function injectSanctuaryStyles() {
       font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
       box-shadow:0 4px 16px rgba(0,0,0,.42);
     }
+    .sanctuary-topbar-actions { justify-self:end; display:flex; align-items:center; gap:7px; }
+    .sanctuary-fullscreen-btn { display:none; appearance:none; width:36px; height:34px; border:1px solid rgba(212,175,55,.72); border-radius:9px; background:rgba(5,7,5,.86); color:#f4e4ad; font:900 18px/1 inherit; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+    .sanctuary-fullscreen-btn[hidden] { display:none!important; }
+    .sanctuary-camera-permission-card,.sanctuary-fullscreen-restore-card { width:min(420px,calc(100vw - 32px))!important; max-width:420px!important; }
+    .sanctuary-camera-permission-body,.sanctuary-fullscreen-restore-body { display:grid; gap:10px; padding:14px!important; }
+    .sanctuary-camera-permission-actions,.sanctuary-fullscreen-restore-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .sanctuary-camera-permission-actions .mulligan-btn,.sanctuary-fullscreen-restore-actions .mulligan-btn { width:auto!important; min-height:38px!important; padding:8px 12px!important; font-size:11px!important; }
+    #sanctuary-overlay.sanctuary-camera-open .sanctuary-shell-dock { width:auto; min-width:210px; padding:7px 9px; bottom:6px; border-radius:11px; }
+    #sanctuary-overlay.sanctuary-camera-open .sanctuary-shell-status { display:none; }
+    #sanctuary-overlay.sanctuary-camera-open .sanctuary-shell-action { min-width:190px; padding:8px 11px; font-size:10px; }
     /* Contract: this anchor is the exact geometric center of fondosantuario.png. */
     .sanctuary-ritual-anchor {
       position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
@@ -6385,14 +6397,23 @@ function injectSanctuaryStyles() {
     }
     .sanctuary-shell-countdown strong { font-size:18px; letter-spacing:.05em; }
     .sanctuary-shell-countdown span { color:#999786; font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
-    .sanctuary-camera-shell {
-      position:absolute; z-index:6; left:50%; top:50%; transform:translate(-50%,-50%);
-      width:min(122%,560px); aspect-ratio:4/3; overflow:hidden; border-radius:18px;
-      border:1px solid rgba(240,206,103,.60); background:#020302;
-      box-shadow:0 0 0 1px rgba(0,0,0,.55),0 16px 42px rgba(0,0,0,.72),0 0 34px rgba(231,188,66,.12);
+    .sanctuary-camera-workspace {
+      position:absolute; z-index:24; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(86vw,1040px); height:min(66vh,560px); box-sizing:border-box;
+      display:grid; grid-template-columns:minmax(0,1fr) minmax(210px,280px); gap:12px;
       pointer-events:auto;
     }
-    .sanctuary-camera-shell[hidden] { display:none!important; }
+    .sanctuary-camera-workspace[hidden] { display:none!important; }
+    .sanctuary-camera-shell {
+      position:relative; min-width:0; min-height:0; width:100%; height:100%; overflow:hidden; border-radius:16px;
+      border:1px solid rgba(240,206,103,.60); background:#020302;
+      box-shadow:0 0 0 1px rgba(0,0,0,.55),0 16px 42px rgba(0,0,0,.72),0 0 34px rgba(231,188,66,.12);
+    }
+    .sanctuary-camera-sidecar {
+      min-width:0; display:flex; flex-direction:column; gap:8px; padding:10px; box-sizing:border-box;
+      border:1px solid rgba(212,175,55,.42); border-radius:14px; background:rgba(5,7,5,.88);
+      box-shadow:0 12px 34px rgba(0,0,0,.52); backdrop-filter:blur(7px); overflow:auto;
+    }
     .sanctuary-camera-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
     .sanctuary-camera-shade { position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 60px rgba(0,0,0,.42); }
     .sanctuary-camera-frame {
@@ -6406,31 +6427,28 @@ function injectSanctuaryStyles() {
     .sanctuary-camera-frame::before { left:-2px; top:-2px; border-width:3px 0 0 3px; border-radius:9px 0 0 0; }
     .sanctuary-camera-frame::after { right:-2px; bottom:-2px; border-width:0 3px 3px 0; border-radius:0 0 9px 0; }
     .sanctuary-camera-hint {
-      position:absolute; left:50%; bottom:52px; transform:translateX(-50%); width:min(86%,420px);
-      padding:6px 9px; border-radius:999px; background:rgba(0,0,0,.64); color:#f5e7b3;
-      font-size:10px; font-weight:800; text-align:center; text-shadow:0 1px 4px #000; pointer-events:none;
+      padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.035); color:#cfc7a9;
+      font-size:9px; font-weight:750; line-height:1.35; text-align:left; pointer-events:none;
     }
     .sanctuary-camera-seal-status {
-      position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:4;
-      max-width:min(88%,430px); padding:6px 10px; border:1px solid rgba(240,210,112,.62); border-radius:999px;
-      background:rgba(3,5,3,.76); color:#f5e6ae; font-size:10px; font-weight:900; letter-spacing:.035em;
-      text-align:center; text-shadow:0 1px 4px #000; box-shadow:0 4px 16px rgba(0,0,0,.35); pointer-events:none;
+      padding:7px 9px; border:1px solid rgba(240,210,112,.62); border-radius:9px;
+      background:rgba(3,5,3,.76); color:#f5e6ae; font-size:9px; font-weight:900; letter-spacing:.025em;
+      text-align:left; line-height:1.3; box-shadow:0 4px 16px rgba(0,0,0,.28); pointer-events:none;
     }
     .sanctuary-camera-seal-status[data-kind="found"] { color:#d9ffd7; border-color:rgba(123,232,133,.72); background:rgba(5,28,10,.82); }
     .sanctuary-camera-seal-status[data-kind="invalid"] { color:#ffe0a6; border-color:rgba(239,178,72,.72); background:rgba(40,24,4,.82); }
     .sanctuary-camera-seal-status[data-kind="error"] { color:#ffd0c5; border-color:rgba(235,112,88,.72); background:rgba(43,10,7,.84); }
     .sanctuary-camera-seal-status[hidden] { display:none!important; }
     .sanctuary-camera-resonance-status {
-      position:absolute; right:9px; top:43px; z-index:4; max-width:min(72%,420px);
-      padding:5px 8px; border:1px solid rgba(174,199,234,.50); border-radius:10px;
-      background:rgba(5,8,12,.74); color:#d7e8ff; font-size:9px; font-weight:900; letter-spacing:.035em;
-      text-align:center; line-height:1.2; text-shadow:0 1px 4px #000; box-shadow:0 4px 14px rgba(0,0,0,.30); pointer-events:none;
+      padding:7px 9px; border:1px solid rgba(174,199,234,.50); border-radius:9px;
+      background:rgba(5,8,12,.74); color:#d7e8ff; font-size:9px; font-weight:900; letter-spacing:.025em;
+      text-align:left; line-height:1.3; box-shadow:0 4px 14px rgba(0,0,0,.26); pointer-events:none;
     }
     .sanctuary-camera-resonance-status[data-stable="true"] { color:#f8e9ae; border-color:rgba(242,207,104,.72); background:rgba(30,24,7,.84); }
+    .sanctuary-camera-resonance-status[data-error="true"] { color:#ffd0c5; border-color:rgba(235,112,88,.72); background:rgba(43,10,7,.84); }
     .sanctuary-camera-resonance-status[hidden] { display:none!important; }
     .sanctuary-camera-controls {
-      position:absolute; left:50%; bottom:9px; transform:translateX(-50%); display:flex; gap:8px; align-items:center; justify-content:center;
-      width:calc(100% - 18px);
+      margin-top:auto; display:grid; grid-template-columns:1fr; gap:6px; align-items:stretch;
     }
     .sanctuary-camera-btn {
       appearance:none; border:1px solid rgba(224,193,91,.65); border-radius:9px; background:rgba(7,8,6,.82); color:#f2df9e;
@@ -6458,16 +6476,21 @@ function injectSanctuaryStyles() {
       .sanctuary-shell-action { min-width:118px; padding:8px 10px; font-size:11px; }
       .sanctuary-shell-countdown strong { font-size:14px; }
       .sanctuary-shell-countdown span { font-size:8px; }
-      .sanctuary-camera-shell { width:min(138%,520px); border-radius:13px; }
-      .sanctuary-camera-hint { bottom:45px; font-size:9px; }
-      .sanctuary-camera-seal-status { top:7px; font-size:9px; padding:5px 8px; }
-      .sanctuary-camera-resonance-status { right:7px; top:39px; font-size:8px; padding:4px 7px; }
-      .sanctuary-camera-btn { padding:6px 8px; font-size:9px; }
+      .sanctuary-fullscreen-btn { display:inline-grid; place-items:center; }
+      .sanctuary-camera-workspace { width:min(94vw,920px); height:min(68vh,420px); grid-template-columns:minmax(0,1fr) minmax(185px,230px); gap:8px; }
+      .sanctuary-camera-shell { border-radius:11px; }
+      .sanctuary-camera-sidecar { padding:7px; gap:6px; border-radius:10px; }
+      .sanctuary-camera-hint,.sanctuary-camera-seal-status,.sanctuary-camera-resonance-status { font-size:8px; padding:5px 7px; }
+      .sanctuary-camera-btn { padding:6px 7px; font-size:8px; }
     }
     @media(max-height:520px) {
       .sanctuary-ritual-anchor { width:min(48vmin,250px); }
-      .sanctuary-shell-dock { bottom:6px; }
+      .sanctuary-shell-dock { bottom:4px; }
       .sanctuary-title { font-size:15px; }
+      .sanctuary-camera-workspace { width:min(94vw,960px); height:min(64vh,330px); }
+      .sanctuary-camera-sidecar { max-height:100%; }
+      .sanctuary-camera-permission-card,.sanctuary-fullscreen-restore-card { max-width:390px!important; }
+      .sanctuary-camera-permission-body,.sanctuary-fullscreen-restore-body { padding:10px!important; gap:7px; }
     }
   `;
   document.head.appendChild(style);
@@ -6663,13 +6686,13 @@ function showSanctuaryCameraPermissionModal(onConfirm, onCancel) {
   modal.className = 'gy-modal-overlay';
   modal.dataset.sanctuaryCameraPermission = 'true';
   modal.innerHTML = `
-    <div class="gy-modal-content" style="max-width:470px;">
+    <div class="gy-modal-content sanctuary-camera-permission-card">
       <div class="gy-modal-header"><h3>📷 ${gameTextHtml('sanctuary.camera.permissionTitle')}</h3></div>
-      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;">
-        <p style="color:#cfe0d4;font-size:13px;margin:0;line-height:1.5;">${gameTextHtml('sanctuary.camera.permissionBody')}</p>
-        <p style="color:#e7d899;font-size:12px;margin:0;line-height:1.45;">${gameTextHtml('sanctuary.camera.privacy')}</p>
-        <button id="sanctuary-camera-permission-confirm" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.permissionConfirm')}</button>
-        <button id="sanctuary-camera-permission-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.camera.permissionCancel')}</button>
+      <div class="sanctuary-camera-permission-body">
+        <p style="color:#cfe0d4;font-size:12px;margin:0;line-height:1.4;">${gameTextHtml('sanctuary.camera.permissionBody')}</p>
+        <p style="color:#e7d899;font-size:11px;margin:0;line-height:1.35;">${gameTextHtml('sanctuary.camera.privacy')}</p>
+        <div class="sanctuary-camera-permission-actions"><button id="sanctuary-camera-permission-confirm" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.permissionConfirm')}</button>
+        <button id="sanctuary-camera-permission-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.camera.permissionCancel')}</button></div>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -6688,25 +6711,34 @@ function sanctuaryCameraErrorText(error) {
   return gameTextHtml(key);
 }
 
-function showSanctuaryFullscreenRestoreModal() {
+function syncSanctuaryFullscreenButton(overlay) {
+  const btn=overlay?.querySelector('#sanctuary-fullscreen-retry');
+  if(!btn) return;
+  const mobile=document.documentElement.classList.contains('argentinia-mobile');
+  const fullscreen=!!document.fullscreenElement || document.documentElement.classList.contains('arg-mobile-is-fullscreen');
+  btn.hidden=!mobile || fullscreen;
+}
+
+function showSanctuaryFullscreenRestoreModal(overlay) {
   if (!document.documentElement?.requestFullscreen || document.fullscreenElement) return;
   injectMulliganStyles();
   const modal = document.createElement('div');
   modal.className = 'gy-modal-overlay';
   modal.dataset.sanctuaryFullscreenRestore = 'true';
   modal.innerHTML = `
-    <div class="gy-modal-content" style="max-width:430px;">
+    <div class="gy-modal-content sanctuary-fullscreen-restore-card">
       <div class="gy-modal-header"><h3>${gameTextHtml('sanctuary.title')}</h3></div>
-      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;">
-        <p style="color:#cfe0d4;font-size:13px;margin:0;line-height:1.5;">${gameTextHtml('sanctuary.camera.fullscreenRestore')}</p>
-        <button id="sanctuary-fullscreen-restore" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.fullscreenRestoreAction')}</button>
-        <button id="sanctuary-fullscreen-skip" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.action.cancel')}</button>
+      <div class="sanctuary-fullscreen-restore-body">
+        <p style="color:#cfe0d4;font-size:12px;margin:0;line-height:1.4;">${gameTextHtml('sanctuary.camera.fullscreenRestore')}</p>
+        <div class="sanctuary-fullscreen-restore-actions"><button id="sanctuary-fullscreen-restore" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('sanctuary.camera.fullscreenRestoreAction')}</button>
+        <button id="sanctuary-fullscreen-skip" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('sanctuary.action.cancel')}</button></div>
       </div>
     </div>`;
   document.body.appendChild(modal);
   modal.querySelector('#sanctuary-fullscreen-restore')?.addEventListener('click', async () => {
-    try { await document.documentElement.requestFullscreen({ navigationUI:'hide' }); } catch {}
+    try { await requestImmersiveMode(); } catch {}
     modal.remove();
+    syncSanctuaryFullscreenButton(overlay);
   });
   modal.querySelector('#sanctuary-fullscreen-skip')?.addEventListener('click', () => modal.remove());
 }
@@ -6881,6 +6913,7 @@ function setSanctuaryResonanceStatus(overlay, result, { stable = false } = {}) {
   const traits = sanctuaryResonanceTraitText(result);
   statusEl.hidden = false;
   statusEl.dataset.stable = stable ? 'true' : 'false';
+  delete statusEl.dataset.error;
   statusEl.dataset.affinity = String(result.affinity || '');
   statusEl.dataset.signature = String(result?.resonanceSignature || '');
   statusEl.textContent = gameText(stable ? 'sanctuary.resonance.signatureStable' : 'sanctuary.resonance.signatureUnstable', { affinity, traits });
@@ -7074,9 +7107,11 @@ async function resolveFoundSanctuaryResonance(overlay, signature) {
     overlay.__sanctuaryCamera=latest;
     overlay.dataset.sanctuaryShellState='RESONANCE_SERVER_ERROR';
     const text=sanctuaryResonanceServerErrorText(error);
-    if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.stable');
-    if(noteEl) noteEl.textContent=text;
-    if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverTryAgain');
+    if(messageEl) messageEl.textContent=text;
+    if(noteEl) noteEl.textContent=gameText('sanctuary.resonance.serverTryAgain');
+    if(hintEl) hintEl.textContent=text;
+    const resonanceStatus=overlay.querySelector('#sanctuary-camera-resonance-status');
+    if(resonanceStatus){ resonanceStatus.hidden=false; resonanceStatus.dataset.stable='false'; resonanceStatus.dataset.error='true'; resonanceStatus.textContent=text; }
     if(rescanBtn) rescanBtn.hidden=false;
     console.warn('Sanctuary resonance resolver unavailable',error);
   }
@@ -7400,9 +7435,10 @@ function stopSanctuaryCameraPreview(overlay, { restoreStatus = true } = {}) {
     try { video.pause(); } catch {}
     try { video.srcObject = null; } catch {}
   }
-  const shell = overlay.querySelector('#sanctuary-camera-shell');
+  const workspace = overlay.querySelector('#sanctuary-camera-workspace');
   const core = overlay.querySelector('.sanctuary-ritual-core');
-  if (shell) shell.hidden = true;
+  if (workspace) workspace.hidden = true;
+  overlay.classList.remove('sanctuary-camera-open');
   if (core) core.hidden = false;
   if (restoreStatus && overlay.__sanctuaryStatus) applySanctuaryStatusToOverlay(overlay, overlay.__sanctuaryStatus);
 }
@@ -7440,9 +7476,10 @@ async function openSanctuaryCameraPreview(overlay, { deviceId = '' } = {}) {
       try { await video.play(); } catch {}
     }
     const core = overlay.querySelector('.sanctuary-ritual-core');
-    const shell = overlay.querySelector('#sanctuary-camera-shell');
+    const workspace = overlay.querySelector('#sanctuary-camera-workspace');
     if (core) core.hidden = true;
-    if (shell) shell.hidden = false;
+    if (workspace) workspace.hidden = false;
+    overlay.classList.add('sanctuary-camera-open');
     const changeBtn = overlay.querySelector('#sanctuary-camera-change');
     if (changeBtn) {
       changeBtn.disabled = state.devices.length < 2;
@@ -7456,7 +7493,8 @@ async function openSanctuaryCameraPreview(overlay, { deviceId = '' } = {}) {
       actionBtn.title = gameText('sanctuary.camera.previewOnly');
     }
     overlay.dataset.sanctuaryShellState = 'CAMERA_READY';
-    if (wasFullscreen && !document.fullscreenElement) showSanctuaryFullscreenRestoreModal();
+    syncSanctuaryFullscreenButton(overlay);
+    if (wasFullscreen && !document.fullscreenElement) showSanctuaryFullscreenRestoreModal(overlay);
     startSanctuarySourceArbiter(overlay);
     startSanctuaryResonanceScanner(overlay);
     await startSanctuaryBarcodeScanner(overlay);
@@ -7502,10 +7540,14 @@ export function showSanctuaryScreen(onBack) {
           <div class="sanctuary-ritual-message">${gameTextHtml('sanctuary.center.syncing')}</div>
           <div class="sanctuary-ritual-note">${gameTextHtml('sanctuary.center.readOnlyNote')}</div>
         </div>
-        <div class="sanctuary-camera-shell" id="sanctuary-camera-shell" hidden>
+      </div>
+      <div class="sanctuary-camera-workspace" id="sanctuary-camera-workspace" hidden>
+        <div class="sanctuary-camera-shell" id="sanctuary-camera-shell">
           <video class="sanctuary-camera-video" id="sanctuary-camera-video" autoplay muted playsinline aria-label="${gameTextHtml('sanctuary.camera.ready')}"></video>
           <div class="sanctuary-camera-shade" aria-hidden="true"></div>
           <div class="sanctuary-camera-frame" aria-hidden="true"></div>
+        </div>
+        <aside class="sanctuary-camera-sidecar" aria-live="polite">
           <div class="sanctuary-camera-seal-status" id="sanctuary-camera-seal-status" data-kind="searching" hidden></div>
           <div class="sanctuary-camera-resonance-status" id="sanctuary-camera-resonance-status" data-stable="false" hidden></div>
           <div class="sanctuary-camera-hint">${gameTextHtml('sanctuary.camera.align')}</div>
@@ -7514,13 +7556,13 @@ export function showSanctuaryScreen(onBack) {
             <button class="sanctuary-camera-btn" id="sanctuary-camera-change" type="button">${gameTextHtml('sanctuary.action.changeCamera')}</button>
             <button class="sanctuary-camera-btn" id="sanctuary-camera-close" type="button">${gameTextHtml('sanctuary.action.closeCamera')}</button>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
     <div class="sanctuary-topbar">
       <button class="sanctuary-back" id="sanctuary-back" type="button">${gameTextHtml('sanctuary.back')}</button>
       <h2 class="sanctuary-title">${gameTextHtml('sanctuary.title')}</h2>
-      <div class="sanctuary-admin-chip">${gameTextHtml('sanctuary.admin.previewBadge')}</div>
+      <div class="sanctuary-topbar-actions"><button class="sanctuary-fullscreen-btn" id="sanctuary-fullscreen-retry" type="button" hidden title="${gameTextHtml('sanctuary.camera.fullscreenRestoreAction')}" aria-label="${gameTextHtml('sanctuary.camera.fullscreenRestoreAction')}">⛶</button><div class="sanctuary-admin-chip">${gameTextHtml('sanctuary.admin.previewBadge')}</div></div>
     </div>
     <div class="sanctuary-shell-dock" aria-label="${gameTextHtml('sanctuary.status.regionLabel')}">
       <div class="sanctuary-shell-status">
@@ -7542,6 +7584,7 @@ export function showSanctuaryScreen(onBack) {
   const close = () => {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('pagehide', stopForPageHide);
+    document.removeEventListener('fullscreenchange', syncFullscreen);
     cleanupTransientModals();
     cancelSanctuaryRitual(overlay);
     if(overlay.__sanctuaryCountdownTimer) clearInterval(overlay.__sanctuaryCountdownTimer);
@@ -7558,9 +7601,13 @@ export function showSanctuaryScreen(onBack) {
       close();
     }
   };
+  const syncFullscreen = () => syncSanctuaryFullscreenButton(overlay);
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('pagehide', stopForPageHide);
+  document.addEventListener('fullscreenchange', syncFullscreen);
   overlay.querySelector('#sanctuary-back')?.addEventListener('click', close);
+  overlay.querySelector('#sanctuary-fullscreen-retry')?.addEventListener('click', async () => { await requestImmersiveMode(); syncSanctuaryFullscreenButton(overlay); });
+  syncSanctuaryFullscreenButton(overlay);
   overlay.querySelector('.sanctuary-shell-action')?.addEventListener('click', () => {
     const actionBtn = overlay.querySelector('.sanctuary-shell-action');
     const cameraState=overlay.__sanctuaryCamera||{};

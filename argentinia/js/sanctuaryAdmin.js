@@ -1,5 +1,5 @@
 import { gameText } from './gameTexts.js';
-import { getSanctuaryStatus, adminPreviewSanctuary, adminGetSanctuaryHistory, adminSetSanctuaryConfig, adminSetSanctuaryBarcodeBuckets, adminSetSanctuaryResonanceBuckets, adminSetSanctuaryBarcodeEasterEggs } from './firebaseClient.js';
+import { getSanctuaryStatus, loadAuthorizedDiscoveryCards, adminPreviewSanctuary, adminGetSanctuaryHistory, adminSetSanctuaryConfig, adminSetSanctuaryBarcodeBuckets, adminSetSanctuaryResonanceBuckets, adminSetSanctuaryBarcodeEasterEggs } from './firebaseClient.js';
 import { withEconomyButtonPending } from './economyPending.js';
 import { cardDb } from './cardLoader.js';
 import { isDiscoveryCard } from './discoveryCards.js';
@@ -63,7 +63,7 @@ function easterEggRuleHtml(rule,index) {
       <label><span>${esc(gameText('sanctuary.admin.easterEggId'))}</span><input data-egg-field="id" maxlength="64" value="${esc(rule.id)}" placeholder="${esc(gameText('sanctuary.admin.easterEggIdPlaceholder'))}"></label>
       <label><span>${esc(gameText('sanctuary.admin.easterEggLabel'))}</span><input data-egg-field="label" maxlength="80" value="${esc(rule.label)}" placeholder="${esc(gameText('sanctuary.admin.easterEggLabelPlaceholder'))}"></label>
       <label><span>${esc(gameText('sanctuary.admin.priority'))}</span><input data-egg-field="priority" type="number" min="0" max="1000" step="1" value="${Number(rule.priority)||0}"></label>
-      <label><span>${esc(gameText('sanctuary.admin.easterEggCard'))}</span><input data-egg-field="cardId" maxlength="96" value="${esc(rule.cardId)}" placeholder="${esc(gameText('sanctuary.admin.easterEggCardPlaceholder'))}"></label>
+      <label><span>${esc(gameText('sanctuary.admin.easterEggCard'))}</span><input data-egg-field="cardId" list="admin-sanctuary-discovery-options" maxlength="96" value="${esc(rule.cardId)}" placeholder="${esc(gameText('sanctuary.admin.easterEggCardPlaceholder'))}"></label>
       <label class="admin-sanctuary-egg-wide"><span>${esc(gameText('sanctuary.admin.easterEggGtins'))}</span><textarea data-egg-field="gtins" rows="3" placeholder="7791234567898">${esc(gtins)}</textarea><small>${esc(gameText('sanctuary.admin.easterEggGtinsHelp'))}</small></label>
       <label class="admin-sanctuary-egg-wide"><span>${esc(gameText('sanctuary.admin.note'))}</span><textarea data-egg-field="note" rows="2" maxlength="240" placeholder="${esc(gameText('sanctuary.admin.easterEggNotePlaceholder'))}">${esc(rule.note)}</textarea></label>
     </div>
@@ -129,7 +129,7 @@ function bucketRowsHtml() {
     const bucket=String(index).padStart(2,'0');
     return `<tr data-sanctuary-bucket-row="${bucket}">
       <td class="admin-sanctuary-bucket-code">${bucket}</td>
-      <td><input class="admin-sanctuary-bucket-input" data-sanctuary-bucket-index="${index}" maxlength="96" autocomplete="off" spellcheck="false" placeholder="${esc(gameText('sanctuary.admin.barcodeBucketsPlaceholder'))}"></td>
+      <td><input class="admin-sanctuary-bucket-input" data-sanctuary-bucket-index="${index}" list="admin-sanctuary-discovery-options" maxlength="96" autocomplete="off" spellcheck="false" placeholder="${esc(gameText('sanctuary.admin.barcodeBucketsPlaceholder'))}"></td>
       <td class="admin-sanctuary-bucket-name" data-sanctuary-bucket-name="${index}">${esc(gameText('sanctuary.admin.barcodeCardNameUnknown'))}</td>
       <td class="admin-sanctuary-bucket-state" data-sanctuary-bucket-state="${index}">${esc(gameText('sanctuary.admin.barcodeEmpty'))}</td>
     </tr>`;
@@ -146,7 +146,7 @@ function resonanceRowsHtml() {
       return `<tr data-sanctuary-resonance-row="${globalBucket}" data-affinity="${group.id}">
         <td class="admin-sanctuary-affinity-code">${group.id}</td>
         <td class="admin-sanctuary-bucket-code">${localBucket}<small>${globalBucket}</small></td>
-        <td><input class="admin-sanctuary-bucket-input" data-sanctuary-resonance-index="${index}" maxlength="96" autocomplete="off" spellcheck="false" placeholder="${esc(gameText('sanctuary.admin.resonanceBucketsPlaceholder'))}"></td>
+        <td><input class="admin-sanctuary-bucket-input" data-sanctuary-resonance-index="${index}" list="admin-sanctuary-discovery-options-${group.id}" maxlength="96" autocomplete="off" spellcheck="false" placeholder="${esc(gameText('sanctuary.admin.resonanceBucketsPlaceholder'))}"></td>
         <td class="admin-sanctuary-bucket-name" data-sanctuary-resonance-name="${index}">${esc(gameText('sanctuary.admin.barcodeCardNameUnknown'))}</td>
         <td class="admin-sanctuary-bucket-state" data-sanctuary-resonance-state="${index}">${esc(gameText('sanctuary.admin.resonanceEmpty'))}</td>
       </tr>`;
@@ -223,6 +223,9 @@ export function mountAdminSanctuaryPane(root) {
       .admin-sanctuary-warning{border:1px solid rgba(224,122,107,.45);background:rgba(120,30,20,.14);border-radius:9px;padding:10px 12px;color:#e6b2a6;font-size:12px;line-height:1.45;margin:10px 0 14px;}
       .admin-sanctuary-info{border:1px solid rgba(96,146,189,.35);background:rgba(24,62,90,.16);border-radius:9px;padding:10px 12px;color:#bfd3df;font-size:12px;line-height:1.45;margin:10px 0 14px;}
       .admin-sanctuary-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px;}
+      .admin-sanctuary-actions.admin-sanctuary-mapping-tools{justify-content:flex-start;margin:10px 0;}
+      .admin-sanctuary-mapping-tools .admin-save-btn{font-size:10px;padding:7px 9px;}
+      .admin-sanctuary-picker-note{margin:8px 0 10px;padding:8px 10px;border:1px solid rgba(121,173,114,.28);border-radius:8px;background:rgba(38,82,38,.10);color:#bdd3b5;font-size:11px;line-height:1.45;}
       .admin-sanctuary-toggle{min-width:118px;}
       .admin-sanctuary-toggle.active{background:rgba(64,120,65,.34);border-color:#79ad72;color:#dff4d8;}
       .admin-sanctuary-statusline{min-height:20px;margin-top:10px;text-align:right;font-size:12px;color:#d6bd69;}
@@ -300,6 +303,8 @@ export function mountAdminSanctuaryPane(root) {
 
   root.innerHTML=`
     <div class="admin-sanctuary-wrap">
+      <datalist id="admin-sanctuary-discovery-options"></datalist>
+      ${RESONANCE_AFFINITIES.map(group=>`<datalist id="admin-sanctuary-discovery-options-${group.id}"></datalist>`).join('')}
       <div class="admin-section">
         <div class="admin-section-title">${esc(gameText('sanctuary.admin.sectionTitle'))}</div>
         <div class="admin-debug-summary">${esc(gameText('sanctuary.admin.stage18Note'))}</div>
@@ -331,7 +336,9 @@ export function mountAdminSanctuaryPane(root) {
       <div class="admin-section">
         <div class="admin-section-title">${esc(gameText('sanctuary.admin.barcodeBuckets'))}</div>
         <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.barcodeBucketsHelp'))}</div>
+        <div class="admin-sanctuary-picker-note">${esc(gameText('sanctuary.admin.discoveryPickerHelp'))}</div>
         <div class="admin-sanctuary-info">${esc(gameText('sanctuary.admin.barcodeBucketsBindingWarning'))}</div>
+        <div class="admin-sanctuary-actions admin-sanctuary-mapping-tools"><button class="admin-save-btn" type="button" id="admin-sanctuary-buckets-autofill">${esc(gameText('sanctuary.admin.bucketAutofill'))}</button><button class="admin-save-btn" type="button" id="admin-sanctuary-buckets-clear">${esc(gameText('sanctuary.admin.bucketClear'))}</button></div>
         <div class="admin-sanctuary-bucket-kpis">
           <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.barcodeConfigured'))}</span><strong id="admin-sanctuary-kpi-configured">0/100</strong></div>
           <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.barcodeUnique'))}</span><strong id="admin-sanctuary-kpi-unique">0</strong></div>
@@ -351,7 +358,9 @@ export function mountAdminSanctuaryPane(root) {
       <div class="admin-section">
         <div class="admin-section-title">${esc(gameText('sanctuary.admin.resonanceBuckets'))}</div>
         <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.resonanceBucketsHelp'))}</div>
+        <div class="admin-sanctuary-picker-note">${esc(gameText('sanctuary.admin.resonanceAssignmentHelp'))}</div>
         <div class="admin-sanctuary-info">${esc(gameText('sanctuary.admin.resonanceBucketsBindingWarning'))}</div>
+        <div class="admin-sanctuary-actions admin-sanctuary-mapping-tools"><button class="admin-save-btn" type="button" id="admin-sanctuary-resonance-autofill">${esc(gameText('sanctuary.admin.resonanceAutofill'))}</button><button class="admin-save-btn" type="button" id="admin-sanctuary-resonance-clear">${esc(gameText('sanctuary.admin.bucketClear'))}</button></div>
         <div class="admin-sanctuary-bucket-kpis">
           <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.resonanceConfigured'))}</span><strong id="admin-sanctuary-res-kpi-configured">0/100</strong></div>
           <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.resonanceUnique'))}</span><strong id="admin-sanctuary-res-kpi-unique">0</strong></div>
@@ -372,7 +381,7 @@ export function mountAdminSanctuaryPane(root) {
       </div>
       <div class="admin-section">
         <div class="admin-section-title">${esc(gameText('sanctuary.admin.easterEggs'))}</div>
-        <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.easterEggsHelp'))}</div>
+        <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.easterEggsHelp'))}</div><div class="admin-sanctuary-picker-note">${esc(gameText('sanctuary.admin.easterEggHowTo'))}</div>
         <div class="admin-sanctuary-info">${esc(gameText('sanctuary.admin.easterEggPrivacy'))}</div>
         <div class="admin-sanctuary-warning">${esc(gameText('sanctuary.admin.easterEggBindingsWarning'))}</div>
         <div class="admin-sanctuary-bucket-kpis">
@@ -439,6 +448,11 @@ export function mountAdminSanctuaryPane(root) {
   const reload=root.querySelector('#admin-sanctuary-reload');
   const bucketSave=root.querySelector('#admin-sanctuary-buckets-save');
   const resonanceSave=root.querySelector('#admin-sanctuary-resonance-save');
+  const bucketAutofill=root.querySelector('#admin-sanctuary-buckets-autofill');
+  const bucketClear=root.querySelector('#admin-sanctuary-buckets-clear');
+  const resonanceAutofill=root.querySelector('#admin-sanctuary-resonance-autofill');
+  const resonanceClear=root.querySelector('#admin-sanctuary-resonance-clear');
+  const discoveryOptions=root.querySelector('#admin-sanctuary-discovery-options');
   const eggAdd=root.querySelector('#admin-sanctuary-egg-add');
   const eggSave=root.querySelector('#admin-sanctuary-egg-save');
   const eggList=root.querySelector('#admin-sanctuary-egg-list');
@@ -466,6 +480,33 @@ export function mountAdminSanctuaryPane(root) {
   const resonanceInputs=[...root.querySelectorAll('[data-sanctuary-resonance-index]')];
   let current=null;
   let loading=false;
+
+  function authorizedDiscoveryCards(){
+    return (cardDb.authorizedDiscoveryCards || []).filter(isDiscoveryCard).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||''),undefined,{numeric:true}));
+  }
+
+  function refreshDiscoveryOptions(){
+    if(!discoveryOptions) return 0;
+    const cards=authorizedDiscoveryCards();
+    const optionHtml=list=>list.map(card=>`<option value="${esc(card.id)}">${esc(`${card.id} · ${card.name || 'Sin nombre'} · ${(card.colors||[]).join('/') || '—'}`)}</option>`).join('');
+    discoveryOptions.innerHTML=optionHtml(cards);
+    for(const group of RESONANCE_AFFINITIES){
+      const list=root.querySelector(`#admin-sanctuary-discovery-options-${group.id}`);
+      if(list) list.innerHTML=optionHtml(cards.filter(card=>cardMatchesResonanceAffinity(card,group.id)));
+    }
+    return cards.length;
+  }
+
+  async function ensureAdminDiscoveryCatalog(){
+    let count=refreshDiscoveryOptions();
+    if(count===100) return count;
+    try{ await loadAuthorizedDiscoveryCards(); }catch(error){ console.warn('[Santuario Admin] Discovery picker load skipped',error?.message||error); }
+    return refreshDiscoveryOptions();
+  }
+
+  function setMappingInputs(inputs, values){
+    inputs.forEach((input,index)=>{ input.value=String(values[index]||''); });
+  }
 
   function toggle(btn){ applyToggleVisual(btn,btn?.dataset?.enabled!=='true'); }
   master?.addEventListener('click',()=>toggle(master));
@@ -609,6 +650,29 @@ export function mountAdminSanctuaryPane(root) {
   eggList?.addEventListener('input',()=>{if(eggMessage)eggMessage.textContent='';refreshEasterEggDiagnostics();});
   eggList?.addEventListener('change',()=>{if(eggMessage)eggMessage.textContent='';refreshEasterEggDiagnostics();});
 
+  bucketAutofill?.addEventListener('click',async()=>{
+    const count=await ensureAdminDiscoveryCatalog();
+    const cards=authorizedDiscoveryCards();
+    if(count!==100||cards.length!==100){ if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.discoveryPickerIncomplete'); return; }
+    if(!window.confirm(gameText('sanctuary.admin.bucketAutofillConfirm'))) return;
+    setMappingInputs(bucketInputs,cards.map(card=>card.id)); refreshBucketDiagnostics(); if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.bucketAutofillLocal');
+  });
+  bucketClear?.addEventListener('click',()=>{ if(!window.confirm(gameText('sanctuary.admin.bucketClearConfirm')))return; setMappingInputs(bucketInputs,Array(100).fill('')); refreshBucketDiagnostics(); if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
+  resonanceAutofill?.addEventListener('click',async()=>{
+    const count=await ensureAdminDiscoveryCatalog();
+    const cards=authorizedDiscoveryCards();
+    if(count!==100||cards.length!==100){ if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.discoveryPickerIncomplete'); return; }
+    const values=[];
+    for(const group of RESONANCE_AFFINITIES){
+      const groupCards=cards.filter(card=>cardMatchesResonanceAffinity(card,group.id));
+      if(groupCards.length!==20){ if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.resonanceAutofillInvalidPool'); return; }
+      values.push(...groupCards.map(card=>card.id));
+    }
+    if(!window.confirm(gameText('sanctuary.admin.resonanceAutofillConfirm'))) return;
+    setMappingInputs(resonanceInputs,values); refreshResonanceDiagnostics(); if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.resonanceAutofillLocal');
+  });
+  resonanceClear?.addEventListener('click',()=>{ if(!window.confirm(gameText('sanctuary.admin.bucketClearConfirm')))return; setMappingInputs(resonanceInputs,Array(100).fill('')); refreshResonanceDiagnostics(); if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
+
   bucketInputs.forEach(input=>input.addEventListener('input',()=>{ if(bucketMessage) bucketMessage.textContent=''; refreshBucketDiagnostics(); }));
   resonanceInputs.forEach(input=>input.addEventListener('input',()=>{ if(resonanceMessage) resonanceMessage.textContent=''; refreshResonanceDiagnostics(); }));
 
@@ -687,6 +751,7 @@ export function mountAdminSanctuaryPane(root) {
     if(message) message.textContent=gameText('sanctuary.admin.loading');
     if(reload) reload.disabled=true;
     try{
+      await ensureAdminDiscoveryCatalog();
       const status=await getSanctuaryStatus();
       apply(status);
       if(message) message.textContent=gameText('sanctuary.admin.loaded');

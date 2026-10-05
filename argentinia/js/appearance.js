@@ -1,4 +1,4 @@
-// Appearance Studio V1 — Argentinia 23.22.0 HF3.2
+// Appearance Studio V1.1 — Argentinia 23.22.0 HF3.3
 // Public visual configuration lives in gameConfig/appearance.
 // This module intentionally accepts typed values only: no CSS selectors, HTML or arbitrary CSS.
 
