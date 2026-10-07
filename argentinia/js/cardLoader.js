@@ -258,6 +258,22 @@ class CardDatabase {
     }
   }
 
+  setDiscoveryPublicCatalog(rows = []) {
+    const src=Array.isArray(rows)?rows:[];
+    const clues=[]; const seen=new Set();
+    for(const row of src){
+      if(!row || Object.keys(row).some(key=>key!=='clue')) return false;
+      const clue=String(row.clue||'').replace(/\s+/g,' ').trim();
+      const key=clue.normalize('NFKC').toLowerCase();
+      if(!clue || seen.has(key)) return false;
+      seen.add(key); clues.push(Object.freeze({clue}));
+    }
+    if(clues.length!==100) return false;
+    clues.sort((a,b)=>a.clue.localeCompare(b.clue,'es',{sensitivity:'base'}));
+    this.discoveryPublicCatalog=clues;
+    return true;
+  }
+
   injectAuthorizedDiscoveryCards(cards = []) {
     const rows = Array.isArray(cards) ? cards : [];
     const allowedClues = new Set((this.discoveryPublicCatalog || []).map(row => String(row?.clue || '')));

@@ -1,5 +1,5 @@
 import { gameText } from './gameTexts.js';
-import { getSanctuaryStatus, loadAuthorizedDiscoveryCards, adminPreviewSanctuary, adminGetSanctuaryHistory, adminSetSanctuaryConfig, adminSetSanctuaryBarcodeBuckets, adminSetSanctuaryResonanceBuckets, adminSetSanctuaryBarcodeEasterEggs } from './firebaseClient.js';
+import { getSanctuaryStatus, loadAuthorizedDiscoveryCards, adminPreviewSanctuary, adminGetSanctuaryHistory, adminSetSanctuaryConfig, adminSetSanctuaryBarcodeBuckets, adminSetSanctuaryResonanceBuckets, adminSetSanctuaryBarcodeEasterEggs, adminSetSanctuaryFoodBuckets } from './firebaseClient.js';
 import { withEconomyButtonPending } from './economyPending.js';
 import { cardDb } from './cardLoader.js';
 import { isDiscoveryCard } from './discoveryCards.js';
@@ -90,6 +90,32 @@ function normalizeResonanceBuckets(raw) {
   return Array.from({length:RESONANCE_BUCKET_COUNT},(_,i)=>String(src[i]??'').trim());
 }
 
+function normalizeFoodAssignments(raw,catalog=[]) {
+  const source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+  return Object.fromEntries((Array.isArray(catalog)?catalog:[]).map(meta=>{
+    const id=String(meta?.id||''); const row=source[id]&&typeof source[id]==='object'?source[id]:{};
+    return [id,{enabled:row.enabled===true,cardId:String(row.cardId||'').trim()}];
+  }));
+}
+
+function foodBucketLabel(id) {
+  return gameText(`sanctuary.admin.foodBucket.${String(id||'')}`);
+}
+
+function foodRowsHtml(catalog=[],assignments={}) {
+  return (Array.isArray(catalog)?catalog:[]).map(meta=>{
+    const id=String(meta?.id||''); const row=assignments[id]||{enabled:false,cardId:''};
+    return `<tr data-sanctuary-food-row="${esc(id)}">
+      <td class="admin-sanctuary-food-toggle-cell"><label class="admin-sanctuary-food-switch"><input type="checkbox" data-sanctuary-food-enabled="${esc(id)}" ${row.enabled?'checked':''}><span>${esc(gameText('sanctuary.admin.foodEnabledShort'))}</span></label></td>
+      <td><strong>${esc(foodBucketLabel(id))}</strong><small class="admin-sanctuary-food-id">${esc(id)}</small></td>
+      <td class="admin-sanctuary-food-count">${Number(meta?.gtinCount)||0}</td>
+      <td><input class="admin-sanctuary-bucket-input" data-sanctuary-food-card="${esc(id)}" list="admin-sanctuary-discovery-options" maxlength="96" autocomplete="off" spellcheck="false" value="${esc(row.cardId)}" placeholder="${esc(gameText('sanctuary.admin.foodCardPlaceholder'))}"></td>
+      <td class="admin-sanctuary-bucket-name" data-sanctuary-food-name="${esc(id)}">${esc(gameText('sanctuary.admin.barcodeCardNameUnknown'))}</td>
+      <td class="admin-sanctuary-bucket-state" data-sanctuary-food-state="${esc(id)}">${esc(gameText('sanctuary.admin.foodDisabled'))}</td>
+    </tr>`;
+  }).join('');
+}
+
 function resonanceAffinityForIndex(index) {
   const group=Math.floor(Number(index)/20);
   return RESONANCE_AFFINITIES[group]?.id || null;
@@ -175,7 +201,8 @@ function historyBindingRows(snapshot){
   if(!rows.length) return `<tr><td colspan="7" class="admin-sanctuary-history-empty">${esc(gameText('sanctuary.admin.historyEmpty'))}</td></tr>`;
   return rows.map(row=>{
     const input=row.type==='barcode'?row.gtin14:row.signature;
-    const bucket=Number.isInteger(Number(row.bucket))?String(Number(row.bucket)).padStart(2,'0'):'—';
+    const genericBucket=Number.isInteger(Number(row.bucket))?String(Number(row.bucket)).padStart(2,'0'):'—';
+    const bucket=row.foodBucketId?`${String(row.foodBucketId)} · ${genericBucket}`:genericBucket;
     const validity=row.valid===false?`<span class="admin-sanctuary-history-invalid">${esc(gameText('sanctuary.admin.historyInvalid'))}</span>`:'';
     return `<tr>
       <td><strong>${esc(row.type==='barcode'?gameText('sanctuary.admin.historySourceBarcode'):gameText('sanctuary.admin.historySourceResonance'))}</strong>${validity}</td>
@@ -192,7 +219,8 @@ function historyClaimRows(snapshot){
   const rows=Array.isArray(snapshot?.claims)?snapshot.claims:[];
   if(!rows.length) return `<tr><td colspan="9" class="admin-sanctuary-history-empty">${esc(gameText('sanctuary.admin.historyEmpty'))}</td></tr>`;
   return rows.map(row=>{
-    const bucket=Number.isInteger(Number(row.bucket))?String(Number(row.bucket)).padStart(2,'0'):'—';
+    const genericBucket=Number.isInteger(Number(row.bucket))?String(Number(row.bucket)).padStart(2,'0'):'—';
+    const bucket=row.foodBucketId?`${String(row.foodBucketId)} · ${genericBucket}`:genericBucket;
     const validity=row.valid===false?`<span class="admin-sanctuary-history-invalid">${esc(gameText('sanctuary.admin.historyInvalid'))}</span>`:'';
     return `<tr>
       <td>${esc(historyDate(row.claimedAtMs))}${validity}</td>
@@ -265,6 +293,11 @@ export function mountAdminSanctuaryPane(root) {
       .admin-sanctuary-egg-grid small{font-size:9px;line-height:1.35;color:#777568;}
       .admin-sanctuary-egg-wide{grid-column:1/-1;}
       .admin-sanctuary-egg-cardname{margin-top:7px;font-size:10px;color:#aaa58f;}
+      .admin-sanctuary-food-switch{display:inline-flex;align-items:center;gap:6px;color:#d7c689;font-size:9px;font-weight:900;white-space:nowrap;}
+      .admin-sanctuary-food-switch input{accent-color:#79ad72;width:16px;height:16px;}
+      .admin-sanctuary-food-toggle-cell{width:84px;}
+      .admin-sanctuary-food-id{display:block;margin-top:2px;color:#777568;font:700 8px/1.2 monospace;}
+      .admin-sanctuary-food-count{font-variant-numeric:tabular-nums;color:#efd36f!important;font-weight:900;text-align:right;width:72px;}
       .admin-sanctuary-egg-remove{padding:5px 8px!important;font-size:9px!important;}
       .admin-sanctuary-debug-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
       .admin-sanctuary-debug-card{border:1px solid rgba(212,175,55,.20);border-radius:10px;background:rgba(0,0,0,.16);padding:11px;display:flex;flex-direction:column;gap:8px;}
@@ -395,6 +428,28 @@ export function mountAdminSanctuaryPane(root) {
         <div class="admin-sanctuary-actions"><button class="admin-save-btn" id="admin-sanctuary-egg-save">${esc(gameText('sanctuary.admin.easterEggSave'))}</button></div>
         <div class="admin-sanctuary-statusline" id="admin-sanctuary-egg-message"></div>
       </div>
+      <div class="admin-section" id="admin-sanctuary-food-section">
+        <div class="admin-section-title">${esc(gameText('sanctuary.admin.foodTitle'))}</div>
+        <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.foodHelp'))}</div>
+        <div class="admin-sanctuary-info">${esc(gameText('sanctuary.admin.foodPrivacy'))}</div>
+        <div class="admin-sanctuary-warning">${esc(gameText('sanctuary.admin.foodPrecedence'))}</div>
+        <div class="admin-sanctuary-bucket-kpis">
+          <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.foodIndexRecords'))}</span><strong id="admin-sanctuary-food-kpi-records">0</strong></div>
+          <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.foodBucketsKpi'))}</span><strong id="admin-sanctuary-food-kpi-buckets">0</strong></div>
+          <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.foodEnabledKpi'))}</span><strong id="admin-sanctuary-food-kpi-enabled">0</strong></div>
+          <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.foodCoveredGtins'))}</span><strong id="admin-sanctuary-food-kpi-covered">0</strong></div>
+          <div class="admin-sanctuary-bucket-kpi"><span>${esc(gameText('sanctuary.admin.foodUniqueCards'))}</span><strong id="admin-sanctuary-food-kpi-unique">0</strong></div>
+        </div>
+        <div class="admin-sanctuary-picker-note" id="admin-sanctuary-food-version">${esc(gameText('sanctuary.admin.foodIndexPending'))}</div>
+        <div class="admin-sanctuary-bucket-table-wrap">
+          <table class="admin-sanctuary-bucket-table">
+            <thead><tr><th>${esc(gameText('sanctuary.admin.foodEnabledShort'))}</th><th>${esc(gameText('sanctuary.admin.foodFamily'))}</th><th>${esc(gameText('sanctuary.admin.foodGtins'))}</th><th>${esc(gameText('sanctuary.admin.card'))}</th><th>${esc(gameText('sanctuary.admin.barcodeCurrentName'))}</th><th>${esc(gameText('sanctuary.admin.barcodeStatus'))}</th></tr></thead>
+            <tbody id="admin-sanctuary-food-body"><tr><td colspan="6" class="admin-sanctuary-history-empty">${esc(gameText('sanctuary.admin.loading'))}</td></tr></tbody>
+          </table>
+        </div>
+        <div class="admin-sanctuary-actions"><button class="admin-save-btn" id="admin-sanctuary-food-save">${esc(gameText('sanctuary.admin.foodSave'))}</button></div>
+        <div class="admin-sanctuary-statusline" id="admin-sanctuary-food-message"></div>
+      </div>
       <div class="admin-section" id="admin-sanctuary-history-section">
         <div class="admin-section-title">${esc(gameText('sanctuary.admin.historyTitle'))}</div>
         <div class="admin-sanctuary-help">${esc(gameText('sanctuary.admin.historyHelp'))}</div>
@@ -456,6 +511,10 @@ export function mountAdminSanctuaryPane(root) {
   const eggAdd=root.querySelector('#admin-sanctuary-egg-add');
   const eggSave=root.querySelector('#admin-sanctuary-egg-save');
   const eggList=root.querySelector('#admin-sanctuary-egg-list');
+  const foodBody=root.querySelector('#admin-sanctuary-food-body');
+  const foodSave=root.querySelector('#admin-sanctuary-food-save');
+  const foodMessage=root.querySelector('#admin-sanctuary-food-message');
+  const foodVersion=root.querySelector('#admin-sanctuary-food-version');
   const statusSummary=root.querySelector('#admin-sanctuary-status-summary');
   const message=root.querySelector('#admin-sanctuary-message');
   const bucketMessage=root.querySelector('#admin-sanctuary-buckets-message');
@@ -676,6 +735,69 @@ export function mountAdminSanctuaryPane(root) {
   bucketInputs.forEach(input=>input.addEventListener('input',()=>{ if(bucketMessage) bucketMessage.textContent=''; refreshBucketDiagnostics(); }));
   resonanceInputs.forEach(input=>input.addEventListener('input',()=>{ if(resonanceMessage) resonanceMessage.textContent=''; refreshResonanceDiagnostics(); }));
 
+  function currentFoodValues(){
+    const catalog=Array.isArray(current?.adminConfig?.foodCatalog)?current.adminConfig.foodCatalog:[];
+    const out={};
+    for(const meta of catalog){
+      const id=String(meta?.id||'');
+      out[id]={
+        enabled:!!root.querySelector(`[data-sanctuary-food-enabled="${id}"]`)?.checked,
+        cardId:String(root.querySelector(`[data-sanctuary-food-card="${id}"]`)?.value||'').trim()
+      };
+    }
+    return out;
+  }
+
+  function refreshFoodDiagnostics(){
+    const catalog=Array.isArray(current?.adminConfig?.foodCatalog)?current.adminConfig.foodCatalog:[];
+    const values=currentFoodValues();
+    let enabled=0,covered=0,invalid=0; const cards=new Set();
+    for(const meta of catalog){
+      const id=String(meta?.id||''); const row=values[id]||{enabled:false,cardId:''};
+      const input=root.querySelector(`[data-sanctuary-food-card="${id}"]`);
+      const stateCell=root.querySelector(`[data-sanctuary-food-state="${id}"]`);
+      const nameCell=root.querySelector(`[data-sanctuary-food-name="${id}"]`);
+      input?.classList.remove('invalid');
+      let state=gameText(row.enabled?'sanctuary.admin.foodNeedsCard':'sanctuary.admin.foodDisabled'); let kind=row.enabled?'warn':'empty';
+      let name=gameText('sanctuary.admin.barcodeCardNameUnknown');
+      if(row.cardId){
+        cards.add(row.cardId);
+        if(!CARD_ID_RE.test(row.cardId)){ invalid+=1; state=gameText('sanctuary.admin.barcodeInvalidStatus'); kind='error'; input?.classList.add('invalid'); }
+        else{
+          const card=cardDb.getById(row.cardId);
+          if(card){
+            name=String(card.name||row.cardId);
+            if(!isDiscoveryCard(card)){ invalid+=1; state=gameText('sanctuary.admin.foodNonDiscovery'); kind='error'; input?.classList.add('invalid'); }
+            else { state=row.enabled?gameText('sanctuary.admin.foodActive'):gameText('sanctuary.admin.foodAssignedOff'); kind=row.enabled?'ok':'future'; }
+          } else { invalid+=1; state=gameText('sanctuary.admin.foodUnknownCard'); kind='error'; input?.classList.add('invalid'); }
+        }
+      } else if(row.enabled){ invalid+=1; input?.classList.add('invalid'); }
+      if(row.enabled){ enabled+=1; if(row.cardId&&kind==='ok') covered+=Number(meta?.gtinCount)||0; }
+      if(nameCell) nameCell.textContent=name;
+      if(stateCell){ stateCell.textContent=state; stateCell.dataset.kind=kind; }
+    }
+    const set=(id,value)=>{const el=root.querySelector(id);if(el)el.textContent=String(value);};
+    set('#admin-sanctuary-food-kpi-records',Number(current?.adminConfig?.foodIndex?.gtinRecords)||0);
+    set('#admin-sanctuary-food-kpi-buckets',catalog.length);
+    set('#admin-sanctuary-food-kpi-enabled',enabled);
+    set('#admin-sanctuary-food-kpi-covered',covered);
+    set('#admin-sanctuary-food-kpi-unique',cards.size);
+    return {values,enabled,covered,invalid,uniqueCards:cards.size};
+  }
+
+  function renderFoodBuckets(status){
+    current=status||current;
+    const catalog=Array.isArray(status?.adminConfig?.foodCatalog)?status.adminConfig.foodCatalog:[];
+    const assignments=normalizeFoodAssignments(status?.adminConfig?.foodBuckets,catalog);
+    if(foodBody) foodBody.innerHTML=catalog.length?foodRowsHtml(catalog,assignments):`<tr><td colspan="6" class="admin-sanctuary-history-empty">${esc(gameText('sanctuary.admin.foodEmpty'))}</td></tr>`;
+    const index=status?.adminConfig?.foodIndex||{};
+    if(foodVersion) foodVersion.textContent=gameText('sanctuary.admin.foodIndexVersion',{version:String(index.version||'—'),count:String(Number(index.gtinRecords)||0)});
+    refreshFoodDiagnostics();
+  }
+
+  foodBody?.addEventListener('input',()=>{if(foodMessage)foodMessage.textContent='';refreshFoodDiagnostics();});
+  foodBody?.addEventListener('change',()=>{if(foodMessage)foodMessage.textContent='';refreshFoodDiagnostics();});
+
   function historyFilters(){
     return {query:String(historyQuery?.value||'').trim(),source:String(historySource?.value||'all'),actor:String(historyActor?.value||'all'),limit:Number(historyLimit?.value)||50};
   }
@@ -743,7 +865,7 @@ export function mountAdminSanctuaryPane(root) {
     refreshResonanceDiagnostics();
   }
 
-  function apply(status){ applyGeneral(status); applyBuckets(status); applyResonance(status); renderEasterEggs(status); }
+  function apply(status){ applyGeneral(status); applyBuckets(status); applyResonance(status); renderEasterEggs(status); renderFoodBuckets(status); }
 
   async function load(){
     if(loading) return current;
@@ -758,6 +880,7 @@ export function mountAdminSanctuaryPane(root) {
       if(bucketMessage) bucketMessage.textContent='';
       if(resonanceMessage) resonanceMessage.textContent='';
       if(eggMessage) eggMessage.textContent='';
+      if(foodMessage) foodMessage.textContent='';
       await loadHistory();
       return status;
     }catch(error){
@@ -810,6 +933,15 @@ export function mountAdminSanctuaryPane(root) {
     }catch(error){ if(resonanceMessage) resonanceMessage.textContent=`${gameText('sanctuary.admin.resonanceBucketsSaveError')} ${error?.message||''}`.trim(); }
   });
 
+  foodSave?.addEventListener('click',async()=>{
+    const diagnostics=refreshFoodDiagnostics();
+    if(diagnostics.invalid>0){ if(foodMessage)foodMessage.textContent=gameText('sanctuary.admin.foodSaveError'); root.querySelector('[data-sanctuary-food-card].invalid')?.focus(); return; }
+    try{
+      const status=await withEconomyButtonPending(foodSave,()=>adminSetSanctuaryFoodBuckets(diagnostics.values),{pendingLabel:gameText('sanctuary.admin.foodSaving'),slowLabel:gameText('workshop.server.slow')});
+      renderFoodBuckets(status); if(foodMessage)foodMessage.textContent=gameText('sanctuary.admin.foodSaved');
+    }catch(error){ if(foodMessage)foodMessage.textContent=`${gameText('sanctuary.admin.foodSaveError')} ${error?.message||''}`.trim(); }
+  });
+
   eggSave?.addEventListener('click',async()=>{
     const diagnostics=refreshEasterEggDiagnostics();
     if(diagnostics.invalid>0){ if(eggMessage)eggMessage.textContent=gameText('sanctuary.admin.easterEggSaveError'); root.querySelector('.admin-sanctuary-egg-card.invalid input, .admin-sanctuary-egg-card.invalid textarea')?.focus(); return; }
@@ -822,6 +954,7 @@ export function mountAdminSanctuaryPane(root) {
   function previewSourceLabel(source){
     if(source==='easter_egg') return gameText('sanctuary.admin.debugSourceEasterEgg');
     if(source==='barcode_bucket') return gameText('sanctuary.admin.debugSourceBarcodeBucket');
+    if(source==='food_bucket') return gameText('sanctuary.admin.debugSourceFoodBucket');
     if(source==='resonance_bucket') return gameText('sanctuary.admin.debugSourceResonanceBucket');
     return String(source||'—');
   }
@@ -843,6 +976,7 @@ export function mountAdminSanctuaryPane(root) {
       [gameText('sanctuary.admin.debugCardId'),cardId||'—','code'],
       [gameText('sanctuary.admin.debugCardName'),card?String(card.name||cardId):(cardId?gameText('sanctuary.admin.barcodeCardNameUnknown'):'—'),'b'],
       ...(preview.type==='barcode'?[[gameText('sanctuary.admin.debugGenericCard'),genericCardId||'—','code']]:[]),
+      ...(preview.food?.matched?[[gameText('sanctuary.admin.debugFoodBucket'),foodBucketLabel(preview.food.bucketId),'b'],[gameText('sanctuary.admin.debugFoodState'),preview.food.active?gameText('sanctuary.admin.foodActive'):gameText('sanctuary.admin.foodInactivePreview'),'b'],[gameText('sanctuary.admin.debugFoodIndex'),preview.food.indexVersion||'—','code']]:[]),
       ...(egg?[[gameText('sanctuary.admin.debugEasterEgg'),`${egg.ruleId}${egg.label?` · ${egg.label}`:''}`,'code'],[gameText('sanctuary.admin.debugPriority'),String(egg.priority??'—'),'code']]:[]),
       [gameText('sanctuary.admin.debugSideEffects'),gameText('sanctuary.admin.debugSideEffectsNone'),'b']
     ];

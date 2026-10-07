@@ -30,7 +30,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, adminSetSanctuaryFoodBucketsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { isCurrentLegalAcceptance } from './legal.js';
@@ -791,6 +791,10 @@ export async function loadAuthorizedDiscoveryCards() {
     const migrated=await adminMigrateDiscoveryPresentationServer().catch(error=>{console.warn('[DISCOVERY_PRESENTATION_MIGRATION_SKIPPED]',error?.message||error);return null;});
     if(Number(migrated?.discoveryPresentationMigration?.total||0)>0) response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
   }
+  if(Array.isArray(response?.publicDiscoveryCatalog)){
+    const accepted=cardDb.setDiscoveryPublicCatalog(response.publicDiscoveryCatalog);
+    if(!accepted) console.warn('[DISCOVERY_PUBLIC_CATALOG_REJECTED] Server catalog failed spoiler-safe 100-clue contract; keeping bundled fallback.');
+  }
   const cards=Array.isArray(response?.authorizedDiscoveryCards)?response.authorizedDiscoveryCards:[];
   cardDb.injectAuthorizedDiscoveryCards(cards);
   return cards;
@@ -798,6 +802,7 @@ export async function loadAuthorizedDiscoveryCards() {
 
 export async function getSanctuaryStatus() {
   const response = await getSanctuaryStatusServer({includeDiscoveryAssets:false});
+  if(Array.isArray(response?.publicDiscoveryCatalog)) cardDb.setDiscoveryPublicCatalog(response.publicDiscoveryCatalog);
   return response?.status || null;
 }
 
@@ -806,12 +811,12 @@ export async function resolveSanctuaryBarcode(gtin) {
   return response?.resolution || null;
 }
 
-export async function claimSanctuaryBarcode(gtin) {
+export async function claimSanctuaryBarcode(gtin,{allowDuplicate=false}={}) {
   const uid=auth.currentUser?.uid;
   if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
-  const request={gtin:String(gtin||'')};
-  const outcome=await runEconomyActionAuthority(uid,'sanctuaryBarcodeClaim',request,operationId=>claimSanctuaryBarcodeServer(request.gtin,operationId));
-  if(outcome?.result?.card) cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]),outcome.result.card]);
+  const request={gtin:String(gtin||''),allowDuplicate:allowDuplicate===true};
+  const outcome=await runEconomyActionAuthority(uid,'sanctuaryBarcodeClaim',request,operationId=>claimSanctuaryBarcodeServer(request.gtin,operationId,{allowDuplicate:request.allowDuplicate}));
+  if(outcome?.result?.card) await loadAuthorizedDiscoveryCards();
   return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
 }
 
@@ -820,12 +825,12 @@ export async function resolveSanctuaryResonance(signature) {
   return response?.resolution || null;
 }
 
-export async function claimSanctuaryResonance(signature) {
+export async function claimSanctuaryResonance(signature,{allowDuplicate=false}={}) {
   const uid=auth.currentUser?.uid;
   if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
-  const request={signature:String(signature||'')};
-  const outcome=await runEconomyActionAuthority(uid,'sanctuaryResonanceClaim',request,operationId=>claimSanctuaryResonanceServer(request.signature,operationId));
-  if(outcome?.result?.card) cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]),outcome.result.card]);
+  const request={signature:String(signature||''),allowDuplicate:allowDuplicate===true};
+  const outcome=await runEconomyActionAuthority(uid,'sanctuaryResonanceClaim',request,operationId=>claimSanctuaryResonanceServer(request.signature,operationId,{allowDuplicate:request.allowDuplicate}));
+  if(outcome?.result?.card) await loadAuthorizedDiscoveryCards();
   return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
 }
 
@@ -897,6 +902,11 @@ export async function adminSetSanctuaryResonanceBuckets(resonanceBuckets = []) {
 
 export async function adminSetSanctuaryBarcodeEasterEggs(barcodeEasterEggs = []) {
   const response = await adminSetSanctuaryBarcodeEasterEggsServer(barcodeEasterEggs);
+  return response?.status || null;
+}
+
+export async function adminSetSanctuaryFoodBuckets(foodBuckets = {}) {
+  const response = await adminSetSanctuaryFoodBucketsServer(foodBuckets);
   return response?.status || null;
 }
 

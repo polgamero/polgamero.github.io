@@ -272,10 +272,11 @@ export function resolveSanctuaryBarcodeServer(gtin) {
   return call('economyResolveSanctuaryBarcode', { gtin: String(gtin || '') });
 }
 
-export function claimSanctuaryBarcodeServer(gtin, operationId = null) {
+export function claimSanctuaryBarcodeServer(gtin, operationId = null, {allowDuplicate=false} = {}) {
   return call('economyClaimSanctuaryBarcode', {
     operationId: operationId || createEconomyOperationId('sanctuary-claim'),
-    gtin: String(gtin || '')
+    gtin: String(gtin || ''),
+    allowDuplicate: allowDuplicate===true
   });
 }
 
@@ -283,10 +284,11 @@ export function resolveSanctuaryResonanceServer(signature) {
   return call('economyResolveSanctuaryResonance', { signature: String(signature || '') });
 }
 
-export function claimSanctuaryResonanceServer(signature, operationId = null) {
+export function claimSanctuaryResonanceServer(signature, operationId = null, {allowDuplicate=false} = {}) {
   return call('economyClaimSanctuaryResonance', {
     operationId: operationId || createEconomyOperationId('sanctuary-resonance-claim'),
-    signature: String(signature || '')
+    signature: String(signature || ''),
+    allowDuplicate: allowDuplicate===true
   });
 }
 
@@ -304,6 +306,8 @@ export function adminMigrateDiscoveryPresentationServer() {
 export function adminSaveDiscoveryPresentationServer(cardId, patch = {}) {
   const payload={action:'discovery_presentation',cardId:String(cardId||'').trim()};
   if(Object.prototype.hasOwnProperty.call(patch,'name')) payload.name=String(patch.name??'');
+  if(Object.prototype.hasOwnProperty.call(patch,'clue')) payload.clue=patch.clue===null?null:String(patch.clue??'');
+  if(Object.prototype.hasOwnProperty.call(patch,'adminNote')) payload.adminNote=patch.adminNote===null?null:String(patch.adminNote??'');
   if(Object.prototype.hasOwnProperty.call(patch,'artLayout')) payload.artLayout=patch.artLayout;
   if(Object.prototype.hasOwnProperty.call(patch,'textLayout')) payload.textLayout=patch.textLayout;
   return call('economyAdminSetSanctuaryConfig',payload);
@@ -358,6 +362,17 @@ export function adminSetSanctuaryBarcodeEasterEggsServer(barcodeEasterEggs = [])
       cardId:String(row?.cardId||'').trim(),
       gtins:Array.isArray(row?.gtins)?row.gtins.map(value=>String(value??'').trim()):[]
     })) : []
+  });
+}
+
+export function adminSetSanctuaryFoodBucketsServer(foodBuckets = {}) {
+  const source=foodBuckets&&typeof foodBuckets==='object'&&!Array.isArray(foodBuckets)?foodBuckets:{};
+  return call('economyAdminSetSanctuaryConfig', {
+    action:'food_buckets',
+    foodBuckets:Object.fromEntries(Object.entries(source).map(([id,row])=>[String(id),{
+      enabled:row?.enabled===true,
+      cardId:String(row?.cardId||'').trim()
+    }]))
   });
 }
 

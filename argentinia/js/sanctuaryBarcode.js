@@ -192,6 +192,11 @@ export async function startSanctuaryBarcodeScan({
   if (native?.detector) {
     const engine = 'barcode_detector';
     onEngine?.({ engine, formats:native.formats });
+    // Native BarcodeDetector does not own video playback. ZXing does. Keeping
+    // playback ownership engine-specific avoids the duplicate play() warning.
+    if (video.paused && typeof video.play === 'function') {
+      try { await video.play(); } catch {}
+    }
     const scan = async () => {
       if (stopped) return;
       try {

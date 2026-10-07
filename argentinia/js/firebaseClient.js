@@ -256,6 +256,7 @@ export const adminSetSanctuaryConfig = asyncProxy('adminSetSanctuaryConfig');
 export const adminSetSanctuaryBarcodeBuckets = asyncProxy('adminSetSanctuaryBarcodeBuckets');
 export const adminSetSanctuaryResonanceBuckets = asyncProxy('adminSetSanctuaryResonanceBuckets');
 export const adminSetSanctuaryBarcodeEasterEggs = asyncProxy('adminSetSanctuaryBarcodeEasterEggs');
+export const adminSetSanctuaryFoodBuckets = asyncProxy('adminSetSanctuaryFoodBuckets');
 export const getAdmissionStatus = asyncProxy('getAdmissionStatus');
 export const adminSetAdmissionPolicy = asyncProxy('adminSetAdmissionPolicy');
 export const getCommunityStatus = asyncProxy('getCommunityStatus');
