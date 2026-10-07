@@ -1,4 +1,4 @@
-// Appearance Studio V1.1 Admin UI — Argentinia 23.22.0 HF3.3
+// Appearance Studio V2 Admin UI — faithful live preview + zoom/pan — Argentinia post-HF3.6
 // Editing is preview-only until the Admin explicitly publishes.
 
 import {
@@ -146,14 +146,36 @@ function contrastRatio(hexA, hexB) {
 
 function previewHtml(c, viewport, sectionKey) {
   const { vars } = appearanceCssVariables(c);
-  const style = Object.entries(vars).map(([k,v]) => `${k}:${v}`).join(';');
+  const mobileViewport = viewport === 'android' || viewport === 'iphone';
+  const mm = mobileViewport ? c.mainMenu.mobile : c.mainMenu.desktop;
+  const previewVars = {
+    ...vars,
+    '--preview-menu-button-width': `${mm.buttonWidth}px`,
+    '--preview-menu-button-height': `${mm.buttonHeight}px`,
+    '--preview-menu-gap': `${mm.gap}px`,
+    '--preview-menu-left': `${mm.left}%`,
+    '--preview-menu-bottom': `${mm.bottom}%`,
+    '--preview-menu-logo-top': `${mm.logoTop}%`,
+    '--preview-menu-logo-max-width': `${mm.logoMaxWidth}%`,
+    '--preview-menu-logo-max-height': `${mm.logoMaxHeight}%`,
+    '--preview-menu-radius': `${mm.radius}px`,
+    '--preview-menu-border-width': `${mm.borderWidth}px`,
+    '--preview-menu-font-size': `${mm.fontSize}px`,
+    '--preview-menu-primary-font-size': `${mm.primaryFontSize}px`,
+    '--preview-menu-padding-y': `${mm.paddingY}px`,
+    '--preview-menu-padding-x': `${mm.paddingX}px`,
+    '--preview-menu-icon-inset': `${mm.iconImageInset}px`,
+    '--preview-menu-icon-radius': `${mm.iconRadius}px`
+  };
+  const style = Object.entries(previewVars).map(([k,v]) => `${k}:${v}`).join(';');
   const disabled = key => c[key]?.enabled === false ? '<span class="appearance-preview-inherit">HEREDA CLÁSICO</span>' : '';
   const section = String(sectionKey || 'mainMenu');
   let body = '';
 
   if (section === 'global') {
     body = `<div class="appearance-preview-single appearance-preview-global">
-      <div class="appearance-preview-global-mark">ARGENTINIA</div>
+      <img class="appearance-preview-global-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="appearance-preview-global-mark" style="display:none">ARGENTINIA</div>
       <div class="appearance-preview-global-line"></div>
       <strong>Tema global</strong>
       <span>Texto principal · <em>Texto secundario</em></span>
@@ -161,33 +183,58 @@ function previewHtml(c, viewport, sectionKey) {
     </div>`;
   } else if (section === 'mainMenu') {
     body = `<div class="appearance-preview-single appearance-preview-menu-stage">
-      <div class="appearance-preview-logo">ARGENTINIA</div>
-      <div class="appearance-preview-menu">
-        <button class="primary">PARTIDA SIMPLE</button><button>TORNEO</button><button>MULTIJUGADOR</button><button>MIS MAZOS</button><button>ENCICLOPEDIA</button>
-        <div class="appearance-preview-bottom"><button>OPCIONES</button><button class="icon">🛒</button><button class="icon">📊</button><button class="icon">🔄</button></div>
+      <div class="appearance-preview-menu-logo-wrap">
+        <img class="appearance-preview-menu-logo-img" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <div class="appearance-preview-logo-fallback" style="display:none">ARGENTINIA</div>
       </div>
+      <div class="appearance-preview-menu">
+        <button type="button" class="primary">PARTIDA SIMPLE</button>
+        <button type="button">TORNEO</button>
+        <button type="button">MULTIJUGADOR</button>
+        <button type="button">MIS MAZOS</button>
+        <button type="button">ENCICLOPEDIA</button>
+        <div class="appearance-preview-bottom">
+          <button type="button">OPCIONES</button>
+          <button type="button" class="icon" title="Tienda"><span class="appearance-preview-icon-fallback">🛒</span><img src="./assets/images/ui/icon_tienda.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+          <button type="button" class="icon" title="Ranking"><span class="appearance-preview-icon-fallback">📊</span><img src="./assets/images/ui/icon_ranking.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+          <button type="button" class="icon" title="Mercado"><span class="appearance-preview-icon-fallback">🔄</span><img src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        </div>
+      </div>
+      <div class="appearance-preview-live-hint">Probá el hover directamente sobre los botones</div>
       ${disabled('mainMenu')}
     </div>`;
   } else if (section === 'buttons') {
     body = `<div class="appearance-preview-single appearance-preview-center"><div class="appearance-preview-button-showcase">
-      <button class="appearance-preview-button hero">BOTÓN PRINCIPAL</button>
-      <button class="appearance-preview-button">BOTÓN SECUNDARIO</button>
-      <button class="appearance-preview-button" disabled>DESHABILITADO</button>
+      <button type="button" class="appearance-preview-button hero">BOTÓN PRINCIPAL</button>
+      <button type="button" class="appearance-preview-button">BOTÓN SECUNDARIO</button>
+      <button type="button" class="appearance-preview-button" disabled>DESHABILITADO</button>
       ${disabled('buttons')}
     </div></div>`;
   } else if (section === 'panels') {
     body = `<div class="appearance-preview-single appearance-preview-center"><section class="appearance-preview-panel appearance-preview-large-component">
-      <div class="appearance-preview-caption">PANEL DE EJEMPLO</div><h3>Contenido del panel</h3><p>Esta vista muestra únicamente geometría, borde, fondo, texto y sombra del panel.</p>${disabled('panels')}
+      <div class="appearance-preview-caption">PANEL DE EJEMPLO</div><h3>Contenido del panel</h3><p>Geometría, borde, fondo, texto y sombra usan los tokens reales de Apariencia.</p><button type="button" class="appearance-preview-button">ACCIÓN</button>${disabled('panels')}
     </section></div>`;
   } else if (section === 'modals') {
     body = `<div class="appearance-preview-single appearance-preview-modal-stage"><div class="appearance-preview-modal appearance-preview-large-component">
-      <strong>MODAL DE EJEMPLO</strong><p>Vista previa exclusiva del modal. Los cambios se reflejan en tiempo real.</p><div class="appearance-preview-modal-actions"><button class="appearance-preview-button">ACEPTAR</button><button class="appearance-preview-button">CANCELAR</button></div>${disabled('modals')}
+      <strong>MODAL DE EJEMPLO</strong><p>La vista usa el mismo lenguaje visual del juego y permite probar hover en acciones.</p><div class="appearance-preview-modal-actions"><button type="button" class="appearance-preview-button hero">ACEPTAR</button><button type="button" class="appearance-preview-button">CANCELAR</button></div>${disabled('modals')}
     </div></div>`;
   } else if (section === 'tabs') {
-    body = `<div class="appearance-preview-single appearance-preview-center"><div class="appearance-preview-tabs appearance-preview-tabs-large"><span class="active">ACTIVA</span><span>CRIATURAS</span><span>ARTEFACTOS</span><span>OTRA</span></div>${disabled('tabs')}</div>`;
+    body = `<div class="appearance-preview-single appearance-preview-encyclopedia">
+      <div class="appearance-preview-ency-header"><strong>Enciclopedia</strong><span>100 / 100 Descubribles · Admin</span></div>
+      <div class="appearance-preview-tabs appearance-preview-tabs-large" role="tablist">
+        <button type="button" class="appearance-preview-tab discovery active" data-preview-tab>✦ Descubribles</button>
+        <button type="button" class="appearance-preview-tab" data-preview-tab>Criaturas</button>
+        <button type="button" class="appearance-preview-tab" data-preview-tab>Instantáneos</button>
+        <button type="button" class="appearance-preview-tab" data-preview-tab>Conjuros</button>
+        <button type="button" class="appearance-preview-tab" data-preview-tab>Artefactos</button>
+        <button type="button" class="appearance-preview-tab" data-preview-tab>Tierras</button>
+      </div>
+      <div class="appearance-preview-ency-body"><div class="appearance-preview-card-placeholder"></div><div class="appearance-preview-card-placeholder"></div><div class="appearance-preview-card-placeholder"></div></div>
+      ${disabled('tabs')}
+    </div>`;
   } else if (section === 'inputs') {
     body = `<div class="appearance-preview-single appearance-preview-center"><div class="appearance-preview-form">
-      <label>Campo de texto<input value="Valor de ejemplo" readonly></label><label>Selector<select><option>Opción seleccionada</option></select></label><label class="appearance-preview-check"><input type="checkbox" checked> Control activado</label>${disabled('inputs')}
+      <label>Campo de texto<input value="Valor de ejemplo"></label><label>Selector<select><option>Opción seleccionada</option><option>Otra opción</option></select></label><label class="appearance-preview-check"><input type="checkbox" checked> Control activado</label>${disabled('inputs')}
     </div></div>`;
   } else if (section === 'badges') {
     body = `<div class="appearance-preview-single appearance-preview-center"><div class="appearance-preview-badge-showcase"><span class="appearance-preview-badge">NUEVO</span><span class="appearance-preview-badge warn">PENDIENTE</span><span class="appearance-preview-badge info">ADMIN</span>${disabled('badges')}</div></div>`;
@@ -197,7 +244,7 @@ function previewHtml(c, viewport, sectionKey) {
     </div></div>`;
   }
 
-  return `<div class="appearance-preview-shell viewport-${esc(viewport)} preview-section-${esc(section)}" style="${esc(style)}">${body}</div>`;
+  return `<div class="appearance-preview-shell viewport-${esc(viewport)} preview-section-${esc(section)}" style="${esc(style)}"><div class="appearance-preview-panzoom" data-appearance-preview-canvas>${body}</div></div>`;
 }
 const STYLE_ID = 'arg-appearance-admin-v1-style';
 function ensureStyles() {
@@ -205,6 +252,9 @@ function ensureStyles() {
   const style = document.createElement('style'); style.id = STYLE_ID;
   style.textContent = `
 .appearance-studio{max-width:1500px;margin:0 auto;padding:4px 0 30px}.appearance-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:12px;border:1px solid rgba(212,175,55,.32);border-radius:12px;background:rgba(5,9,6,.52)}.appearance-toolbar .spacer{flex:1}.appearance-toolbar-status{font-size:12px;color:#c7c4b8;min-width:180px}.appearance-action{min-height:34px;padding:7px 11px;border:1px solid #d4af37;border-radius:8px;background:#172018;color:#f0e0b0;font-weight:800;cursor:pointer}.appearance-action.primary{background:#6f5a18;border-color:#f0e0b0}.appearance-action.danger{border-color:#b75e5e;color:#ffd8d8}.appearance-action:disabled{opacity:.42;cursor:not-allowed}.appearance-preset{min-height:34px;border:1px solid #536057;border-radius:7px;background:#0c140e;color:#f0e0b0;padding:5px 8px}.appearance-section-picker{display:flex;align-items:center;gap:8px;min-height:34px;padding:0 8px;border:1px solid rgba(212,175,55,.38);border-radius:8px;background:#0c140e;color:#d7c98c;font-size:11px;font-weight:900}.appearance-section-picker select{min-width:200px;border:0;background:#0c140e;color:#fff3c3;font-weight:900;outline:none;padding:6px 4px}.appearance-studio-grid{display:grid;grid-template-columns:minmax(520px,1.16fr) minmax(420px,.84fr);gap:14px;align-items:start}.appearance-controls{min-width:0}.appearance-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}.appearance-section-heading h3{margin:0;color:#f0e0b0;font-size:20px}.appearance-section-heading p{margin:4px 0 0;color:#a9b3aa;font-size:12px;line-height:1.45}.appearance-mini-btn{border:1px solid rgba(212,175,55,.5);border-radius:7px;background:#101912;color:#d7c98c;padding:6px 8px;cursor:pointer;white-space:nowrap}.appearance-control-group{margin-bottom:12px;padding:12px;border:1px solid rgba(212,175,55,.22);border-radius:10px;background:rgba(10,15,11,.72)}.appearance-control-group-title{font-weight:900;color:#d4af37;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}.appearance-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.appearance-field{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:7px 8px;border:1px solid rgba(255,255,255,.06);border-radius:8px;background:rgba(255,255,255,.02)}.appearance-field>span:first-child{min-width:0}.appearance-field strong{display:block;font-size:12px;color:#e6e2d2}.appearance-field-help{margin-top:2px;font-size:10px;color:#849087}.appearance-field input[type=number],.appearance-field select{width:105px;min-height:31px;border:1px solid #4e5a50;border-radius:6px;background:#071009;color:#f0e0b0;padding:4px 6px}.appearance-field input[type=color]{width:38px;height:31px;padding:2px;border:1px solid #4e5a50;border-radius:6px;background:#071009}.appearance-number-row,.appearance-color-row{display:flex;align-items:center;gap:5px}.appearance-color-row code{font-size:10px;color:#b8c2b8}.appearance-field-suffix{font-size:10px;color:#859086;min-width:20px}.appearance-field-check input{width:20px;height:20px}.appearance-preview-column{position:sticky;top:8px;min-width:0}.appearance-preview-toolbar{display:flex;gap:6px;align-items:center;margin-bottom:8px}.appearance-preview-toolbar button{padding:6px 8px;border:1px solid #465248;border-radius:6px;background:#0d150f;color:#bfc8c0;cursor:pointer}.appearance-preview-toolbar button.active{border-color:#d4af37;color:#fff3c3}.appearance-warning{margin:8px 0;padding:8px 10px;border:1px solid #946f2d;border-radius:8px;background:#2b2212;color:#ffd98a;font-size:11px;line-height:1.4}.appearance-preview-shell{width:100%;border:1px solid rgba(212,175,55,.35);border-radius:12px;overflow:hidden;background:#050806;box-shadow:0 12px 36px rgba(0,0,0,.45);min-height:360px}.appearance-preview-shell.viewport-desktop{aspect-ratio:16/10}.appearance-preview-shell.viewport-android{aspect-ratio:20/9}.appearance-preview-shell.viewport-iphone{aspect-ratio:19.5/9}.appearance-preview-single{box-sizing:border-box;position:relative;width:100%;height:100%;min-height:360px;overflow:hidden;background:radial-gradient(circle at 55% 28%,rgba(var(--arg-menu-hover-rgb),.10),transparent 32%),linear-gradient(135deg,#111b14,#050806);display:flex}.appearance-preview-center{align-items:center;justify-content:center;padding:8%}.appearance-preview-global{flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--arg-global-text);background:rgba(var(--arg-global-panel-bg-rgb),.96)}.appearance-preview-global-mark{font-size:clamp(28px,5vw,54px);font-weight:1000;letter-spacing:.15em;color:var(--arg-global-accent)}.appearance-preview-global-line{height:2px;width:42%;background:var(--arg-global-accent)}.appearance-preview-global span{color:var(--arg-global-muted-text)}.appearance-preview-global em{font-style:normal}.appearance-preview-menu-stage{display:block}.appearance-preview-logo{position:absolute;top:9%;left:0;right:0;text-align:center;color:var(--arg-menu-primary-border);font-weight:1000;letter-spacing:.18em;font-size:clamp(22px,4vw,44px);text-shadow:0 4px 16px #000}.appearance-preview-menu{position:absolute;left:7%;bottom:9%;display:flex;flex-direction:column;gap:min(var(--arg-menu-gap),10px);width:min(50%,var(--arg-menu-button-width))}.appearance-preview-menu button{min-height:min(var(--arg-menu-button-height),46px);border:var(--arg-menu-border-width) solid var(--arg-menu-border);border-radius:var(--arg-menu-radius);background:linear-gradient(180deg,var(--arg-menu-bg-top),var(--arg-menu-bg-bottom));color:var(--arg-menu-text);font-size:min(var(--arg-menu-font-size),16px);font-weight:var(--arg-menu-font-weight);text-align:var(--arg-menu-text-align);padding:6px 10px;box-shadow:var(--arg-menu-shadow);overflow:hidden;white-space:nowrap}.appearance-preview-menu button.primary{border-color:var(--arg-menu-primary-border);background:linear-gradient(180deg,var(--arg-menu-primary-top),var(--arg-menu-bg-bottom));font-size:min(var(--arg-menu-primary-font-size),17px)}.appearance-preview-bottom{display:flex;gap:5px}.appearance-preview-bottom>button:first-child{flex:1}.appearance-preview-bottom .icon{flex:0 0 38px;width:38px;text-align:center}.appearance-preview-large-component{width:min(82%,560px);box-sizing:border-box;padding:24px}.appearance-preview-panel{border:var(--arg-panel-border-width) solid var(--arg-panel-border);border-radius:var(--arg-panel-radius);background:rgba(var(--arg-panel-bg-rgb),var(--arg-panel-opacity));color:var(--arg-panel-text);box-shadow:var(--arg-panel-shadow);font-size:14px}.appearance-preview-panel h3{font-size:22px;margin:12px 0}.appearance-preview-caption{color:#d4af37;font-weight:900}.appearance-preview-modal-stage{align-items:center;justify-content:center;padding:7%;background:rgba(0,0,0,.68)}.appearance-preview-modal{border:var(--arg-modal-border-width) solid var(--arg-modal-border);border-radius:var(--arg-modal-radius);background:rgba(var(--arg-modal-bg-rgb),var(--arg-modal-opacity));color:var(--arg-modal-text);box-shadow:var(--arg-modal-shadow);font-size:15px}.appearance-preview-modal>strong{font-size:22px}.appearance-preview-modal p{margin:14px 0;line-height:1.45}.appearance-preview-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.appearance-preview-button-showcase{width:min(80%,430px);display:flex;flex-direction:column;gap:14px}.appearance-preview-button{padding:12px 18px;background:var(--arg-button-bg);color:var(--arg-button-text);border:var(--arg-button-border-width) solid var(--arg-button-border);border-radius:var(--arg-button-radius);box-shadow:var(--arg-button-shadow);font-size:14px;font-weight:900}.appearance-preview-button.hero{font-size:18px;padding:15px 20px}.appearance-preview-button:disabled{opacity:.45}.appearance-preview-tabs{display:flex;gap:var(--arg-tab-gap)}.appearance-preview-tabs span{padding:10px 16px;border:var(--arg-tab-border-width) solid var(--arg-tab-border);border-radius:var(--arg-tab-radius);background:var(--arg-tab-bg);color:var(--arg-tab-text);font-size:13px;font-weight:900}.appearance-preview-tabs span.active{background:var(--arg-tab-active-bg);color:var(--arg-tab-active-text)}.appearance-preview-tabs-large{flex-wrap:wrap;justify-content:center}.appearance-preview-form{width:min(78%,500px);display:grid;gap:14px;color:#d8d8ce}.appearance-preview-form label{display:grid;gap:6px;font-size:12px;font-weight:800}.appearance-preview-form input:not([type=checkbox]),.appearance-preview-form select{box-sizing:border-box;width:100%;min-height:var(--arg-input-height);background:var(--arg-input-bg);color:var(--arg-input-text);border:var(--arg-input-border-width) solid var(--arg-input-border);border-radius:var(--arg-input-radius);padding:7px 10px;font-size:var(--arg-input-font-size)}.appearance-preview-check{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center}.appearance-preview-badge-showcase{display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap}.appearance-preview-badge{padding:var(--arg-badge-padding-y) var(--arg-badge-padding-x);border:var(--arg-badge-border-width) solid #2f8d55;border-radius:var(--arg-badge-radius);background:#123d24;color:#bff0cd;font-size:var(--arg-badge-font-size);box-shadow:var(--arg-badge-shadow);font-weight:900}.appearance-preview-badge.warn{border-color:#a67d25;background:#4b3910;color:#ffe099}.appearance-preview-badge.info{border-color:#6d55a8;background:#251841;color:#e4d7ff}.appearance-preview-notification-showcase{width:min(82%,560px);display:grid;gap:15px}.appearance-preview-notice{padding:16px 18px;border:var(--arg-notification-border-width) solid #3e9b66;border-radius:var(--arg-notification-radius);background:#11341f;color:#bff0cd;box-shadow:var(--arg-notification-shadow);font-weight:800}.appearance-preview-notice.warning{border-color:#a67d25;background:#3b2d0e;color:#ffe099}.appearance-preview-notice.error{border-color:#a74747;background:#3a1212;color:#ffc7c7}.appearance-preview-inherit{display:inline-block;margin-top:8px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.06);font-size:9px;color:#8f998f;font-weight:800}.appearance-schema-note{margin-top:9px;font-size:10px;color:#7f8b81;line-height:1.4}@media(max-width:1100px){.appearance-studio-grid{grid-template-columns:1fr}.appearance-preview-column{position:static}.appearance-preview-shell{max-width:820px;margin:0 auto}}@media(max-width:760px){.appearance-control-grid{grid-template-columns:1fr}.appearance-section-picker{width:100%;box-sizing:border-box}.appearance-section-picker select{min-width:0;flex:1}.appearance-preview-shell{min-height:300px}.appearance-preview-single{min-height:300px}}
+/* Appearance Studio V2: preview fidedigno, hover vivo, zoom/pan y semántica especial preservada. */
+.appearance-preview-toolbar{flex-wrap:wrap}.appearance-preview-toolbar .appearance-preview-tool-sep{width:1px;height:22px;background:rgba(255,255,255,.12);margin:0 2px}.appearance-preview-toolbar .appearance-preview-zoom-label{min-width:43px;text-align:center;color:#d6cfae;font:800 10px/1 monospace}.appearance-preview-toolbar button[data-appearance-pan].active{background:#4b3b12;border-color:#d4af37;color:#fff0b7}.appearance-preview-shell{position:relative;touch-action:none;cursor:default}.appearance-preview-shell.is-pan-mode{cursor:grab}.appearance-preview-shell.is-panning{cursor:grabbing}.appearance-preview-panzoom{position:absolute;inset:0;transform-origin:0 0;will-change:transform}.appearance-preview-menu-stage{background:linear-gradient(rgba(0,0,0,.16),rgba(0,0,0,.28)),url('./assets/images/ui/menu.png') center/cover no-repeat,radial-gradient(circle at 55% 28%,rgba(var(--arg-menu-hover-rgb),.12),transparent 35%),linear-gradient(135deg,#111b14,#050806)}.appearance-preview-menu-logo-wrap{position:absolute;left:0;right:0;top:var(--preview-menu-logo-top);display:flex;justify-content:center;pointer-events:none}.appearance-preview-menu-logo-img{display:block;max-width:var(--preview-menu-logo-max-width);max-height:var(--preview-menu-logo-max-height);object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.7))}.appearance-preview-logo-fallback{color:var(--arg-menu-primary-border);font-weight:1000;letter-spacing:.18em;font-size:clamp(22px,4vw,44px);text-shadow:0 4px 16px #000}.appearance-preview-menu{left:var(--preview-menu-left);bottom:var(--preview-menu-bottom);gap:var(--preview-menu-gap);width:min(55%,var(--preview-menu-button-width))}.appearance-preview-menu button{position:relative;min-height:min(var(--preview-menu-button-height),56px);border-width:var(--preview-menu-border-width);border-radius:var(--preview-menu-radius);font-size:min(var(--preview-menu-font-size),18px);padding:var(--preview-menu-padding-y) var(--preview-menu-padding-x);letter-spacing:var(--arg-menu-letter-spacing);transition:transform .14s ease,filter .14s ease,background .14s ease,border-color .14s ease;cursor:pointer}.appearance-preview-menu button.primary{font-size:min(var(--preview-menu-primary-font-size),20px)}.appearance-preview-menu button:not(.icon):hover{transform:translateX(var(--arg-menu-hover-x));filter:brightness(var(--arg-menu-hover-brightness));background:linear-gradient(180deg,rgba(var(--arg-menu-hover-rgb),.28),var(--arg-menu-bg-bottom));border-color:var(--arg-menu-primary-border)}.appearance-preview-bottom{gap:max(4px,min(var(--preview-menu-gap),8px))}.appearance-preview-bottom .icon{position:relative;flex:0 0 min(var(--preview-menu-button-height),48px);width:min(var(--preview-menu-button-height),48px);height:min(var(--preview-menu-button-height),48px);padding:0;border-radius:var(--preview-menu-icon-radius);overflow:hidden;text-align:center}.appearance-preview-bottom .icon:hover{transform:translateY(var(--arg-menu-icon-hover-y));filter:brightness(var(--arg-menu-hover-brightness));border-color:var(--arg-menu-primary-border)}.appearance-preview-bottom .icon img{position:absolute;inset:var(--preview-menu-icon-inset);width:calc(100% - (var(--preview-menu-icon-inset) * 2));height:calc(100% - (var(--preview-menu-icon-inset) * 2));object-fit:contain;border-radius:calc(var(--preview-menu-icon-radius) * .7);pointer-events:none}.appearance-preview-icon-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}.appearance-preview-live-hint{position:absolute;right:10px;bottom:8px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.58);color:#a9b09f;font-size:8px;font-weight:750;pointer-events:none}.appearance-preview-global-logo{max-width:62%;max-height:22%;object-fit:contain;filter:drop-shadow(0 3px 12px rgba(0,0,0,.55))}.appearance-preview-button{cursor:pointer;transition:transform .13s ease,filter .13s ease,box-shadow .13s ease}.appearance-preview-button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.1);box-shadow:0 8px 22px rgba(0,0,0,.35),var(--arg-button-shadow)}.appearance-preview-button:focus-visible,.appearance-preview-form input:focus,.appearance-preview-form select:focus{outline:2px solid var(--arg-input-focus);outline-offset:2px}.appearance-preview-encyclopedia{display:block;padding:6%;background:linear-gradient(180deg,#0b1a11,#071009);color:#efe4c0}.appearance-preview-ency-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}.appearance-preview-ency-header strong{font-size:clamp(20px,3vw,34px)}.appearance-preview-ency-header span{font-size:11px;font-weight:800;color:#d8c898}.appearance-preview-tabs-large{justify-content:flex-start;flex-wrap:wrap;gap:var(--arg-tab-gap)}.appearance-preview-tab{min-height:var(--arg-tab-height);padding:7px 12px;border:var(--arg-tab-border-width) solid var(--arg-tab-border);border-radius:var(--arg-tab-radius);background:var(--arg-tab-bg);color:var(--arg-tab-text);font:800 var(--arg-tab-font-size)/1 inherit;cursor:pointer;transition:transform .12s ease,filter .12s ease}.appearance-preview-tab:hover{transform:translateY(-1px);filter:brightness(1.13)}.appearance-preview-tab.active:not(.discovery){background:var(--arg-tab-active-bg);color:var(--arg-tab-active-text)}.appearance-preview-tab.discovery{border-color:#b17ad9;background:linear-gradient(180deg,#3b1d52,#21102f);color:#f2dcff;box-shadow:0 0 0 1px rgba(212,175,55,.22),0 0 16px rgba(154,90,205,.15)}.appearance-preview-tab.discovery.active{border-color:#d9b05a;background:linear-gradient(180deg,#4c2868,#2c153d);color:#fff0be;box-shadow:0 0 0 1px rgba(212,175,55,.35),0 0 20px rgba(154,90,205,.25)}.appearance-preview-ency-body{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.appearance-preview-card-placeholder{aspect-ratio:3/4;border:1px solid rgba(212,175,55,.38);border-radius:8px;background:linear-gradient(180deg,#172319,#0b0f0c);box-shadow:0 6px 18px rgba(0,0,0,.3)}.appearance-preview-form input:not([type=checkbox]),.appearance-preview-form select{transition:border-color .12s ease,box-shadow .12s ease}.appearance-preview-form input:focus,.appearance-preview-form select:focus{border-color:var(--arg-input-focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--arg-input-focus) 26%,transparent)}.viewport-android .appearance-preview-live-hint,.viewport-iphone .appearance-preview-live-hint{font-size:7px}.viewport-android .appearance-preview-menu,.viewport-iphone .appearance-preview-menu{width:min(47%,var(--preview-menu-button-width))}.viewport-android .appearance-preview-menu button,.viewport-iphone .appearance-preview-menu button{min-height:min(var(--preview-menu-button-height),42px);font-size:min(var(--preview-menu-font-size),13px)}.viewport-android .appearance-preview-menu button.primary,.viewport-iphone .appearance-preview-menu button.primary{font-size:min(var(--preview-menu-primary-font-size),14px)}
+
 `
   document.head.appendChild(style);
 }
@@ -220,6 +270,79 @@ export function mountAppearanceAdminPane(root) {
   let viewport = 'desktop';
   let loaded = false;
   let busy = false;
+  let previewPanMode = false;
+  const previewViews = new Map();
+  const previewViewKey = () => `${activeSection}:${viewport}`;
+  const getPreviewView = () => {
+    const key = previewViewKey();
+    if (!previewViews.has(key)) previewViews.set(key, { zoom:1, x:0, y:0 });
+    return previewViews.get(key);
+  };
+  const clampPreviewZoom = value => Math.max(.55, Math.min(2.5, Number(value) || 1));
+
+  function applyPreviewView() {
+    const shell = root.querySelector('.appearance-preview-shell');
+    const canvas = root.querySelector('[data-appearance-preview-canvas]');
+    if (!shell || !canvas) return;
+    const view = getPreviewView();
+    canvas.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.zoom})`;
+    shell.classList.toggle('is-pan-mode', previewPanMode);
+    const label = root.querySelector('[data-appearance-zoom-label]');
+    if (label) label.textContent = `${Math.round(view.zoom * 100)}%`;
+    root.querySelector('[data-appearance-pan]')?.classList.toggle('active', previewPanMode);
+  }
+
+  function setPreviewZoom(nextZoom, anchorX = null, anchorY = null) {
+    const shell = root.querySelector('.appearance-preview-shell');
+    if (!shell) return;
+    const view = getPreviewView();
+    const prev = view.zoom;
+    const next = clampPreviewZoom(nextZoom);
+    const rect = shell.getBoundingClientRect();
+    const ax = anchorX == null ? rect.width / 2 : anchorX;
+    const ay = anchorY == null ? rect.height / 2 : anchorY;
+    if (prev > 0 && next !== prev) {
+      const worldX = (ax - view.x) / prev;
+      const worldY = (ay - view.y) / prev;
+      view.x = ax - worldX * next;
+      view.y = ay - worldY * next;
+      view.zoom = next;
+    }
+    applyPreviewView();
+  }
+
+  function resetPreviewView() {
+    previewViews.set(previewViewKey(), { zoom:1, x:0, y:0 });
+    applyPreviewView();
+  }
+
+  function bindPreviewSurface() {
+    const shell = root.querySelector('.appearance-preview-shell');
+    if (!shell || shell.dataset.panzoomBound === '1') return;
+    shell.dataset.panzoomBound = '1';
+    shell.addEventListener('wheel', event => {
+      event.preventDefault();
+      const rect = shell.getBoundingClientRect();
+      const factor = event.deltaY < 0 ? 1.1 : .9;
+      setPreviewZoom(getPreviewView().zoom * factor, event.clientX - rect.left, event.clientY - rect.top);
+    }, { passive:false });
+    let dragging = false, startX = 0, startY = 0, originX = 0, originY = 0;
+    shell.addEventListener('pointerdown', event => {
+      if (!previewPanMode || event.button !== 0) return;
+      dragging = true; startX = event.clientX; startY = event.clientY;
+      const view = getPreviewView(); originX = view.x; originY = view.y;
+      shell.classList.add('is-panning'); shell.setPointerCapture?.(event.pointerId); event.preventDefault();
+    });
+    shell.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const view = getPreviewView(); view.x = originX + event.clientX - startX; view.y = originY + event.clientY - startY; applyPreviewView();
+    });
+    const stop = event => { if (!dragging) return; dragging = false; shell.classList.remove('is-panning'); try { shell.releasePointerCapture?.(event.pointerId); } catch {} };
+    shell.addEventListener('pointerup', stop); shell.addEventListener('pointercancel', stop);
+    shell.querySelectorAll('[data-preview-tab]').forEach(tab => tab.addEventListener('click', () => {
+      shell.querySelectorAll('[data-preview-tab]').forEach(x => x.classList.remove('active')); tab.classList.add('active');
+    }));
+  }
 
   function renderShell() {
     root.innerHTML = `<div class="appearance-studio">
@@ -233,7 +356,7 @@ export function mountAppearanceAdminPane(root) {
       </div>
       <div class="appearance-studio-grid">
         <div class="appearance-controls" data-appearance-controls></div>
-        <aside class="appearance-preview-column"><div class="appearance-preview-toolbar"><strong style="margin-right:auto;color:#d4af37">Preview</strong><button data-appearance-viewport="desktop">Desktop</button><button data-appearance-viewport="android">Android</button><button data-appearance-viewport="iphone">iPhone</button></div><div data-appearance-warning></div><div data-appearance-preview></div><div class="appearance-schema-note">Preview local: mover controles no escribe Firestore. Publicar guarda una sola revisión en <code>gameConfig/appearance</code>. Las dimensiones se normalizan server/client-side por esquema; no se acepta CSS libre.</div></aside>
+        <aside class="appearance-preview-column"><div class="appearance-preview-toolbar"><strong style="margin-right:auto;color:#d4af37">Preview</strong><button type="button" data-appearance-zoom-out title="Alejar">−</button><span class="appearance-preview-zoom-label" data-appearance-zoom-label>100%</span><button type="button" data-appearance-zoom-in title="Acercar">+</button><button type="button" data-appearance-pan title="Mano: arrastrar preview">✋</button><button type="button" data-appearance-reset-view title="Restablecer vista">↺</button><span class="appearance-preview-tool-sep"></span><button type="button" data-appearance-viewport="desktop">Desktop</button><button type="button" data-appearance-viewport="android">Android</button><button type="button" data-appearance-viewport="iphone">iPhone</button></div><div data-appearance-warning></div><div data-appearance-preview></div><div class="appearance-schema-note">Preview local e interactivo: hover real sobre botones, rueda para zoom, <strong>✋</strong> + arrastre para desplazarte y −/+ para escala. No escribe Firestore hasta PUBLICAR. La preview usa los assets/estructura canónicos y conserva identidades semánticas especiales como <strong>Descubribles</strong>.</div></aside>
       </div>
     </div>`;
     bindShell(); renderAll();
@@ -259,6 +382,7 @@ export function mountAppearanceAdminPane(root) {
     const preview = root.querySelector('[data-appearance-preview]'); if (!preview) return;
     preview.innerHTML = previewHtml(draft, viewport, activeSection);
     const shell = preview.firstElementChild; if (shell) applyAppearanceVariablesToElement(shell, draft);
+    bindPreviewSurface(); applyPreviewView();
     const ratio = contrastRatio(draft.mainMenu.colors.text, draft.mainMenu.colors.backgroundBottom);
     const warning = root.querySelector('[data-appearance-warning]');
     const warnings = [];
@@ -291,6 +415,10 @@ export function mountAppearanceAdminPane(root) {
   function bindShell() {
     root.querySelector('[data-appearance-section-select]')?.addEventListener('change', e => { activeSection = e.target.value; renderAll(); });
     root.querySelectorAll('[data-appearance-viewport]').forEach(btn => btn.addEventListener('click', () => { viewport = btn.dataset.appearanceViewport; renderAll(); }));
+    root.querySelector('[data-appearance-zoom-out]')?.addEventListener('click', () => setPreviewZoom(getPreviewView().zoom / 1.12));
+    root.querySelector('[data-appearance-zoom-in]')?.addEventListener('click', () => setPreviewZoom(getPreviewView().zoom * 1.12));
+    root.querySelector('[data-appearance-pan]')?.addEventListener('click', () => { previewPanMode = !previewPanMode; applyPreviewView(); });
+    root.querySelector('[data-appearance-reset-view]')?.addEventListener('click', resetPreviewView);
     root.querySelector('[data-appearance-preset]')?.addEventListener('change', e => {
       if (e.target.value === 'classic') { draft = classicAppearanceConfig(); renderAll(); status('Preset Clásico cargado localmente. Falta publicar.'); }
       else { draft.preset = 'custom'; renderAll(); }
@@ -301,7 +429,7 @@ export function mountAppearanceAdminPane(root) {
       try {
         const doc = await publishAppearanceConfig(draft); previous = doc.previous ? normalizeAppearanceConfig(doc.previous) : previous; published = normalizeAppearanceConfig(doc.current); draft = clone(published); revision = Number(doc.revision)||revision+1;
         status(`Publicado · revisión ${revision}. Se aplicará al volver al menú o al reabrir la app.`, 'ok');
-      } catch (err) { console.error('[Appearance V1] Publish failed:', err); status(`No se pudo publicar: ${err?.message || err}`, 'error'); }
+      } catch (err) { console.error('[Appearance V2] Publish failed:', err); status(`No se pudo publicar: ${err?.message || err}`, 'error'); }
       finally { busy = false; renderAll(); }
     });
     root.querySelector('[data-appearance-rollback]')?.addEventListener('click', async () => {
@@ -311,7 +439,7 @@ export function mountAppearanceAdminPane(root) {
       try {
         const doc = await rollbackAppearanceConfig(); previous = normalizeAppearanceConfig(doc.previous); published = normalizeAppearanceConfig(doc.current); draft = clone(published); revision = Number(doc.revision)||revision+1;
         status(`Rollback publicado · revisión ${revision}.`, 'ok');
-      } catch (err) { console.error('[Appearance V1] Rollback failed:', err); status(`No se pudo restaurar: ${err?.message || err}`, 'error'); }
+      } catch (err) { console.error('[Appearance V2] Rollback failed:', err); status(`No se pudo restaurar: ${err?.message || err}`, 'error'); }
       finally { busy = false; renderAll(); }
     });
   }
@@ -325,7 +453,7 @@ export function mountAppearanceAdminPane(root) {
       const doc = result.document;
       published = normalizeAppearanceConfig(result.config); draft = clone(published); previous = doc?.previous ? normalizeAppearanceConfig(doc.previous) : null; revision = Number(doc?.revision)||0; loaded = true;
       status(doc ? `Revisión publicada ${revision}.` : 'Sin documento publicado: usando Clásico Argentinia.');
-    } catch (err) { console.error('[Appearance V1] Admin load failed:', err); published = classicAppearanceConfig(); draft = clone(published); previous = null; status('No se pudo leer Firestore; preview en Clásico.', 'error'); }
+    } catch (err) { console.error('[Appearance V2] Admin load failed:', err); published = classicAppearanceConfig(); draft = clone(published); previous = null; status('No se pudo leer Firestore; preview en Clásico.', 'error'); }
     finally { busy = false; renderAll(); }
   }
 

@@ -4164,12 +4164,15 @@ function injectEncyclopediaStyles() {
     #encyclopedia-overlay.encyclopedia-admin-discoverables-mode .encyclopedia-title::after { content:' · ADMIN'; color:#d4af37; font-size:.48em; margin-left:8px; letter-spacing:.08em; vertical-align:middle; }
     .encyclopedia-admin-discoverable-slot { box-shadow:none; border-radius:0; overflow:visible; }
     .encyclopedia-token-slot .card-inner { box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 25px rgba(0,0,0,.25); }
+    /* HF3.6 UI polish — PISTA deja libre la barra de nombre y reduce su huella visual >=20%.
+       El ::after conserva un hit-area cómodo en touch aunque el badge visible sea compacto. */
     .encyclopedia-discovery-meta-btn {
-      position:absolute; top:4px; left:4px; z-index:38; min-width:42px; height:24px; padding:0 7px;
-      display:flex; align-items:center; justify-content:center; border-radius:7px; cursor:pointer;
+      position:absolute; top:30px; left:5px; z-index:38; min-width:33px; height:19px; padding:0 5px;
+      display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer;
       border:1.5px solid rgba(196,143,255,.92); background:rgba(34,18,49,.94); color:#f3e7ff;
-      font-size:9px; line-height:1; font-weight:950; letter-spacing:.08em; box-shadow:0 2px 7px rgba(0,0,0,.62);
+      font-size:7.2px; line-height:1; font-weight:950; letter-spacing:.07em; box-shadow:0 2px 7px rgba(0,0,0,.62);
     }
+    .encyclopedia-discovery-meta-btn::after { content:''; position:absolute; inset:-6px; }
     .encyclopedia-discovery-meta-btn:hover { transform:translateY(-1px); background:rgba(77,36,105,.98); }
     .discovery-meta-editor-overlay { position:fixed; inset:0; z-index:10080; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:18px; box-sizing:border-box; }
     .discovery-meta-editor { width:min(680px,96vw); max-height:92vh; overflow:auto; border:2px solid rgba(193,134,255,.75); border-radius:16px; background:linear-gradient(180deg,#171020,#0d1110); color:#eee3ca; box-shadow:0 26px 70px rgba(0,0,0,.72),0 0 34px rgba(141,78,205,.16); padding:20px; box-sizing:border-box; }
@@ -6537,6 +6540,7 @@ function injectSanctuaryStyles() {
     .sanctuary-detection-option[aria-pressed="true"] { color:#fff0bc; background:linear-gradient(180deg,rgba(212,175,55,.28),rgba(79,58,17,.48)); box-shadow:inset 0 0 0 1px rgba(232,202,105,.48); }
     .sanctuary-detection-option:disabled { opacity:.35; cursor:not-allowed; }
     .sanctuary-camera-controls { margin-top:auto; display:grid; grid-template-columns:1fr; gap:6px; align-items:stretch; }
+    .sanctuary-camera-mobile-controls { display:none; }
     .sanctuary-food-attribution { margin-top:2px; color:#777568; font-size:7px; font-weight:650; line-height:1.35; text-align:center; }
     .sanctuary-food-attribution a { color:#9f987c; text-decoration:underline; text-underline-offset:2px; }
     .sanctuary-food-attribution a:hover { color:#d7c689; }
@@ -6565,6 +6569,37 @@ function injectSanctuaryStyles() {
       .sanctuary-detection-option { padding:6px 4px; font-size:7px; }
       .sanctuary-camera-reveal { min-width:150px; min-height:36px; bottom:10px; padding:7px 14px!important; font-size:10px!important; }
     }
+    /* HF3.6 UI polish — Santuario MOBILE ONLY. Desktop conserva el layout Stage25/HF3.6 byte-for-byte
+       en geometría efectiva: en mobile la cámara cede ~9-10% de ancho, el sidecar queda sólo
+       para método/estado y las acciones táctiles viven sobre el borde inferior del video. */
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-shell {
+      width:min(50vw,600px); height:min(56vh,330px); border-radius:11px;
+    }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-sidecar {
+      left:calc(50% + min(25vw,300px) + 7px); width:clamp(136px,16.5vw,185px);
+      max-height:none; padding:6px; gap:5px; border-radius:10px; overflow:hidden;
+    }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-sidecar .sanctuary-camera-controls { display:none!important; }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-mobile-controls {
+      position:absolute; z-index:10; left:50%; bottom:6px; transform:translateX(-50%);
+      width:calc(100% - 16px); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px;
+      pointer-events:auto;
+    }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-mobile-controls .sanctuary-camera-btn {
+      min-width:0; min-height:28px; padding:5px 4px; font-size:7px; line-height:1.05; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; border-radius:7px;
+    }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-reveal {
+      top:50%; bottom:auto; transform:translate(-50%,-50%);
+      min-width:142px; min-height:34px; padding:7px 13px!important; font-size:10px!important;
+    }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-hint,
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-seal-status,
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-camera-resonance-status { font-size:7.5px; padding:5px 6px; }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-detection-label { font-size:7px; }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-detection-option { padding:5px 3px; font-size:6.8px; }
+    html.argentinia-mobile #sanctuary-overlay .sanctuary-food-attribution { font-size:6px; line-height:1.22; }
+
     @media(max-height:520px) {
       .sanctuary-ritual-anchor { width:min(48vmin,250px); }
       .sanctuary-shell-dock { bottom:4px; }
@@ -6871,6 +6906,12 @@ function setSanctuaryCameraRevealState(overlay,{visible=false,disabled=true,text
   btn.setAttribute('aria-label',label);
 }
 
+function setSanctuaryRescanVisible(overlay, visible) {
+  if (!overlay) return;
+  const hidden = !visible;
+  overlay.querySelectorAll('#sanctuary-camera-rescan,[data-sanctuary-mobile-action="rescan"]').forEach(btn => { btn.hidden = hidden; });
+}
+
 function resetSanctuaryPreparedUi(overlay,{hideRescan=true}={}){
   if(!overlay) return;
   setSanctuaryCameraRevealState(overlay,{visible:false,disabled:true});
@@ -6882,8 +6923,7 @@ function resetSanctuaryPreparedUi(overlay,{hideRescan=true}={}){
     mainAction.title=gameText('sanctuary.camera.previewOnly');
     mainAction.setAttribute('aria-label',gameText('sanctuary.camera.previewOnly'));
   }
-  const rescan=overlay.querySelector('#sanctuary-camera-rescan');
-  if(rescan&&hideRescan) rescan.hidden=true;
+  if(hideRescan) setSanctuaryRescanVisible(overlay,false);
 }
 
 function markSanctuaryPreparedUi(overlay){
@@ -7056,7 +7096,7 @@ function stopSanctuaryBarcodeScanner(overlay) {
     statusEl.dataset.kind = 'searching';
     statusEl.textContent = '';
   }
-  if (rescanBtn) rescanBtn.hidden = true;
+  setSanctuaryRescanVisible(overlay,false);
 }
 
 function setSanctuaryBarcodeStatus(overlay, text, kind = 'searching') {
@@ -7233,7 +7273,7 @@ async function resolveFoundSanctuaryResonance(overlay, signature) {
   const noteEl=overlay.querySelector('.sanctuary-ritual-note');
   const hintEl=overlay.querySelector('.sanctuary-camera-hint');
   const rescanBtn=overlay.querySelector('#sanctuary-camera-rescan');
-  if(rescanBtn) rescanBtn.hidden=true;
+  setSanctuaryRescanVisible(overlay,false);
   if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.serverResolving');
   if(noteEl) noteEl.textContent=gameText('sanctuary.resonance.serverPrivacy');
   if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverPreparing');
@@ -7256,7 +7296,7 @@ async function resolveFoundSanctuaryResonance(overlay, signature) {
     if(noteEl) noteEl.textContent=gameText('sanctuary.resonance.serverHidden');
     if(hintEl) hintEl.textContent=gameText('sanctuary.resonance.serverPrepared');
     markSanctuaryPreparedUi(overlay);
-    if(rescanBtn) rescanBtn.hidden=false;
+    setSanctuaryRescanVisible(overlay,true);
   }catch(error){
     const latest=overlay.__sanctuaryCamera || {};
     if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq) return;
@@ -7274,7 +7314,7 @@ async function resolveFoundSanctuaryResonance(overlay, signature) {
     const resonanceStatus=overlay.querySelector('#sanctuary-camera-resonance-status');
     if(resonanceStatus){ resonanceStatus.hidden=false; resonanceStatus.dataset.stable='false'; resonanceStatus.dataset.error='true'; resonanceStatus.textContent=text; }
     resetSanctuaryPreparedUi(overlay,{hideRescan:false});
-    if(rescanBtn) rescanBtn.hidden=false;
+    setSanctuaryRescanVisible(overlay,true);
     console.warn('Sanctuary resonance resolver unavailable',error);
   }
 }
@@ -7400,7 +7440,7 @@ async function resolveFoundSanctuaryBarcode(overlay, gtin) {
   const noteEl=overlay.querySelector('.sanctuary-ritual-note');
   const hintEl=overlay.querySelector('.sanctuary-camera-hint');
   const rescanBtn=overlay.querySelector('#sanctuary-camera-rescan');
-  if(rescanBtn) rescanBtn.hidden=true;
+  setSanctuaryRescanVisible(overlay,false);
   overlay.dataset.sanctuaryShellState='SEAL_RESOLVING_SERVER';
   if(messageEl) messageEl.textContent=gameText('sanctuary.seal.serverResolving');
   if(noteEl) noteEl.textContent=gameText('sanctuary.seal.serverPrivacy');
@@ -7424,7 +7464,7 @@ async function resolveFoundSanctuaryBarcode(overlay, gtin) {
     if(hintEl) hintEl.textContent=gameText('sanctuary.seal.foundGtin',{gtin:latest.lastGtin});
     setSanctuaryBarcodeStatus(overlay,gameText('sanctuary.seal.serverPrepared'),'found');
     markSanctuaryPreparedUi(overlay);
-    if(rescanBtn) rescanBtn.hidden=false;
+    setSanctuaryRescanVisible(overlay,true);
   }catch(error){
     const latest=overlay.__sanctuaryCamera || {};
     if(!document.body.contains(overlay) || Number(latest.resolveSeq)!==seq) return;
@@ -7440,7 +7480,7 @@ async function resolveFoundSanctuaryBarcode(overlay, gtin) {
     if(hintEl) hintEl.textContent=gameText('sanctuary.seal.foundGtin',{gtin});
     setSanctuaryBarcodeStatus(overlay,text,'error');
     resetSanctuaryPreparedUi(overlay,{hideRescan:false});
-    if(rescanBtn) rescanBtn.hidden=false;
+    setSanctuaryRescanVisible(overlay,true);
     console.warn('Sanctuary barcode resolver unavailable',error);
   }
 }
@@ -7549,7 +7589,7 @@ async function startSanctuaryBarcodeScanner(overlay) {
   const noteEl = overlay.querySelector('.sanctuary-ritual-note');
   const hintEl = overlay.querySelector('.sanctuary-camera-hint');
   const rescanBtn = overlay.querySelector('#sanctuary-camera-rescan');
-  if (rescanBtn) rescanBtn.hidden = true;
+  setSanctuaryRescanVisible(overlay,false);
   if (messageEl) messageEl.textContent = gameText('sanctuary.seal.searching');
   if (noteEl) noteEl.textContent = gameText('sanctuary.seal.localOnly');
   if (hintEl) hintEl.textContent = gameText('sanctuary.seal.scanHint');
@@ -7667,11 +7707,11 @@ async function openSanctuaryCameraPreview(overlay, { deviceId = '' } = {}) {
     if (core) core.hidden = true;
     if (workspace) workspace.hidden = false;
     overlay.classList.add('sanctuary-camera-open');
-    const changeBtn = overlay.querySelector('#sanctuary-camera-change');
-    if (changeBtn) {
+    const changeButtons = overlay.querySelectorAll('#sanctuary-camera-change,[data-sanctuary-mobile-action="change"]');
+    changeButtons.forEach(changeBtn => {
       changeBtn.disabled = state.devices.length < 2;
       changeBtn.title = state.devices.length < 2 ? gameText('sanctuary.camera.singleDevice') : gameText('sanctuary.action.changeCamera');
-    }
+    });
     if (messageEl) messageEl.textContent = gameText('sanctuary.camera.ready');
     if (noteEl) noteEl.textContent = gameText('sanctuary.camera.previewOnly');
     if (actionBtn) {
@@ -7739,6 +7779,11 @@ export function showSanctuaryScreen(onBack) {
           <div class="sanctuary-camera-shade" aria-hidden="true"></div>
           <div class="sanctuary-camera-frame" aria-hidden="true"></div>
           <button class="sanctuary-camera-reveal mulligan-btn mulligan-btn-keep" id="sanctuary-camera-reveal" type="button" hidden disabled>${gameTextHtml('sanctuary.action.reveal')}</button>
+          <div class="sanctuary-camera-mobile-controls" aria-label="${gameTextHtml('sanctuary.camera.ready')}">
+            <button class="sanctuary-camera-btn" type="button" data-sanctuary-mobile-action="rescan" hidden>${gameTextHtml('sanctuary.seal.rescan')}</button>
+            <button class="sanctuary-camera-btn" type="button" data-sanctuary-mobile-action="change">${gameTextHtml('sanctuary.action.changeCamera')}</button>
+            <button class="sanctuary-camera-btn" type="button" data-sanctuary-mobile-action="close">${gameTextHtml('sanctuary.action.closeCamera')}</button>
+          </div>
         </div>
         <aside class="sanctuary-camera-sidecar" aria-live="polite">
           <div class="sanctuary-detection-label">${gameTextHtml('sanctuary.detection.label')}</div>
@@ -7835,6 +7880,9 @@ export function showSanctuaryScreen(onBack) {
   overlay.querySelector('#sanctuary-camera-rescan')?.addEventListener('click', () => restartSanctuaryDiscoveryScanners(overlay));
   overlay.querySelector('#sanctuary-camera-change')?.addEventListener('click', () => { void changeSanctuaryCameraPreview(overlay); });
   overlay.querySelector('#sanctuary-camera-close')?.addEventListener('click', () => stopSanctuaryCameraPreview(overlay));
+  overlay.querySelector('[data-sanctuary-mobile-action="rescan"]')?.addEventListener('click', () => restartSanctuaryDiscoveryScanners(overlay));
+  overlay.querySelector('[data-sanctuary-mobile-action="change"]')?.addEventListener('click', () => { void changeSanctuaryCameraPreview(overlay); });
+  overlay.querySelector('[data-sanctuary-mobile-action="close"]')?.addEventListener('click', () => stopSanctuaryCameraPreview(overlay));
   requestAnimationFrame(() => overlay.querySelector('#sanctuary-back')?.focus());
   void hydrateSanctuaryOverlay(overlay);
 }
