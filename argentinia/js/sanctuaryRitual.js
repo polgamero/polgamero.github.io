@@ -1,5 +1,6 @@
 import { gameText } from './gameTexts.js';
 import { playSfx } from './audioManager.js';
+import { decorateFlasheraCard } from './flasheraRenderer.js';
 
 const STYLE_ID = 'sanctuary-stage14-ritual-styles';
 const CARD_BACK_IMAGE = './assets/images/card_back.png';
@@ -127,6 +128,8 @@ function injectStyles() {
       pointer-events:none;
     }
     .sanctuary-reveal-layer.is-final .sanctuary-reveal-result { opacity:1; transform:translate(-50%,calc(-50% + var(--sanctuary-reveal-card-w) * 1.00)); }
+    .sanctuary-reveal-layer[data-flashera='yes'].is-revealed .sanctuary-reveal-halo { background:conic-gradient(from 20deg,#eaa7fc,#a6ffd3,#f9e5a5,#9dc9ff,#eaa7fc);filter:blur(30px); }
+    .sanctuary-reveal-layer[data-flashera='yes'].is-final .sanctuary-reveal-success {color:#fff2c1;text-shadow:0 0 15px #d87ef7,0 0 28px #7affde;}
     .sanctuary-reveal-success { color:#dfc668; font-size:10px; font-weight:950; letter-spacing:.18em; text-transform:uppercase; text-shadow:0 2px 8px #000; }
     .sanctuary-reveal-name { margin-top:4px; color:#fff1bb; font:950 clamp(15px,2.5vmin,25px)/1.05 inherit; text-shadow:0 2px 10px #000; }
     .sanctuary-reveal-admin { margin-top:5px; color:#d7c5e9; font-size:9px; font-weight:850; }
@@ -162,7 +165,7 @@ function safePlay(id, options = {}) {
   try { return playSfx(id, options); } catch { return null; }
 }
 
-export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypass = false, onContinue = null, source = 'barcode' } = {}) {
+export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypass = false, onContinue = null, source = 'barcode', flashera = false } = {}) {
   if (!(overlay instanceof HTMLElement)) throw new Error('SANCTUARY_RITUAL_OVERLAY_REQUIRED');
   if (!card?.id) throw new Error('SANCTUARY_RITUAL_CARD_REQUIRED');
   if (typeof renderCard !== 'function') throw new Error('SANCTUARY_RITUAL_RENDERER_REQUIRED');
@@ -181,6 +184,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
   const layer = document.createElement('div');
   layer.className = 'sanctuary-reveal-layer';
   layer.dataset.source = ritualSource;
+  layer.dataset.flashera = flashera===true?'yes':'no';
   layer.setAttribute('role', 'status');
   layer.setAttribute('aria-live', 'polite');
   layer.innerHTML = `
@@ -196,7 +200,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
       </div>
     </div>
     <div class="sanctuary-reveal-result">
-      <div class="sanctuary-reveal-success">${esc(gameText('sanctuary.ritual.success'))}</div>
+      <div class="sanctuary-reveal-success">${flashera===true?'✨ FLASHERA · DESCUBRIMIENTO':esc(gameText('sanctuary.ritual.success'))}</div>
       <div class="sanctuary-reveal-name">${esc(card.name || card.id)}</div>
       ${adminBypass ? `<div class="sanctuary-reveal-admin">${esc(gameText('sanctuary.ritual.adminUnlimited'))}</div>` : ''}
       <button type="button" class="sanctuary-reveal-continue">${esc(gameText('sanctuary.ritual.continue'))}</button>
@@ -208,6 +212,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
   if (!(rendered instanceof HTMLElement)) throw new Error('SANCTUARY_RITUAL_RENDER_INVALID');
   rendered.style.setProperty('--card-w', 'var(--sanctuary-reveal-card-w)');
   front.appendChild(rendered);
+  if(flashera===true) decorateFlasheraCard(rendered,{mode:'full'});
 
   const word = layer.querySelector('.sanctuary-reveal-word');
   const alive = () => document.body.contains(overlay) && overlay.__sanctuaryRitualToken === token;
@@ -260,6 +265,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
   if (!alive()) return null;
 
   layer.classList.add('is-revealed');
+  if(flashera===true) safePlay('flasheraReveal',{volumeMultiplier:.90});
   await wait(timings.final);
   if (!alive()) return null;
   layer.classList.add('is-final');

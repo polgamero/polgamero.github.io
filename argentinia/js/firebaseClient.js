@@ -368,6 +368,10 @@ export const publishPrivateSelectionOffer = asyncProxy('publishPrivateSelectionO
 export const fetchPrivateSelectionOffer = asyncProxy('fetchPrivateSelectionOffer');
 export const deletePrivateSelectionOffer = asyncProxy('deletePrivateSelectionOffer');
 export const fetchAllUserProfiles = asyncProxy('fetchAllUserProfiles');
+export const adminGetFlasheraStatus = asyncProxy('adminGetFlasheraStatus');
+export const adminGetFlasheraAnalytics = asyncProxy('adminGetFlasheraAnalytics');
+export const adminSaveFlasheraConfig = asyncProxy('adminSaveFlasheraConfig');
+export const adminAdjustFlasheraDebug = asyncProxy('adminAdjustFlasheraDebug');
 export const adminGrantCurrency = asyncProxy('adminGrantCurrency');
 export const adminGrantCurrencyToAll = asyncProxy('adminGrantCurrencyToAll');
 export const adminGrantPacks = asyncProxy('adminGrantPacks');
@@ -405,3 +409,5 @@ export const fetchPublicPlayerStats = asyncProxy('fetchPublicPlayerStats');
 export const fetchPublicPlayerProfile = asyncProxy('fetchPublicPlayerProfile');
 export const setPublicProfileFavoriteCard = asyncProxy('setPublicProfileFavoriteCard');
 export const adminSyncPublicPlayerStats = asyncProxy('adminSyncPublicPlayerStats');
+
+export const attestMultiplayerDeck = asyncProxy('attestMultiplayerDeck');

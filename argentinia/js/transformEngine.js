@@ -89,6 +89,10 @@ export function buildTransformFaceCard(itemOrCard, face = 'front') {
   }
 
   if (ownerRole) out._ownerRole = ownerRole;
+  if (physical.flashera === true && !out.isToken) {
+    out.flashera = true; out.finish = 'flashera';
+    if (physical.variantId) out.variantId = physical.variantId;
+  }
   out._dfcPhysicalCard = physicalFrontSnapshot(physical);
   out._dfcFace = normalizedFace;
   out._dfcEngineVersion = TRANSFORM_ENGINE_VERSION;

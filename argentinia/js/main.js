@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, loadAuthorizedDiscoveryCards, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, loadAuthorizedDiscoveryCards, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, attestMultiplayerDeck, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
@@ -1467,7 +1467,7 @@ async function initGame(deckSource, options = {}) {
 
   let deckLabel;
   if (deckSource.type === 'saved') {
-    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions);
+    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
     deckLabel = deckSource.deck.name;
   } else {
     state.localDeck = buildRandomDeck(deckSource.identity, { quality: 'competitive' });
@@ -2510,7 +2510,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
   const deckLabel = isTestDeck ? MULTIPLAYER_TEST_DECK_NAME : deckSource.deck.name;
   state.localDeck = isTestDeck
     ? buildMultiplayerTestDeck()
-    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions);
+    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).
@@ -2578,6 +2578,12 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
     if (!initialSyncConfirmed) {
       resetMatchPublishRetry();
       throw new Error('MULTIPLAYER_INITIAL_SYNC_NOT_CONFIRMED');
+    }
+    // Stage40: the server re-reads the saved deck and current ownership before PvP ready.
+    // No raw cards/hand or user-crafted premium counts are sent to the callable.
+    const attested = await attestMultiplayerDeck(matchId, isSavedDeck ? String(deckSource.deck.id || '') : '', isTestDeck ? 'test' : 'saved');
+    if (!attested?.ok || attested.cardCount !== 60) {
+      throw new Error('MULTIPLAYER_DECK_ADMISSION_DENIED');
     }
     await setMatchPlayerReady(matchId, myRole, true);
 

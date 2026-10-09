@@ -178,6 +178,7 @@ export function serializeStackTarget(targetObj, state, myRole) {
       id: item.card.id || null,
       name: item.card.name || null,
       type: item.card.type || null,
+      ...(item.card.flashera === true && !item.card.isToken ? {flashera:true} : {}),
       power: item.card.power ?? null,
       toughness: item.card.toughness ?? null
     } : (targetObj._syncDescriptor?.cardSnapshot || null)

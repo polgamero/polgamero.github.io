@@ -3,6 +3,7 @@
 // No conoce state/DOM/Firestore. Los callers deciden targets, zonas, triggers y autoridad.
 
 import { buildTokenPermanentItem, tokenBattlefieldKind } from './tokenEngine.js';
+import { stripPhysicalFinish, preservePhysicalFinish } from './flasheraGameplay.js';
 
 export const COPY_ENGINE_VERSION = '23.15.9';
 
@@ -12,7 +13,9 @@ const NON_COPIABLE_CARD_KEYS = new Set([
   'copyOfCardId', 'copyOfCardName', 'copyEngineVersion', 'copyOriginKind',
   // 23.16.4 — ser físicamente double-faced NO es un valor copiable. Copiar una TDFC
   // copia sólo las características de la cara actualmente visible.
-  'dfc'
+  'dfc',
+  // Stage31: print finish belongs to a physical copy, NEVER to copiable card values.
+  'flashera', 'finish', 'variantId', 'cardVariantId'
 ]);
 
 function cloneValue(value) {
@@ -73,7 +76,13 @@ export function buildCopiedCard(sourceCard, options = {}) {
     copyEngineVersion: COPY_ENGINE_VERSION,
     copyOriginKind: options.originKind || 'copy'
   };
-  if (options.isToken === true) out.isToken = true;
+  if (options.isToken === true) {
+    out.isToken = true;
+    // Token copies can copy rules/appearance, but never acquire premium ownership.
+    Object.assign(out, stripPhysicalFinish(out));
+    delete out.flashera; delete out._flashera; delete out.finish;
+    delete out.variantId; delete out.cardVariantId;
+  }
   if (options.ownerRole) out._ownerRole = options.ownerRole;
   return out;
 }
@@ -87,21 +96,24 @@ export function buildBecameCopyCard(targetCard, sourceCard, options = {}) {
     overrides: options.overrides || null,
     originKind: 'permanent_became_copy'
   });
-  if (targetCard._ownerRole) copied._ownerRole = targetCard._ownerRole;
-  if (targetCard.isToken) copied.isToken = true;
-  if (targetCard.tokenSpecVersion) copied.tokenSpecVersion = targetCard.tokenSpecVersion;
-  if (targetCard.tokenCreatedBy) copied.tokenCreatedBy = targetCard.tokenCreatedBy;
+  // A physically premium target stays premium even while it copies a NORMAL source;
+  // a NORMAL target never inherits the source's premium. Identity remains its own.
+  const physicalCopy = preservePhysicalFinish(targetCard, copied);
+  if (targetCard._ownerRole) physicalCopy._ownerRole = targetCard._ownerRole;
+  if (targetCard.isToken) physicalCopy.isToken = true;
+  if (targetCard.tokenSpecVersion) physicalCopy.tokenSpecVersion = targetCard.tokenSpecVersion;
+  if (targetCard.tokenCreatedBy) physicalCopy.tokenCreatedBy = targetCard.tokenCreatedBy;
   // 23.16.4 — si el OBJETO físico que se vuelve copia es una TDFC, conserva sus dos
   // caras físicas. Mientras dure el copy effect, transformar sólo cambia qué cara física
   // está arriba; las características copiadas siguen ganando.
   if (targetCard._dfcPhysicalCard) {
-    copied._dfcPhysicalCard = cloneValue(targetCard._dfcPhysicalCard);
-    copied._dfcFace = targetCard._dfcFace === 'back' ? 'back' : 'front';
-    copied._dfcCopyLocked = true;
+    physicalCopy._dfcPhysicalCard = cloneValue(targetCard._dfcPhysicalCard);
+    physicalCopy._dfcFace = targetCard._dfcFace === 'back' ? 'back' : 'front';
+    physicalCopy._dfcCopyLocked = true;
   }
-  copied.copyOfCardId = sourceCard.copyOfCardId || sourceCard.id || null;
-  copied.copyOfCardName = sourceCard.name || null;
-  return copied;
+  physicalCopy.copyOfCardId = sourceCard.copyOfCardId || sourceCard.id || null;
+  physicalCopy.copyOfCardName = sourceCard.name || null;
+  return physicalCopy;
 }
 
 export function cloneStackTarget(target) {

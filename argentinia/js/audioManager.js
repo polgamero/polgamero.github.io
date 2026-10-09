@@ -37,6 +37,13 @@ export const AUDIO_CATALOG = Object.freeze({
   // SFX viven separados de la música y respetan su propio ON/OFF + volumen de OPCIONES.
   // Contrato de assets 23.13.65: no reorganizar cards/tokens; los efectos viven en sounds/sfx.
   sfx: Object.freeze({
+    flasheraReveal: Object.freeze({
+      id:'flasheraReveal', loop:false,
+      // Firma sonora original Stage33, respetando master/SFX y el volumen del usuario.
+      sources:Object.freeze([
+        Object.freeze({src:'./assets/sounds/sfx/flashera_reveal.wav',type:'audio/wav'})
+      ])
+    }),
     coinToss: Object.freeze({
       id: 'coinToss',
       loop: false,

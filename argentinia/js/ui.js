@@ -99,6 +99,7 @@ import { showGlobalRanking } from './rankingUI.js';
 import { showPublicPlayerProfile, configurePublicProfileUI } from './publicProfileUI.js';
 import { prepareGameManualUI, showGameManual } from './manualUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
+import { flasheraCommunitySnapshot } from './flasheraStatistics.js';
 import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
 import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
@@ -110,10 +111,11 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { mountAdminNotificationsPane } from './notificationsAdmin.js';
 import { mountAdminSanctuaryPane } from './sanctuaryAdmin.js';
 import { mountAppearanceAdminPane } from './appearanceAdmin.js';
+import { mountAdminFlasheraPane } from './flasheraAdmin.js';
 import { applyCachedPublishedAppearance } from './appearance.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
-import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { enterMenuAudio, playSfx, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation, queueWorkshopUnlockAnimation } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
@@ -122,14 +124,27 @@ import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandM
 import { isSagaCard, sagaUiState } from './sagaEngine.js';
 import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from './botDifficulty.js';
 import * as headlessChoice from './headlessChoiceEngine.js';
+import { decorateFlasheraCard, inferFlasheraModeForZone, installFlasheraRenderer, setFlasheraVisualEnabled } from './flasheraRenderer.js';
+import { normalizeFlasheraSettings, availableCopiesForVariant } from './flasheraContract.js';
+import { cardVariantId, parseCardVariantId } from './cardVariant.js';
+import { physicalCardVariants, flasheraTotalForBase, countDeckBaseCopies, assertDeckFlasheraOwnership, isFlasheraDeck } from './flasheraDeck.js';
 
 const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
+if (!HEADLESS_ENGINE) {
+  installFlasheraRenderer();
+  // Stage28: el kill switch visual de Stage27 ya es efectivo para todos los clientes.
+  // Si la lectura pública falla por red, el fallback seguro conserva el renderer habilitado.
+  loadPublicGameConfigDocument('flashera')
+    .then(raw => setFlasheraVisualEnabled(normalizeFlasheraSettings(raw || {}).visualEnabled))
+    .catch(error => console.warn('[Flasheras Stage28] No se pudo leer visualEnabled; se conserva el fallback local.', error));
+}
 
 configurePublicProfileUI({
   getCurrentUid:()=>String(state.currentUser?.uid||''),
   getOwnedCardIds:()=>Array.isArray(state.userProfile?.collection)?state.userProfile.collection:[],
   getEnhancements:()=>state.userProfile?.enhancements&&typeof state.userProfile.enhancements==='object'?state.userProfile.enhancements:{},
   getEvolutions:()=>state.userProfile?.evolutions&&typeof state.userProfile.evolutions==='object'?state.userProfile.evolutions:{},
+  getFlasheraCopies:()=>state.userProfile?.flasheraCopies&&typeof state.userProfile.flasheraCopies==='object'?state.userProfile.flasheraCopies:{},
   renderCard:card=>createCardElement(card,false,true,null,'encyclopedia',null),
   onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; },
   openRename:onUpdated=>openCurrentUserRename({onUpdated})
@@ -2286,6 +2301,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     }
   }
 
+
+  // Flasheras Stage28 — el renderer canónico acepta flags presentation-only sin cambiar
+  // identidad ni reglas. Los stages de adquisición/gameplay posteriores son quienes
+  // transportarán este flag de forma autoritativa; acá sólo lo representamos.
+  const flasheraVariantHint = String(itemObj?.variantId || itemObj?.cardVariantId || card?.variantId || '');
+  const isFlasheraVisual = itemObj?.flashera === true || itemObj?._flashera === true || itemObj?.finish === 'flashera' || card?.flashera === true || card?.finish === 'flashera' || card?._dfcPhysicalCard?.flashera === true || /::flashera$/i.test(flasheraVariantHint);
+  if (isFlasheraVisual) decorateFlasheraCard(el, { mode: inferFlasheraModeForZone(zone) });
+
   return el;
 }
 
@@ -3334,6 +3357,16 @@ export function showChestScreen(onBack) {
 
   function showPackReveal(result, operationId = null) {
     const cards = cardsFromIds(result?.cardIds, 15);
+    // Stage32: materialize the EXACT credited physical slot from the immutable server
+    // operation receipt. Never roll cosmetics in the browser or change cardDb definitions.
+    const granted = result?.flashera;
+    if (granted?.enabled === true && granted?.awarded === true) {
+      const slot=granted.slotIndex;
+      if (!Number.isInteger(slot)||slot<0||slot>=cards.length || granted.cardId!==cards[slot].id || granted.variantId!==`${granted.cardId}::flashera`) {
+        throw new Error('ECONOMY_FLASHERA_RECEIPT_INVALID');
+      }
+      cards[slot]={...cards[slot],flashera:true,finish:'flashera',variantId:granted.variantId};
+    }
     showPackOpeningExperience({
       cards,
       fichaTotal: Number(result?.fichasAfter ?? state.userProfile?.fichas ?? 0),
@@ -4295,6 +4328,7 @@ export function showEncyclopedia(onBack) {
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
   let enhancedOnly = false;
+  let flasheraOnly = false;
   let evolvableOnly = false;
   // 23.21.6 HF3 — superficie operativa sólo Admin para revisar/publicar expansiones nuevas.
   let unpublishedOnly = false;
@@ -4355,6 +4389,10 @@ export function showEncyclopedia(onBack) {
         <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-enhanced-only">
           ${gameTextHtml('encyclopedia.filter.enhanced')}
+        </label>
+        <label class="encyclopedia-filter-option encyclopedia-standard-filter">
+          <input type="checkbox" id="enc-flashera-only">
+          ✨ Solo Flasheras
         </label>
         <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-evolvable-only">
@@ -4585,8 +4623,15 @@ export function showEncyclopedia(onBack) {
       const evolutionStageVisible = stageNumber => stageNumber === 0 || isAdminUser() || isEvolutionStageDiscovered(evolutionProfile, card.id, stageNumber);
       const renderEncyclopediaStage = stageNumber => {
         const normalizedStage = isEvolutionEligibleCard(card) ? Math.max(0, Math.min(2, Number(stageNumber) || 0)) : 0;
-        const displayCard = normalizedStage > 0 ? applyEvolutionStage(card, normalizedStage) : card;
+        const rawDisplayCard = normalizedStage > 0 ? applyEvolutionStage(card, normalizedStage) : card;
         const visible = normalizedStage === 0 ? owned : evolutionStageVisible(normalizedStage);
+        // One slot per card ID; a legitimately owned premium copy takes rendering priority.
+        // In undiscovered Discovery/asset tabs no premium ownership is ever inferred.
+        const stateId = cardVariantId(card.id, {state:normalizedStage ? `evo${normalizedStage}` : 'base'});
+        const hasFlashera = !isAssetTab && !isAdminDiscoverablesTab && visible && (normalizedStage === 0
+          ? flasheraTotalForBase(state.userProfile || {}, card.id) > 0
+          : availableCopiesForVariant(state.userProfile || {}, `${stateId}::flashera`) > 0);
+        const displayCard = hasFlashera ? {...rawDisplayCard, flashera:true, variantId:`${stateId}::flashera`} : rawDisplayCard;
         const nextCard = createCardElement(displayCard, false, true, null, 'encyclopedia', null);
         const currentCard = slot.querySelector(':scope > .card');
         if (currentCard) currentCard.replaceWith(nextCard); else slot.prepend(nextCard);
@@ -4731,6 +4776,7 @@ export function showEncyclopedia(onBack) {
         node:slot,
         owned,
         enhanced:isAssetTab || isDiscoveryTab ? false : enhancedIds.has(card.id),
+        flashera:!isAssetTab && !isAdminDiscoverablesTab && owned && flasheraTotalForBase(state.userProfile || {},card.id) > 0,
         evolvable:!isAssetTab && !isDiscoveryTab && isEvolutionEligibleCard(card),
         token:isTokenTab,
         dfcBack:isDfcBackTab,
@@ -4771,15 +4817,17 @@ export function showEncyclopedia(onBack) {
       const matches = record.discovery
         // Stage21 anti-oracle: una incógnita sólo puede filtrarse por su PISTA permitida y
         // por poseída/no poseída. No se evalúa rareza/color/CMC/arquetipo/mecánica/nombre real.
-        ? (ownershipFilter !== 'owned' || record.owned) &&
+        ? (!flasheraOnly || record.flashera === true) &&
+          (ownershipFilter !== 'owned' || record.owned) &&
           (!query || normalizeSearch(record.discoverySearchText).includes(query))
         : record.assetOnly
-          ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
+          ? !flasheraOnly && (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
           : activeRarities.has(card.rarity) &&
             cardMatchesColorFilter(card, activeColors) &&
             cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
             (ownershipFilter !== 'owned' || record.owned) &&
             (!enhancedOnly || record.enhanced) &&
+            (!flasheraOnly || record.flashera) &&
             (!evolvableOnly || record.evolvable) &&
             (!unpublishedOnly || card.enabled === false) &&
             (!query || normalizeSearch(card.name).includes(query));
@@ -4859,6 +4907,10 @@ export function showEncyclopedia(onBack) {
 
   overlay.querySelector('#enc-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
+    refreshGrid();
+  });
+  overlay.querySelector('#enc-flashera-only').addEventListener('change', e => {
+    flasheraOnly = e.target.checked;
     refreshGrid();
   });
 
@@ -5313,6 +5365,7 @@ export function showStoreScreen(onBack, options = {}) {
   }
 
   let craftSelectedCardId = null;
+  let craftSelectedFinish = 'normal';
   // HF8 — browser de crafteo con el mismo lenguaje de filtros que Mis publicaciones.
   const craftFilters = { query:'', colors:new Set(), rarity:'' };
   // 23.13.37 craft hotfix — tamaño persistente dentro del selector de criaturas.
@@ -6283,6 +6336,7 @@ export function showStoreScreen(onBack, options = {}) {
       btn.appendChild(cardEl);
       btn.addEventListener('click', () => {
         craftSelectedCardId = card.id;
+        craftSelectedFinish = 'normal';
         renderCraftPickKeywordView(card);
       });
       list.appendChild(btn);
@@ -6328,6 +6382,10 @@ export function showStoreScreen(onBack, options = {}) {
   function renderCraftPickKeywordView(card) {
     const intrinsicKeywords = new Set((Array.isArray(card?.keywords) ? card.keywords : []).map(k => String(k || '').trim().toLowerCase()));
     const availableKeywords = ENHANCEMENT_KEYWORDS.filter(k => !intrinsicKeywords.has(String(k.key).toLowerCase()));
+    const baseVariants=physicalCardVariants(state.userProfile||{},card.id).filter(row=>row.state==='base');
+    const normalCopies=baseVariants.find(row=>!row.flashera)?.count||0;
+    const flasheraCopies=baseVariants.find(row=>row.flashera)?.count||0;
+    if(craftSelectedFinish==='normal'&&!normalCopies)craftSelectedFinish='flashera';
     const keywordButtonsHTML = availableKeywords.map(k =>
       `<button class="store-keyword-btn" data-keyword="${k.key}">${k.label}</button>`
     ).join('');
@@ -6336,12 +6394,19 @@ export function showStoreScreen(onBack, options = {}) {
       <div class="store-section">
         <div class="store-section-title">${card.name} — elegí la keyword</div>
         <div class="store-section-desc">Las habilidades que la carta ya tiene de forma natural no se ofrecen como mejora.</div>
+        <fieldset class="store-craft-finish-picker" aria-label="Elegí qué copia física mejorar" style="display:flex;gap:12px;flex-wrap:wrap;border:1px solid rgba(212,175,55,.4);border-radius:10px;padding:12px;margin:8px 0;color:#f2dfae">
+          <legend>Elegí qué copia mejorar</legend>
+          <label><input type="radio" name="craft-source-finish" value="normal" ${craftSelectedFinish==='normal'?'checked':''} ${normalCopies?'':'disabled'}> Normal (${normalCopies})</label>
+          <label><input type="radio" name="craft-source-finish" value="flashera" ${craftSelectedFinish==='flashera'?'checked':''} ${flasheraCopies?'':'disabled'}> ✨ Flashera (${flasheraCopies})</label>
+          <small style="flex-basis:100%">El acabado Flashera se conserva al mejorar. No se genera un acabado nuevo.</small>
+        </fieldset>
         <div class="store-keyword-grid">${keywordButtonsHTML}</div>
         <div class="store-error-msg" id="store-craft-error"></div>
         <button class="store-back-link" id="store-craft-back">← Elegir otra carta</button>
       </div>
     `;
 
+    body.querySelectorAll('input[name="craft-source-finish"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)craftSelectedFinish=input.value;}));
     body.querySelectorAll('.store-keyword-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const keyword = btn.getAttribute('data-keyword');
@@ -6349,7 +6414,7 @@ export function showStoreScreen(onBack, options = {}) {
         const peers = [...body.querySelectorAll('.store-keyword-btn')].filter(b => b !== btn);
         try {
           const updated = await withEconomyButtonPending(btn, async () => {
-            return craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
+            return craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost(), craftSelectedFinish);
           }, {
             pendingLabel:gameText('workshop.enhancement.pending'),
             slowLabel:gameText('workshop.server.slow'),
@@ -6362,7 +6427,7 @@ export function showStoreScreen(onBack, options = {}) {
             clearStoreLoadingSlowTimer();
             storeMainViewSerial += 1;
             overlay.remove();
-            options.onCraftSuccess({ cardId:craftSelectedCardId, keyword });
+            options.onCraftSuccess({ cardId:craftSelectedCardId, keyword, sourceFinish:craftSelectedFinish });
           } else if (craftOnly) renderCraftPickCardView();
           else renderMainView();
         } catch (err) {
@@ -7377,6 +7442,7 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
       overlay,
       card,
       source:'resonance',
+      flashera:result.flashera?.awarded===true,
       adminBypass:!!result.adminBypass,
       renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
       onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
@@ -7526,6 +7592,7 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
       overlay,
       card,
       source:'barcode',
+      flashera:result.flashera?.awarded===true,
       adminBypass:!!result.adminBypass,
       renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
       onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
@@ -7940,6 +8007,12 @@ function injectWorkshopStyles() {
     .workshop-evolution-success-stage{font-size:13px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#ffd980;border:1px solid rgba(255,215,111,.42);background:rgba(94,62,12,.24);padding:5px 10px;border-radius:999px}
     .workshop-evolution-success-card{display:flex;justify-content:center;width:100%;padding:2px 0}.workshop-evolution-success-card .card{--card-w:min(300px,72vw);width:var(--card-w)!important;height:auto!important;aspect-ratio:5/7!important;max-width:none!important;transform:none!important;pointer-events:none!important;filter:drop-shadow(0 0 20px rgba(195,114,255,.5)) drop-shadow(0 18px 30px rgba(0,0,0,.74))}
     .workshop-evolution-success-reminder{max-width:640px;margin:0;color:#d7cbdf;font-size:13px;line-height:1.45}
+    .stage35-mixer-flashera-reveal .workshop-mixer-success-modal{border-color:#f7d36e;box-shadow:0 0 28px #f7d36e82,0 0 90px #64d6e33d,0 24px 78px #000c;position:relative;isolation:isolate}
+    .stage35-mixer-flashera-reveal .workshop-mixer-success-modal:before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:conic-gradient(from 30deg,#e4d27540,#67ccd933,#e796c233,#85a9ed40,#e4d27540);animation:stage35-mixer-halo 3.4s linear infinite}
+    .stage35-mixer-flashera-title{font-size:clamp(20px,3vw,32px);font-weight:900;letter-spacing:.08em;color:#ffefad;text-shadow:0 0 16px #ffe18c,0 0 32px #a4f5ff;animation:stage35-mixer-pulse 1.5s ease-in-out infinite alternate}
+    @keyframes stage35-mixer-halo{to{filter:hue-rotate(360deg)}}
+    @keyframes stage35-mixer-pulse{to{filter:brightness(1.28)}}
+    @media(prefers-reduced-motion:reduce){.stage35-mixer-flashera-reveal .workshop-mixer-success-modal:before,.stage35-mixer-flashera-title{animation:none!important}}
     .workshop-mixer-success-overlay{position:fixed;inset:0;z-index:10064;background:rgba(2,8,6,.87);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(5px)}
     .workshop-mixer-success-modal{width:min(720px,96vw);max-height:94vh;overflow:auto;border:1px solid rgba(132,238,190,.72);border-radius:18px;background:radial-gradient(circle at 50% 0,rgba(39,112,85,.6),rgba(12,29,22,.98) 54%,rgba(6,12,9,.99));box-shadow:0 0 48px rgba(82,223,166,.25),0 22px 70px rgba(0,0,0,.78);padding:20px 22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
     .workshop-mixer-success-title{margin:0;color:#dffff0;font-size:27px;letter-spacing:.035em;text-shadow:0 0 16px rgba(108,244,193,.42)}
@@ -8004,6 +8077,7 @@ export function showWorkshopScreen(onBack, options = {}) {
   const loading = overlay.querySelector('#workshop-loading');
   const cleanupStage = applyWorkshopStageCover(stage, bg);
   let layout = normalizeWorkshopLayout(null);
+  let evolutionFlasheraChanceBps=800;
   let selectedMachineId = null;
 
   const close = () => { cleanupStage(); overlay.remove(); onBack?.(); };
@@ -8018,11 +8092,11 @@ export function showWorkshopScreen(onBack, options = {}) {
     );
   };
 
-  function showEnhancementSuccessModal({ cardId, keyword } = {}) {
+  function showEnhancementSuccessModal({ cardId, keyword, sourceFinish } = {}) {
     const card=cardDb.getById(cardId);
     const persistedKeyword=state.userProfile?.enhancements?.[cardId] || keyword;
     if (!card || !persistedKeyword) return;
-    const displayCard={ ...card, keywords:[...(card.keywords || []), persistedKeyword] };
+    const displayCard={ ...card, keywords:[...(card.keywords || []), persistedKeyword],flashera:sourceFinish==='flashera' };
     const keywordLabel=ENHANCEMENT_KEYWORDS.find(entry=>entry.key===persistedKeyword)?.label || persistedKeyword;
     const modal=document.createElement('div');
     modal.className='workshop-enhancement-success-overlay';
@@ -8043,17 +8117,30 @@ export function showWorkshopScreen(onBack, options = {}) {
   }
 
 
-  function showEvolutionSuccessModal({ cardId, stage } = {}) {
+  function showEvolutionSuccessModal({ cardId, stage, flashera } = {}) {
     const baseCard=cardDb.getById(cardId);
     const persistedStage=evolutionStageForProfile(state.userProfile?.evolutions,cardId);
     const resolvedStage=Math.max(1,Math.min(2,Number(persistedStage || stage) || 1));
     if (!baseCard) return;
-    const displayCard=applyEvolutionStage(baseCard,resolvedStage);
+    const displayCard={...applyEvolutionStage(baseCard,resolvedStage),flashera:flashera?.awarded===true};
+    const earnedPremium=flashera?.newlyAwarded===true;
+    const preservedPremium=flashera?.preserved===true;
+    if(!document.getElementById('stage34-evolution-flashera-style')){
+      const style=document.createElement('style');style.id='stage34-evolution-flashera-style';
+      style.textContent=`.workshop-evolution-success-overlay.stage34-flashera-celebration .workshop-evolution-success-modal{box-shadow:0 0 38px rgba(179,114,255,.72),inset 0 0 18px rgba(92,217,255,.28);border-color:#d5a9ff}
+.stage34-flashera-title{font-weight:900;letter-spacing:.12em;text-align:center;font-size:clamp(17px,3vw,29px);color:#fff2af;text-shadow:0 0 14px #cc7eff,0 0 26px #64cfff;animation:stage34-flashera-glow 2.1s ease-in-out infinite alternate}
+@keyframes stage34-flashera-glow{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+@media(prefers-reduced-motion:reduce){.stage34-flashera-title{animation:none!important}}`;
+      document.head.appendChild(style);
+    }
     const modal=document.createElement('div');
     modal.className='workshop-evolution-success-overlay';
+    if(earnedPremium||preservedPremium) modal.classList.add('stage34-flashera-celebration');
+    if(earnedPremium){try{playSfx('flasheraReveal');}catch{}}
     modal.innerHTML=`<div class="workshop-evolution-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-evolution-success-title">
       <h2 class="workshop-evolution-success-title" id="workshop-evolution-success-title">${gameTextHtml('workshop.evolution.successTitle')}</h2>
       <div class="workshop-evolution-success-stage">${gameTextHtml('workshop.evolution.successStage',{stage:resolvedStage,rarity:displayCard.rarity||''})}</div>
+      ${earnedPremium?'<div class="stage34-flashera-title" aria-live="polite">✨ ¡NUEVA FLASHERA! ✨</div>':preservedPremium?'<div class="stage34-flashera-title">✨ FLASHERA CONSERVADA</div>':''}
       <div class="workshop-evolution-success-card" id="workshop-evolution-success-card"></div>
       <p class="workshop-evolution-success-reminder">${gameTextHtml('workshop.evolution.successReminder')}</p>
       <button class="workshop-action-btn" id="workshop-evolution-success-close">${gameTextHtml('workshop.evolution.continue')}</button>
@@ -8061,19 +8148,24 @@ export function showWorkshopScreen(onBack, options = {}) {
     document.body.appendChild(modal);
     const cardHost=modal.querySelector('#workshop-evolution-success-card');
     const cardEl=createCardElement(displayCard,false,true,null,'preview',null);
-    cardEl.setAttribute('aria-label',`${displayCard.name} · EVO ${resolvedStage}`);
+    cardEl.setAttribute('aria-label',`${displayCard.name} · EVO ${resolvedStage}${displayCard.flashera?' · FLASHERA':''}`);
     cardHost?.appendChild(cardEl);
     const dismiss=()=>modal.remove();
     modal.querySelector('#workshop-evolution-success-close')?.addEventListener('click',dismiss);
   }
 
 
-  function showMixerSuccessModal({ outputCardId, fromRarity, toRarity } = {}) {
-    const displayCard=cardDb.getById(outputCardId); if(!displayCard)return;
+  function showMixerSuccessModal({ outputCardId, fromRarity, toRarity, flashera } = {}) {
+    const baseCard=cardDb.getById(outputCardId); if(!baseCard)return;
+    const premium=flashera?.awarded===true && flashera?.variantId===`${outputCardId}::flashera`;
+    const displayCard={...baseCard,flashera:premium};
+    if(premium){try{playSfx('flasheraReveal');}catch{}}
     const modal=document.createElement('div'); modal.className='workshop-mixer-success-overlay';
+    if(premium)modal.classList.add('stage35-mixer-flashera-reveal');
     modal.innerHTML=`<div class="workshop-mixer-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-mixer-success-title">
       <h2 class="workshop-mixer-success-title" id="workshop-mixer-success-title">${gameTextHtml('workshop.mixer.successTitle')}</h2>
       <div class="workshop-mixer-success-rarity">${gameTextHtml('workshop.mixer.successRarity',{from:fromRarity||'',to:toRarity||displayCard.rarity||''})}</div>
+      ${premium?'<div class="stage35-mixer-flashera-title" aria-live="polite">✨ ¡FLASHERA DESCUBIERTA! ✨</div>':''}
       <div class="workshop-mixer-success-card" id="workshop-mixer-success-card"></div>
       <p class="workshop-mixer-success-reminder">${gameTextHtml('workshop.mixer.successReminder')}</p>
       <button class="workshop-action-btn" id="workshop-mixer-success-close">${gameTextHtml('workshop.mixer.continue')}</button>
@@ -8125,15 +8217,26 @@ export function showWorkshopScreen(onBack, options = {}) {
     }
     panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.evolution.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.evolution.description')}</div><label class="workshop-evolution-picker"><span>${gameTextHtml('workshop.evolution.choose')}</span><select id="workshop-evolution-select">${candidates.map(row=>`<option value="${escapeHtml(row.path.baseId)}">${escapeHtml(row.card.name)} · ${row.stage?gameText('workshop.evolution.stage',{stage:row.stage}):gameText('workshop.evolution.base')}</option>`).join('')}</select></label><div id="workshop-evolution-detail"></div><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-evolution-action"></button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
     const select=panel.querySelector('#workshop-evolution-select'),detail=panel.querySelector('#workshop-evolution-detail'),action=panel.querySelector('#workshop-evolution-action'),status=panel.querySelector('#workshop-status'),closeBtn=panel.querySelector('#workshop-panel-close');
+    let chosenSourceFinish='normal';
     const renderDetail=()=>{
       const row=candidates.find(entry=>entry.path.baseId===select?.value)||candidates[0]; if(!row)return;
       const currentStage=evolutionStageForProfile(state.userProfile?.evolutions,row.path.baseId),nextStage=Math.min(2,currentStage+1);
-      const currentCard=currentStage?applyEvolutionStage(row.card,currentStage):{...row.card};
-      const nextCard=applyEvolutionStage(row.card,nextStage);
+      const sourceState=currentStage===0?'base':`evo${currentStage}`;
+      const sourceVariants=physicalCardVariants(state.userProfile||{},row.path.baseId).filter(entry=>entry.state===sourceState);
+      const normalSource=sourceVariants.find(entry=>!entry.flashera)?.count||0;
+      const premiumSource=sourceVariants.find(entry=>entry.flashera)?.count||0;
+      // Base has multiple physically distinct copies; player must know which one
+      // evolves. EVO1 is a single copy and always carries its existing finish.
+      if(currentStage>0) chosenSourceFinish=premiumSource?'flashera':'normal';
+      else if((chosenSourceFinish==='flashera'&&!premiumSource)||(chosenSourceFinish==='normal'&&!normalSource))
+        chosenSourceFinish=normalSource?'normal':'flashera';
+      const sourcePremium=chosenSourceFinish==='flashera';
+      const currentCard={...(currentStage?applyEvolutionStage(row.card,currentStage):row.card),flashera:sourcePremium};
+      const nextCard={...applyEvolutionStage(row.card,nextStage),flashera:sourcePremium};
       const cost=WORKSHOP_POLICY?.evolution?.[`stage${nextStage}`]||{points:0,fichas:0,essence:0,copiesRequired:1};
       const owned=ownedCounts[row.path.baseId]||0, enhanced=!!state.userProfile?.enhancements?.[row.path.baseId];
       const physicalNeeded=Math.max(Number(cost.copiesRequired)||1,1+(enhanced?1:0));
-      const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&owned>=physicalNeeded;
+      const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&owned>=physicalNeeded&&(sourcePremium?premiumSource:normalSource)>0;
       detail.replaceChildren();
       const preview=document.createElement('div');preview.className='workshop-evolution-preview';
       for(const [label,card] of [[gameText('workshop.evolution.current'),currentCard],[gameText('workshop.evolution.next'),nextCard]]){
@@ -8141,58 +8244,79 @@ export function showWorkshopScreen(onBack, options = {}) {
         const title=document.createElement('div');title.className='workshop-evolution-preview-label';title.textContent=label;
         block.append(title,createCardElement(card,false,true,null,'preview',null));preview.appendChild(block);
       }
+      if(currentStage===0){
+        const sourcePicker=document.createElement('label');sourcePicker.className='workshop-evolution-picker';
+        sourcePicker.textContent=gameText('workshop.evolution.flashera.chooseCopy');
+        const finishSelect=document.createElement('select');finishSelect.setAttribute('aria-label',gameText('workshop.evolution.flashera.chooseCopy'));
+        for(const [finish,count,title] of [['normal',normalSource,gameText('workshop.evolution.flashera.normal')],['flashera',premiumSource,gameText('workshop.evolution.flashera.premium')]]){
+          if(count<1)continue;
+          const option=document.createElement('option');option.value=finish;option.textContent=`${title} (${count}×)`;option.selected=finish===chosenSourceFinish;finishSelect.appendChild(option);
+        }
+        finishSelect.addEventListener('change',()=>{chosenSourceFinish=finishSelect.value;renderDetail();});
+        sourcePicker.appendChild(finishSelect);detail.appendChild(sourcePicker);
+      }
+      const finishNote=document.createElement('p');finishNote.className='workshop-panel-desc';
+      finishNote.textContent=sourcePremium?gameText('workshop.evolution.flashera.preserved'):gameText('workshop.evolution.flashera.chance',{chance:(evolutionFlasheraChanceBps/100).toLocaleString('es-AR',{maximumFractionDigits:2})});
       const costEl=document.createElement('div');costEl.className='workshop-panel-cost';costEl.textContent=gameText('workshop.evolution.cost',{points:cost.points,fichas:cost.fichas,essence:cost.essence});
       const copies=document.createElement('div');copies.className='workshop-panel-desc';copies.textContent=gameText('workshop.evolution.copies',{required:physicalNeeded,owned});
       const rule=document.createElement('div');rule.className='workshop-evolution-rule';rule.textContent=gameText('workshop.evolution.deckRule');
-      detail.append(preview,costEl,copies,rule);
+      detail.append(preview,finishNote,costEl,copies,rule);
+      action.dataset.sourceFinish=chosenSourceFinish;
       action.textContent=gameText('workshop.evolution.action',{stage:nextStage}); action.disabled=!hasFunds;
       action.dataset.cardId=row.path.baseId; action.dataset.nextStage=String(nextStage);
       if(status)status.textContent=hasFunds?'':gameText('workshop.evolution.notEnough');
     };
-    select?.addEventListener('change',renderDetail); closeBtn?.addEventListener('click',()=>{panel.hidden=true;selectedMachineId=null;});
+    select?.addEventListener('change',()=>{chosenSourceFinish='normal';renderDetail();}); closeBtn?.addEventListener('click',()=>{panel.hidden=true;selectedMachineId=null;});
     action?.addEventListener('click',async()=>{
-      const cardId=action.dataset.cardId,nextStage=Number(action.dataset.nextStage)||1,card=cardDb.getById(cardId); if(!card||!state.currentUser?.uid)return;
+      const cardId=action.dataset.cardId,sourceFinish=action.dataset.sourceFinish||'normal',nextStage=Number(action.dataset.nextStage)||1,card=cardDb.getById(cardId); if(!card||!state.currentUser?.uid)return;
       if(status)status.textContent='';
       try{
-        const outcome=await withEconomyButtonPending(action,()=>evolveCard(state.currentUser.uid,cardId),{pendingLabel:gameText('workshop.evolution.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});
+        const outcome=await withEconomyButtonPending(action,()=>evolveCard(state.currentUser.uid,cardId,sourceFinish),{pendingLabel:gameText('workshop.evolution.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});
         if(outcome?.profile)state.userProfile=outcome.profile;
         renderWallet();renderMachines();
         if(status)status.textContent=gameText('workshop.evolution.success',{card:card.name,stage:nextStage});
         cleanupStage();
         overlay.remove();
-        showWorkshopScreen(onBack,{ evolutionCelebration:{cardId,stage:nextStage} });
+        showWorkshopScreen(onBack,{ evolutionCelebration:{cardId,stage:nextStage,flashera:outcome?.result?.flashera||null} });
       }catch(err){console.error('No se pudo evolucionar la carta:',err);if(status)status.textContent=err?.message||gameText('workshop.evolution.notEnough');}
     });
     renderDetail();
   }
 
 
-  function clientMixerProtectedCopies(cardId){
-    const baseId=String(cardId||''); let maxDeck=0;
-    for(const deck of (state.userProfile?.decks||[])){
-      let count=0; for(const raw of (deck?.cardIds||[])){const id=String(raw||''); const base=id.replace(/::(?:enhanced|evo1|evo2)$/,''); if(base===baseId)count+=1;}
-      if(count>maxDeck)maxDeck=count;
+  // Stage35: only unreserved NORMAL BASE physical copies are eligible.
+  function clientMixerNormalAvailability(cardId){
+    const baseId=String(cardId||'');
+    const profile=state.userProfile||{};
+    const owned=(profile.collection||[]).filter(id=>String(id)===baseId).length;
+    const normalBase=availableCopiesForVariant(profile,baseId);
+    const flasheraBase=availableCopiesForVariant(profile,`${baseId}::flashera`);
+    let normalInDeck=0;
+    for(const deck of profile.decks||[]){
+      const used=(deck?.cardIds||[]).filter(id=>String(id)===baseId).length;
+      normalInDeck=Math.max(normalInDeck,used);
     }
-    const enhanced=state.userProfile?.enhancements?.[baseId]?1:0;
-    const evolved=evolutionStageForProfile(state.userProfile?.evolutions,baseId)>0?1:0;
-    return Math.max(1,maxDeck,enhanced+evolved);
+    const protectedNormal=Math.max(normalInDeck,owned===normalBase?1:0);
+    // Marketplace reservations are server-authoritative and checked at execution.
+    return {owned,normalBase,flasheraBase,protectedNormal,
+      freeEstimate:Math.max(0,normalBase-protectedNormal)};
   }
   function openMachine3Mixer(){
     selectedMachineId='machine3';
     panel.classList.add('workshop-panel--machine-detail');
     const ownedCounts={}; for(const id of (state.userProfile?.collection||[]))ownedCounts[id]=(ownedCounts[id]||0)+1;
     const candidates=(cardDb.enabledCards||cardDb.allCards||[]).filter(card=>!isDiscoveryCard(card)&&['Common','Uncommon','Rare'].includes(card?.rarity)).map(card=>{
-      const owned=ownedCounts[card.id]||0,protectedCopies=clientMixerProtectedCopies(card.id),freeEstimate=Math.max(0,owned-protectedCopies);
-      return {card,owned,protectedCopies,freeEstimate};
+      const availability=clientMixerNormalAvailability(card.id);
+      return {card,...availability};
     }).filter(row=>row.freeEstimate>=3).sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es'));
     panel.hidden=false;
     if(!candidates.length){panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.mixer.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.mixer.empty')}</div><div class="workshop-panel-actions"><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div>`;panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{panel.hidden=true;});return;}
-    panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.mixer.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.mixer.description')}</div><label class="workshop-evolution-picker"><span>${gameTextHtml('workshop.mixer.choose')}</span><select id="workshop-mixer-select">${candidates.map(row=>`<option value="${escapeHtml(row.card.id)}">${escapeHtml(row.card.name)} · ${escapeHtml(row.card.rarity)} · ${row.owned}×</option>`).join('')}</select></label><div id="workshop-mixer-detail"></div><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-mixer-action">${gameTextHtml('workshop.mixer.action')}</button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
+    panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.mixer.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.mixer.description')}</div><label class="workshop-evolution-picker"><span>${gameTextHtml('workshop.mixer.choose')}</span><select id="workshop-mixer-select">${candidates.map(row=>`<option value="${escapeHtml(row.card.id)}">${escapeHtml(row.card.name)} · ${escapeHtml(row.card.rarity)} · ${row.freeEstimate} normales libres</option>`).join('')}</select></label><div id="workshop-mixer-detail"></div><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-mixer-action">${gameTextHtml('workshop.mixer.action')}</button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
     const select=panel.querySelector('#workshop-mixer-select'),detail=panel.querySelector('#workshop-mixer-detail'),action=panel.querySelector('#workshop-mixer-action'),status=panel.querySelector('#workshop-status'),closeBtn=panel.querySelector('#workshop-panel-close');
     const nextRarity={Common:'Uncommon',Uncommon:'Rare',Rare:'Mythic'};
-    const renderDetail=()=>{const row=candidates.find(r=>r.card.id===select?.value)||candidates[0];if(!row)return;const cost=WORKSHOP_POLICY?.mixer?.[row.card.rarity]||{points:0,fichas:0,essence:0};const to=nextRarity[row.card.rarity];const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&row.freeEstimate>=3;detail.replaceChildren();const cardWrap=document.createElement('div');cardWrap.className='workshop-evolution-preview';cardWrap.style.gridTemplateColumns='1fr';const block=document.createElement('div');block.className='workshop-evolution-preview-block';block.appendChild(createCardElement(row.card,false,true,null,'preview',null));cardWrap.appendChild(block);const rarity=document.createElement('div');rarity.className='workshop-panel-cost';rarity.textContent=gameText('workshop.mixer.rarity',{from:row.card.rarity,to});const costEl=document.createElement('div');costEl.className='workshop-panel-cost';costEl.textContent=gameText('workshop.mixer.cost',{points:cost.points,fichas:cost.fichas,essence:cost.essence});const copies=document.createElement('div');copies.className='workshop-panel-desc';copies.textContent=gameText('workshop.mixer.copies',{owned:row.owned});const rule=document.createElement('div');rule.className='workshop-evolution-rule';rule.textContent=gameText('workshop.mixer.rule');detail.append(cardWrap,rarity,costEl,copies,rule);action.disabled=!hasFunds;action.dataset.cardId=row.card.id;if(status)status.textContent=hasFunds?'':gameText('workshop.mixer.notEnough');};
+    const renderDetail=()=>{const row=candidates.find(r=>r.card.id===select?.value)||candidates[0];if(!row)return;const cost=WORKSHOP_POLICY?.mixer?.[row.card.rarity]||{points:0,fichas:0,essence:0};const to=nextRarity[row.card.rarity];const hasFunds=(Number(state.userProfile?.points)||0)>=cost.points&&(Number(state.userProfile?.fichas)||0)>=cost.fichas&&(Number(state.userProfile?.essence)||0)>=cost.essence&&row.freeEstimate>=3;detail.replaceChildren();const cardWrap=document.createElement('div');cardWrap.className='workshop-evolution-preview';cardWrap.style.gridTemplateColumns='1fr';const block=document.createElement('div');block.className='workshop-evolution-preview-block';block.appendChild(createCardElement(row.card,false,true,null,'preview',null));cardWrap.appendChild(block);const rarity=document.createElement('div');rarity.className='workshop-panel-cost';rarity.textContent=gameText('workshop.mixer.rarity',{from:row.card.rarity,to});const costEl=document.createElement('div');costEl.className='workshop-panel-cost';costEl.textContent=gameText('workshop.mixer.cost',{points:cost.points,fichas:cost.fichas,essence:cost.essence});const copies=document.createElement('div');copies.className='workshop-panel-desc';copies.textContent=`${row.owned} físicas · ${row.normalBase} normales base · ${row.flasheraBase} Flasheras base protegidas · ${row.freeEstimate} normales disponibles (estimación; reservas validadas en servidor)`;const rule=document.createElement('div');rule.className='workshop-evolution-rule';rule.textContent=gameText('workshop.mixer.rule');detail.append(cardWrap,rarity,costEl,copies,rule);action.disabled=!hasFunds;action.dataset.cardId=row.card.id;if(status)status.textContent=hasFunds?'':gameText('workshop.mixer.notEnough');};
     select?.addEventListener('change',renderDetail);closeBtn?.addEventListener('click',()=>{panel.hidden=true;selectedMachineId=null;});
-    action?.addEventListener('click',async()=>{const cardId=action.dataset.cardId;if(!cardId||!state.currentUser?.uid)return;if(status)status.textContent='';try{const outcome=await withEconomyButtonPending(action,()=>mixCards(state.currentUser.uid,cardId),{pendingLabel:gameText('workshop.mixer.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});if(outcome?.profile)state.userProfile=outcome.profile;const result=outcome?.result||{};renderWallet();renderMachines();cleanupStage();overlay.remove();showWorkshopScreen(onBack,{mixerCelebration:{outputCardId:result.outputCardId,fromRarity:result.fromRarity,toRarity:result.toRarity}});}catch(err){console.error('No se pudo mezclar la carta:',err);if(status)status.textContent=err?.message||gameText('workshop.mixer.notEnough');}});
+    action?.addEventListener('click',async()=>{const cardId=action.dataset.cardId;if(!cardId||!state.currentUser?.uid)return;if(status)status.textContent='';try{const outcome=await withEconomyButtonPending(action,()=>mixCards(state.currentUser.uid,cardId),{pendingLabel:gameText('workshop.mixer.pending'),slowLabel:gameText('workshop.server.slow'),disablePeers:[select,closeBtn]});if(outcome?.profile)state.userProfile=outcome.profile;const result=outcome?.result||{};renderWallet();renderMachines();cleanupStage();overlay.remove();showWorkshopScreen(onBack,{mixerCelebration:{outputCardId:result.outputCardId,fromRarity:result.fromRarity,toRarity:result.toRarity,flashera:result.flashera}});}catch(err){console.error('No se pudo mezclar la carta:',err);if(status)status.textContent=err?.message||gameText('workshop.mixer.notEnough');}});
     renderDetail();
   }
 
@@ -8284,6 +8408,8 @@ export function showWorkshopScreen(onBack, options = {}) {
       if (WORKSHOP_POLICY.enabled === false) { loading.textContent=gameText('workshop.disabled'); return; }
       try { layout=normalizeWorkshopLayout(await loadPublicGameConfigDocument('workshop')); }
       catch(err){ console.warn('[Workshop] No se pudo cargar layout, se usan defaults.',err); }
+      try { evolutionFlasheraChanceBps=normalizeFlasheraSettings(await loadPublicGameConfigDocument('flashera')).evolutionChanceBps; }
+      catch(err){console.warn('[Workshop] Probabilidad Flashera no disponible; se usa 8%.',err);}
       renderWallet(); renderMachines(); loading.remove();
       if(options.enhancementCelebration){
         const machineEl=machineRoot.querySelector('[data-machine-id="machine1"] .workshop-machine-img') || machineRoot.querySelector('[data-machine-id="machine1"]');
@@ -8403,6 +8529,9 @@ function injectDeckBuilderStyles() {
     .deckbuilder-side { width: 330px; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
     .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
+    .deckbuilder-pool-card-wrap.flashera .card { outline: 2px solid #8cc8ec; outline-offset:2px; border-radius:8px; }
+    .deckbuilder-flashera-marker { position:absolute; top:4px; right:4px; padding:2px 5px; border-radius:5px; background:rgba(12,21,46,.94); border:1px solid #b7d8ec; color:#eaf9ff; font-size:9px; font-weight:900; pointer-events:none; z-index:4; }
+
     .deckbuilder-enhanced-marker {
       position: absolute; bottom: 4px; left: 4px; right: 4px; text-align: center;
       background: rgba(212,175,55,0.92); color: #1a1408;
@@ -8581,6 +8710,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   let activeTab = 'criaturas';
   let searchQuery = '';
   let enhancedOnly = false;
+  let flasheraOnly = false;
   let evolvableOnly = false;
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
@@ -8617,6 +8747,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const deckCounts = {};
   let workingDeckName = String(deckName || '').trim();
   if (existingDeck) {
+    // Never mutate a chosen premium finish when opening an old deck. Historical
+    // enhanced-slot repair only understands NORMAL IDs; premium IDs pass through.
     const normalizedExistingIds = reconcileDeckEnhancementSlots(existingDeck.cardIds || [], enhancements, ownedCounts, MAX_ENHANCED_CARDS_PER_DECK);
     normalizedExistingIds.forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
   }
@@ -8665,6 +8797,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-enhanced-only">
           ✨ Solo mejoradas
+        </label>
+        <label class="encyclopedia-filter-option">
+          <input type="checkbox" id="deckbuilder-flashera-only">
+          ✨ Solo Flasheras
         </label>
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-evolvable-only">
@@ -8772,12 +8908,15 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     return Object.entries(deckCounts)
       .filter(([, n]) => n > 0)
       .map(([trackingKey, count]) => {
-        const isEnhanced = trackingKey.endsWith(ENHANCED_SUFFIX);
-        const parsedEvolution = isEnhanced ? {baseId:trackingKey,stage:0} : parseEvolutionVariantId(trackingKey);
-        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
+        const variant = parseCardVariantId(trackingKey);
+        const baseId = variant.baseId;
         const baseCard = cardDb.getById(baseId);
-        const card = baseCard && parsedEvolution.stage > 0 ? applyEvolutionStage(baseCard,parsedEvolution.stage) : baseCard;
-        return { trackingKey, baseId, card, count, isEnhanced, isEvolved:parsedEvolution.stage>0, evolutionStage:parsedEvolution.stage, categoryKey: baseCard ? deckCategoryById.get(baseId) : null };
+        const isEnhanced = variant.state === 'enhanced';
+        const evolvedStage = variant.evolutionStage;
+        let card = baseCard && evolvedStage > 0 ? applyEvolutionStage(baseCard,evolvedStage) : baseCard;
+        if (card && isEnhanced && enhancements[baseId]) card = {...card,keywords:[...(card.keywords||[]),enhancements[baseId]]};
+        if (card && variant.flashera) card = {...card,flashera:true,variantId:variant.canonicalId};
+        return { trackingKey, baseId, card, count, isEnhanced, isFlashera:variant.flashera, isEvolved:evolvedStage>0, evolutionStage:evolvedStage, categoryKey: baseCard ? deckCategoryById.get(baseId) : null };
       })
       .filter(entry => entry.card);
   }
@@ -8790,13 +8929,13 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   function totalEnhancedInDeck() {
     return Object.entries(deckCounts)
-      .filter(([key]) => key.endsWith(ENHANCED_SUFFIX))
+      .filter(([key]) => parseCardVariantId(key).state === 'enhanced')
       .reduce((sum, [, n]) => sum + n, 0);
   }
 
   function totalEvolvedInDeck() {
     return Object.entries(deckCounts)
-      .filter(([key]) => parseEvolutionVariantId(key).stage > 0)
+      .filter(([key]) => parseCardVariantId(key).evolutionStage > 0)
       .reduce((sum, [, n]) => sum + n, 0);
   }
 
@@ -8805,7 +8944,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
     const enhancedDeckCapReached = isEnhancedTile && inDeck === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK;
     const evolvedDeckCapReached = isEvolvedTile && inDeck === 0 && totalEvolvedInDeck() >= MAX_EVOLVED_CARDS_PER_DECK;
-    return inDeck >= cap || deckFull || enhancedDeckCapReached || evolvedDeckCapReached;
+    const variant = parseCardVariantId(trackingKey);
+    const card = cardDb.getById(variant.baseId);
+    const sharedFourCardCap = !!card && !card.type?.includes('básica') && countDeckBaseCopies(deckCounts, variant.baseId) >= MAX_COPIES_PER_CARD;
+    return inDeck >= cap || deckFull || enhancedDeckCapReached || evolvedDeckCapReached || sharedFourCardCap;
   }
 
   // 23.12.0 — agregar/quitar una carta ya NO destruye y reconstruye toda la grilla.
@@ -8841,14 +8983,22 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const inDeck = deckCounts[trackingKey] || 0;
       const maxed = isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile);
 
+      const isFlasheraTile = parseCardVariantId(trackingKey).flashera;
       const wrap = document.createElement('div');
-      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}${isEvolvedTile ? ' evolved' : ''}`;
+      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}${isEvolvedTile ? ' evolved' : ''}${isFlasheraTile ? ' flashera' : ''}`;
       wrap.dataset.trackingKey = trackingKey;
       wrap.dataset.baseCardId = baseCard.id;
       wrap.dataset.cap = String(cap);
       wrap.dataset.enhanced = isEnhancedTile ? '1' : '0';
       wrap.dataset.evolved = isEvolvedTile ? '1' : '0';
-      wrap.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
+      wrap.dataset.flashera = isFlasheraTile ? '1' : '0';
+      const presentedCard = isFlasheraTile ? {...displayCard,flashera:true,variantId:trackingKey} : displayCard;
+      wrap.appendChild(createCardElement(presentedCard, false, true, null, 'encyclopedia', null));
+      if (isFlasheraTile) {
+        const flash = document.createElement('div'); flash.className='deckbuilder-flashera-marker';
+        flash.textContent='✨ FLASHERA'; flash.setAttribute('aria-label', 'Copia Flashera');
+        wrap.appendChild(flash);
+      }
 
       if (isNewlyObtained(baseCard.id)) {
         const newMarker = document.createElement('div');
@@ -8884,7 +9034,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       });
 
       fragment.appendChild(wrap);
-      entry.records.push({ card: baseCard, displayCard, node: wrap, trackingKey, isEnhancedTile, isEvolvedTile });
+      entry.records.push({ card: baseCard, displayCard:presentedCard, node: wrap, trackingKey, isEnhancedTile, isEvolvedTile, isFlasheraTile });
     }
 
     cardDb.getByCategory(tabKey).forEach(card => {
@@ -8892,19 +9042,19 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       if (owned <= 0) return;
       const enhancementKeyword = enhancements[card.id];
       const evolutionStage = evolutionStageForProfile(evolutions,card.id);
-      let reserved=0;
-      if (enhancementKeyword && owned-reserved>0) {
-        const enhancedDisplayCard = { ...card, keywords: [...(card.keywords || []), enhancementKeyword] };
-        createPoolRecord(card, enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true, false);
-        reserved += 1;
+      // Base, enhanced, Evo1/Evo2 each split into NORMAL and FLASHERA physical copies.
+      // No new card definitions, no extra copies, and no phantom Flashera for Admin.
+      const physicalRows = physicalCardVariants(state.userProfile || {}, card.id, {
+        virtualNormalBaseCount:isAdminUser() && owned > (state.userProfile?.collection||[]).filter(id=>id===card.id).length ? owned : 0
+      });
+      for (const row of physicalRows) {
+        if (row.state === 'enhanced' && !enhancementKeyword) continue;
+        if ((row.state === 'evo1' || row.state === 'evo2') && evolutionStage !== Number(row.state.slice(-1))) continue;
+        const displayCard = row.state === 'enhanced'
+          ? {...card,keywords:[...(card.keywords||[]),enhancementKeyword]}
+          : row.state.startsWith('evo') ? applyEvolutionStage(card,evolutionStage) : card;
+        createPoolRecord(card,displayCard,row.id,row.count,row.state==='enhanced',row.state.startsWith('evo'));
       }
-      if (evolutionStage>0 && owned-reserved>0) {
-        const evolvedDisplayCard=applyEvolutionStage(card,evolutionStage);
-        createPoolRecord(card,evolvedDisplayCard,evolutionVariantId(card.id,evolutionStage),1,false,true);
-        reserved += 1;
-      }
-      const remainingOwned=Math.max(0,owned-reserved);
-      if (remainingOwned>0) createPoolRecord(card,card,card.id,remainingOwned,false,false);
     });
 
     entry.pane.appendChild(fragment);
@@ -8937,6 +9087,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       if (byCard !== 0) return byCard;
       if (a.isEnhancedTile !== b.isEnhancedTile) return a.isEnhancedTile ? -1 : 1;
       if (a.isEvolvedTile !== b.isEvolvedTile) return a.isEvolvedTile ? -1 : 1;
+      if (a.isFlasheraTile !== b.isFlasheraTile) return a.isFlasheraTile ? -1 : 1;
       return a.trackingKey.localeCompare(b.trackingKey);
     });
 
@@ -8947,6 +9098,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         cardMatchesColorFilter(card, activeColors) &&
         cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
         (!enhancedOnly || record.isEnhancedTile) &&
+        (!flasheraOnly || record.isFlasheraTile) &&
         (!evolvableOnly || isEvolutionEligibleCard(card)) &&
         (!newOnly || isNewlyObtained(card.id)) &&
         (!query || normalizeSearch(card.name).includes(query));
@@ -9085,7 +9237,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
           item.className = 'deckbuilder-list-item';
           const label = document.createElement('span');
           label.className = 'deckbuilder-list-card-name';
-          label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' ✨' : ''}${entry.isEvolved ? ` · ${gameText('workshop.evolution.badge',{stage:entry.evolutionStage})}` : ''}`;
+          label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' · Mejorada' : ''}${entry.isEvolved ? ` · ${gameText('workshop.evolution.badge',{stage:entry.evolutionStage})}` : ''}${entry.isFlashera ? ' · FLASHERA' : ''}`;
           label.title = usesTouchPreview ? 'Tocá para ver la carta completa' : 'Pasá el mouse para ver la carta completa';
 
           if (usesTouchPreview) {
@@ -9216,6 +9368,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     });
   });
 
+  overlay.querySelector('#deckbuilder-flashera-only').addEventListener('change', e => {
+    flasheraOnly = e.target.checked;
+    refreshPool();
+  });
+
   overlay.querySelector('#deckbuilder-stats').addEventListener('click', showDeckStatisticsModal);
 
   overlay.querySelector('#deckbuilder-cancel').addEventListener('click', () => {
@@ -9232,6 +9389,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       errorBox.textContent = `El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds.length}).`;
       return;
     }
+    try { assertDeckFlasheraOwnership(state.userProfile || {}, cardIds, {allowVirtualAdminPool:isAdminUser(),maxCopiesPerCard:MAX_COPIES_PER_CARD,isBasicLand:id=>cardDb.getById(id)?.type?.includes('básica')}); }
+    catch (error) { errorBox.textContent=error?.message || 'Inventario insuficiente para estas variantes.'; return; }
     errorBox.textContent = '';
     const saveBtn = overlay.querySelector('#deckbuilder-save');
     saveBtn.disabled = true;
@@ -9319,6 +9478,19 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
       const deckId = el.getAttribute('data-deck-id');
       const deck = decks.find(d => d.id === deckId);
       if (deck) {
+        // Stage31: preflight the physical premium overlay before leaving the picker.
+        // The gameplay builder independently validates again on boot. This client
+        // verification is NOT a substitute for server admission (Stage40).
+        if (isFlasheraDeck(deck.cardIds)) {
+          try {
+            assertDeckFlasheraOwnership(state.userProfile || {}, deck.cardIds, {
+              isBasicLand: id => !!cardDb.getById(id)?.type?.includes('básica')
+            });
+          } catch (error) {
+            showSimpleAlertModal(error?.message || 'No se pudo validar el inventario FLASHERA de este mazo.');
+            return;
+          }
+        }
         showMatchLoadingBeforeGameplayCommit();
         overlay.remove();
         onChooseDeck(deck);
@@ -9350,6 +9522,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
 
 export function showMyDecksScreen(onBack) {
   injectMyDecksStyles();
+  injectDeckBuilderStyles(); // Stage30: premium marker in saved-deck details is styled without entering the builder first.
   injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
   injectDeckBuilderStyles(); // reusamos .deckbuilder-enhanced-marker para marcar la copia mejorada
   injectStoreStyles(); // .store-back-link/.store-section: siempre disponibles
@@ -9445,21 +9618,24 @@ export function showMyDecksScreen(onBack) {
     const displayDeckIds = reconcileDeckEnhancementSlots(deck.cardIds || [], enhancements, displayOwnedCounts, MAX_ENHANCED_CARDS_PER_DECK);
     const cards = displayDeckIds
       .map(id => {
-        const isEnhanced = id.endsWith(ENHANCED_SUFFIX);
-        const parsedEvolution=isEnhanced?{baseId:id,stage:0}:parseEvolutionVariantId(id);
-        const baseId = isEnhanced ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
+        const variant = parseCardVariantId(id);
+        if (!variant.valid) return null;
+        const isEnhanced = variant.state === 'enhanced';
+        const baseId = variant.baseId;
         const cardDef = cardDb.getById(baseId);
         if (!cardDef) return null;
         const keyword = isEnhanced ? enhancements[baseId] : null;
-        let displayCard=parsedEvolution.stage>0?applyEvolutionStage(cardDef,parsedEvolution.stage):cardDef;
+        let displayCard=variant.evolutionStage>0?applyEvolutionStage(cardDef,variant.evolutionStage):cardDef;
         if(keyword) displayCard={...displayCard,keywords:[...(displayCard.keywords||[]),keyword]};
+        if(variant.flashera) displayCard={...displayCard,flashera:true,variantId:variant.canonicalId};
         return {
           baseId,
           categoryKey: detailCategoryById.get(baseId) || 'otros',
           displayCard,
           isEnhanced: !!keyword,
-          isEvolved: parsedEvolution.stage>0,
-          evolutionStage: parsedEvolution.stage
+          isEvolved: variant.evolutionStage>0,
+          isFlashera:variant.flashera,
+          evolutionStage: variant.evolutionStage
         };
       })
       .filter(Boolean)
@@ -9470,7 +9646,7 @@ export function showMyDecksScreen(onBack) {
         if (cmcDelta) return cmcDelta;
         const nameDelta = String(a.displayCard?.name || '').localeCompare(String(b.displayCard?.name || ''), 'es');
         if (nameDelta) return nameDelta;
-        return (Number(b.isEvolved)-Number(a.isEvolved)) || (Number(b.isEnhanced)-Number(a.isEnhanced));
+        return (Number(b.isEvolved)-Number(a.isEvolved)) || (Number(b.isEnhanced)-Number(a.isEnhanced)) || (Number(b.isFlashera)-Number(a.isFlashera));
       });
 
     body.innerHTML = `
@@ -9526,7 +9702,7 @@ export function showMyDecksScreen(onBack) {
     detailZoom?.addEventListener('input', syncDetailZoom);
     syncDetailZoom();
 
-    cards.forEach(({ displayCard, isEnhanced, isEvolved, evolutionStage }) => {
+    cards.forEach(({ displayCard, isEnhanced, isEvolved, isFlashera, evolutionStage }) => {
       const slot = document.createElement('div');
       slot.className = 'encyclopedia-card-slot';
       slot.style.position = 'relative';
@@ -9542,6 +9718,12 @@ export function showMyDecksScreen(onBack) {
         const marker = document.createElement('div');
         marker.className = 'deckbuilder-enhanced-marker deckbuilder-evolved-marker';
         marker.textContent = gameText('workshop.evolution.badge',{stage:evolutionStage});
+        slot.appendChild(marker);
+      }
+      if (isFlashera) {
+        const marker = document.createElement('div');
+        marker.className = 'deckbuilder-flashera-marker'; marker.textContent='✨ FLASHERA';
+        marker.setAttribute('aria-label','Copia Flashera guardada');
         slot.appendChild(marker);
       }
       grid.appendChild(slot);
@@ -10808,6 +10990,7 @@ export function showAdminPanel(onBack) {
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'appearance', label: 'APARIENCIA' },
+    { key: 'flasheras', label: 'FLASHERAS' },
     { key: 'workshop', label: gameText('admin.tab.workshop') },
     { key: 'achievements', label: gameText('admin.tab.achievements') },
     { key: 'sanctuary', label: gameText('sanctuary.admin.tab') },
@@ -10846,6 +11029,10 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="appearance">
         <div id="admin-appearance-root"></div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="flasheras">
+        <div id="admin-flashera-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="workshop">
@@ -11708,6 +11895,7 @@ Receipt: ${receiptId}
   function renderAdminStatistics(profiles, sessions, publicRows, market = null) {
     const snap = buildAdminStatisticsSnapshot(profiles, sessions, publicRows, market);
     const { profileStats, games, tracked, marketNow } = snap;
+    const flashCommunity=flasheraCommunitySnapshot(profiles);
     const marketSuffix = marketNow.capped ? gameText('admin.stats.market.capped') : gameText('admin.stats.market.live');
     const groups = [
       adminMetricGroup(gameText('admin.stats.group.activity'), [
@@ -11740,6 +11928,12 @@ Receipt: ${receiptId}
         adminMetricCard(gameText('admin.stats.dailyClaims'), tracked.dailyRewardsClaimed.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
         adminMetricCard(gameText('admin.stats.essence.current'), snap.essenceInCirculation.toLocaleString('es-AR'), gameText('admin.stats.essence.flow',{earned:tracked.essenceEarned.toLocaleString('es-AR'),spent:tracked.essenceSpent.toLocaleString('es-AR')})),
         adminMetricCard(gameText('admin.stats.achievements.claimed'), tracked.achievementClaims.toLocaleString('es-AR'), gameText('admin.stats.achievements.sub'))
+      ]),
+      adminMetricGroup('✨ Flasheras', [
+        adminMetricCard('Flasheras en circulación',flashCommunity.flasherasInCirculation.toLocaleString('es-AR'),'Copias físicas actuales; no cuenta rareza adicional'),
+        adminMetricCard('Jugadores con Flasheras',flashCommunity.playersWithFlasheras.toLocaleString('es-AR'),'Con al menos una copia'),
+        adminMetricCard('Flasheras únicas · comunidad',flashCommunity.communityUniqueFlasheras.toLocaleString('es-AR'),'Cartas base distintas; Evo/Mejorada no duplican la identidad'),
+        adminMetricCard('Top Flasheras',flashCommunity.top.slice(0,5).map(row=>`${row.cardId} (${row.copies})`).join(' · ')||'—','Cantidad actual por carta · detalle de tasas en Admin → Flasheras')
       ]),
       adminMetricGroup(gameText('admin.stats.group.store'), [
         adminMetricCard(gameText('admin.stats.store.packPurchases'), tracked.storePacksPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
@@ -12304,6 +12498,7 @@ Receipt: ${receiptId}
 
   let adminSanctuaryController=null;
   let adminAppearanceController=null;
+  let adminFlasheraController=null;
 
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
@@ -12318,8 +12513,19 @@ Receipt: ${receiptId}
       void adminNotificationsController?.load?.();
     }
     if (key === 'appearance') {
-      if (!adminAppearanceController) adminAppearanceController = mountAppearanceAdminPane(overlay.querySelector('#admin-appearance-root'));
+      if (!adminAppearanceController) adminAppearanceController = mountAppearanceAdminPane(overlay.querySelector('#admin-appearance-root'), {
+        renderFlasheraPreviewCard: () => {
+          // Reutiliza la definición y el DOM reales del motor; nunca construye una carta falsa.
+          const card = (cardDb.enabledCards || cardDb.allCards || []).find(c => c?.id && !isDiscoveryCard(c) && c?.type?.includes?.('Criatura'))
+            || (cardDb.enabledCards || cardDb.allCards || []).find(c => c?.id && !isDiscoveryCard(c));
+          return card ? createCardElement({ ...card, flashera:true },false,true,null,'flashera-preview',()=>{}) : null;
+        }
+      });
       void adminAppearanceController?.load?.();
+    }
+    if (key === 'flasheras') {
+      if (!adminFlasheraController) adminFlasheraController = mountAdminFlasheraPane(overlay.querySelector('#admin-flashera-root'));
+      void adminFlasheraController?.load?.();
     }
     if (key === 'workshop') void ensureAdminWorkshopPane();
     if (key === 'achievements') void ensureAdminAchievementsPane();
@@ -14095,7 +14301,7 @@ function injectTradeMarketStyles() {
   if (document.getElementById('trade-market-styles')) return;
   const style = document.createElement('style');
   style.id = 'trade-market-styles';
-  style.textContent = '/* Argentinia 23.21.0 RC2 — Mercado de Pases Visual UX */';
+  style.textContent = `.trade-visual-card{position:relative}.trade-finish-pill{position:absolute;top:8px;right:8px;z-index:7;border-radius:14px;padding:3px 7px;font-size:10px;font-weight:800;letter-spacing:.06em;background:rgba(14,24,38,.87);color:#ffeb9c;border:1px solid #eac476;pointer-events:none;box-shadow:0 0 10px #eac47655}.trade-filter-selects select{min-width:0}`;
   document.head.appendChild(style);
 }
 
@@ -14111,6 +14317,8 @@ function tradeColorLabel(color){ return gameText(TRADE_COLOR_KEYS[color] || 'tra
 function tradeTypeLabel(type){ return gameText(TRADE_TYPE_KEYS[type] || 'trade.filter.anyType'); }
 function tradeCard(cardId){ return cardDb.getById(String(cardId||'')); }
 function tradeCardName(cardId){ return tradeCard(cardId)?.name || gameText('trade.cardFallback'); }
+function tradeFinishText(finish){return finish==='flashera'?'✨ FLASHERA':'Normal';}
+function tradeVariantLabel(cardId,finish){return tradeCardName(cardId)+(finish==='flashera'?' · FLASHERA':'');}
 function tradeNormalizeSearch(value){ return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 function tradeCardTypeKeys(card){
   const type=tradeNormalizeSearch(card?.type),out=[];
@@ -14141,9 +14349,11 @@ function tradeListingWantedHtml(listing){
   return (listing?.wantedCriteria||[]).map((c,i)=>`${i+1}. ${escapeHtml(tradeCriterionText(c))}`).join('<br>');
 }
 function tradeListingWantedChipsHtml(listing){
-  if(listing?.acceptAnyCard===true) return `<span class="trade-wanted-chip trade-wanted-chip-any">${gameTextHtml('trade.acceptAny')}</span>`;
+  const finish=listing?.wantedFinish||'any';
+  const finishBadge=finish==='any'?'':`<span class="trade-wanted-chip">${escapeHtml(tradeFinishText(finish))}</span>`;
+  if(listing?.acceptAnyCard===true) return `<span class="trade-wanted-chip trade-wanted-chip-any">${gameTextHtml('trade.acceptAny')}</span>`+finishBadge;
   const criteria=Array.isArray(listing?.wantedCriteria)?listing.wantedCriteria:[];
-  return criteria.length?criteria.map(c=>`<span class="trade-wanted-chip">${escapeHtml(tradeCriterionText(c))}</span>`).join(''):`<span class="trade-wanted-chip">${gameTextHtml('trade.criteria.anyCard')}</span>`;
+  return (criteria.length?criteria.map(c=>`<span class="trade-wanted-chip">${escapeHtml(tradeCriterionText(c))}</span>`).join(''):`<span class="trade-wanted-chip">${gameTextHtml('trade.criteria.anyCard')}</span>`)+finishBadge;
 }
 function tradeCardMatchesCriterion(card,c){
   if(!card||!c)return false;
@@ -14154,7 +14364,7 @@ function tradeCardMatchesCriterion(card,c){
   if(c.color&&!tradeCardMatchesColor(card,String(c.color)))return false;
   return true;
 }
-function tradeCardMatchesListing(card,listing){return listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c));}
+function tradeCardMatchesListing(card,listing,finish='normal'){const wanted=listing?.wantedFinish||'any';return (wanted==='any'||wanted===finish)&&(listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c)));}
 function tradeAllCardsSorted(){ return [...cardDb.enabledCards].filter(card=>!isDiscoveryCard(card)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
 function tradeFindCardsByNameQuery(value,{limit=18}={}){
   const needle=tradeNormalizeSearch(value);
@@ -14181,28 +14391,28 @@ function tradeFindCardByName(value){
   return tradeAllCardsSorted().find(card=>tradeNormalizeSearch(card?.name)===needle)||null;
 }
 function tradeTradableEntries(market,listing=null){
-  return Object.entries(market?.tradableCounts||{})
-    .filter(([id,n])=>Number(n)>0&&!isDiscoveryCard(tradeCard(id))&&(!listing||tradeCardMatchesListing(tradeCard(id),listing)))
-    .map(([id,n])=>({card:tradeCard(id),id:String(id),n:Number(n)}))
-    .filter(x=>x.card)
-    .sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es'));
+  const available=market?.tradableVariants||Object.fromEntries(Object.entries(market?.tradableCounts||{}).map(([id,n])=>[id,{normal:n,flashera:0}]));
+  return Object.entries(available).flatMap(([id,variants])=>['normal','flashera'].map(finish=>({
+    card:tradeCard(id),id:String(id),finish,n:Number(variants?.[finish])||0
+  }))).filter(row=>row.n>0&&row.card&&!isDiscoveryCard(row.card)&&(!listing||tradeCardMatchesListing(row.card,listing,row.finish)))
+    .sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es')||a.finish.localeCompare(b.finish));
 }
 function tradeFormatDate(ms){
   const n=Number(ms)||0;
   if(!n)return '';
   try{return new Date(n).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch{return new Date(n).toLocaleString();}
 }
-function tradeVisualCardHtml(cardId,{label='',className='',showName=false}={}){
+function tradeVisualCardHtml(cardId,{label='',className='',showName=false,finish='normal'}={}){
   const id=String(cardId||'');
-  return `<div class="trade-visual-card ${label?'trade-has-label':''} ${className}" data-trade-visual-card="${escapeHtml(id)}">
-    ${label?`<div class="trade-visual-label">${escapeHtml(label)}</div>`:''}
-    <div class="trade-render-slot" data-trade-card-id="${escapeHtml(id)}" aria-label="${escapeHtml(tradeCardName(id))}"></div>
-    <button type="button" class="trade-zoom-btn" data-trade-zoom-card="${escapeHtml(id)}" title="${gameTextHtml('trade.zoom')}" aria-label="${gameTextHtml('trade.zoomCard',{card:tradeCardName(id)})}">🔍</button>
-    ${showName?`<div class="trade-card-name-large">${escapeHtml(tradeCardName(id))}</div>`:''}
+  return `<div class="trade-visual-card ${label?'trade-has-label':''} ${className}" data-trade-visual-card="${escapeHtml(id)}" data-trade-finish="${escapeHtml(finish)}">
+    ${label?`<div class="trade-visual-label">${escapeHtml(label)}</div>`:''}${finish==='flashera'?'<span class="trade-finish-pill">✨ FLASHERA</span>':''}
+    <div class="trade-render-slot" data-trade-card-id="${escapeHtml(id)}" data-trade-finish="${escapeHtml(finish)}" aria-label="${escapeHtml(tradeCardName(id))}"></div>
+    <button type="button" class="trade-zoom-btn" data-trade-zoom-card="${escapeHtml(id)}" data-trade-zoom-finish="${escapeHtml(finish)}" title="${gameTextHtml('trade.zoom')}" aria-label="${gameTextHtml('trade.zoomCard',{card:tradeCardName(id)})}">🔍</button>
+    ${showName?`<div class="trade-card-name-large">${escapeHtml(tradeVariantLabel(id,finish))}</div>`:''}
   </div>`;
 }
-function tradePairHtml(leftId,rightId,{leftLabel='',rightLabel='',compact=false}={}){
-  return `<div class="trade-pair ${compact?'compact':''}">${tradeVisualCardHtml(leftId,{label:leftLabel,className:'trade-pair-side',showName:true})}<div class="trade-pair-arrow" aria-hidden="true">↔</div>${tradeVisualCardHtml(rightId,{label:rightLabel,className:'trade-pair-side',showName:true})}</div>`;
+function tradePairHtml(leftId,rightId,{leftLabel='',rightLabel='',compact=false,leftFinish='normal',rightFinish='normal'}={}){
+  return `<div class="trade-pair ${compact?'compact':''}">${tradeVisualCardHtml(leftId,{label:leftLabel,className:'trade-pair-side',showName:true,finish:leftFinish})}<div class="trade-pair-arrow" aria-hidden="true">↔</div>${tradeVisualCardHtml(rightId,{label:rightLabel,className:'trade-pair-side',showName:true,finish:rightFinish})}</div>`;
 }
 function hydrateTradeCards(scope){
   if(!scope)return;
@@ -14212,6 +14422,7 @@ function hydrateTradeCards(scope){
     if(!card){slot.textContent=gameText('trade.cardFallback');slot.dataset.tradeHydrated='1';return;}
     const el=createCardElement(card,false,true,null,'preview',null);
     el.classList.add('trade-rendered-card');
+    if(slot.dataset.tradeFinish==='flashera') decorateFlasheraCard(el,{mode:'standard'});
     slot.appendChild(el);
     slot.dataset.tradeHydrated='1';
   });
@@ -14228,8 +14439,8 @@ function showTradeNotificationModal(item = {}) {
     const titleKey = accepted ? 'trade.notification.accepted.title' : 'trade.notification.rejected.title';
     const bodyKey = accepted ? 'trade.notification.accepted.body' : 'trade.notification.rejected.body';
     const pair = accepted
-      ? tradePairHtml(item.listedCardId, item.offeredCardId, { leftLabel:gameText('trade.pair.youReceived'), rightLabel:gameText('trade.pair.youGave') })
-      : tradePairHtml(item.offeredCardId, item.listedCardId, { leftLabel:gameText('trade.pair.youOffer'), rightLabel:gameText('trade.pair.youWant') });
+      ? tradePairHtml(item.listedCardId, item.offeredCardId, { leftLabel:gameText('trade.pair.youReceived'), rightLabel:gameText('trade.pair.youGave'),leftFinish:item.listedFinish,rightFinish:item.offeredFinish })
+      : tradePairHtml(item.offeredCardId, item.listedCardId, { leftLabel:gameText('trade.pair.youOffer'), rightLabel:gameText('trade.pair.youWant'),leftFinish:item.offeredFinish,rightFinish:item.listedFinish });
     modal.innerHTML = `<div class="trade-modal-panel trade-notification-panel">
       <button type="button" class="trade-modal-close" data-trade-notification-close aria-label="${gameTextHtml('common.close')}">×</button>
       <div class="trade-modal-title">${gameTextHtml(titleKey)}</div>
@@ -14287,9 +14498,9 @@ export function showTradeMarketScreen(onBack) {
   let tab='explore';
   let busy=false;
   let transientModal=null;
-  let publishSelectedCardId='';
-  const exploreFilters={query:'',colors:new Set(),rarity:'',type:''};
-  const publishFilters={query:'',colors:new Set(),rarity:'',type:''};
+  let publishSelectedFinish='normal',publishSelectedCardId='';
+  const exploreFilters={query:'',colors:new Set(),rarity:'',type:'',finish:''};
+  const publishFilters={query:'',colors:new Set(),rarity:'',type:'',finish:''};
 
   const closeTransientTradeModal=()=>{if(transientModal?.isConnected)transientModal.remove();transientModal=null;};
   const setBusy=v=>{busy=!!v;overlay.querySelectorAll('.trade-btn,.trade-select,.trade-input,.trade-card-suggestion,input,button[data-trade-offer-choice]').forEach(el=>{if(el.id!=='trade-back')el.disabled=busy;});};
@@ -14323,20 +14534,20 @@ export function showTradeMarketScreen(onBack) {
   function tabs(){return `<div class="trade-tabs">${[['explore','trade.tab.explore'],['mine','trade.tab.mine'],['offers','trade.tab.offers'],['history','trade.tab.history']].map(([id,key])=>`<button class="trade-tab ${tab===id?'active':''}" data-trade-tab="${id}">${gameTextHtml(key)}</button>`).join('')}</div>`;}
   function bindTabs(){root.querySelectorAll('[data-trade-tab]').forEach(btn=>btn.addEventListener('click',()=>{closeTransientTradeModal();tab=btn.dataset.tradeTab;render();}));}
 
-  function openTradeCardPreview(cardId){
+  function openTradeCardPreview(cardId,finish='normal'){
     const card=tradeCard(cardId);if(!card)return;
     // La lupa puede abrirse ENCIMA del modal de oferta/aceptación sin destruirlo: al cerrar
     // la vista ampliada el jugador vuelve exactamente a su selección anterior.
     const modal=document.createElement('div');modal.className='trade-modal trade-preview-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    modal.innerHTML=`<div class="trade-modal-panel trade-preview-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-preview-title">${escapeHtml(card.name)}</div><div class="trade-preview-card-slot"></div></div>`;
+    modal.innerHTML=`<div class="trade-modal-panel trade-preview-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-preview-title">${escapeHtml(tradeVariantLabel(cardId,finish))}</div><div class="trade-preview-card-slot"></div></div>`;
     const panel=modal.querySelector('.trade-modal-panel');panel.addEventListener('click',e=>e.stopPropagation());
-    modal.querySelector('.trade-preview-card-slot')?.appendChild(createCardElement(card,false,true,null,'preview',null));
+    const previewCard=createCardElement(card,false,true,null,'preview',null);if(finish==='flashera')decorateFlasheraCard(previewCard,{mode:'full'});modal.querySelector('.trade-preview-card-slot')?.appendChild(previewCard);
     const close=()=>{document.removeEventListener('keydown',onKey,true);if(modal.isConnected)modal.remove();};
     const onKey=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();}};
     modal.addEventListener('click',close);modal.querySelector('[data-trade-modal-close]')?.addEventListener('click',close);document.addEventListener('keydown',onKey,true);
     document.body.appendChild(modal);
   }
-  function bindTradeZoom(scope){scope?.querySelectorAll('[data-trade-zoom-card]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openTradeCardPreview(btn.dataset.tradeZoomCard);}));}
+  function bindTradeZoom(scope){scope?.querySelectorAll('[data-trade-zoom-card]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openTradeCardPreview(btn.dataset.tradeZoomCard,btn.dataset.tradeZoomFinish);}));}
 
   function renderTradeFilterToolbar(filters,prefix){
     const isExplore=prefix==='trade-explore';
@@ -14347,7 +14558,7 @@ export function showTradeMarketScreen(onBack) {
     return `<div class="trade-explore-toolbar" data-trade-filter-toolbar="${escapeHtml(prefix)}">
       <div class="trade-filter-search"><label for="${escapeHtml(searchId)}">${gameTextHtml('trade.filter.searchLabel')}</label><input id="${escapeHtml(searchId)}" class="trade-input" type="search" autocomplete="off" placeholder="${gameTextHtml('trade.filter.searchPlaceholder')}" value="${escapeHtml(filters.query)}"></div>
       <div class="trade-filter-block"><span class="trade-filter-label">${gameTextHtml('trade.filter.color')}</span><div class="trade-filter-chips">${TRADE_FILTER_COLORS.map(c=>`<button type="button" class="trade-filter-chip ${filters.colors.has(c)?'active':''}" data-trade-filter-prefix="${escapeHtml(prefix)}" data-trade-color-filter="${c}">${escapeHtml(tradeColorLabel(c))}</button>`).join('')}</div></div>
-      <div class="trade-filter-selects"><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="${escapeHtml(rarityId)}"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${filters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="${escapeHtml(typeId)}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${filters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="${escapeHtml(clearId)}">${gameTextHtml('trade.filter.clear')}</button></div>
+      <div class="trade-filter-selects"><label>Acabado<select class="trade-select" id="${escapeHtml(prefix)}-filter-finish"><option value="">Cualquiera</option><option value="normal" ${filters.finish==='normal'?'selected':''}>Normal</option><option value="flashera" ${filters.finish==='flashera'?'selected':''}>✨ Flashera</option></select></label><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="${escapeHtml(rarityId)}"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${filters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="${escapeHtml(typeId)}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${filters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="${escapeHtml(clearId)}">${gameTextHtml('trade.filter.clear')}</button></div>
     </div>`;
   }
   function renderExploreFilters(){return renderTradeFilterToolbar(exploreFilters,'trade-explore');}
@@ -14361,9 +14572,9 @@ export function showTradeMarketScreen(onBack) {
       const search=tradeNormalizeSearch(card?.name);
       const colors=cardFilterColors(card).join(',');
       const type=tradeCardTypeKeys(card).join(',');
-      return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-listing-id="${escapeHtml(item.listingId)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
-        <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
-        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(item.ownerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}" data-offer-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
+      return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-listing-id="${escapeHtml(item.listingId)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}" data-trade-finish="${escapeHtml(item.finish||'normal')}">
+        <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId,{finish:item.finish})}</div>
+        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeVariantLabel(item.cardId,item.finish))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(item.ownerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}" data-offer-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
       </article>`;
     }).join('');
     return `<div class="trade-explore-layout"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-filter-result-count"></span></div><div class="trade-market-grid" id="trade-explore-grid">${cardsHtml}</div><div class="trade-empty" id="trade-filter-empty" hidden>${gameTextHtml('trade.filter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderExploreFilters()}</aside></div>`;
@@ -14378,7 +14589,8 @@ export function showTradeMarketScreen(onBack) {
       const matchesRarity=!exploreFilters.rarity||node.dataset.tradeCardRarity===exploreFilters.rarity;
       const types=String(node.dataset.tradeCardType||'').split(',').filter(Boolean);
       const matchesType=!exploreFilters.type||types.includes(exploreFilters.type);
-      const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType;node.hidden=!show;if(show)visible++;
+      const matchesFinish=!exploreFilters.finish||node.dataset.tradeFinish===exploreFilters.finish;
+      const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType&&matchesFinish;node.hidden=!show;if(show)visible++;
     });
     const count=root.querySelector('#trade-filter-result-count');if(count)count.textContent=gameText('trade.filter.resultCount',{count:visible});
     const empty=root.querySelector('#trade-filter-empty');if(empty)empty.hidden=visible!==0;
@@ -14387,13 +14599,13 @@ export function showTradeMarketScreen(onBack) {
     const eligible=tradeTradableEntries(market,listing);if(!eligible.length){showSimpleAlertModal(gameText('trade.explore.noMatching'));return;}
     closeTransientTradeModal();let selected='';
     const modal=document.createElement('div');modal.className='trade-modal trade-offer-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    modal.innerHTML=`<div class="trade-modal-panel trade-offer-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.offerModal.title')}</div><div class="trade-offer-target"><div><div class="trade-section-kicker">${gameTextHtml('trade.offerModal.youWant')}</div>${tradeVisualCardHtml(listing.cardId,{className:'trade-offer-target-card'})}</div><div class="trade-offer-target-copy"><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:listing.ownerUsername,count:listing.offerCount,max:limits().maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(listing)}</div></div></div></div><div class="trade-modal-divider"></div><div class="trade-section-kicker">${gameTextHtml('trade.offerModal.eligible')}</div><div class="trade-offer-choice-grid">${eligible.map(entry=>`<div class="trade-offer-choice" role="button" tabindex="0" data-trade-offer-choice="${escapeHtml(entry.id)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`).join('')}</div><div class="trade-offer-selection-summary"><span>${gameTextHtml('trade.offerModal.selected')}</span><strong id="trade-offer-selected-name">${gameTextHtml('trade.offerModal.noneSelected')}</strong></div><div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-offer-confirm" disabled>${gameTextHtml('trade.offerModal.confirm')}</button></div></div>`;
+    modal.innerHTML=`<div class="trade-modal-panel trade-offer-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.offerModal.title')}</div><div class="trade-offer-target"><div><div class="trade-section-kicker">${gameTextHtml('trade.offerModal.youWant')}</div>${tradeVisualCardHtml(listing.cardId,{className:'trade-offer-target-card',finish:listing.finish})}</div><div class="trade-offer-target-copy"><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:listing.ownerUsername,count:listing.offerCount,max:limits().maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(listing)}</div></div></div></div><div class="trade-modal-divider"></div><div class="trade-section-kicker">${gameTextHtml('trade.offerModal.eligible')}</div><div class="trade-offer-choice-grid">${eligible.map(entry=>`<div class="trade-offer-choice" role="button" tabindex="0" data-trade-offer-choice="${escapeHtml(entry.id)}" data-trade-offer-finish="${entry.finish}">${tradeVisualCardHtml(entry.id,{finish:entry.finish})}<div class="trade-copy-count">${escapeHtml(tradeFinishText(entry.finish))} · ${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`).join('')}</div><div class="trade-offer-selection-summary"><span>${gameTextHtml('trade.offerModal.selected')}</span><strong id="trade-offer-selected-name">${gameTextHtml('trade.offerModal.noneSelected')}</strong></div><div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-offer-confirm" disabled>${gameTextHtml('trade.offerModal.confirm')}</button></div></div>`;
     const panel=modal.querySelector('.trade-modal-panel');panel.addEventListener('click',e=>e.stopPropagation());
     const close=()=>{document.removeEventListener('keydown',onKey);if(modal.isConnected)modal.remove();if(transientModal===modal)transientModal=null;};
     const onKey=e=>{if(e.key==='Escape')close();};
-    const select=id=>{selected=String(id||'');modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>node.classList.toggle('is-selected',node.dataset.tradeOfferChoice===selected));const name=modal.querySelector('#trade-offer-selected-name');if(name)name.textContent=tradeCardName(selected);const confirm=modal.querySelector('#trade-offer-confirm');if(confirm)confirm.disabled=!selected;};
-    modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>{const choose=e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select(node.dataset.tradeOfferChoice);};node.addEventListener('click',choose);node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(node.dataset.tradeOfferChoice);}});});
-    modal.querySelector('#trade-offer-confirm')?.addEventListener('click',()=>{if(!selected)return;close();void mutate(()=>createTradeOffer(listing.ownerUid,listing.listingId,selected));});
+    let selectedFinish='normal';const select=(id,finish)=>{selected=String(id||'');selectedFinish=finish||'normal';modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>node.classList.toggle('is-selected',node.dataset.tradeOfferChoice===selected&&node.dataset.tradeOfferFinish===selectedFinish));const name=modal.querySelector('#trade-offer-selected-name');if(name)name.textContent=tradeVariantLabel(selected,selectedFinish);const confirm=modal.querySelector('#trade-offer-confirm');if(confirm)confirm.disabled=!selected;};
+    modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>{const choose=e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select(node.dataset.tradeOfferChoice,node.dataset.tradeOfferFinish);};node.addEventListener('click',choose);node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(node.dataset.tradeOfferChoice,node.dataset.tradeOfferFinish);}});});
+    modal.querySelector('#trade-offer-confirm')?.addEventListener('click',()=>{if(!selected)return;close();void mutate(()=>createTradeOffer(listing.ownerUid,listing.listingId,selected,selectedFinish,listing.finish||'normal'));});
     modal.addEventListener('click',close);modal.querySelectorAll('[data-trade-modal-close]').forEach(btn=>btn.addEventListener('click',close));document.addEventListener('keydown',onKey);
     document.body.appendChild(modal);transientModal=modal;hydrateTradeCards(modal);bindTradeZoom(modal);
   }
@@ -14401,8 +14613,9 @@ export function showTradeMarketScreen(onBack) {
     const input=root.querySelector('#trade-explore-search');input?.addEventListener('input',e=>{exploreFilters.query=e.target.value;applyExploreFilters();});
     root.querySelectorAll('[data-trade-color-filter]').forEach(btn=>btn.addEventListener('click',()=>{const c=btn.dataset.tradeColorFilter;if(exploreFilters.colors.has(c))exploreFilters.colors.delete(c);else exploreFilters.colors.add(c);btn.classList.toggle('active',exploreFilters.colors.has(c));applyExploreFilters();}));
     root.querySelector('#trade-filter-rarity')?.addEventListener('change',e=>{exploreFilters.rarity=e.target.value||'';applyExploreFilters();});
+    root.querySelector('#trade-explore-filter-finish')?.addEventListener('change',e=>{exploreFilters.finish=e.target.value||'';applyExploreFilters();});
     root.querySelector('#trade-filter-type')?.addEventListener('change',e=>{exploreFilters.type=e.target.value||'';applyExploreFilters();});
-    root.querySelector('#trade-filter-clear')?.addEventListener('click',()=>{exploreFilters.query='';exploreFilters.colors.clear();exploreFilters.rarity='';exploreFilters.type='';render();});
+    root.querySelector('#trade-filter-clear')?.addEventListener('click',()=>{exploreFilters.query='';exploreFilters.colors.clear();exploreFilters.rarity='';exploreFilters.type='';exploreFilters.finish='';render();});
     root.querySelectorAll('[data-offer-listing]').forEach(btn=>btn.addEventListener('click',()=>{const listing=(market?.listings||[]).find(x=>String(x.listingId)===String(btn.dataset.offerListing));if(listing)openTradeOfferModal(listing);}));
     applyExploreFilters();
   }
@@ -14412,20 +14625,20 @@ export function showTradeMarketScreen(onBack) {
   }
   function renderPublishCardChooser(entries){
     if(!entries.length)return '';
-    if(!publishSelectedCardId||!entries.some(x=>x.id===publishSelectedCardId))publishSelectedCardId=entries[0].id;
-    const cards=entries.map(entry=>{const card=entry.card;const search=tradeNormalizeSearch(card?.name);const colors=cardFilterColors(card).join(',');const type=tradeCardTypeKeys(card).join(',');return `<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`;}).join('');
-    return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-explore-layout trade-publish-browser"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-publish-filter-result-count"></span></div><div class="trade-publish-card-grid" id="trade-publish-grid">${cards}</div><div class="trade-empty" id="trade-publish-filter-empty" hidden>${gameTextHtml('trade.publishFilter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderPublishFilters()}</aside></div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeCardName(publishSelectedCardId))}</strong></div>`;
+    if(!publishSelectedCardId||!entries.some(x=>x.id===publishSelectedCardId&&x.finish===publishSelectedFinish)){publishSelectedCardId=entries[0].id;publishSelectedFinish=entries[0].finish;}
+    const cards=entries.map(entry=>{const card=entry.card;const search=tradeNormalizeSearch(card?.name);const colors=cardFilterColors(card).join(',');const type=tradeCardTypeKeys(card).join(',');return `<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId&&entry.finish===publishSelectedFinish?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}" data-trade-publish-finish="${entry.finish}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">${tradeVisualCardHtml(entry.id,{finish:entry.finish})}<div class="trade-copy-count">${escapeHtml(tradeFinishText(entry.finish))} · ${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`;}).join('');
+    return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-explore-layout trade-publish-browser"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-publish-filter-result-count"></span></div><div class="trade-publish-card-grid" id="trade-publish-grid">${cards}</div><div class="trade-empty" id="trade-publish-filter-empty" hidden>${gameTextHtml('trade.publishFilter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderPublishFilters()}</aside></div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeVariantLabel(publishSelectedCardId,publishSelectedFinish))}</strong></div>`;
   }
   function renderMine(){
     const l=limits();
     const items=(Array.isArray(market?.ownListings)&&market.ownListings.length)?market.ownListings:(market?.ownListing?[market.ownListing]:[]);
     const activeHtml=items.length?`<div class="trade-own-listings">${items.map(item=>{
       const offers=(market?.receivedOffers||[]).filter(o=>String(o.listingId)===String(item.listingId));
-      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" data-cancel-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.offererUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
+      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card',finish:item.finish})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" data-cancel-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.offererUid||''))}">${gameTextHtml('publicProfile.view')}</button></div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true,finish:o.offeredFinish})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
     }).join('')}</div>`:'';
     if(items.length>=l.maxActiveListings)return activeHtml||`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     const entries=tradeTradableEntries(market);
-    const publishHtml=entries.length?`<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
+    const publishHtml=entries.length?`<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row">Acabado BUSCO: <select class="trade-select" id="trade-wanted-finish"><option value="any">Cualquiera</option><option value="normal">Normal</option><option value="flashera">✨ Flashera</option></select></label><label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     return activeHtml+publishHtml;
   }
   function openTradeAcceptModal(offer){
@@ -14434,7 +14647,7 @@ export function showTradeMarketScreen(onBack) {
     const listing=ownItems.find(item=>String(item.listingId)===String(offer.listingId));if(!listing)return;
     closeTransientTradeModal();
     const modal=document.createElement('div');modal.className='trade-modal trade-accept-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    modal.innerHTML=`<div class="trade-modal-panel trade-confirm-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.acceptModal.title')}</div><div class="trade-confirm-copy">${gameTextHtml('trade.acceptModal.body',{username:offer.offererUsername})}</div>${tradePairHtml(listing.cardId,offer.offeredCardId,{leftLabel:gameText('trade.pair.youGive'),rightLabel:gameText('trade.pair.youReceive')})}<div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-accept-confirm">${gameTextHtml('trade.acceptModal.confirm')}</button></div></div>`;
+    modal.innerHTML=`<div class="trade-modal-panel trade-confirm-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.acceptModal.title')}</div><div class="trade-confirm-copy">${gameTextHtml('trade.acceptModal.body',{username:offer.offererUsername})}</div>${tradePairHtml(listing.cardId,offer.offeredCardId,{leftLabel:gameText('trade.pair.youGive'),rightLabel:gameText('trade.pair.youReceive'),leftFinish:listing.finish,rightFinish:offer.offeredFinish})}<div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-accept-confirm">${gameTextHtml('trade.acceptModal.confirm')}</button></div></div>`;
     const close=()=>{document.removeEventListener('keydown',onKey);if(modal.isConnected)modal.remove();if(transientModal===modal)transientModal=null;};const onKey=e=>{if(e.key==='Escape')close();};
     modal.querySelector('.trade-modal-panel')?.addEventListener('click',e=>e.stopPropagation());modal.addEventListener('click',close);modal.querySelectorAll('[data-trade-modal-close]').forEach(btn=>btn.addEventListener('click',close));modal.querySelector('#trade-accept-confirm')?.addEventListener('click',()=>{close();void mutate(()=>acceptTradeOffer(offer.offerId),{profile:true});});document.addEventListener('keydown',onKey);document.body.appendChild(modal);transientModal=modal;hydrateTradeCards(modal);bindTradeZoom(modal);
   }
@@ -14453,7 +14666,8 @@ export function showTradeMarketScreen(onBack) {
       const matchesRarity=!publishFilters.rarity||node.dataset.tradeCardRarity===publishFilters.rarity;
       const types=String(node.dataset.tradeCardType||'').split(',').filter(Boolean);
       const matchesType=!publishFilters.type||types.includes(publishFilters.type);
-      const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType;node.hidden=!show;if(show)visible++;
+      const matchesFinish=!publishFilters.finish||node.dataset.tradePublishFinish===publishFilters.finish;
+      const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType&&matchesFinish;node.hidden=!show;if(show)visible++;
     });
     const count=root.querySelector('#trade-publish-filter-result-count');if(count)count.textContent=gameText('trade.publishFilter.resultCount',{count:visible});
     const empty=root.querySelector('#trade-publish-filter-empty');if(empty)empty.hidden=visible!==0;
@@ -14462,15 +14676,16 @@ export function showTradeMarketScreen(onBack) {
     root.querySelector('#trade-publish-search')?.addEventListener('input',e=>{publishFilters.query=e.target.value;applyPublishFilters();});
     root.querySelectorAll('[data-trade-filter-prefix="trade-publish"][data-trade-color-filter]').forEach(btn=>btn.addEventListener('click',()=>{const c=btn.dataset.tradeColorFilter;if(publishFilters.colors.has(c))publishFilters.colors.delete(c);else publishFilters.colors.add(c);btn.classList.toggle('active',publishFilters.colors.has(c));applyPublishFilters();}));
     root.querySelector('#trade-publish-filter-rarity')?.addEventListener('change',e=>{publishFilters.rarity=e.target.value||'';applyPublishFilters();});
+    root.querySelector('#trade-publish-filter-finish')?.addEventListener('change',e=>{publishFilters.finish=e.target.value||'';applyPublishFilters();});
     root.querySelector('#trade-publish-filter-type')?.addEventListener('change',e=>{publishFilters.type=e.target.value||'';applyPublishFilters();});
-    root.querySelector('#trade-publish-filter-clear')?.addEventListener('click',()=>{publishFilters.query='';publishFilters.colors.clear();publishFilters.rarity='';publishFilters.type='';render();});
+    root.querySelector('#trade-publish-filter-clear')?.addEventListener('click',()=>{publishFilters.query='';publishFilters.colors.clear();publishFilters.rarity='';publishFilters.type='';publishFilters.finish='';render();});
     applyPublishFilters();
   }
   function bindMine(){
     root.querySelectorAll('[data-cancel-listing]').forEach(btn=>btn.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(btn.dataset.cancelListing));}));
     root.querySelectorAll('[data-reject-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>rejectTradeOffer(btn.dataset.rejectOffer))));
     root.querySelectorAll('[data-accept-offer]').forEach(btn=>btn.addEventListener('click',()=>{const offer=(market.receivedOffers||[]).find(o=>o.offerId===btn.dataset.acceptOffer);if(offer)openTradeAcceptModal(offer);}));
-    root.querySelectorAll('[data-trade-publish-card]').forEach(node=>{const select=()=>{publishSelectedCardId=node.dataset.tradePublishCard;root.querySelectorAll('[data-trade-publish-card]').forEach(x=>x.classList.toggle('is-selected',x.dataset.tradePublishCard===publishSelectedCardId));const name=root.querySelector('#trade-publish-selected-name');if(name)name.textContent=tradeCardName(publishSelectedCardId);};node.addEventListener('click',e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select();});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}});});
+    root.querySelectorAll('[data-trade-publish-card]').forEach(node=>{const select=()=>{publishSelectedCardId=node.dataset.tradePublishCard;publishSelectedFinish=node.dataset.tradePublishFinish;root.querySelectorAll('[data-trade-publish-card]').forEach(x=>x.classList.toggle('is-selected',x.dataset.tradePublishCard===publishSelectedCardId&&x.dataset.tradePublishFinish===publishSelectedFinish));const name=root.querySelector('#trade-publish-selected-name');if(name)name.textContent=tradeVariantLabel(publishSelectedCardId,publishSelectedFinish);};node.addEventListener('click',e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select();});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}});});
     const acceptAny=root.querySelector('#trade-accept-any');
     const syncRows=()=>{const any=acceptAny?.checked===true;root.querySelector('#trade-criteria-wrap')?.classList.toggle('disabled',any);root.querySelectorAll('[data-criterion-row]').forEach(row=>{const i=row.dataset.criterionRow;const use=root.querySelector(`[data-criterion-use="${i}"]`);row.classList.toggle('disabled',any||!use?.checked);});};
     acceptAny?.addEventListener('change',syncRows);root.querySelectorAll('[data-criterion-use]').forEach(el=>el.addEventListener('change',syncRows));
@@ -14503,7 +14718,7 @@ export function showTradeMarketScreen(onBack) {
     bindPublishFilters();
     syncRows();
     root.querySelector('#trade-publish')?.addEventListener('click',()=>{
-      const cardId=publishSelectedCardId,any=acceptAny?.checked===true,wantedCriteria=[];
+      const cardId=publishSelectedCardId,finish=publishSelectedFinish,wantedFinish=root.querySelector('#trade-wanted-finish')?.value||'any',any=acceptAny?.checked===true,wantedCriteria=[];
       if(!cardId){showSimpleAlertModal(gameText('trade.mine.chooseCard'));return;}
       if(!any){
         const maxCriteria=limits().maxWantedCriteria;
@@ -14524,20 +14739,20 @@ export function showTradeMarketScreen(onBack) {
         }
         if(!wantedCriteria.length){showSimpleAlertModal(gameText('trade.criteria.needOneOrAny'));return;}
       }
-      void mutate(()=>createTradeListing({cardId,wantedCriteria,acceptAnyCard:any}));
+      void mutate(()=>createTradeListing({cardId,finish,wantedFinish,wantedCriteria,acceptAnyCard:any}));
     });
   }
 
   function renderOffers(){
     const offers=market?.outgoingOffers||[];
     if(!offers.length)return `<div class="trade-empty">${gameTextHtml('trade.outgoing.none')}</div>`;
-    return `<div class="trade-offer-list">${offers.map(o=>`<article class="trade-outgoing-offer"><div class="trade-offer-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.outgoing.pending')}</div><div class="trade-muted">${gameTextHtml('trade.outgoing.owner',{username:o.listingOwnerUsername})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.listingOwnerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div></div><span class="trade-status-pill">${gameTextHtml('trade.status.pending')}</span></div>${tradePairHtml(o.offeredCardId,o.listedCardId,{leftLabel:gameText('trade.pair.youOffer'),rightLabel:gameText('trade.pair.youWant')})}<button class="trade-btn danger" data-cancel-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.cancelOffer')}</button></article>`).join('')}</div>`;
+    return `<div class="trade-offer-list">${offers.map(o=>`<article class="trade-outgoing-offer"><div class="trade-offer-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.outgoing.pending')}</div><div class="trade-muted">${gameTextHtml('trade.outgoing.owner',{username:o.listingOwnerUsername})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(o.listingOwnerUid||''))}">${gameTextHtml('publicProfile.view')}</button></div></div><span class="trade-status-pill">${gameTextHtml('trade.status.pending')}</span></div>${tradePairHtml(o.offeredCardId,o.listedCardId,{leftLabel:gameText('trade.pair.youOffer'),rightLabel:gameText('trade.pair.youWant'),leftFinish:o.offeredFinish,rightFinish:o.listedFinish})}<button class="trade-btn danger" data-cancel-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.cancelOffer')}</button></article>`).join('')}</div>`;
   }
   function bindOffers(){root.querySelectorAll('[data-cancel-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>cancelTradeOffer(btn.dataset.cancelOffer))));}
   function renderHistory(){
     const rows=market?.history||[];
     if(!rows.length)return `<div class="trade-empty">${gameTextHtml('trade.history.none')}</div>`;
-    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername,otherUid=owner?r.offererUid:r.ownerUid;const when=tradeFormatDate(r.completedAtMs);const tradeId=String(r.tradeId||r.receiptId||'');return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(otherUid||''))}">${gameTextHtml('publicProfile.view')}</button>${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived')})}${tradeId?`<div class="trade-history-actions"><button type="button" class="trade-btn secondary" data-open-trade-dispute="${escapeHtml(tradeId)}">${gameTextHtml('trade.history.dispute')}</button></div>`:''}</article>`;}).join('')}</div>`;
+    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername,otherUid=owner?r.offererUid:r.ownerUid;const gaveFinish=owner?r.ownerGaveFinish:r.offererGaveFinish,gotFinish=owner?r.offererGaveFinish:r.ownerGaveFinish;const when=tradeFormatDate(r.completedAtMs);const tradeId=String(r.tradeId||r.receiptId||'');return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})} <button type="button" class="trade-profile-link" data-open-public-profile="${escapeHtml(String(otherUid||''))}">${gameTextHtml('publicProfile.view')}</button>${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived'),leftFinish:gaveFinish,rightFinish:gotFinish})}${tradeId?`<div class="trade-history-actions"><button type="button" class="trade-btn secondary" data-open-trade-dispute="${escapeHtml(tradeId)}">${gameTextHtml('trade.history.dispute')}</button></div>`:''}</article>`;}).join('')}</div>`;
   }
   function bindHistory(){
     root.querySelectorAll('[data-open-trade-dispute]').forEach(btn=>btn.addEventListener('click',()=>{

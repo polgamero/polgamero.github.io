@@ -39,6 +39,7 @@ jobs:
           test -f argentinia/assets/images/cards/cards-image-manifest.json
           test -f argentinia/cartas/index.html
           test -f .github/scripts/generate_image_manifest.py
+          test -f .github/scripts/verify_stage41_pages_fix5.py
           for icon in cofre.png taller.png logros.png perfil.png daily.png mod.png; do
             test -f "argentinia/assets/images/ui/$icon" || { echo "::error::Missing account menu icon: argentinia/assets/images/ui/$icon"; exit 1; }
           done
@@ -102,6 +103,12 @@ jobs:
               raise SystemExit('IMAGE_MANIFEST_DEPLOY_ERROR missing[] cardinality mismatch')
           print(f'IMAGE_MANIFEST_DEPLOY_OK existing={existing} referencedFaces={referenced} missing={missing} gitSha={manifest.get("gitSha")}')
           PY
+
+      - name: Stage41 FIX5 retained-sites and release guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/verify_stage41_pages_fix5.py
 
       - name: Verify prebuilt public gallery and crawler assets
         shell: bash

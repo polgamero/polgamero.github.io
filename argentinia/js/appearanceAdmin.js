@@ -10,6 +10,8 @@ import {
   publishAppearanceConfig,
   rollbackAppearanceConfig
 } from './appearance.js';
+import { listFlasheraEffects, decorateFlasheraCard, updateFlasheraLighting, resetFlasheraLighting } from './flasheraRenderer.js';
+import { bindPackCardInspector } from './packCardInspector.js';
 
 const SECTION_META = Object.freeze([
   ['global','Tema global','🎨'],
@@ -20,7 +22,8 @@ const SECTION_META = Object.freeze([
   ['tabs','Pestañas','🗂️'],
   ['inputs','Campos y controles','⌨️'],
   ['badges','Badges / indicadores','🏷️'],
-  ['notifications','Avisos / notificaciones','🔔']
+  ['notifications','Avisos / notificaciones','🔔'],
+  ['flashera','Flasheras','✨']
 ]);
 
 const SHADOW_OPTIONS = [['none','Sin sombra'],['soft','Suave'],['medium','Media'],['strong','Fuerte']];
@@ -63,6 +66,11 @@ function sectionHeader(title, copy = '') {
 function group(title, fields) { return `<div class="appearance-control-group"><div class="appearance-control-group-title">${esc(title)}</div><div class="appearance-control-grid">${fields.join('')}</div></div>`; }
 
 function controlsFor(sectionKey, c) {
+  if (sectionKey === 'flashera') return [
+    sectionHeader('Flasheras','Elegí un acabado para TODAS las copias Flasheras. No cambia probabilidades, rarezas ni cartas normales.'),
+    `<fieldset class="appearance-flashera-picker" aria-label="Acabado de Flasheras"><legend>Acabado global · 10 efectos</legend>${listFlasheraEffects().map(row => `<label class="appearance-flashera-option"><input type="radio" name="appearance-flashera-effect" value="${esc(row.id)}" data-appearance-path="flashera.effectId" ${c.flashera.effectId === row.id ? 'checked' : ''}><span>${esc(row.name)}</span></label>`).join('')}</fieldset>`,
+    `<p class="appearance-flashera-note">Cambios de prueba: locales hasta <strong>PUBLICAR APARIENCIA</strong>. El acabado se guarda como ID predefinido, nunca como CSS.</p>`
+  ].join('');
   if (sectionKey === 'global') return [
     sectionHeader('Tema global','Tokens compartidos. No altera colores semánticos de combate, rareza ni estados.'),
     group('Base',[
@@ -172,7 +180,9 @@ function previewHtml(c, viewport, sectionKey) {
   const section = String(sectionKey || 'mainMenu');
   let body = '';
 
-  if (section === 'global') {
+  if (section === 'flashera') {
+    body = `<div class="appearance-preview-single appearance-flashera-stage"><div class="appearance-flashera-caption">✨ FLASHERA · <strong>${esc(listFlasheraEffects().find(row=>row.id === c.flashera.effectId)?.name || 'Prisma Federal')}</strong></div><div class="appearance-flashera-scene"><div class="appearance-flashera-3d" data-appearance-flashera-3d><div class="appearance-flashera-real-card" data-appearance-flashera-card></div></div></div><div class="appearance-flashera-tip">Arrastrá la carta para inclinarla · ✋ para desplazar el lienzo</div></div>`;
+  } else if (section === 'global') {
     body = `<div class="appearance-preview-single appearance-preview-global">
       <img class="appearance-preview-global-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
       <div class="appearance-preview-global-mark" style="display:none">ARGENTINIA</div>
@@ -255,11 +265,31 @@ function ensureStyles() {
 /* Appearance Studio V2: preview fidedigno, hover vivo, zoom/pan y semántica especial preservada. */
 .appearance-preview-toolbar{flex-wrap:wrap}.appearance-preview-toolbar .appearance-preview-tool-sep{width:1px;height:22px;background:rgba(255,255,255,.12);margin:0 2px}.appearance-preview-toolbar .appearance-preview-zoom-label{min-width:43px;text-align:center;color:#d6cfae;font:800 10px/1 monospace}.appearance-preview-toolbar button[data-appearance-pan].active{background:#4b3b12;border-color:#d4af37;color:#fff0b7}.appearance-preview-shell{position:relative;touch-action:none;cursor:default}.appearance-preview-shell.is-pan-mode{cursor:grab}.appearance-preview-shell.is-panning{cursor:grabbing}.appearance-preview-panzoom{position:absolute;inset:0;transform-origin:0 0;will-change:transform}.appearance-preview-menu-stage{background:linear-gradient(rgba(0,0,0,.16),rgba(0,0,0,.28)),url('./assets/images/ui/menu.png') center/cover no-repeat,radial-gradient(circle at 55% 28%,rgba(var(--arg-menu-hover-rgb),.12),transparent 35%),linear-gradient(135deg,#111b14,#050806)}.appearance-preview-menu-logo-wrap{position:absolute;left:0;right:0;top:var(--preview-menu-logo-top);display:flex;justify-content:center;pointer-events:none}.appearance-preview-menu-logo-img{display:block;max-width:var(--preview-menu-logo-max-width);max-height:var(--preview-menu-logo-max-height);object-fit:contain;filter:drop-shadow(0 4px 14px rgba(0,0,0,.7))}.appearance-preview-logo-fallback{color:var(--arg-menu-primary-border);font-weight:1000;letter-spacing:.18em;font-size:clamp(22px,4vw,44px);text-shadow:0 4px 16px #000}.appearance-preview-menu{left:var(--preview-menu-left);bottom:var(--preview-menu-bottom);gap:var(--preview-menu-gap);width:min(55%,var(--preview-menu-button-width))}.appearance-preview-menu button{position:relative;min-height:min(var(--preview-menu-button-height),56px);border-width:var(--preview-menu-border-width);border-radius:var(--preview-menu-radius);font-size:min(var(--preview-menu-font-size),18px);padding:var(--preview-menu-padding-y) var(--preview-menu-padding-x);letter-spacing:var(--arg-menu-letter-spacing);transition:transform .14s ease,filter .14s ease,background .14s ease,border-color .14s ease;cursor:pointer}.appearance-preview-menu button.primary{font-size:min(var(--preview-menu-primary-font-size),20px)}.appearance-preview-menu button:not(.icon):hover{transform:translateX(var(--arg-menu-hover-x));filter:brightness(var(--arg-menu-hover-brightness));background:linear-gradient(180deg,rgba(var(--arg-menu-hover-rgb),.28),var(--arg-menu-bg-bottom));border-color:var(--arg-menu-primary-border)}.appearance-preview-bottom{gap:max(4px,min(var(--preview-menu-gap),8px))}.appearance-preview-bottom .icon{position:relative;flex:0 0 min(var(--preview-menu-button-height),48px);width:min(var(--preview-menu-button-height),48px);height:min(var(--preview-menu-button-height),48px);padding:0;border-radius:var(--preview-menu-icon-radius);overflow:hidden;text-align:center}.appearance-preview-bottom .icon:hover{transform:translateY(var(--arg-menu-icon-hover-y));filter:brightness(var(--arg-menu-hover-brightness));border-color:var(--arg-menu-primary-border)}.appearance-preview-bottom .icon img{position:absolute;inset:var(--preview-menu-icon-inset);width:calc(100% - (var(--preview-menu-icon-inset) * 2));height:calc(100% - (var(--preview-menu-icon-inset) * 2));object-fit:contain;border-radius:calc(var(--preview-menu-icon-radius) * .7);pointer-events:none}.appearance-preview-icon-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}.appearance-preview-live-hint{position:absolute;right:10px;bottom:8px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.58);color:#a9b09f;font-size:8px;font-weight:750;pointer-events:none}.appearance-preview-global-logo{max-width:62%;max-height:22%;object-fit:contain;filter:drop-shadow(0 3px 12px rgba(0,0,0,.55))}.appearance-preview-button{cursor:pointer;transition:transform .13s ease,filter .13s ease,box-shadow .13s ease}.appearance-preview-button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.1);box-shadow:0 8px 22px rgba(0,0,0,.35),var(--arg-button-shadow)}.appearance-preview-button:focus-visible,.appearance-preview-form input:focus,.appearance-preview-form select:focus{outline:2px solid var(--arg-input-focus);outline-offset:2px}.appearance-preview-encyclopedia{display:block;padding:6%;background:linear-gradient(180deg,#0b1a11,#071009);color:#efe4c0}.appearance-preview-ency-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}.appearance-preview-ency-header strong{font-size:clamp(20px,3vw,34px)}.appearance-preview-ency-header span{font-size:11px;font-weight:800;color:#d8c898}.appearance-preview-tabs-large{justify-content:flex-start;flex-wrap:wrap;gap:var(--arg-tab-gap)}.appearance-preview-tab{min-height:var(--arg-tab-height);padding:7px 12px;border:var(--arg-tab-border-width) solid var(--arg-tab-border);border-radius:var(--arg-tab-radius);background:var(--arg-tab-bg);color:var(--arg-tab-text);font:800 var(--arg-tab-font-size)/1 inherit;cursor:pointer;transition:transform .12s ease,filter .12s ease}.appearance-preview-tab:hover{transform:translateY(-1px);filter:brightness(1.13)}.appearance-preview-tab.active:not(.discovery){background:var(--arg-tab-active-bg);color:var(--arg-tab-active-text)}.appearance-preview-tab.discovery{border-color:#b17ad9;background:linear-gradient(180deg,#3b1d52,#21102f);color:#f2dcff;box-shadow:0 0 0 1px rgba(212,175,55,.22),0 0 16px rgba(154,90,205,.15)}.appearance-preview-tab.discovery.active{border-color:#d9b05a;background:linear-gradient(180deg,#4c2868,#2c153d);color:#fff0be;box-shadow:0 0 0 1px rgba(212,175,55,.35),0 0 20px rgba(154,90,205,.25)}.appearance-preview-ency-body{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.appearance-preview-card-placeholder{aspect-ratio:3/4;border:1px solid rgba(212,175,55,.38);border-radius:8px;background:linear-gradient(180deg,#172319,#0b0f0c);box-shadow:0 6px 18px rgba(0,0,0,.3)}.appearance-preview-form input:not([type=checkbox]),.appearance-preview-form select{transition:border-color .12s ease,box-shadow .12s ease}.appearance-preview-form input:focus,.appearance-preview-form select:focus{border-color:var(--arg-input-focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--arg-input-focus) 26%,transparent)}.viewport-android .appearance-preview-live-hint,.viewport-iphone .appearance-preview-live-hint{font-size:7px}.viewport-android .appearance-preview-menu,.viewport-iphone .appearance-preview-menu{width:min(47%,var(--preview-menu-button-width))}.viewport-android .appearance-preview-menu button,.viewport-iphone .appearance-preview-menu button{min-height:min(var(--preview-menu-button-height),42px);font-size:min(var(--preview-menu-font-size),13px)}.viewport-android .appearance-preview-menu button.primary,.viewport-iphone .appearance-preview-menu button.primary{font-size:min(var(--preview-menu-primary-font-size),14px)}
 
+/* Stage29 · carta real y adaptación 3D del inspector de sobres */
+.appearance-flashera-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;border:1px solid rgba(212,175,55,.25);border-radius:10px;padding:12px;margin:0;background:rgba(10,15,11,.72);min-width:0}
+.appearance-flashera-picker legend{padding:0 7px;color:#d4af37;font-weight:900;font-size:12px}
+.appearance-flashera-option{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #4b513e;border-radius:8px;color:#e8dfbc;font-size:12px;font-weight:800;cursor:pointer;min-width:0}
+.appearance-flashera-option:has(input:checked){border-color:#e7c965;background:rgba(212,175,55,.14);color:#fff5c9}
+.appearance-flashera-option input{accent-color:#e6c569;width:17px;height:17px;flex-shrink:0}
+.appearance-flashera-note{font-size:11px;color:#aab5a7;line-height:1.5}
+.appearance-flashera-stage{min-height:360px;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 8px;background:radial-gradient(circle at 50% 50%,#253e34,#0b110f 65%,#050806)}
+.appearance-flashera-caption{position:absolute;top:12px;left:0;right:0;text-align:center;color:#d9c58e;font-size:12px;font-weight:900;letter-spacing:.06em}
+.appearance-flashera-scene{display:flex;align-items:center;justify-content:center;perspective:900px;position:relative;width:100%;height:298px}
+.appearance-flashera-3d{--arg-pack3d-rx:0deg;--arg-pack3d-ry:0deg;width:193px;height:270px;transform:rotateX(var(--arg-pack3d-rx)) rotateY(var(--arg-pack3d-ry));transform-style:preserve-3d;will-change:transform;touch-action:none;cursor:grab}
+.appearance-flashera-3d.arg-pack3d-dragging{cursor:grabbing;transition:none!important}
+.appearance-flashera-3d.arg-pack3d-settling{transition:transform .6s cubic-bezier(.25,1,.5,1)!important}
+.appearance-flashera-real-card{width:100%;height:100%;position:relative;transform-style:preserve-3d}
+.appearance-flashera-real-card>.card{display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-height:0!important;min-width:0!important;margin:0!important;pointer-events:none}
+.appearance-flashera-3d .arg-pack3d-shine{position:absolute;inset:0;border-radius:10px;z-index:94;pointer-events:none;mix-blend-mode:overlay}
+.appearance-flashera-tip{color:#aaad9e;font-size:10px;position:absolute;bottom:9px;text-align:center}
+.appearance-preview-shell.is-pan-mode .appearance-flashera-3d{cursor:inherit}
+@media(max-width:760px){.appearance-flashera-picker{grid-template-columns:1fr}.appearance-flashera-3d{width:161px;height:225px}.appearance-flashera-scene{height:253px}}
+@media(prefers-reduced-motion:reduce){.appearance-flashera-3d{transition:none!important}}
 `
   document.head.appendChild(style);
 }
 
-export function mountAppearanceAdminPane(root) {
+export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = null } = {}) {
   if (!root) return { load: async()=>{} };
   ensureStyles();
   let published = classicAppearanceConfig();
@@ -271,6 +301,7 @@ export function mountAppearanceAdminPane(root) {
   let loaded = false;
   let busy = false;
   let previewPanMode = false;
+  let flasheraInspector = null;
   const previewViews = new Map();
   const previewViewKey = () => `${activeSection}:${viewport}`;
   const getPreviewView = () => {
@@ -380,9 +411,11 @@ export function mountAppearanceAdminPane(root) {
 
   function renderPreview() {
     const preview = root.querySelector('[data-appearance-preview]'); if (!preview) return;
+    flasheraInspector?.destroy?.(); flasheraInspector = null;
     preview.innerHTML = previewHtml(draft, viewport, activeSection);
     const shell = preview.firstElementChild; if (shell) applyAppearanceVariablesToElement(shell, draft);
     bindPreviewSurface(); applyPreviewView();
+    if (activeSection === 'flashera') mountFlasheraPreview();
     const ratio = contrastRatio(draft.mainMenu.colors.text, draft.mainMenu.colors.backgroundBottom);
     const warning = root.querySelector('[data-appearance-warning]');
     const warnings = [];
@@ -390,6 +423,24 @@ export function mountAppearanceAdminPane(root) {
     if (activeSection === 'mainMenu' && draft.mainMenu.mobile.buttonWidth > 230) warnings.push('Ancho mobile alto: el motor lo limita además a 42dvw para evitar overflow.');
     if (activeSection === 'mainMenu' && draft.mainMenu.mobile.fontSize > 18) warnings.push('Fuente mobile grande: revisar iPhone horizontal antes de publicar.');
     warning.innerHTML = warnings.length ? `<div class="appearance-warning">⚠ ${warnings.map(esc).join('<br>')}</div>` : '';
+  }
+
+  function mountFlasheraPreview() {
+    const slot = root.querySelector('[data-appearance-flashera-card]');
+    const shell = root.querySelector('[data-appearance-flashera-3d]');
+    if (!slot || !shell) return;
+    let node = null;
+    try { node = renderFlasheraPreviewCard?.(); } catch (error) { console.warn('[Flasheras Stage29] Preview real no disponible', error); }
+    if (!node?.classList?.contains('card')) {
+      slot.textContent = 'La carta real se mostrará cuando termine de cargar el catálogo.';
+      slot.classList.add('appearance-flashera-unavailable');
+      return;
+    }
+    slot.replaceChildren(node);
+    // Admin-preview: la muestra no concede copias ni tiene efecto sobre ownership.
+    decorateFlasheraCard(node,{ effectId:draft.flashera.effectId, mode:'full', visualEnabled:true, lockEffect:true });
+    flasheraInspector=bindPackCardInspector(shell,{ frontFace:slot, introMs:0, canDrag:()=>!previewPanMode });
+    flasheraInspector.startRevealIntro();
   }
 
   function bindControlInputs() {
@@ -404,7 +455,7 @@ export function mountAppearanceAdminPane(root) {
         draft.preset = 'custom'; draft = normalizeAppearanceConfig(draft);
         const colorCode = el.closest('.appearance-color-row')?.querySelector('code'); if (colorCode) colorCode.textContent = el.value;
         const preset = root.querySelector('[data-appearance-preset]'); if (preset) preset.value = 'custom';
-        renderPreview();
+        if (path === 'flashera.effectId') renderAll(); else renderPreview();
       });
     });
     root.querySelector('[data-appearance-reset-section]')?.addEventListener('click', () => {

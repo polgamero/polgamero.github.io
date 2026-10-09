@@ -1,6 +1,9 @@
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS } from './store.js';
 import { bindCardZoomControl } from './cardZoom.js';
 import { bindPackCardInspector } from './packCardInspector.js';
+import { playSfx } from './audioManager.js';
+import { getFlasheraVisualEnabled } from './flasheraRenderer.js';
+import { buildFlasheraCeremonyPlan, planFlasheraSkip } from './flasheraPackCinematic.js';
 
 // 23.13.1 — Presentación pura. Este módulo NO compra, NO consume sobres y NO escribe
 // Firestore. La economía debe haber terminado antes de invocarlo. Así cerrar/saltar la
@@ -12,6 +15,8 @@ const CARD_BACK_IMAGE = './assets/images/card_back.png';
 const PACK_REVEAL_INTRO_MS = 1200;
 const FINAL_RARE_SUSPENSE_MS = 1050;
 const FINAL_MYTHIC_SUSPENSE_MS = 1450;
+const FLASHERA_SUSPENSE_MS = 1080;
+const FLASHERA_MYTHIC_SUSPENSE_MS = 1550;
 
 export function buildPackRevealSequence(cards = []) {
   if (!Array.isArray(cards) || cards.length !== PACK_COMMONS + PACK_UNCOMMONS + PACK_LANDS + 1) {
@@ -103,6 +108,37 @@ function injectStyles() {
     #pack-opening-overlay.tier-rare .pack-opening-rarity { color:#f5d84e; }
     #pack-opening-overlay.tier-mythic .pack-opening-rarity { color:#ff8b38; text-shadow:0 0 14px rgba(255,112,33,.7); }
     #pack-opening-overlay.tier-uncommon .pack-opening-rarity { color:#d0dae1; }
+
+    /* Stage33: la revelación premium sólo se anuncia DESPUÉS del giro, jamás en suspense. */
+    .pack-opening-flashera-banner { position:absolute; z-index:8; top:0; left:50%; transform:translate(-50%,-18px) scale(.82);
+      pointer-events:none; text-align:center; opacity:0; visibility:hidden; font-weight:1000; letter-spacing:2px;
+      color:#fff4cf; font-size:clamp(18px,3.5vw,32px); line-height:1.1; white-space:nowrap;
+      text-shadow:0 0 14px rgba(255,230,112,.9),0 0 30px rgba(161,83,255,.95),0 2px 8px #090307; }
+    #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible;
+      transform:translate(-50%,0) scale(1); transition:transform .55s cubic-bezier(.15,1.4,.4,1),opacity .55s; }
+    #pack-opening-overlay.flashera-reveal .pack-opening-halo { background:conic-gradient(#e55fff,#70deff,#fff4a3,#c17aff,#45ffe1,#e55fff);
+      opacity:.93; transform:scale(1.43); filter:blur(22px); animation:pack-flashera-pulse 2.8s ease-in-out infinite alternate; }
+    #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { content:""; position:absolute; inset:-8%;
+      pointer-events:none; z-index:1; background:repeating-conic-gradient(from 12deg,transparent 0 16deg,rgba(247,229,255,.45) 17deg 18deg,transparent 19deg 35deg);
+      mask:radial-gradient(circle,transparent 0 28%,#000 50%,transparent 74%); animation:pack-flashera-rays 12s linear infinite; }
+    #pack-opening-overlay.flashera-reveal .pack-opening-card-shell { z-index:2; }
+    #pack-opening-overlay.flashera-mythic .pack-opening-flashera-banner { color:#ffe7a8;
+      text-shadow:0 0 15px #ff9f3d,0 0 33px #a66cff,0 3px 12px #240307; }
+    #pack-opening-overlay.flashera-mythic .pack-opening-halo { background:conic-gradient(#ff6b30,#ffe578,#c064ff,#ff9b54,#ff6b30); }
+    #pack-opening-overlay.flashera-reveal .pack-opening-name { color:#ffe7af; }
+    #pack-opening-overlay.flashera-effects-off .pack-opening-card-zone::before { display:none; }
+    #pack-opening-overlay.flashera-effects-off .pack-opening-halo { animation:none; opacity:.3; filter:blur(10px); }
+    #pack-opening-overlay.flashera-effects-off .pack-opening-flashera-banner { transition:none; text-shadow:0 2px 6px #000; }
+    .pack-opening-flashera-caption { color:#e5c5ff; font-size:11px; font-weight:900; min-height:15px; text-align:center;
+      letter-spacing:1px; opacity:0; }
+    #pack-opening-overlay.flashera-reveal .pack-opening-flashera-caption { opacity:1; }
+    .pack-opening-summary-card.is-flashera { position:relative; filter:drop-shadow(0 0 8px rgba(180,110,255,.38)); }
+    .pack-opening-summary-flashera-tag { position:absolute; top:-10px; right:-10px; z-index:5;
+      padding:3px 5px; border-radius:5px; background:linear-gradient(130deg,#643393,#294e8d); border:1px solid #debbff;
+      color:#fff; font-size:8px; font-weight:1000; letter-spacing:.5px; box-shadow:0 1px 8px #06040d; }
+    @keyframes pack-flashera-pulse { to { transform:scale(1.6); opacity:.68; } }
+    @keyframes pack-flashera-rays { to { transform:rotate(360deg); } }
+
 
     #pack-opening-overlay.is-charging .pack-opening-halo { opacity:.95; transform:scale(1.18); animation:pack-halo-pulse .48s ease-in-out infinite alternate; }
     #pack-opening-overlay.is-charging .pack-opening-card-shell { animation:pack-card-charge .14s ease-in-out infinite alternate; }
@@ -204,9 +240,14 @@ function injectStyles() {
       .pack-opening-intro-pack { width:clamp(144px,40vw,168px); max-height:min(42vh,176px); }
       .pack-opening-intro-title { font-size:20px; margin:6px 0 2px; }
       .pack-opening-intro-copy { font-size:9px; max-width:420px; }
+      .pack-opening-flashera-banner { font-size:clamp(14px,2.3vw,20px); top:-8px; }
+      .pack-opening-flashera-caption { font-size:9px; min-height:12px; }
     }
     @media (prefers-reduced-motion:reduce) {
       #pack-opening-overlay *, #pack-opening-overlay::before, #pack-opening-overlay::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+      #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { animation:none!important; }
+      #pack-opening-overlay.flashera-reveal .pack-opening-halo { animation:none!important; }
+      #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible; transform:translate(-50%,0); }
     }
   `;
   document.head.appendChild(style);
@@ -228,7 +269,7 @@ function createBackFace() {
 }
 
 function setTier(overlay, entry) {
-  overlay.classList.remove('tier-common','tier-land','tier-uncommon','tier-rare','tier-mythic','is-charging','just-revealed','is-revealed-state');
+  overlay.classList.remove('tier-common','tier-land','tier-uncommon','tier-rare','tier-mythic','is-charging','just-revealed','is-revealed-state','flashera-reveal','flashera-mythic','flashera-effects-off');
   const presentation = tierPresentation(entry.tier);
   overlay.classList.add(presentation.className);
   overlay.querySelector('.pack-opening-kicker').textContent = presentation.kicker;
@@ -246,9 +287,15 @@ function renderFront(face, card, renderCard) {
 
 function summaryCardElement(entry, renderCard) {
   const wrap = document.createElement('div');
-  wrap.className = `pack-opening-summary-card${entry.isFinal ? ` final-${entry.tier}` : ''}`;
+  wrap.className = `pack-opening-summary-card${entry.isFinal ? ` final-${entry.tier}` : ''}${entry.card?.flashera === true ? ' is-flashera' : ''}`;
   const cardEl = renderCard(entry.card);
   wrap.appendChild(cardEl);
+  if (entry.card?.flashera === true) {
+    const tag = document.createElement('span');
+    tag.className = 'pack-opening-summary-flashera-tag';
+    tag.textContent = '✨ FLASHERA';
+    wrap.appendChild(tag);
+  }
   return wrap;
 }
 
@@ -256,6 +303,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   injectStyles();
   document.getElementById('pack-opening-overlay')?.remove();
   const sequence = buildPackRevealSequence(cards);
+  const flasheraPlan = buildFlasheraCeremonyPlan(sequence);
   const overlay = document.createElement('div');
   overlay.id = 'pack-opening-overlay';
   overlay.innerHTML = `
@@ -271,6 +319,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       <div class="pack-opening-kicker" style="display:none"></div>
       <div class="pack-opening-rarity" style="display:none"></div>
       <div class="pack-opening-card-zone" style="display:none">
+        <div class="pack-opening-flashera-banner" role="status" aria-live="polite"></div>
         <div class="pack-opening-halo"></div>
         <div class="pack-opening-card-shell">
           <div class="pack-opening-face pack-opening-back"></div>
@@ -278,6 +327,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
         </div>
       </div>
       <div class="pack-opening-name"></div>
+      <div class="pack-opening-flashera-caption" aria-live="polite"></div>
     </div>
     <div class="pack-opening-controls">
       <button class="pack-opening-primary" type="button">ABRIR SOBRE</button>
@@ -324,16 +374,31 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const introTitle = overlay.querySelector('.pack-opening-intro-title');
   const introCopy = overlay.querySelector('.pack-opening-intro-copy');
   const hint = overlay.querySelector('.pack-opening-hint');
-  const inspector = bindPackCardInspector(shell, { frontFace, introMs: PACK_REVEAL_INTRO_MS });
+  const flasheraBanner = overlay.querySelector('.pack-opening-flashera-banner');
+  const flasheraCaption = overlay.querySelector('.pack-opening-flashera-caption');
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+  const inspector = bindPackCardInspector(shell, { frontFace, introMs: reducedMotion ? 0 : PACK_REVEAL_INTRO_MS });
 
   let index = -1;
   let revealed = false;
   let charging = false;
   let closed = false;
+  let flasheraAcknowledged = false;
+  let skippedToFlashera = false;
+  let flasheraSoundPlayed = false;
+  let revealTimer = null;
+  let introTimer = null;
+
+  function clearCinematicTimers() {
+    if (revealTimer !== null) window.clearTimeout(revealTimer);
+    if (introTimer !== null) window.clearTimeout(introTimer);
+    revealTimer = null; introTimer = null;
+  }
 
   function close() {
     if (closed) return;
     closed = true;
+    clearCinematicTimers();
     window.removeEventListener('keydown', onKey);
     inspector.destroy();
     overlay.remove();
@@ -342,10 +407,33 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
 
   function showSummary() {
     if (closed) return;
+    // La API expuesta tampoco puede saltear la única revelación premium pendiente.
+    if (flasheraPlan && !flasheraAcknowledged) { skipToCeremony(); return; }
+    clearCinematicTimers();
     overlay.classList.remove('is-charging');
     overlay.classList.add('show-summary');
     const grid = overlay.querySelector('.pack-opening-summary-grid');
     if (!grid.childElementCount) sequence.forEach(entry => grid.appendChild(summaryCardElement(entry, renderCard)));
+    const subtitle = overlay.querySelector('.pack-opening-summary-sub');
+    if (flasheraPlan && subtitle) subtitle.textContent += ' · ✨ 1 Flashera obtenida';
+  }
+
+  function skipToCeremony() {
+    if (closed || overlay.classList.contains('show-summary')) return;
+    const action = planFlasheraSkip({ flasheraPlan, acknowledged:flasheraAcknowledged,
+      currentIndex:index, revealed, charging });
+    if (action.type === 'summary') { showSummary(); return; }
+    if (action.type === 'focus') {
+      skippedToFlashera = true;
+      // La carga anterior deja de ser relevante: el índice/timers anteriores se invalidan.
+      clearCinematicTimers();
+      prepareEntry(action.index);
+      return;
+    }
+    if (action.type === 'hold') {
+      skippedToFlashera = true;
+      if (hint) hint.textContent = 'La revelación FLASHERA debe mostrarse antes del resumen';
+    }
   }
 
   // 23.13.18 — Direct Reveal se conserva para todo el sobre, pero la última carta
@@ -357,6 +445,16 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     renderFront(frontFace, entry.card, renderCard);
     shell.classList.add('is-revealed');
     inspector.startRevealIntro();
+    if (entry.card?.flashera === true) {
+      const isMythic = entry.tier === 'mythic';
+      overlay.classList.add('flashera-reveal');
+      if (!getFlasheraVisualEnabled()) overlay.classList.add('flashera-effects-off');
+      if (isMythic) overlay.classList.add('flashera-mythic');
+      flasheraBanner.textContent = isMythic ? '✦ MÍTICA FLASHERA ✦' : '✦ FLASHERA ✦';
+      flasheraCaption.textContent = isMythic ? 'UNA MÍTICA EXTRAORDINARIA' : 'ACABADO ESPECIAL DESCUBIERTO';
+      // Una sola firma sonora por apertura, incluso con doble click o reentrada del skip.
+      if (!flasheraSoundPlayed) { flasheraSoundPlayed = true; try { playSfx('flasheraReveal'); } catch {} }
+    }
     overlay.classList.remove('is-charging');
     overlay.classList.add('just-revealed','is-revealed-state');
     name.textContent = entry.card?.name || 'Carta';
@@ -366,18 +464,19 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     // conserva también la protección drag→click de 23.13.15/17.
     charging = true;
     primary.disabled = true;
-    primary.textContent = entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE';
+    primary.textContent = entry.card?.flashera === true ? 'CONTINUAR ✨' : (entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE');
     if (hint) hint.textContent = 'Esperá el giro · después arrastrá para inspeccionar';
-    window.setTimeout(() => {
+    introTimer = window.setTimeout(() => {
       if (closed || index !== preparedIndex) return;
       charging = false;
       primary.disabled = false;
       if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
-    }, PACK_REVEAL_INTRO_MS);
-    window.setTimeout(() => overlay.classList.remove('just-revealed'), 520);
+    }, reducedMotion ? 0 : PACK_REVEAL_INTRO_MS);
+    window.setTimeout(() => { if (!closed) overlay.classList.remove('just-revealed'); }, reducedMotion ? 0 : 520);
   }
 
   function prepareEntry(nextIndex) {
+    clearCinematicTimers();
     index = nextIndex;
     revealed = false;
     charging = false;
@@ -391,6 +490,8 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     backFace.replaceChildren(createBackFace().firstElementChild);
     frontFace.innerHTML = '';
     name.textContent = '';
+    flasheraBanner.textContent = '';
+    flasheraCaption.textContent = '';
     kicker.style.display = 'none';
     rarity.style.display = 'none';
     cardZone.style.display = '';
@@ -398,16 +499,17 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     introTitle.style.display = 'none';
     introCopy.style.display = 'none';
 
-    if (entry.isFinal) {
-      // Restauración quirúrgica de 23.13.15: halo pulsante + vibración + rayos y pausa
-      // específica por rareza. La carta sigue revelándose automáticamente: cero clicks extra.
+    if (entry.isFinal || entry.card?.flashera === true) {
+      // Un único clímax para MÍTICA + FLASHERA: no se acumulan dos cinematics.
       charging = true;
       overlay.classList.add('is-charging');
       primary.disabled = true;
       primary.textContent = '···';
-      if (hint) hint.textContent = '...';
-      const suspenseMs = entry.tier === 'mythic' ? FINAL_MYTHIC_SUSPENSE_MS : FINAL_RARE_SUSPENSE_MS;
-      window.setTimeout(() => revealPreparedEntry(entry, preparedIndex), suspenseMs);
+      if (hint) hint.textContent = 'Una carta extraordinaria está por revelarse…';
+      const suspenseMs = entry.card?.flashera === true
+        ? (entry.tier === 'mythic' ? FLASHERA_MYTHIC_SUSPENSE_MS : FLASHERA_SUSPENSE_MS)
+        : (entry.tier === 'mythic' ? FINAL_MYTHIC_SUSPENSE_MS : FINAL_RARE_SUSPENSE_MS);
+      revealTimer = window.setTimeout(() => revealPreparedEntry(entry, preparedIndex), reducedMotion ? 0 : suspenseMs);
       return;
     }
 
@@ -420,16 +522,19 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       prepareEntry(0);
       return;
     }
-    if (sequence[index].isFinal) {
-      showSummary();
-      return;
+    if (sequence[index]?.card?.flashera === true) {
+      flasheraAcknowledged = true;
+      if (skippedToFlashera) { showSummary(); return; }
     }
+    if (sequence[index].isFinal) { showSummary(); return; }
     prepareEntry(index + 1);
   }
 
   function onKey(event) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     if (overlay.classList.contains('show-summary')) return;
+    // Evita doble avance cuando Enter sobre SALTAR dispara click nativo + keydown global.
+    if (event.target?.closest?.('button, input, textarea, select, a')) return;
     event.preventDefault();
     advance();
   }
@@ -443,7 +548,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     }
     advance();
   });
-  skip.addEventListener('click', showSummary);
+  skip.addEventListener('click', skipToCeremony);
   overlay.querySelector('.pack-opening-summary-close').addEventListener('click', close);
   window.addEventListener('keydown', onKey);
 

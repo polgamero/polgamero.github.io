@@ -3,6 +3,7 @@
 // This module intentionally accepts typed values only: no CSS selectors, HTML or arbitrary CSS.
 
 import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
+import { normalizeFlasheraEffectId, DEFAULT_FLASHERA_EFFECT_ID, setActiveFlasheraEffect } from './flasheraRenderer.js';
 
 export const APPEARANCE_DOCUMENT_ID = 'appearance';
 export const APPEARANCE_SCHEMA_VERSION = 1;
@@ -144,6 +145,7 @@ const CLASSIC = Object.freeze({
     paddingY: 2,
     shadowPreset: 'none'
   }),
+  flashera: Object.freeze({ effectId: DEFAULT_FLASHERA_EFFECT_ID }),
   notifications: Object.freeze({
     enabled: false,
     radius: 10,
@@ -186,6 +188,7 @@ export function normalizeAppearanceConfig(raw = {}) {
   const inputs = section(source.inputs, c.inputs);
   const badges = section(source.badges, c.badges);
   const notifications = section(source.notifications, c.notifications);
+  const flashera = section(source.flashera, c.flashera);
 
   return {
     schemaVersion: APPEARANCE_SCHEMA_VERSION,
@@ -255,6 +258,7 @@ export function normalizeAppearanceConfig(raw = {}) {
       enabled: bool(badges.enabled, false), radius: num(badges.radius, c.badges.radius, 0, 999, 0), borderWidth: num(badges.borderWidth, c.badges.borderWidth, 0, 4, 0), fontSize: num(badges.fontSize, c.badges.fontSize, 8, 18, 0),
       paddingX: num(badges.paddingX, c.badges.paddingX, 0, 18, 0), paddingY: num(badges.paddingY, c.badges.paddingY, 0, 10, 0), shadowPreset: shadow(badges.shadowPreset, c.badges.shadowPreset)
     },
+    flashera: { effectId: normalizeFlasheraEffectId(flashera.effectId) },
     notifications: {
       enabled: bool(notifications.enabled, false), radius: num(notifications.radius, c.notifications.radius, 0, 24, 0), borderWidth: num(notifications.borderWidth, c.notifications.borderWidth, 0, 4, 0), shadowPreset: shadow(notifications.shadowPreset, c.notifications.shadowPreset)
     }
@@ -360,6 +364,9 @@ export function applyAppearanceConfig(configLike, { target = document.documentEl
     badges: config.badges.enabled,
     notifications: config.notifications.enabled
   };
+  // Flasheras Stage29: el acabado es global, cosmético y único para todas las copias.
+  // Se aplica solamente al elemento de documento real (no durante preview local).
+  if (typeof document !== 'undefined' && target === document.documentElement) setActiveFlasheraEffect(config.flashera.effectId);
   target.dataset.argAppearance = 'v1';
   target.dataset.argAppearancePreset = config.preset;
   for (const [key, enabled] of Object.entries(map)) target.dataset[`argAppearance${key[0].toUpperCase()}${key.slice(1)}`] = enabled ? '1' : '0';

@@ -61,6 +61,8 @@ function sanitizePrivateFaceDescriptor(card) {
   out.type = card.type || null;
   out.cmc = Number.isFinite(Number(card.cmc)) ? Number(card.cmc) : 0;
   out.colors = Array.isArray(card.colors) ? [...card.colors] : [];
+  // Visible only when this specific slot is legally revealed; opaque offers stay opaque.
+  if (card.flashera === true && card.isToken !== true) out.flashera = true;
   if (card?.dfc?.kind === 'transform' && card.dfc.backFace) {
     out.dfc = {
       kind: 'transform',

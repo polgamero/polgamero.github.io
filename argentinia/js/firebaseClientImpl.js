@@ -26,11 +26,14 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gst
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { parseEvolutionVariantId, evolutionStageForProfile } from './evolution.js';
+import { normalizeFlasheraCopies } from './flasheraContract.js';
+import { parseCardVariantId } from './cardVariant.js';
+import { assertDeckFlasheraOwnership } from './flasheraDeck.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, adminSetSanctuaryFoodBucketsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, adminSetSanctuaryFoodBucketsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, adminGetFlasheraStatusServer, adminGetFlasheraAnalyticsServer, adminSaveFlasheraConfigServer, adminAdjustFlasheraDebugServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer, attestMatchDeckServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { isCurrentLegalAcceptance } from './legal.js';
@@ -131,8 +134,8 @@ export async function cancelTradeListing(listingId) {
   const response = await cancelTradeListingServer(listingId);
   return response?.result || null;
 }
-export async function createTradeOffer(listingOwnerUid, listingId, cardId) {
-  const response = await createTradeOfferServer(listingOwnerUid, listingId, cardId);
+export async function createTradeOffer(listingOwnerUid, listingId, cardId, finish = 'normal', listedFinish = 'normal') {
+  const response = await createTradeOfferServer(listingOwnerUid, listingId, cardId, finish, listedFinish);
   return response?.result || null;
 }
 export async function cancelTradeOffer(offerId) {
@@ -191,6 +194,7 @@ function normalizeProfileForClient(data) {
     essence: Math.max(0, Math.floor(Number(data.essence) || 0)),
     inventory: normalizeInventory(data.inventory),
     dailyRewards: normalizeDailyRewardsState(data.dailyRewards),
+    flasheraCopies: normalizeFlasheraCopies(data.flasheraCopies),
     cosmetics: {
       ...(data.cosmetics && typeof data.cosmetics === 'object' && !Array.isArray(data.cosmetics) ? data.cosmetics : {}),
       emotes: [...new Set((Array.isArray(data.cosmetics?.emotes) ? data.cosmetics.emotes : []).map(String).filter(Boolean))]
@@ -449,6 +453,7 @@ export function onAuthChange(onChange) {
 //     fichas: number,          // Fase 2/23.13: +1 por sobre ABIERTO
 //     enhancements: { [cardId]: keyword },  // mejoras permanentes por Ficha
 //     evolutions: { [cardId]: { stage: 1|2, evolvedAtMs } }, // Cápsula de Evolución
+//     flasheraCopies: { [stateVariantId]: count }, // Flasheras Stage26; overlay, no duplica collection
 //     createdAt, lastSeenAt }
 //
 // Nadie fuera de este archivo arma una referencia a `users/{uid}` a mano — todo pasa por
@@ -1345,10 +1350,10 @@ export async function adminResetDailyRewardDebug(uid) {
 // Craftea una mejora permanente: gasta `fichaCost` Fichas para taggear UNA carta que ya
 // tenés (y que todavía no esté mejorada) con una keyword de la lista curada
 // (ENHANCEMENT_KEYWORDS en store.js). Devuelve el perfil ya actualizado.
-export async function craftEnhancement(uid, cardId, keyword, _fichaCost = null) {
-  const request = { cardId: String(cardId || ''), keyword: String(keyword || '') };
+export async function craftEnhancement(uid, cardId, keyword, _fichaCost = null, sourceFinish = 'normal') {
+  const request = { cardId: String(cardId || ''), keyword: String(keyword || ''), sourceFinish:String(sourceFinish || 'normal') };
   const outcome = await runEconomyActionAuthority(uid, 'enhancementCraft', request,
-    operationId => craftEnhancementServer(request.cardId, request.keyword, operationId));
+    operationId => craftEnhancementServer(request.cardId, request.keyword, operationId, request.sourceFinish));
   const profile = await loadOwnProfileAfterServerMutation(uid);
   if (!outcome.replayed) {
     const spent = Math.max(0, Math.floor(Number(outcome.result?.fichasCost) || 0));
@@ -1389,9 +1394,9 @@ export async function convertEssence(uid, quantity=1) {
   return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
 }
 
-export async function evolveCard(uid, cardId) {
-  const request={cardId:String(cardId||'')};
-  const outcome=await runEconomyActionAuthority(uid,'cardEvolution',request,operationId=>evolveCardServer(request.cardId,operationId));
+export async function evolveCard(uid, cardId, sourceFinish='normal') {
+  const request={cardId:String(cardId||''),sourceFinish:String(sourceFinish||'normal')};
+  const outcome=await runEconomyActionAuthority(uid,'cardEvolution',request,operationId=>evolveCardServer(request.cardId,operationId,request.sourceFinish));
   const profile=await loadOwnProfileAfterServerMutation(uid);
   if(!profile) throw new Error('EVOLUTION_PROFILE_MISSING_AFTER_COMMIT');
   return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
@@ -1444,6 +1449,9 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   // "crea_028" (no podés tener 4 planas + 1 mejorada = 5, seguiría violando la 100.2a),
   // pero se valida aparte que: 1) esa carta REALMENTE tenga una mejora crafteada, y
   // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
+  // Validate inside the SAME Firestore transaction snapshot as the eventual deck write.
+  // Reject forged premium suffixes, unsupported combinations and overdrawn finish counts.
+  assertDeckFlasheraOwnership(data, cardIds, {allowVirtualAdminPool,maxCopiesPerCard:MAX_COPIES_PER_CARD,isBasicLand:id=>cardDb.getById(id)?.type?.includes('básica')});
   const enhancements = data.enhancements || {};
   const evolutions = data.evolutions || {};
   const requestedCounts = {};
@@ -1452,14 +1460,13 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   const evolvedStages = {};
   const normalSlotCounts = {};
   cardIds.forEach(id => {
-    const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
-    const parsedEvolution = isEnhancedSlot ? { baseId:id, stage:0 } : parseEvolutionVariantId(id);
-    const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
+    const parsed = parseCardVariantId(id);
+    const baseId = parsed.baseId;
     requestedCounts[baseId] = (requestedCounts[baseId] || 0) + 1;
-    if (isEnhancedSlot) enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
-    else if (parsedEvolution.stage > 0) {
+    if (parsed.state === 'enhanced') enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
+    else if (parsed.evolutionStage > 0) {
       evolvedSlotCounts[baseId] = (evolvedSlotCounts[baseId] || 0) + 1;
-      evolvedStages[baseId] = parsedEvolution.stage;
+      evolvedStages[baseId] = parsed.evolutionStage;
     } else normalSlotCounts[baseId] = (normalSlotCounts[baseId] || 0) + 1;
   });
 
@@ -2430,6 +2437,24 @@ export async function fetchAllUserProfiles() {
 // transacción para no pisar un cambio concurrente (ej. el jugador comprando un sobre justo
 // en ese momento) — mismo patrón que awardPoints/purchasePack. Nunca deja el valor en
 // negativo, sea cual sea el monto pedido.
+
+export async function adminGetFlasheraAnalytics() {
+  const response=await adminGetFlasheraAnalyticsServer();
+  return response?.analytics||null;
+}
+export async function adminGetFlasheraStatus() {
+  const response=await adminGetFlasheraStatusServer();
+  return response||null;
+}
+export async function adminSaveFlasheraConfig(settings={}) {
+  const response=await adminSaveFlasheraConfigServer(settings);
+  return response?.config||response?.result||null;
+}
+export async function adminAdjustFlasheraDebug(targetUid,stateId,delta,reason='') {
+  const response=await adminAdjustFlasheraDebugServer({targetUid,stateId,delta,reason});
+  return response?.result||null;
+}
+
 export async function adminGrantCurrency(targetUid, currencyField, amount, reason = '') {
   const response = await adminGrantServer({ targetUid, kind:currencyField, amount, reason });
   return Number(response?.result?.newValue ?? 0);
@@ -3161,4 +3186,8 @@ export async function uploadTelemetrySession({ uid, playerName, checkpoint, reas
     uploadedThroughBugCount: checkpoint.throughBugCount || 0,
     eventCount: (checkpoint.events || []).length
   };
+}
+
+export function attestMultiplayerDeck(matchId,deckId='',mode='saved') {
+  return attestMatchDeckServer({matchId,deckId,mode,sessionId:MULTIPLAYER_CLIENT_SESSION_ID});
 }

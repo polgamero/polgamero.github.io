@@ -7,6 +7,9 @@ import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, E
 import { buildCompetitiveDeck } from './deckIntelligence.js';
 import { parseEvolutionVariantId, evolutionStageForProfile, applyEvolutionStage } from './evolution.js';
 import { gameRandom } from './gameRng.js';
+import { parseCardVariantId } from './cardVariant.js';
+import { assertDeckFlasheraOwnership, isFlasheraDeck } from './flasheraDeck.js';
+import { putPhysicalFlashera } from './flasheraGameplay.js';
 
 export function shuffle(array, randomFn = gameRandom) {
   if (!Array.isArray(array)) return array;
@@ -244,12 +247,26 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
 // vez de importar `state` directo de main.js — a propósito: evita un import circular
 // (utils.js -> main.js -> ui.js/firebaseClient.js -> SDK de Firebase) que rompía poder
 // importar este archivo de forma aislada, y de paso deja la función más pura y testeable.
-export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}) {
+export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, profile = null) {
+  // Stage31: the finish must survive into physical game instances. Reject invented
+  // premium copies before shuffle/hand split (also used by Solo/Tournament/PvP).
+  if (!Array.isArray(cardIds)) throw new Error('El mazo debe ser una lista de variantes canónicas.');
+  if (isFlasheraDeck(cardIds)) {
+    if (!profile || !Array.isArray(profile.collection)) {
+      const error = new Error('No se pudo verificar la propiedad de las cartas Flasheras antes de jugar.');
+      error.code = 'FLASHERA_GAMEPLAY_OWNERSHIP_REQUIRED'; throw error;
+    }
+    assertDeckFlasheraOwnership(profile, cardIds, {
+      isBasicLand: baseId => !!cardDb.getById(baseId)?.type?.includes('básica')
+    });
+  }
   const cards = cardIds
     .map(id => {
-      const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
-      const parsedEvolution = isEnhancedSlot ? { baseId: id, stage: 0 } : parseEvolutionVariantId(id);
-      const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : parsedEvolution.baseId;
+      const variant = parseCardVariantId(id);
+      if (!variant.valid) throw new Error(`Variante de mazo inválida: ${String(id)}`);
+      const isEnhancedSlot = variant.state === 'enhanced';
+      const parsedEvolution = {baseId:variant.baseId,stage:variant.evolutionStage};
+      const baseId = variant.baseId;
       const cardDef = cardDb.getById(baseId);
       if (!cardDef) return null;
       if (cardDef.enabled === false) {
@@ -269,7 +286,7 @@ export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}) {
         const keyword = enhancements && enhancements[baseId];
         if (keyword) cloned.keywords = [...(cloned.keywords || []), keyword];
       }
-      return cloned;
+      return variant.flashera ? putPhysicalFlashera(cloned, variant.canonicalId) : cloned;
     })
     .filter(Boolean);
   return shuffle(cards);

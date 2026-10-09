@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = '96484492ac473020d2e5';
+      const BUILD_ID = '3ddbaa93286892f58fe8';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -483,7 +483,7 @@
           </div>
           <div id="mp-social-status" class="mp-social-status" aria-live="polite"></div>
         </div>
-        
+
         <!-- ENTREGA 23.9.1: cabecera compacta. Turno, fase, prioridad y actividad son capas distintas. -->
         <div id="turn-priority-hud" class="turn-priority-hud" aria-live="polite">
           <div class="turn-priority-head">
@@ -587,7 +587,7 @@
       </div>
     </div>
   </div>
-  
+
   <script>
     // 23.11.8 — bootstrap por etapas + gate portrait real. CRÍTICO: main.js se importa por su URL CANÓNICA
     // ./js/main.js, SIN query-string, porque varios módulos internos importan exactamente

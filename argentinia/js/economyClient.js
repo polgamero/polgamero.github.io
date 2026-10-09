@@ -112,11 +112,12 @@ export function purchasePackServer(operationId = null) {
   });
 }
 
-export function craftEnhancementServer(cardId, keyword, operationId = null) {
+export function craftEnhancementServer(cardId, keyword, operationId = null, sourceFinish = 'normal') {
   return call('economyCraftEnhancement', {
     operationId: operationId || createEconomyOperationId('craft'),
     cardId: String(cardId || ''),
-    keyword: String(keyword || '')
+    keyword: String(keyword || ''),
+    sourceFinish: String(sourceFinish || 'normal')
   });
 }
 
@@ -147,10 +148,10 @@ export function convertEssenceServer(quantity = 1, operationId = null) {
   });
 }
 
-export function evolveCardServer(cardId, operationId = null) {
+export function evolveCardServer(cardId, operationId = null, sourceFinish = 'normal') {
   return call('economyCraftEnhancement', {
     operationId: operationId || createEconomyOperationId('card-evolution'),
-    action: 'evolveCard', cardId:String(cardId || '')
+    action: 'evolveCard', cardId:String(cardId || ''), sourceFinish:String(sourceFinish || 'normal')
   });
 }
 
@@ -421,6 +422,25 @@ export function recoverEconomyOperation(operationId) {
 }
 
 
+
+export function adminGetFlasheraAnalyticsServer() {
+  return call('economyAdminFlashera',{action:'analytics'});
+}
+export function adminGetFlasheraStatusServer() {
+  return call('economyAdminFlashera',{action:'status'});
+}
+export function adminSaveFlasheraConfigServer(settings={},operationId=null) {
+  return call('economyAdminFlashera',{action:'save_config',operationId:operationId||createEconomyOperationId('flashera-config'),settings:{
+    acquisitionEnabled:settings.acquisitionEnabled===true,
+    visualEnabled:settings.visualEnabled!==false,
+    packChanceBps:Number(settings.packChanceBps),evolutionChanceBps:Number(settings.evolutionChanceBps),
+    mixerChanceBps:Number(settings.mixerChanceBps),sanctuaryChanceBps:Number(settings.sanctuaryChanceBps)
+  }});
+}
+export function adminAdjustFlasheraDebugServer({targetUid,stateId,delta,reason='',operationId=null}={}) {
+  return call('economyAdminFlashera',{action:'debug_adjust',operationId:operationId||createEconomyOperationId('flashera-debug'),targetUid:String(targetUid||''),stateId:String(stateId||''),delta:Number(delta),reason:String(reason||'')});
+}
+
 export function adminGrantServer({ targetUid, kind, amount, reason = '', operationId = null } = {}) {
   return call('economyAdminGrant', {
     operationId: operationId || createEconomyOperationId('admin-grant'),
@@ -491,10 +511,11 @@ export function abandonTournamentServer(tournamentId, operationId = null) {
 export function getTradeMarketServer() {
   return call('economyGetTradeMarket');
 }
-export function createTradeListingServer({ cardId, wantedCriteria = [], acceptAnyCard = false } = {}, operationId = null) {
+export function createTradeListingServer({ cardId, finish = 'normal', wantedFinish = 'any', wantedCriteria = [], acceptAnyCard = false } = {}, operationId = null) {
   return call('economyCreateTradeListing', {
     operationId: operationId || createEconomyOperationId('trade-listing'),
     cardId: String(cardId || ''),
+    finish, wantedFinish,
     wantedCriteria: Array.isArray(wantedCriteria) ? wantedCriteria : [],
     acceptAnyCard: acceptAnyCard === true
   });
@@ -505,12 +526,12 @@ export function cancelTradeListingServer(listingId, operationId = null) {
     listingId: String(listingId || '')
   });
 }
-export function createTradeOfferServer(listingOwnerUid, listingId, cardId, operationId = null) {
+export function createTradeOfferServer(listingOwnerUid, listingId, cardId, finish = 'normal', listedFinish = 'normal', operationId = null) {
   return call('economyCreateTradeOffer', {
     operationId: operationId || createEconomyOperationId('trade-offer'),
     listingOwnerUid: String(listingOwnerUid || ''),
     listingId: String(listingId || ''),
-    cardId: String(cardId || '')
+    cardId: String(cardId || ''), finish, listedFinish
   });
 }
 export function cancelTradeOfferServer(offerId, operationId = null) {
@@ -530,4 +551,9 @@ export function acceptTradeOfferServer(offerId, operationId = null) {
     operationId: operationId || createEconomyOperationId('trade-offer-accept'),
     offerId: String(offerId || '')
   });
+}
+
+// Stage40 — no client-side deck contents; only a saved-deck identifier and fenced session.
+export function attestMatchDeckServer({matchId,deckId='',mode='saved',sessionId}={}) {
+  return call('economyAttestMatchDeck',{matchId,deckId,mode,sessionId});
 }

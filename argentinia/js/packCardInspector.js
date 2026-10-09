@@ -2,6 +2,8 @@
 // Presentation-only: no conoce economía, colección ni Firestore. Trabaja exclusivamente
 // sobre el shell ya renderizado por packOpening.js y usa Pointer Events para mouse/touch.
 
+import { updateFlasheraLighting, resetFlasheraLighting } from './flasheraRenderer.js';
+
 const INTRO_MS = 1200;
 const DRAG_SENSITIVITY = 0.5;
 const DRAG_THRESHOLD_PX = 5;
@@ -10,7 +12,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function bindPackCardInspector(shell, { frontFace = null, introMs = INTRO_MS } = {}) {
+export function bindPackCardInspector(shell, { frontFace = null, introMs = INTRO_MS, canDrag = null } = {}) {
   if (!shell?.addEventListener) {
     return {
       startRevealIntro() {},
@@ -65,6 +67,7 @@ export function bindPackCardInspector(shell, { frontFace = null, introMs = INTRO
     const x = clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100);
     const y = clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100);
     shine.style.background = `radial-gradient(circle at ${x}% ${y}%, rgba(255,255,255,.44) 0%, rgba(255,255,255,.16) 24%, rgba(255,255,255,0) 62%)`;
+    updateFlasheraLighting(shell, { x, y, tiltX:(50-y)/50, tiltY:(x-50)/50 });
   }
 
   function settleToFront() {
@@ -72,11 +75,12 @@ export function bindPackCardInspector(shell, { frontFace = null, introMs = INTRO
     shell.classList.add('arg-pack3d-settling');
     setRotation(0, 0);
     clearShine();
+    resetFlasheraLighting(shell);
     window.setTimeout?.(() => shell.classList.remove('arg-pack3d-settling'), 650);
   }
 
   function onPointerDown(event) {
-    if (!isInteractive || event.button > 0) return;
+    if (!isInteractive || event.button > 0 || (typeof canDrag === 'function' && !canDrag())) return;
     isDragging = true;
     pointerId = event.pointerId;
     previousX = event.clientX;
@@ -124,6 +128,7 @@ export function bindPackCardInspector(shell, { frontFace = null, introMs = INTRO
     shell.classList.remove('arg-pack3d-intro', 'arg-pack3d-ready', 'arg-pack3d-dragging', 'arg-pack3d-settling');
     setRotation(0, 0);
     clearShine();
+    resetFlasheraLighting(shell);
   }
 
   function startRevealIntro() {
