@@ -293,7 +293,7 @@ function summaryCardElement(entry, renderCard) {
   if (entry.card?.flashera === true) {
     const tag = document.createElement('span');
     tag.className = 'pack-opening-summary-flashera-tag';
-    tag.textContent = '✨ FLASHERA';
+    tag.textContent = '💫 FLASHERA';
     wrap.appendChild(tag);
   }
   return wrap;
@@ -415,7 +415,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     const grid = overlay.querySelector('.pack-opening-summary-grid');
     if (!grid.childElementCount) sequence.forEach(entry => grid.appendChild(summaryCardElement(entry, renderCard)));
     const subtitle = overlay.querySelector('.pack-opening-summary-sub');
-    if (flasheraPlan && subtitle) subtitle.textContent += ' · ✨ 1 Flashera obtenida';
+    if (flasheraPlan && subtitle) subtitle.textContent += ' · 💫 1 Flashera obtenida';
   }
 
   function skipToCeremony() {
@@ -464,7 +464,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     // conserva también la protección drag→click de 23.13.15/17.
     charging = true;
     primary.disabled = true;
-    primary.textContent = entry.card?.flashera === true ? 'CONTINUAR ✨' : (entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE');
+    primary.textContent = entry.card?.flashera === true ? 'CONTINUAR 💫' : (entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE');
     if (hint) hint.textContent = 'Esperá el giro · después arrastrá para inspeccionar';
     introTimer = window.setTimeout(() => {
       if (closed || index !== preparedIndex) return;

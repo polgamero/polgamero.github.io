@@ -16,7 +16,17 @@ export const FLASHERA_EFFECTS = Object.freeze([
   Object.freeze({ id:'fuego-fatuo', name:'Fuego Fatuo', motion:true }),
   Object.freeze({ id:'holograma-pampeano', name:'Holograma Pampeano', motion:true }),
   Object.freeze({ id:'tormenta-electrica', name:'Tormenta Eléctrica', motion:true }),
-  Object.freeze({ id:'espejo-negro', name:'Espejo Negro', motion:true })
+  Object.freeze({ id:'espejo-negro', name:'Espejo Negro', motion:true }),
+  Object.freeze({ id:'nebulosa-criolla', name:'Nebulosa Criolla', motion:true }),
+  Object.freeze({ id:'solar-andino', name:'Solar Andino', motion:true }),
+  Object.freeze({ id:'cometa-del-litoral', name:'Cometa del Litoral', motion:true }),
+  Object.freeze({ id:'mar-de-nacar', name:'Mar de Nácar', motion:true }),
+  Object.freeze({ id:'relampago-del-plata', name:'Relámpago del Plata', motion:true }),
+  Object.freeze({ id:'vitral-celeste', name:'Vitral Celeste', motion:true }),
+  Object.freeze({ id:'cromo-huracan', name:'Cromo Huracán', motion:true }),
+  Object.freeze({ id:'polvo-de-estrellas', name:'Polvo de Estrellas', motion:true }),
+  Object.freeze({ id:'tornado-prismatico', name:'Tornado Prismático', motion:true }),
+  Object.freeze({ id:'llama-boreal', name:'Llama Boreal', motion:true })
 ]);
 
 const EFFECT_IDS = new Set(FLASHERA_EFFECTS.map(row => row.id));
@@ -88,6 +98,92 @@ function styles(){return `
 
 .card.flashera-card[data-flashera-effect="espejo-negro"]>.card-inner>.${FX_CLASS}::before{background:conic-gradient(from 230deg at var(--arg-fl-x) var(--arg-fl-y),rgba(0,0,0,.18),rgba(0,100,110,.26),rgba(106,27,118,.28),rgba(15,15,18,.42),rgba(126,83,25,.20),rgba(0,0,0,.18));mix-blend-mode:multiply;opacity:.72;animation:arg-fl-spin 16s linear infinite reverse;}
 .card.flashera-card[data-flashera-effect="espejo-negro"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(circle at var(--arg-fl-x) var(--arg-fl-y),rgba(255,255,255,.36),rgba(35,190,188,.10) 19%,transparent 44%);mix-blend-mode:screen;opacity:.56;}
+
+/* === Stage42A · Diez acabados adicionales · bucles autónomos ================= */
+/* 11 Nebulosa Criolla: gas volumétrico, estallidos y desplazamiento cruzado. */
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"]>.card-inner>.${FX_CLASS}::before{background:radial-gradient(ellipse 55% 62% at 18% 72%,rgba(255,45,181,.49),transparent 77%),radial-gradient(ellipse 53% 62% at 82% 19%,rgba(31,228,255,.48),transparent 75%),radial-gradient(ellipse 47% 48% at 61% 77%,rgba(118,60,255,.45),transparent 80%),radial-gradient(circle at 41% 26%,rgba(255,245,197,.48),transparent 19%);background-size:115% 115%,128% 122%,110% 112%,105% 105%;mix-blend-mode:screen;filter:saturate(1.45);opacity:.87;animation:arg-fl-nebula 9s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(circle at 22% 39%,rgba(255,255,255,.94) 0 1px,transparent 2px),radial-gradient(circle at 79% 67%,rgba(135,246,255,.86) 0 1px,transparent 2px),radial-gradient(circle at 48% 82%,rgba(255,184,244,.88) 0 1.5px,transparent 2.7px),linear-gradient(116deg,transparent 28%,rgba(255,255,255,.19) 49%,transparent 67%);background-size:49px 67px,75px 61px,61px 87px,240% 100%;mix-blend-mode:screen;opacity:.65;animation:arg-fl-nebula-dust 12s linear infinite;}
+@keyframes arg-fl-nebula{0%,100%{transform:translate3d(-5%,2%,0) scale(1.03) rotate(-3deg);filter:saturate(1.25) hue-rotate(0deg)}50%{transform:translate3d(5%,-5%,0) scale(1.18) rotate(3deg);filter:saturate(1.7) hue-rotate(28deg)}}
+@keyframes arg-fl-nebula-dust{0%{background-position:0 0,0 0,0 0,-85% 50%}100%{background-position:49px -67px,-75px 61px,61px -87px,185% 50%}}
+
+/* 12 Solar Andino: corona giratoria y onda dorada cálida. */
+.card.flashera-card[data-flashera-effect="solar-andino"]>.card-inner>.${FX_CLASS}::before{background:repeating-conic-gradient(from 8deg at 50% 51%,transparent 0deg 13deg,rgba(255,237,139,.26) 15deg 18deg,transparent 20deg 34deg),radial-gradient(circle at 50% 53%,rgba(255,252,197,.65),rgba(255,161,32,.34) 26%,rgba(225,60,0,.09) 49%,transparent 71%);mix-blend-mode:screen;opacity:.84;animation:arg-fl-solar-corona 17s linear infinite;}
+.card.flashera-card[data-flashera-effect="solar-andino"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(circle at 50% 53%,transparent 16%,rgba(255,247,180,.62) 19%,transparent 26%,rgba(255,198,75,.32) 38%,transparent 48%),linear-gradient(125deg,transparent 19%,rgba(255,255,228,.48) 40%,transparent 61%);background-size:100% 100%,240% 100%;mix-blend-mode:screen;opacity:.69;animation:arg-fl-solar-wave 5.8s ease-in-out infinite;}
+@keyframes arg-fl-solar-corona{to{transform:rotate(360deg)}}
+@keyframes arg-fl-solar-wave{0%,100%{transform:scale(.82);opacity:.39;background-position:50% 50%,-95% 0}50%{transform:scale(1.09);opacity:.84;background-position:50% 50%,155% 0}}
+
+/* 13 Cometa del Litoral: estelas desfasadas, barridos continuos. */
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"]>.card-inner>.${FX_CLASS}::before{background:repeating-linear-gradient(135deg,transparent 0 30px,rgba(42,255,235,.08) 34px 36px,transparent 39px 74px),linear-gradient(132deg,transparent 16%,rgba(170,255,255,.64) 33%,rgba(22,198,255,.27) 35%,transparent 43%,rgba(255,255,255,.7) 59%,rgba(43,228,255,.17) 61%,transparent 69%);background-size:190% 190%,280% 100%;mix-blend-mode:screen;opacity:.79;animation:arg-fl-comet-trail 4.1s linear infinite;}
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(ellipse 3% 5% at 20% 70%,rgba(255,255,255,.95),transparent),radial-gradient(ellipse 4% 6% at 75% 30%,rgba(157,255,241,.95),transparent),repeating-linear-gradient(136deg,transparent 0 46px,rgba(196,255,255,.27) 49px 51px,transparent 53px 103px);background-size:200% 140%;mix-blend-mode:screen;opacity:.65;animation:arg-fl-comet-sparks 6.4s linear infinite;}
+@keyframes arg-fl-comet-trail{0%{background-position:-130px 125px,-130% 50%}100%{background-position:130px -135px,165% 50%}}
+@keyframes arg-fl-comet-sparks{0%{background-position:-95px 95px}100%{background-position:95px -95px}}
+
+/* 14 Mar de Nácar: interferencia iridiscente que ondula sin cortes. */
+.card.flashera-card[data-flashera-effect="mar-de-nacar"]>.card-inner>.${FX_CLASS}::before{background:repeating-radial-gradient(ellipse at 28% 95%,rgba(250,231,255,.24) 0 8px,rgba(91,241,232,.19) 14px 24px,rgba(255,136,204,.15) 32px 43px,transparent 50px 68px),linear-gradient(142deg,rgba(246,169,222,.27),rgba(100,244,226,.33),rgba(242,233,184,.26),rgba(160,143,254,.26));background-size:120% 150%,240% 240%;mix-blend-mode:screen;opacity:.8;animation:arg-fl-nacre-tide 10s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="mar-de-nacar"]>.card-inner>.${FX_CLASS}::after{background:linear-gradient(113deg,transparent 22%,rgba(255,255,255,.52) 37%,rgba(149,255,242,.30) 44%,transparent 61%);background-size:230% 110%;mix-blend-mode:soft-light;opacity:.76;animation:arg-fl-nacre-sheen 6.8s linear infinite;}
+@keyframes arg-fl-nacre-tide{0%,100%{transform:translate3d(-4%,0,0) skewY(-2deg);filter:hue-rotate(0deg)}50%{transform:translate3d(5%,-6%,0) skewY(3deg);filter:hue-rotate(38deg)}}
+@keyframes arg-fl-nacre-sheen{0%{background-position:-120% 0}100%{background-position:180% 0}}
+
+/* 15 Relámpago del Plata: arcos finos móviles sobre atmósfera azul. */
+.card.flashera-card[data-flashera-effect="relampago-del-plata"]>.card-inner>.${FX_CLASS}::before{background:linear-gradient(124deg,transparent 0 32%,rgba(219,247,255,.74) 32.5% 33.2%,transparent 34% 56%,rgba(97,211,255,.65) 56.5% 57.1%,transparent 58%),linear-gradient(71deg,transparent 0 41%,rgba(255,255,255,.4) 41.3% 42.1%,transparent 43%),radial-gradient(ellipse at 56% 32%,rgba(65,175,255,.43),transparent 62%);background-size:230% 230%,200% 200%,100% 100%;mix-blend-mode:screen;opacity:.76;animation:arg-fl-rayo-flow 4.8s linear infinite;}
+.card.flashera-card[data-flashera-effect="relampago-del-plata"]>.card-inner>.${FX_CLASS}::after{background:repeating-linear-gradient(12deg,transparent 0 22px,rgba(204,242,255,.15) 23px 24px,transparent 27px 49px),radial-gradient(ellipse at var(--arg-fl-x) var(--arg-fl-y),rgba(233,255,255,.68),transparent 30%);mix-blend-mode:screen;opacity:.62;animation:arg-fl-rayo-hum 3.7s ease-in-out infinite;}
+@keyframes arg-fl-rayo-flow{0%{background-position:-100% 80%,125% 60%,0 0}100%{background-position:160% -85%,-135% -50%,0 0}}
+@keyframes arg-fl-rayo-hum{0%,100%{opacity:.3;transform:translateX(-2%)}50%{opacity:.78;transform:translateX(2%)}}
+
+/* 16 Vitral Celeste: facetas irregulares con luz que rota por capas. */
+.card.flashera-card[data-flashera-effect="vitral-celeste"]>.card-inner>.${FX_CLASS}::before{background:conic-gradient(from 18deg at 26% 36%,rgba(68,229,255,.29) 0 41deg,rgba(255,218,112,.25) 41deg 94deg,rgba(129,105,255,.30) 94deg 188deg,rgba(255,108,207,.20) 188deg 270deg,rgba(37,238,190,.29) 270deg 360deg),conic-gradient(from 85deg at 79% 70%,rgba(255,255,255,.24) 0 52deg,transparent 52deg 57deg,rgba(72,206,255,.32) 57deg 160deg,rgba(255,213,108,.19) 160deg 236deg,rgba(166,109,255,.27) 236deg 360deg);mix-blend-mode:screen;opacity:.76;animation:arg-fl-vitral-light 13s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="vitral-celeste"]>.card-inner>.${FX_CLASS}::after{background:repeating-linear-gradient(37deg,transparent 0 37px,rgba(255,255,255,.16) 38px 39px,transparent 40px 73px),linear-gradient(108deg,transparent 31%,rgba(255,255,255,.51) 48%,transparent 65%);background-size:145% 145%,235% 100%;mix-blend-mode:overlay;opacity:.72;animation:arg-fl-vitral-rim 7s linear infinite;}
+@keyframes arg-fl-vitral-light{0%,100%{transform:translate3d(-3%,2%,0) rotate(-2deg);filter:hue-rotate(0deg)}50%{transform:translate3d(4%,-3%,0) rotate(3deg);filter:hue-rotate(52deg)}}
+@keyframes arg-fl-vitral-rim{0%{background-position:0 0,-105% 50%}100%{background-position:73px -73px,165% 50%}}
+
+/* 17 Cromo Huracán: metal espectral pulido y barridos asimétricos. */
+.card.flashera-card[data-flashera-effect="cromo-huracan"]>.card-inner>.${FX_CLASS}::before{background:linear-gradient(106deg,transparent 4%,rgba(255,255,255,.15) 13%,rgba(225,252,255,.86) 23%,rgba(26,159,226,.29) 28%,transparent 36%,rgba(185,133,255,.27) 50%,rgba(255,255,255,.7) 63%,rgba(59,204,255,.33) 68%,transparent 78%),linear-gradient(12deg,rgba(5,24,43,.18),transparent 35%,rgba(231,247,255,.19) 68%,rgba(20,24,75,.16));background-size:325% 100%,100% 100%;mix-blend-mode:screen;opacity:.88;animation:arg-fl-chrome-streak 4.9s linear infinite;}
+.card.flashera-card[data-flashera-effect="cromo-huracan"]>.card-inner>.${FX_CLASS}::after{background:repeating-linear-gradient(0deg,transparent 0 8px,rgba(255,255,255,.11) 9px 10px,transparent 11px 26px),radial-gradient(circle at var(--arg-fl-x) var(--arg-fl-y),rgba(255,255,255,.79),transparent 29%);mix-blend-mode:screen;opacity:.46;animation:arg-fl-chrome-shimmer 3.3s ease-in-out infinite;}
+@keyframes arg-fl-chrome-streak{0%{background-position:-145% 50%,0 0}100%{background-position:185% 50%,0 0}}
+@keyframes arg-fl-chrome-shimmer{0%,100%{transform:translateY(-3%);opacity:.35}50%{transform:translateY(3%);opacity:.7}}
+
+/* 18 Polvo de Estrellas: tres densidades de partículas en parallax. */
+.card.flashera-card[data-flashera-effect="polvo-de-estrellas"]>.card-inner>.${FX_CLASS}::before{background:radial-gradient(circle at 19% 17%,rgba(255,255,255,.96) 0 1px,transparent 1.9px),radial-gradient(circle at 83% 73%,rgba(255,208,122,.93) 0 1.5px,transparent 2.4px),radial-gradient(circle at 37% 58%,rgba(133,245,255,.95) 0 1.2px,transparent 2.3px),radial-gradient(circle at 63% 35%,rgba(255,139,229,.92) 0 1px,transparent 2px);background-size:29px 37px,47px 53px,59px 61px,73px 79px;mix-blend-mode:screen;opacity:.86;animation:arg-fl-stardust-fall 13s linear infinite;}
+.card.flashera-card[data-flashera-effect="polvo-de-estrellas"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(circle at 24% 63%,rgba(243,223,255,.63),transparent 27%),radial-gradient(circle at 77% 21%,rgba(83,215,255,.5),transparent 31%),radial-gradient(circle at var(--arg-fl-x) var(--arg-fl-y),rgba(255,255,255,.45),transparent 32%);mix-blend-mode:screen;opacity:.65;animation:arg-fl-stardust-pulse 6.4s ease-in-out infinite;}
+@keyframes arg-fl-stardust-fall{0%{background-position:0 0,0 0,0 0,0 0}100%{background-position:29px -37px,-47px 53px,59px -61px,-73px 79px}}
+@keyframes arg-fl-stardust-pulse{0%,100%{opacity:.34;transform:scale(.91)}50%{opacity:.77;transform:scale(1.08)}}
+
+/* 19 Tornado Prismático: remolino espiralado y cintas acentuadas. */
+.card.flashera-card[data-flashera-effect="tornado-prismatico"]>.card-inner>.${FX_CLASS}::before{background:repeating-conic-gradient(from 30deg at 50% 52%,transparent 0deg 23deg,rgba(255,85,201,.24) 25deg 37deg,transparent 40deg 64deg,rgba(97,238,255,.26) 67deg 80deg,transparent 83deg 101deg,rgba(255,226,87,.19) 105deg 119deg,transparent 122deg 144deg),radial-gradient(ellipse at 50% 52%,transparent 7%,rgba(179,110,255,.30) 43%,transparent 71%);mix-blend-mode:screen;opacity:.79;animation:arg-fl-tornado-vortex 14s linear infinite;}
+.card.flashera-card[data-flashera-effect="tornado-prismatico"]>.card-inner>.${FX_CLASS}::after{background:repeating-radial-gradient(ellipse at 49% 53%,transparent 0 15px,rgba(255,255,255,.20) 17px 18px,transparent 20px 34px),linear-gradient(123deg,transparent 34%,rgba(255,255,255,.39) 49%,transparent 64%);mix-blend-mode:screen;opacity:.66;animation:arg-fl-tornado-rings 8s ease-in-out infinite;}
+@keyframes arg-fl-tornado-vortex{to{transform:rotate(360deg) scale(1.1);filter:hue-rotate(360deg)}}
+@keyframes arg-fl-tornado-rings{0%,100%{transform:scale(.82) rotate(-9deg);opacity:.37}50%{transform:scale(1.15) rotate(9deg);opacity:.76}}
+
+/* 20 Llama Boreal: lenguas de luz fría oscilantes desde la base. */
+.card.flashera-card[data-flashera-effect="llama-boreal"]>.card-inner>.${FX_CLASS}::before{background:radial-gradient(ellipse 19% 77% at 16% 103%,rgba(55,255,199,.75),transparent 95%),radial-gradient(ellipse 22% 91% at 42% 111%,rgba(38,164,255,.68),transparent 91%),radial-gradient(ellipse 20% 80% at 68% 106%,rgba(222,83,255,.57),transparent 94%),radial-gradient(ellipse 17% 65% at 91% 108%,rgba(142,255,123,.57),transparent 93%);mix-blend-mode:screen;filter:blur(4px);opacity:.88;animation:arg-fl-boreal-flame 5.4s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="llama-boreal"]>.card-inner>.${FX_CLASS}::after{background:repeating-linear-gradient(82deg,transparent 0 19px,rgba(204,255,245,.19) 20px 22px,transparent 24px 41px),radial-gradient(ellipse at var(--arg-fl-x) var(--arg-fl-y),rgba(190,255,240,.35),transparent 36%);mix-blend-mode:screen;opacity:.56;animation:arg-fl-boreal-embers 7.3s linear infinite;}
+@keyframes arg-fl-boreal-flame{0%,100%{transform:translate3d(-3%,6%,0) skewX(-3deg) scaleY(.9);filter:blur(5px) hue-rotate(0deg)}50%{transform:translate3d(4%,-9%,0) skewX(5deg) scaleY(1.18);filter:blur(7px) hue-rotate(33deg)}}
+@keyframes arg-fl-boreal-embers{0%{background-position:0 80px,50% 50%}100%{background-position:43px -95px,50% 50%}}
+
+/* En compact, mantener VIDA: una sola capa y bucles discretos para no cargar el campo. */
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="solar-andino"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="mar-de-nacar"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="relampago-del-plata"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="vitral-celeste"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="cromo-huracan"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="polvo-de-estrellas"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="tornado-prismatico"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
+.card.flashera-card[data-flashera-effect="llama-boreal"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-play-state:running!important;animation-duration:15s!important;will-change:auto;filter:none;}
+/* Compact establece animation:none; restauramos explícitamente el nombre sin afectar otros presets. */
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nebula!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="solar-andino"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-solar-corona!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-comet-trail!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="mar-de-nacar"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nacre-tide!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="relampago-del-plata"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-rayo-flow!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="vitral-celeste"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-vitral-light!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="cromo-huracan"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-chrome-streak!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="polvo-de-estrellas"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-stardust-fall!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="tornado-prismatico"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-tornado-vortex!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="llama-boreal"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-boreal-flame!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+/* Accesibilidad siempre por encima de la excepción compact: */
+@media (prefers-reduced-motion:reduce){.card.flashera-card>.card-inner>.${FX_CLASS}::before,.card.flashera-card>.card-inner>.${FX_CLASS}::after{animation:none!important;}}
 
 @keyframes arg-fl-spin{to{transform:rotate(360deg) scale(1.02)}}
 @keyframes arg-fl-drift{to{background-position:130% 70%}}

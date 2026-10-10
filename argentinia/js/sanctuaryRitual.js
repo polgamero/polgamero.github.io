@@ -200,7 +200,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
       </div>
     </div>
     <div class="sanctuary-reveal-result">
-      <div class="sanctuary-reveal-success">${flashera===true?'✨ FLASHERA · DESCUBRIMIENTO':esc(gameText('sanctuary.ritual.success'))}</div>
+      <div class="sanctuary-reveal-success">${flashera===true?'💫 FLASHERA · DESCUBRIMIENTO':esc(gameText('sanctuary.ritual.success'))}</div>
       <div class="sanctuary-reveal-name">${esc(card.name || card.id)}</div>
       ${adminBypass ? `<div class="sanctuary-reveal-admin">${esc(gameText('sanctuary.ritual.adminUnlimited'))}</div>` : ''}
       <button type="button" class="sanctuary-reveal-continue">${esc(gameText('sanctuary.ritual.continue'))}</button>

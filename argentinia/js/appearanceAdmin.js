@@ -23,7 +23,7 @@ const SECTION_META = Object.freeze([
   ['inputs','Campos y controles','⌨️'],
   ['badges','Badges / indicadores','🏷️'],
   ['notifications','Avisos / notificaciones','🔔'],
-  ['flashera','Flasheras','✨']
+  ['flashera','Flasheras','💫']
 ]);
 
 const SHADOW_OPTIONS = [['none','Sin sombra'],['soft','Suave'],['medium','Media'],['strong','Fuerte']];
@@ -68,7 +68,7 @@ function group(title, fields) { return `<div class="appearance-control-group"><d
 function controlsFor(sectionKey, c) {
   if (sectionKey === 'flashera') return [
     sectionHeader('Flasheras','Elegí un acabado para TODAS las copias Flasheras. No cambia probabilidades, rarezas ni cartas normales.'),
-    `<fieldset class="appearance-flashera-picker" aria-label="Acabado de Flasheras"><legend>Acabado global · 10 efectos</legend>${listFlasheraEffects().map(row => `<label class="appearance-flashera-option"><input type="radio" name="appearance-flashera-effect" value="${esc(row.id)}" data-appearance-path="flashera.effectId" ${c.flashera.effectId === row.id ? 'checked' : ''}><span>${esc(row.name)}</span></label>`).join('')}</fieldset>`,
+    `<fieldset class="appearance-flashera-picker" aria-label="Acabado de Flasheras"><legend>Acabado global · ${listFlasheraEffects().length} efectos (10 originales + 10 nuevos)</legend>${listFlasheraEffects().map(row => `<label class="appearance-flashera-option"><input type="radio" name="appearance-flashera-effect" value="${esc(row.id)}" data-appearance-path="flashera.effectId" ${c.flashera.effectId === row.id ? 'checked' : ''}><span>${esc(row.name)}</span></label>`).join('')}</fieldset>`,
     `<p class="appearance-flashera-note">Cambios de prueba: locales hasta <strong>PUBLICAR APARIENCIA</strong>. El acabado se guarda como ID predefinido, nunca como CSS.</p>`
   ].join('');
   if (sectionKey === 'global') return [
@@ -181,7 +181,7 @@ function previewHtml(c, viewport, sectionKey) {
   let body = '';
 
   if (section === 'flashera') {
-    body = `<div class="appearance-preview-single appearance-flashera-stage"><div class="appearance-flashera-caption">✨ FLASHERA · <strong>${esc(listFlasheraEffects().find(row=>row.id === c.flashera.effectId)?.name || 'Prisma Federal')}</strong></div><div class="appearance-flashera-scene"><div class="appearance-flashera-3d" data-appearance-flashera-3d><div class="appearance-flashera-real-card" data-appearance-flashera-card></div></div></div><div class="appearance-flashera-tip">Arrastrá la carta para inclinarla · ✋ para desplazar el lienzo</div></div>`;
+    body = `<div class="appearance-preview-single appearance-flashera-stage"><div class="appearance-flashera-caption">💫 FLASHERA · <strong>${esc(listFlasheraEffects().find(row=>row.id === c.flashera.effectId)?.name || 'Prisma Federal')}</strong></div><div class="appearance-flashera-scene"><div class="appearance-flashera-3d" data-appearance-flashera-3d><div class="appearance-flashera-real-card" data-appearance-flashera-card></div></div></div><div class="appearance-flashera-tip">Arrastrá la carta para inclinarla · ✋ para desplazar el lienzo</div></div>`;
   } else if (section === 'global') {
     body = `<div class="appearance-preview-single appearance-preview-global">
       <img class="appearance-preview-global-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">

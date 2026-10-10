@@ -17,7 +17,7 @@ export function mountAdminFlasheraPane(root){
   if(!root) return {load:async()=>{}}; injectStyles();
   root.innerHTML=`
     <div class="admin-section">
-      <div class="admin-section-title">✨ FLASHERAS · Autoridad y probabilidades</div>
+      <div class="admin-section-title">💫 FLASHERAS · Autoridad y probabilidades</div>
       <div class="admin-flashera-note"><b>Stage27:</b> configuración server-authoritative y ownership. La adquisición normal sigue <span class="admin-flashera-lock">BLOQUEADA OFF</span> hasta sus stages dedicados; sólo el Debug Admin puede convertir una copia física existente.</div>
       <div class="admin-flashera-grid">
         <div class="admin-flashera-row"><label>Adquisición global</label><label><input id="flashera-acq" type="checkbox" disabled> OFF · bloqueado por Stage27</label></div>
@@ -48,7 +48,7 @@ export function mountAdminFlasheraPane(root){
       <div class="admin-flashera-debug-grid" style="margin-top:10px;grid-template-columns:.6fr 1.4fr 1fr;">
         <label>Cantidad<input class="admin-field-input" id="flashera-qty" type="number" min="1" max="20" step="1" value="1"></label>
         <label>Motivo<input class="admin-field-input" id="flashera-reason" maxlength="240" placeholder="QA Stage27"></label>
-        <div style="display:flex;gap:8px;align-items:end;"><button class="admin-save-btn" id="flashera-grant" style="margin:0;">✨ + Flashera</button><button class="admin-save-btn" id="flashera-revoke" style="margin:0;">↩ − Flashera</button></div>
+        <div style="display:flex;gap:8px;align-items:end;"><button class="admin-save-btn" id="flashera-grant" style="margin:0;">💫 + Flashera</button><button class="admin-save-btn" id="flashera-revoke" style="margin:0;">↩ − Flashera</button></div>
       </div>
       <div class="admin-flashera-result" id="flashera-debug-result">Sin operación todavía.</div>
     </div>`;

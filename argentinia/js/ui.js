@@ -4392,7 +4392,7 @@ export function showEncyclopedia(onBack) {
         </label>
         <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-flashera-only">
-          ✨ Solo Flasheras
+          💫 Solo Flasheras
         </label>
         <label class="encyclopedia-filter-option encyclopedia-standard-filter">
           <input type="checkbox" id="enc-evolvable-only">
@@ -6397,7 +6397,7 @@ export function showStoreScreen(onBack, options = {}) {
         <fieldset class="store-craft-finish-picker" aria-label="Elegí qué copia física mejorar" style="display:flex;gap:12px;flex-wrap:wrap;border:1px solid rgba(212,175,55,.4);border-radius:10px;padding:12px;margin:8px 0;color:#f2dfae">
           <legend>Elegí qué copia mejorar</legend>
           <label><input type="radio" name="craft-source-finish" value="normal" ${craftSelectedFinish==='normal'?'checked':''} ${normalCopies?'':'disabled'}> Normal (${normalCopies})</label>
-          <label><input type="radio" name="craft-source-finish" value="flashera" ${craftSelectedFinish==='flashera'?'checked':''} ${flasheraCopies?'':'disabled'}> ✨ Flashera (${flasheraCopies})</label>
+          <label><input type="radio" name="craft-source-finish" value="flashera" ${craftSelectedFinish==='flashera'?'checked':''} ${flasheraCopies?'':'disabled'}> 💫 Flashera (${flasheraCopies})</label>
           <small style="flex-basis:100%">El acabado Flashera se conserva al mejorar. No se genera un acabado nuevo.</small>
         </fieldset>
         <div class="store-keyword-grid">${keywordButtonsHTML}</div>
@@ -8140,7 +8140,7 @@ export function showWorkshopScreen(onBack, options = {}) {
     modal.innerHTML=`<div class="workshop-evolution-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-evolution-success-title">
       <h2 class="workshop-evolution-success-title" id="workshop-evolution-success-title">${gameTextHtml('workshop.evolution.successTitle')}</h2>
       <div class="workshop-evolution-success-stage">${gameTextHtml('workshop.evolution.successStage',{stage:resolvedStage,rarity:displayCard.rarity||''})}</div>
-      ${earnedPremium?'<div class="stage34-flashera-title" aria-live="polite">✨ ¡NUEVA FLASHERA! ✨</div>':preservedPremium?'<div class="stage34-flashera-title">✨ FLASHERA CONSERVADA</div>':''}
+      ${earnedPremium?'<div class="stage34-flashera-title" aria-live="polite">💫 ¡NUEVA FLASHERA! 💫</div>':preservedPremium?'<div class="stage34-flashera-title">💫 FLASHERA CONSERVADA</div>':''}
       <div class="workshop-evolution-success-card" id="workshop-evolution-success-card"></div>
       <p class="workshop-evolution-success-reminder">${gameTextHtml('workshop.evolution.successReminder')}</p>
       <button class="workshop-action-btn" id="workshop-evolution-success-close">${gameTextHtml('workshop.evolution.continue')}</button>
@@ -8165,7 +8165,7 @@ export function showWorkshopScreen(onBack, options = {}) {
     modal.innerHTML=`<div class="workshop-mixer-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-mixer-success-title">
       <h2 class="workshop-mixer-success-title" id="workshop-mixer-success-title">${gameTextHtml('workshop.mixer.successTitle')}</h2>
       <div class="workshop-mixer-success-rarity">${gameTextHtml('workshop.mixer.successRarity',{from:fromRarity||'',to:toRarity||displayCard.rarity||''})}</div>
-      ${premium?'<div class="stage35-mixer-flashera-title" aria-live="polite">✨ ¡FLASHERA DESCUBIERTA! ✨</div>':''}
+      ${premium?'<div class="stage35-mixer-flashera-title" aria-live="polite">💫 ¡FLASHERA DESCUBIERTA! 💫</div>':''}
       <div class="workshop-mixer-success-card" id="workshop-mixer-success-card"></div>
       <p class="workshop-mixer-success-reminder">${gameTextHtml('workshop.mixer.successReminder')}</p>
       <button class="workshop-action-btn" id="workshop-mixer-success-close">${gameTextHtml('workshop.mixer.continue')}</button>
@@ -8800,7 +8800,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         </label>
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-flashera-only">
-          ✨ Solo Flasheras
+          💫 Solo Flasheras
         </label>
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-evolvable-only">
@@ -8996,7 +8996,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       wrap.appendChild(createCardElement(presentedCard, false, true, null, 'encyclopedia', null));
       if (isFlasheraTile) {
         const flash = document.createElement('div'); flash.className='deckbuilder-flashera-marker';
-        flash.textContent='✨ FLASHERA'; flash.setAttribute('aria-label', 'Copia Flashera');
+        flash.textContent='💫 FLASHERA'; flash.setAttribute('aria-label', 'Copia Flashera');
         wrap.appendChild(flash);
       }
 
@@ -9722,7 +9722,7 @@ export function showMyDecksScreen(onBack) {
       }
       if (isFlashera) {
         const marker = document.createElement('div');
-        marker.className = 'deckbuilder-flashera-marker'; marker.textContent='✨ FLASHERA';
+        marker.className = 'deckbuilder-flashera-marker'; marker.textContent='💫 FLASHERA';
         marker.setAttribute('aria-label','Copia Flashera guardada');
         slot.appendChild(marker);
       }
@@ -11929,7 +11929,7 @@ Receipt: ${receiptId}
         adminMetricCard(gameText('admin.stats.essence.current'), snap.essenceInCirculation.toLocaleString('es-AR'), gameText('admin.stats.essence.flow',{earned:tracked.essenceEarned.toLocaleString('es-AR'),spent:tracked.essenceSpent.toLocaleString('es-AR')})),
         adminMetricCard(gameText('admin.stats.achievements.claimed'), tracked.achievementClaims.toLocaleString('es-AR'), gameText('admin.stats.achievements.sub'))
       ]),
-      adminMetricGroup('✨ Flasheras', [
+      adminMetricGroup('💫 Flasheras', [
         adminMetricCard('Flasheras en circulación',flashCommunity.flasherasInCirculation.toLocaleString('es-AR'),'Copias físicas actuales; no cuenta rareza adicional'),
         adminMetricCard('Jugadores con Flasheras',flashCommunity.playersWithFlasheras.toLocaleString('es-AR'),'Con al menos una copia'),
         adminMetricCard('Flasheras únicas · comunidad',flashCommunity.communityUniqueFlasheras.toLocaleString('es-AR'),'Cartas base distintas; Evo/Mejorada no duplican la identidad'),
@@ -14317,7 +14317,7 @@ function tradeColorLabel(color){ return gameText(TRADE_COLOR_KEYS[color] || 'tra
 function tradeTypeLabel(type){ return gameText(TRADE_TYPE_KEYS[type] || 'trade.filter.anyType'); }
 function tradeCard(cardId){ return cardDb.getById(String(cardId||'')); }
 function tradeCardName(cardId){ return tradeCard(cardId)?.name || gameText('trade.cardFallback'); }
-function tradeFinishText(finish){return finish==='flashera'?'✨ FLASHERA':'Normal';}
+function tradeFinishText(finish){return finish==='flashera'?'💫 FLASHERA':'Normal';}
 function tradeVariantLabel(cardId,finish){return tradeCardName(cardId)+(finish==='flashera'?' · FLASHERA':'');}
 function tradeNormalizeSearch(value){ return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 function tradeCardTypeKeys(card){
@@ -14405,7 +14405,7 @@ function tradeFormatDate(ms){
 function tradeVisualCardHtml(cardId,{label='',className='',showName=false,finish='normal'}={}){
   const id=String(cardId||'');
   return `<div class="trade-visual-card ${label?'trade-has-label':''} ${className}" data-trade-visual-card="${escapeHtml(id)}" data-trade-finish="${escapeHtml(finish)}">
-    ${label?`<div class="trade-visual-label">${escapeHtml(label)}</div>`:''}${finish==='flashera'?'<span class="trade-finish-pill">✨ FLASHERA</span>':''}
+    ${label?`<div class="trade-visual-label">${escapeHtml(label)}</div>`:''}${finish==='flashera'?'<span class="trade-finish-pill">💫 FLASHERA</span>':''}
     <div class="trade-render-slot" data-trade-card-id="${escapeHtml(id)}" data-trade-finish="${escapeHtml(finish)}" aria-label="${escapeHtml(tradeCardName(id))}"></div>
     <button type="button" class="trade-zoom-btn" data-trade-zoom-card="${escapeHtml(id)}" data-trade-zoom-finish="${escapeHtml(finish)}" title="${gameTextHtml('trade.zoom')}" aria-label="${gameTextHtml('trade.zoomCard',{card:tradeCardName(id)})}">🔍</button>
     ${showName?`<div class="trade-card-name-large">${escapeHtml(tradeVariantLabel(id,finish))}</div>`:''}
@@ -14558,7 +14558,7 @@ export function showTradeMarketScreen(onBack) {
     return `<div class="trade-explore-toolbar" data-trade-filter-toolbar="${escapeHtml(prefix)}">
       <div class="trade-filter-search"><label for="${escapeHtml(searchId)}">${gameTextHtml('trade.filter.searchLabel')}</label><input id="${escapeHtml(searchId)}" class="trade-input" type="search" autocomplete="off" placeholder="${gameTextHtml('trade.filter.searchPlaceholder')}" value="${escapeHtml(filters.query)}"></div>
       <div class="trade-filter-block"><span class="trade-filter-label">${gameTextHtml('trade.filter.color')}</span><div class="trade-filter-chips">${TRADE_FILTER_COLORS.map(c=>`<button type="button" class="trade-filter-chip ${filters.colors.has(c)?'active':''}" data-trade-filter-prefix="${escapeHtml(prefix)}" data-trade-color-filter="${c}">${escapeHtml(tradeColorLabel(c))}</button>`).join('')}</div></div>
-      <div class="trade-filter-selects"><label>Acabado<select class="trade-select" id="${escapeHtml(prefix)}-filter-finish"><option value="">Cualquiera</option><option value="normal" ${filters.finish==='normal'?'selected':''}>Normal</option><option value="flashera" ${filters.finish==='flashera'?'selected':''}>✨ Flashera</option></select></label><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="${escapeHtml(rarityId)}"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${filters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="${escapeHtml(typeId)}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${filters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="${escapeHtml(clearId)}">${gameTextHtml('trade.filter.clear')}</button></div>
+      <div class="trade-filter-selects"><label>Acabado<select class="trade-select" id="${escapeHtml(prefix)}-filter-finish"><option value="">Cualquiera</option><option value="normal" ${filters.finish==='normal'?'selected':''}>Normal</option><option value="flashera" ${filters.finish==='flashera'?'selected':''}>💫 Flashera</option></select></label><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="${escapeHtml(rarityId)}"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${filters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="${escapeHtml(typeId)}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${filters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="${escapeHtml(clearId)}">${gameTextHtml('trade.filter.clear')}</button></div>
     </div>`;
   }
   function renderExploreFilters(){return renderTradeFilterToolbar(exploreFilters,'trade-explore');}
@@ -14638,7 +14638,7 @@ export function showTradeMarketScreen(onBack) {
     }).join('')}</div>`:'';
     if(items.length>=l.maxActiveListings)return activeHtml||`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     const entries=tradeTradableEntries(market);
-    const publishHtml=entries.length?`<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row">Acabado BUSCO: <select class="trade-select" id="trade-wanted-finish"><option value="any">Cualquiera</option><option value="normal">Normal</option><option value="flashera">✨ Flashera</option></select></label><label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
+    const publishHtml=entries.length?`<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row">Acabado BUSCO: <select class="trade-select" id="trade-wanted-finish"><option value="any">Cualquiera</option><option value="normal">Normal</option><option value="flashera">💫 Flashera</option></select></label><label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     return activeHtml+publishHtml;
   }
   function openTradeAcceptModal(offer){
