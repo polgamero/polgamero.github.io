@@ -110,12 +110,17 @@ function injectStyles() {
     #pack-opening-overlay.tier-uncommon .pack-opening-rarity { color:#d0dae1; }
 
     /* Stage33: la revelación premium sólo se anuncia DESPUÉS del giro, jamás en suspense. */
-    .pack-opening-flashera-banner { position:absolute; z-index:8; top:0; left:50%; transform:translate(-50%,-18px) scale(.82);
-      pointer-events:none; text-align:center; opacity:0; visibility:hidden; font-weight:1000; letter-spacing:2px;
-      color:#fff4cf; font-size:clamp(18px,3.5vw,32px); line-height:1.1; white-space:nowrap;
+    /* HF5: Reserve a dedicated row OUTSIDE the card shell for the premium heading.
+       This keeps the entire physical card name/mana band clear at every viewport size. */
+    .pack-opening-flashera-slot { display:flex; flex:0 0 48px; width:100%; align-items:center; justify-content:center;
+      box-sizing:border-box; position:relative; z-index:8; pointer-events:none; }
+    .pack-opening-flashera-banner { position:relative; max-width:calc(100vw - 28px); box-sizing:border-box;
+      padding:0 8px; pointer-events:none; text-align:center; opacity:0; visibility:hidden;
+      transform:translateY(12px) scale(.82); font-weight:1000; letter-spacing:2px;
+      color:#fff4cf; font-size:clamp(18px,3.5vw,32px); line-height:1.1; white-space:normal;
       text-shadow:0 0 14px rgba(255,230,112,.9),0 0 30px rgba(161,83,255,.95),0 2px 8px #090307; }
     #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible;
-      transform:translate(-50%,0) scale(1); transition:transform .55s cubic-bezier(.15,1.4,.4,1),opacity .55s; }
+      transform:translateY(0) scale(1); transition:transform .55s cubic-bezier(.15,1.4,.4,1),opacity .55s; }
     #pack-opening-overlay.flashera-reveal .pack-opening-halo { background:conic-gradient(#e55fff,#70deff,#fff4a3,#c17aff,#45ffe1,#e55fff);
       opacity:.93; transform:scale(1.43); filter:blur(22px); animation:pack-flashera-pulse 2.8s ease-in-out infinite alternate; }
     #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { content:""; position:absolute; inset:-8%;
@@ -240,14 +245,19 @@ function injectStyles() {
       .pack-opening-intro-pack { width:clamp(144px,40vw,168px); max-height:min(42vh,176px); }
       .pack-opening-intro-title { font-size:20px; margin:6px 0 2px; }
       .pack-opening-intro-copy { font-size:9px; max-width:420px; }
-      .pack-opening-flashera-banner { font-size:clamp(14px,2.3vw,20px); top:-8px; }
+      .pack-opening-flashera-slot { flex-basis:30px; }
+      .pack-opening-flashera-banner { font-size:clamp(14px,2.3vw,20px); }
       .pack-opening-flashera-caption { font-size:9px; min-height:12px; }
+    }
+    /* Keep the heading above the card on very short landscape viewports too. */
+    @media (max-height:360px) {
+      #pack-opening-overlay { --pack-card-w:clamp(90px,30vh,110px); }
     }
     @media (prefers-reduced-motion:reduce) {
       #pack-opening-overlay *, #pack-opening-overlay::before, #pack-opening-overlay::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
       #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { animation:none!important; }
       #pack-opening-overlay.flashera-reveal .pack-opening-halo { animation:none!important; }
-      #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible; transform:translate(-50%,0); }
+      #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible; transform:none; }
     }
   `;
   document.head.appendChild(style);
@@ -318,8 +328,10 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       <div class="pack-opening-intro-copy">15 cartas. Tocá para descubrirlas una por una.</div>
       <div class="pack-opening-kicker" style="display:none"></div>
       <div class="pack-opening-rarity" style="display:none"></div>
-      <div class="pack-opening-card-zone" style="display:none">
+      <div class="pack-opening-flashera-slot" style="display:none">
         <div class="pack-opening-flashera-banner" role="status" aria-live="polite"></div>
+      </div>
+      <div class="pack-opening-card-zone" style="display:none">
         <div class="pack-opening-halo"></div>
         <div class="pack-opening-card-shell">
           <div class="pack-opening-face pack-opening-back"></div>
@@ -374,6 +386,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const introTitle = overlay.querySelector('.pack-opening-intro-title');
   const introCopy = overlay.querySelector('.pack-opening-intro-copy');
   const hint = overlay.querySelector('.pack-opening-hint');
+  const flasheraSlot = overlay.querySelector('.pack-opening-flashera-slot');
   const flasheraBanner = overlay.querySelector('.pack-opening-flashera-banner');
   const flasheraCaption = overlay.querySelector('.pack-opening-flashera-caption');
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
@@ -494,6 +507,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     flasheraCaption.textContent = '';
     kicker.style.display = 'none';
     rarity.style.display = 'none';
+    flasheraSlot.style.display = 'flex';
     cardZone.style.display = '';
     introPack.style.display = 'none';
     introTitle.style.display = 'none';

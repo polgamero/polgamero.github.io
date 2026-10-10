@@ -432,6 +432,12 @@ export function adminGetFlasheraStatusServer() {
 export function adminSaveFlasheraConfigServer(settings={},operationId=null) {
   return call('economyAdminFlashera',{action:'save_config',operationId:operationId||createEconomyOperationId('flashera-config'),settings:{
     acquisitionEnabled:settings.acquisitionEnabled===true,
+    // HF4: preserve all four Admin source switches. In HF3 they were omitted here,
+    // so server normalization restored each missing field to its default (true).
+    packEnabled:settings.packEnabled===true,
+    evolutionEnabled:settings.evolutionEnabled===true,
+    mixerEnabled:settings.mixerEnabled===true,
+    sanctuaryEnabled:settings.sanctuaryEnabled===true,
     visualEnabled:settings.visualEnabled!==false,
     packChanceBps:Number(settings.packChanceBps),evolutionChanceBps:Number(settings.evolutionChanceBps),
     mixerChanceBps:Number(settings.mixerChanceBps),sanctuaryChanceBps:Number(settings.sanctuaryChanceBps)

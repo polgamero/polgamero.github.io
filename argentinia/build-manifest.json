@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "da2209548896f4d2f735",
+  "buildId": "e2d18d002060513cf78b",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -27,6 +27,7 @@
     "./assets/images/ui/esencia.png",
     "./assets/images/ui/evolucionable.png",
     "./assets/images/ui/google.png",
+    "./assets/images/ui/logo.png",
     "./assets/images/ui/maquina1.png",
     "./assets/images/ui/maquina2.png",
     "./assets/images/ui/maquina3.png",
