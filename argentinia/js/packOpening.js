@@ -113,17 +113,18 @@ function injectStyles() {
     /* Stage33: la revelación premium sólo se anuncia DESPUÉS del giro, jamás en suspense. */
     /* HF5: Reserve a dedicated row OUTSIDE the card shell for the premium heading.
        This keeps the entire physical card name/mana band clear at every viewport size. */
-    .pack-opening-flashera-slot { display:flex; flex:0 0 48px; width:100%; align-items:center; justify-content:center;
+    .pack-opening-flashera-slot { display:flex; flex:0 0 48px; width:100%; align-items:flex-start; justify-content:center;
       box-sizing:border-box; position:relative; z-index:8; pointer-events:none; }
-    /* HF6: POSITION IS MEASURED AGAINST THE ACTUAL RENDERED CARD, never a synthetic slot. */
-    #pack-opening-overlay .pack-opening-flashera-banner { position:fixed; z-index:15055; top:0; left:0;
+    /* HF8: the heading belongs to its RESERVED layout row, not viewport coordinates.
+       Fixed/rect positioning measured a rotating 3D card and jumped while it flipped. */
+    #pack-opening-overlay .pack-opening-flashera-banner { position:relative; z-index:8;
       max-width:calc(100vw - 28px); box-sizing:border-box; padding:0 8px;
       pointer-events:none; text-align:center; opacity:0; visibility:hidden;
-      transform:translateY(8px) scale(.94); font-weight:1000; letter-spacing:2px;
+      font-weight:1000; letter-spacing:2px;
       color:#fff4cf; font-size:clamp(18px,3.5vw,32px); line-height:1.1; white-space:normal;
       text-shadow:0 0 14px rgba(255,230,112,.9),0 0 30px rgba(161,83,255,.95),0 2px 8px #090307; }
     #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible;
-      transform:none; transition:opacity .45s ease; }
+      transition:opacity .45s ease; }
     #pack-opening-overlay.flashera-reveal .pack-opening-halo { background:conic-gradient(#e55fff,#70deff,#fff4a3,#c17aff,#45ffe1,#e55fff);
       opacity:.93; transform:scale(1.43); filter:blur(22px); animation:pack-flashera-pulse 2.8s ease-in-out infinite alternate; }
     #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { content:""; position:absolute; inset:-8%;
@@ -258,8 +259,8 @@ function injectStyles() {
       .pack-opening-intro-pack { width:clamp(144px,40vw,168px); max-height:min(42vh,176px); }
       .pack-opening-intro-title { font-size:20px; margin:6px 0 2px; }
       .pack-opening-intro-copy { font-size:9px; max-width:420px; }
-      .pack-opening-flashera-slot { flex-basis:30px; }
-      .pack-opening-flashera-banner { font-size:clamp(14px,2.3vw,20px); }
+      .pack-opening-flashera-slot { flex-basis:40px; }
+      #pack-opening-overlay .pack-opening-flashera-banner { font-size:clamp(14px,2.3vw,20px); }
       .pack-opening-flashera-caption { font-size:9px; min-height:12px; }
     }
     /* Keep the heading above the card on very short landscape viewports too. */
@@ -402,38 +403,8 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const flasheraSlot = overlay.querySelector('.pack-opening-flashera-slot');
   const flasheraBanner = overlay.querySelector('.pack-opening-flashera-banner');
   const flasheraCaption = overlay.querySelector('.pack-opening-flashera-caption');
-  const topbar = overlay.querySelector('.pack-opening-topbar');
-  // HF6: rect-based positioning avoids overlap even if card CSS/zoom changes its actual size.
-  // Above is preferred; compact fallback is a topbar-safe line, never over the card.
-  function positionFlasheraHeading() {
-    if (!overlay.classList.contains('flashera-reveal') || !flasheraBanner.textContent) return;
-    const realCard = frontFace.querySelector('.card');
-    const cardRect = (realCard || shell).getBoundingClientRect();
-    const headerRect = topbar.getBoundingClientRect();
-    const heading = flasheraBanner.getBoundingClientRect();
-    const safeGap = 14;
-    const candidate = cardRect.top - heading.height - safeGap;
-    const safeTop = headerRect.bottom + 3;
-    if (candidate < safeTop) {
-      // Strict no-overlap fallback for very short viewports / enlarged system text.
-      flasheraBanner.style.fontSize = 'clamp(12px, 2vw, 22px)';
-    } else {
-      flasheraBanner.style.fontSize = '';
-    }
-    const measuredHeight = flasheraBanner.getBoundingClientRect().height;
-    const available = cardRect.top - measuredHeight - safeGap;
-    // On ultra-short screens the label is anchored above the card, potentially inside the
-    // topbar's empty area, instead of ever intruding into name/cost.
-    const top = Math.max(0, available);
-    flasheraBanner.style.top = `${Math.round(top)}px`;
-    const width = flasheraBanner.getBoundingClientRect().width;
-    flasheraBanner.style.left = `${Math.round(Math.max(0,Math.min(innerWidth-width,cardRect.left+cardRect.width/2-width/2)))}px`;
-    flasheraBanner.style.transform = 'none';
-    flasheraBanner.dataset.cardGap = String(Math.round(cardRect.top-(top+measuredHeight)));
-  }
-  const onFlasheraResize = () => { if (!closed) window.requestAnimationFrame(positionFlasheraHeading); };
-  window.addEventListener('resize',onFlasheraResize);
-
+  // HF8: CSS flow anchors the banner inside its reserved row from its FIRST paint.
+  // Never use getBoundingClientRect of a 3D-flipping card or delayed reposition timers.
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
   const inspector = bindPackCardInspector(shell, { frontFace, introMs: reducedMotion ? 0 : PACK_REVEAL_INTRO_MS });
 
@@ -459,7 +430,6 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     clearCinematicTimers();
     window.removeEventListener('keydown', onKey);
     inspector.destroy();
-    window.removeEventListener('resize',onFlasheraResize);
     overlay.remove();
     onClose?.();
   }
@@ -518,9 +488,6 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       if (isMythic) overlay.classList.add('flashera-mythic');
       flasheraBanner.textContent = isMythic ? '✦ MÍTICA FLASHERA ✦' : '✦ FLASHERA ✦';
       flasheraCaption.textContent = isMythic ? 'UNA MÍTICA EXTRAORDINARIA' : 'ACABADO ESPECIAL DESCUBIERTO';
-      requestAnimationFrame(positionFlasheraHeading);
-      window.setTimeout(() => { if (!closed && index===preparedIndex) positionFlasheraHeading(); }, 120);
-      window.setTimeout(() => { if (!closed && index===preparedIndex) positionFlasheraHeading(); }, 650);
       // Una sola firma sonora por apertura, incluso con doble click o reentrada del skip.
       if (!flasheraSoundPlayed) { flasheraSoundPlayed = true; try { playSfx('flasheraReveal'); } catch {} }
     }

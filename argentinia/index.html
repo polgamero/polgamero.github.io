@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = '96e0589e9f031b80b774';
+      const BUILD_ID = 'cd0587d517ca568a44ca';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -82,7 +82,8 @@
             if (!primed) {
               await reloadInBatches([
                 './js/economyClient.js','./js/flasheraAdmin.js','./js/packOpening.js',
-                './js/firebaseClientImpl.js','./js/firebaseClient.js','./js/ui.js'
+                './js/firebaseClientImpl.js','./js/firebaseClient.js','./js/ui.js',
+                './js/gameTexts.js','./js/rankingUI.js'
               ]);
               try { sessionStorage.setItem(criticalKey,'yes'); } catch {}
             }

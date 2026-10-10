@@ -1589,7 +1589,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'payment.status.crew': definition('Habilidades y costos', 'Tripulando {card}: {power}/{required} de poder — clickeá tus criaturas 🚗', 'Estado de pago Tripular.'),
   'payment.status.ward': definition('Habilidades y costos', '🔶 ¡{card} tiene Impuesto {cost}! Pagá o el hechizo se pierde.', 'Estado de pago Impuesto.'),
   'payment.status.counterTax': definition('Habilidades y costos', '💰 ¡"{card}" va a ser contrarrestado! Pagá {cost} o se pierde.', 'Estado de counter-unless-pay.'),
-  'payment.status.fight': definition('Habilidades y costos', '🥊 Elegiste a {card} como rival. Ahora clickeá CUÁL de tus criaturas pelea.', 'Estado de selección de Pelear.'),
+  'payment.status.fight': definition('Habilidades y costos', '🥊 Elegiste a {target} como rival. Ahora clickeá CUÁL de tus criaturas pelea.', 'Estado de selección de Pelear.'),
   'payment.status.targets': definition('Habilidades y costos', '🎯 Declarando objetivos — todavía no pagaste nada', 'Estado CR601 al declarar targets.'),
   'payment.status.chooseTarget': definition('Habilidades y costos', 'Elegí un objetivo brillante ✨', 'Estado esperando target.'),
   'payment.status.missing': definition('Habilidades y costos', 'Falta: ', 'Prefijo de maná que falta pagar.'),

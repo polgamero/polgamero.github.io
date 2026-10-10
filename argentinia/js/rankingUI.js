@@ -103,8 +103,8 @@ export function showGlobalRanking(onBack = () => {}) {
       <td>${winRate(r).toFixed(1)}%</td>
       <td>${n(r.pointsEarned).toLocaleString('es-AR')}</td>
       <td>${n(r.uniqueCards).toLocaleString('es-AR')} / ${POOL_BASELINE.total}</td>
-      <td>💫 ${n(r.uniqueFlasheras).toLocaleString('es-AR')}</td>
-      <td>💫 ${n(r.flasherasOwned).toLocaleString('es-AR')}</td>
+      <td>${n(r.uniqueFlasheras).toLocaleString('es-AR')}</td>
+      <td>${n(r.flasherasOwned).toLocaleString('es-AR')}</td>
       <td>${formatDuration(r.totalDurationMs)}</td>
       <td>${n(r.pointsCurrent).toLocaleString('es-AR')}</td>
       <td>${n(r.fichasCurrent).toLocaleString('es-AR')}</td>

@@ -16823,7 +16823,7 @@ export function render() {
     } else if (state.pendingCounterUnlessPay) {
       statusText = gameText('payment.status.counterTax', { card: state.pendingCounterUnlessPay.targetCardName, cost: `{${state.pendingCounterUnlessPay.amount}}` });
     } else if (state.pendingFightChoice) {
-      statusText = gameText('payment.status.fight', { target: state.pendingFightChoice.opponentItem.card.name });
+      statusText = gameText('payment.status.fight', { target: state.pendingFightChoice.opponentItem.card.name, card: state.pendingFightChoice.opponentItem.card.name });
     } else {
       statusText = state.pendingCastTransaction?.stage === 'targets' ? gameText('payment.status.targets') : (state.pendingTargetCard ? gameText('payment.status.chooseTarget') : gameText('payment.status.missing'));
       if (!state.pendingTargetCard && state.pendingCastTransaction?.stage !== 'targets') {
