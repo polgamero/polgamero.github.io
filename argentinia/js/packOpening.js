@@ -70,7 +70,8 @@ function injectStyles() {
         radial-gradient(circle at 50% 43%, rgba(226,183,20,.13), transparent 24%),
         radial-gradient(circle at 18% 20%, rgba(45,86,135,.16), transparent 30%),
         linear-gradient(145deg,#050807 0%,#101812 48%,#050806 100%);
-      display:grid; grid-template-rows:auto 1fr auto; overflow:hidden; isolation:isolate;
+      display:grid; grid-template-rows:auto minmax(0,1fr) auto; overflow:hidden; isolation:isolate;
+      height:100dvh; max-height:100dvh;
       font-family:inherit; user-select:none; -webkit-user-select:none;
     }
     #pack-opening-overlay::before, #pack-opening-overlay::after {
@@ -114,13 +115,15 @@ function injectStyles() {
        This keeps the entire physical card name/mana band clear at every viewport size. */
     .pack-opening-flashera-slot { display:flex; flex:0 0 48px; width:100%; align-items:center; justify-content:center;
       box-sizing:border-box; position:relative; z-index:8; pointer-events:none; }
-    .pack-opening-flashera-banner { position:relative; max-width:calc(100vw - 28px); box-sizing:border-box;
-      padding:0 8px; pointer-events:none; text-align:center; opacity:0; visibility:hidden;
-      transform:translateY(12px) scale(.82); font-weight:1000; letter-spacing:2px;
+    /* HF6: POSITION IS MEASURED AGAINST THE ACTUAL RENDERED CARD, never a synthetic slot. */
+    #pack-opening-overlay .pack-opening-flashera-banner { position:fixed; z-index:15055; top:0; left:0;
+      max-width:calc(100vw - 28px); box-sizing:border-box; padding:0 8px;
+      pointer-events:none; text-align:center; opacity:0; visibility:hidden;
+      transform:translateY(8px) scale(.94); font-weight:1000; letter-spacing:2px;
       color:#fff4cf; font-size:clamp(18px,3.5vw,32px); line-height:1.1; white-space:normal;
       text-shadow:0 0 14px rgba(255,230,112,.9),0 0 30px rgba(161,83,255,.95),0 2px 8px #090307; }
     #pack-opening-overlay.flashera-reveal .pack-opening-flashera-banner { opacity:1; visibility:visible;
-      transform:translateY(0) scale(1); transition:transform .55s cubic-bezier(.15,1.4,.4,1),opacity .55s; }
+      transform:none; transition:opacity .45s ease; }
     #pack-opening-overlay.flashera-reveal .pack-opening-halo { background:conic-gradient(#e55fff,#70deff,#fff4a3,#c17aff,#45ffe1,#e55fff);
       opacity:.93; transform:scale(1.43); filter:blur(22px); animation:pack-flashera-pulse 2.8s ease-in-out infinite alternate; }
     #pack-opening-overlay.flashera-reveal .pack-opening-card-zone::before { content:""; position:absolute; inset:-8%;
@@ -163,8 +166,11 @@ function injectStyles() {
     .pack-opening-name { min-height:24px; margin-top:1px; font-size:clamp(13px,1.8vw,18px); font-weight:900; text-align:center; color:#f0e0b0; opacity:0; transform:translateY(6px); transition:.3s ease; }
     #pack-opening-overlay.just-revealed .pack-opening-name, #pack-opening-overlay.is-revealed-state .pack-opening-name { opacity:1; transform:none; }
 
-    .pack-opening-controls { min-height:62px; display:flex; justify-content:center; align-items:center; gap:12px; padding:4px 16px 14px; box-sizing:border-box; }
-    .pack-opening-primary { min-width:174px; min-height:42px; border:2px solid #d4af37; border-radius:11px; padding:8px 22px; cursor:pointer; color:#f5e9c2; font-weight:900; letter-spacing:.5px; background:linear-gradient(180deg,rgba(212,175,55,.28),rgba(15,22,16,.96)); box-shadow:0 8px 25px rgba(0,0,0,.38); }
+    .pack-opening-controls { min-height:70px; display:flex; justify-content:center; align-items:center; gap:12px;
+      padding:4px 16px max(14px,env(safe-area-inset-bottom)); box-sizing:border-box;
+      position:relative; z-index:20; flex:0 0 auto; pointer-events:auto; }
+    .pack-opening-primary { min-width:174px; min-height:48px; border:2px solid #d4af37; border-radius:11px; padding:8px 22px; cursor:pointer; color:#f5e9c2; font-weight:900; letter-spacing:.5px; background:linear-gradient(180deg,rgba(212,175,55,.28),rgba(15,22,16,.96)); box-shadow:0 8px 25px rgba(0,0,0,.38);
+      touch-action:manipulation; -webkit-tap-highlight-color:rgba(212,175,55,.24); position:relative; z-index:21; pointer-events:auto; }
     .pack-opening-primary:hover { box-shadow:0 0 24px rgba(212,175,55,.3),0 8px 25px rgba(0,0,0,.38); }
     .pack-opening-hint { color:#7f8d82; font-size:10px; }
 
@@ -180,6 +186,11 @@ function injectStyles() {
       padding:14px 20px 12px; box-sizing:border-box; overflow:hidden;
     }
     #pack-opening-overlay.show-summary .pack-opening-summary { display:flex; }
+    /* HF7: the fixed premium heading overrides visibility:hidden on its parent.
+       Hide it explicitly when the summary takes over the screen. */
+    #pack-opening-overlay.show-summary .pack-opening-flashera-banner,
+    #pack-opening-overlay.show-summary .pack-opening-flashera-slot,
+    #pack-opening-overlay.show-summary .pack-opening-flashera-caption { display:none !important; visibility:hidden !important; opacity:0 !important; }
     #pack-opening-overlay.show-summary > .pack-opening-topbar,
     #pack-opening-overlay.show-summary > .pack-opening-stage,
     #pack-opening-overlay.show-summary > .pack-opening-controls { visibility:hidden; }
@@ -226,8 +237,10 @@ function injectStyles() {
       .pack-opening-rarity { min-height:14px; font-size:8px; }
       .pack-opening-card-zone { height:calc(var(--pack-card-w) * 1.4 + 10px); width:calc(var(--pack-card-w) + 42px); }
       .pack-opening-name { min-height:16px; font-size:11px; }
-      .pack-opening-controls { min-height:44px; padding:1px 8px 7px; gap:8px; }
-      .pack-opening-primary { min-width:135px; min-height:32px; padding:5px 14px; font-size:10px; }
+      /* HF7: keep a full-size tappable CTA above iOS/Android gesture navigation. */
+      .pack-opening-controls { min-height:64px; padding:4px 8px max(12px,env(safe-area-inset-bottom)); gap:8px; }
+      .pack-opening-controls > .pack-opening-primary { min-width:160px; min-height:48px; padding:9px 17px; font-size:12px; }
+      .pack-opening-summary-actions > .pack-opening-primary { min-height:44px; }
       .pack-opening-hint { display:none; }
       .pack-opening-summary { --pack-summary-card-w:92px; padding:6px 8px; }
       .pack-opening-summary-title { font-size:17px; }
@@ -237,7 +250,7 @@ function injectStyles() {
       .pack-opening-summary-viewport { border-radius:8px; }
       .pack-opening-summary-grid {
         grid-template-columns:repeat(5,var(--pack-summary-card-w)); gap:10px 11px; padding:10px;
-        justify-content:start; align-items:flex-start; min-height:100%; touch-action:pan-x pan-y;
+        justify-content:center; align-items:flex-start; min-height:100%; touch-action:pan-x pan-y;
       }
       .pack-opening-summary-card { width:var(--pack-summary-card-w); flex:0 0 auto; align-self:flex-start; }
       .pack-opening-summary-card .card { --card-w:var(--pack-summary-card-w); width:var(--pack-summary-card-w) !important; height:auto !important; aspect-ratio:5/7 !important; flex:0 0 auto !important; }
@@ -389,6 +402,38 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const flasheraSlot = overlay.querySelector('.pack-opening-flashera-slot');
   const flasheraBanner = overlay.querySelector('.pack-opening-flashera-banner');
   const flasheraCaption = overlay.querySelector('.pack-opening-flashera-caption');
+  const topbar = overlay.querySelector('.pack-opening-topbar');
+  // HF6: rect-based positioning avoids overlap even if card CSS/zoom changes its actual size.
+  // Above is preferred; compact fallback is a topbar-safe line, never over the card.
+  function positionFlasheraHeading() {
+    if (!overlay.classList.contains('flashera-reveal') || !flasheraBanner.textContent) return;
+    const realCard = frontFace.querySelector('.card');
+    const cardRect = (realCard || shell).getBoundingClientRect();
+    const headerRect = topbar.getBoundingClientRect();
+    const heading = flasheraBanner.getBoundingClientRect();
+    const safeGap = 14;
+    const candidate = cardRect.top - heading.height - safeGap;
+    const safeTop = headerRect.bottom + 3;
+    if (candidate < safeTop) {
+      // Strict no-overlap fallback for very short viewports / enlarged system text.
+      flasheraBanner.style.fontSize = 'clamp(12px, 2vw, 22px)';
+    } else {
+      flasheraBanner.style.fontSize = '';
+    }
+    const measuredHeight = flasheraBanner.getBoundingClientRect().height;
+    const available = cardRect.top - measuredHeight - safeGap;
+    // On ultra-short screens the label is anchored above the card, potentially inside the
+    // topbar's empty area, instead of ever intruding into name/cost.
+    const top = Math.max(0, available);
+    flasheraBanner.style.top = `${Math.round(top)}px`;
+    const width = flasheraBanner.getBoundingClientRect().width;
+    flasheraBanner.style.left = `${Math.round(Math.max(0,Math.min(innerWidth-width,cardRect.left+cardRect.width/2-width/2)))}px`;
+    flasheraBanner.style.transform = 'none';
+    flasheraBanner.dataset.cardGap = String(Math.round(cardRect.top-(top+measuredHeight)));
+  }
+  const onFlasheraResize = () => { if (!closed) window.requestAnimationFrame(positionFlasheraHeading); };
+  window.addEventListener('resize',onFlasheraResize);
+
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
   const inspector = bindPackCardInspector(shell, { frontFace, introMs: reducedMotion ? 0 : PACK_REVEAL_INTRO_MS });
 
@@ -414,6 +459,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     clearCinematicTimers();
     window.removeEventListener('keydown', onKey);
     inspector.destroy();
+    window.removeEventListener('resize',onFlasheraResize);
     overlay.remove();
     onClose?.();
   }
@@ -423,7 +469,14 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     // La API expuesta tampoco puede saltear la única revelación premium pendiente.
     if (flasheraPlan && !flasheraAcknowledged) { skipToCeremony(); return; }
     clearCinematicTimers();
-    overlay.classList.remove('is-charging');
+    // HF7: the premium label uses position:fixed with an explicit visibility override.
+    // Reset its state BEFORE the summary is rendered; otherwise it floats over the grid.
+    overlay.classList.remove('is-charging','just-revealed','is-revealed-state',
+      'flashera-reveal','flashera-mythic','flashera-effects-off');
+    flasheraBanner.textContent = '';
+    flasheraBanner.removeAttribute('style');
+    flasheraCaption.textContent = '';
+    flasheraSlot.style.display = 'none';
     overlay.classList.add('show-summary');
     const grid = overlay.querySelector('.pack-opening-summary-grid');
     if (!grid.childElementCount) sequence.forEach(entry => grid.appendChild(summaryCardElement(entry, renderCard)));
@@ -465,6 +518,9 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       if (isMythic) overlay.classList.add('flashera-mythic');
       flasheraBanner.textContent = isMythic ? '✦ MÍTICA FLASHERA ✦' : '✦ FLASHERA ✦';
       flasheraCaption.textContent = isMythic ? 'UNA MÍTICA EXTRAORDINARIA' : 'ACABADO ESPECIAL DESCUBIERTO';
+      requestAnimationFrame(positionFlasheraHeading);
+      window.setTimeout(() => { if (!closed && index===preparedIndex) positionFlasheraHeading(); }, 120);
+      window.setTimeout(() => { if (!closed && index===preparedIndex) positionFlasheraHeading(); }, 650);
       // Una sola firma sonora por apertura, incluso con doble click o reentrada del skip.
       if (!flasheraSoundPlayed) { flasheraSoundPlayed = true; try { playSfx('flasheraReveal'); } catch {} }
     }

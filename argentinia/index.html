@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'e2d18d002060513cf78b';
+      const BUILD_ID = '96e0589e9f031b80b774';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -73,6 +73,19 @@
           const manifest = await fetchFreshManifest();
           const serverBuildId = String(manifest?.buildId || '');
           if (!serverBuildId || serverBuildId === BUILD_ID || BUILD_ID.includes('__ARGENTINIA_')) {
+            // HF6: a new HTML document and manifest can both be fresh while cached ESMs
+            // are OLD. Prime critical modules with cache:'reload' BEFORE importing main.js.
+            // Preserve canonical module URLs (no ?v= query that changes module identity).
+            const criticalKey = 'argentinia:critical-esm-primed:' + BUILD_ID;
+            let primed = false;
+            try { primed = sessionStorage.getItem(criticalKey) === 'yes'; } catch {}
+            if (!primed) {
+              await reloadInBatches([
+                './js/economyClient.js','./js/flasheraAdmin.js','./js/packOpening.js',
+                './js/firebaseClientImpl.js','./js/firebaseClient.js','./js/ui.js'
+              ]);
+              try { sessionStorage.setItem(criticalKey,'yes'); } catch {}
+            }
             try { sessionStorage.removeItem(RETRY_KEY); } catch {}
             return { ok: true, buildId: serverBuildId || BUILD_ID, unchanged: true };
           }

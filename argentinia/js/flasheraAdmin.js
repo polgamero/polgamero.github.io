@@ -18,7 +18,7 @@ export function mountAdminFlasheraPane(root){
   root.innerHTML=`
     <div class="admin-section">
       <div class="admin-section-title">💫 FLASHERAS · Autoridad y probabilidades</div>
-      <div class="admin-flashera-note"><b>Stage42A HF3:</b> adquisición real bajo autoridad Admin. El master viene apagado por defecto. Para habilitarla, primero publicá Functions de HF3 y confirmá las Rules vigentes. Todos los cambios se auditan en el servidor.</div>
+      <div class="admin-flashera-note"><b>Stage42A HF6:</b> adquisición real bajo autoridad Admin. El master viene apagado por defecto. Para habilitarla, primero publicá Functions de HF3 y confirmá las Rules vigentes. Todos los cambios se auditan en el servidor.</div>
       <div class="admin-flashera-grid">
         <div class="admin-flashera-row"><label>Adquisición global</label><label><input id="flashera-acq" type="checkbox"> MASTER · habilitar adquisición</label></div>
         <div class="admin-flashera-row"><label>Fuente: sobres</label><label><input id="flashera-pack-enabled" type="checkbox" checked> Activa</label></div>
@@ -74,7 +74,47 @@ export function mountAdminFlasheraPane(root){
   }
   async function load(force=false){if(loaded&&!force)return;const status=q('#flashera-config-status');status.textContent='Cargando autoridad Flashera…';try{const [snapshot,userRows]=await Promise.all([adminGetFlasheraStatus(),fetchAllUserProfiles()]);renderConfig(snapshot?.config||{});profiles=Array.isArray(userRows)?userRows.filter(p=>p?.uid):[];populateUsers();populateCards();loaded=true;status.textContent=`✓ Configuración desde servidor · master: ${config.acquisitionEnabled?'ON':'OFF'}.`;void renderAnalytics();}catch(err){status.textContent=err?.message||'No se pudo cargar Flasheras.';}}
   q('#flashera-refresh-analytics').addEventListener('click',async()=>{try{profiles=(await fetchAllUserProfiles()).filter(p=>p?.uid);await renderAnalytics();}catch(e){q('#flashera-analytics-holdings').textContent=String(e?.message||e);}});
-  q('#flashera-save').addEventListener('click',async()=>{const status=q('#flashera-config-status');status.textContent='';const settings={acquisitionEnabled:q('#flashera-acq').checked,packEnabled:q('#flashera-pack-enabled').checked,evolutionEnabled:q('#flashera-evolution-enabled').checked,mixerEnabled:q('#flashera-mixer-enabled').checked,sanctuaryEnabled:q('#flashera-sanctuary-enabled').checked,visualEnabled:q('#flashera-visual').checked,packChanceBps:bps(q('#flashera-pack').value),evolutionChanceBps:bps(q('#flashera-evolution').value),mixerChanceBps:bps(q('#flashera-mixer').value),sanctuaryChanceBps:bps(q('#flashera-sanctuary').value)};if(settings.acquisitionEnabled&&!config.acquisitionEnabled){const signature=JSON.stringify(settings);if(pendingActivation!==signature){pendingActivation=signature;status.textContent='⚠ Activación REAL: revisá fuentes y probabilidades y presioná Guardar otra vez para confirmar.';return;}}pendingActivation=null;try{const saved=await adminSaveFlasheraConfig(settings);if(!saved)throw new Error('El servidor no devolvió la configuración guardada.');renderConfig(saved);const fields=['acquisitionEnabled','packEnabled','evolutionEnabled','mixerEnabled','sanctuaryEnabled','visualEnabled','packChanceBps','evolutionChanceBps','mixerChanceBps','sanctuaryChanceBps'];const mismatches=fields.filter(field=>saved[field]!==settings[field]);if(mismatches.length){status.textContent=`⚠ El servidor no conservó estos ajustes: ${mismatches.join(', ')}. No se confirmó el guardado.`;return;}status.textContent=`✓ Guardado y comprobado en servidor · master ${config.acquisitionEnabled?'ON':'OFF'} · fuentes ${config.packEnabled?'Sobres ON':'Sobres OFF'}, ${config.evolutionEnabled?'Evolución ON':'Evolución OFF'}, ${config.mixerEnabled?'Mezcladora ON':'Mezcladora OFF'}, ${config.sanctuaryEnabled?'Santuario ON':'Santuario OFF'}.`;}catch(err){status.textContent=err?.message||'No se pudo guardar.';}});
+  // HF6: keep user intent visible until a SECOND independent server read verifies persistence.
+  // Never render an unverified response; previous HF4 rechecked all boxes before reporting failure.
+  let saveInFlight=false;
+  q('#flashera-save').addEventListener('click',async()=>{
+    if(saveInFlight)return;
+    const status=q('#flashera-config-status'); status.textContent='';
+    const settings={
+      acquisitionEnabled:q('#flashera-acq').checked,
+      packEnabled:q('#flashera-pack-enabled').checked,
+      evolutionEnabled:q('#flashera-evolution-enabled').checked,
+      mixerEnabled:q('#flashera-mixer-enabled').checked,
+      sanctuaryEnabled:q('#flashera-sanctuary-enabled').checked,
+      visualEnabled:q('#flashera-visual').checked,
+      packChanceBps:bps(q('#flashera-pack').value),
+      evolutionChanceBps:bps(q('#flashera-evolution').value),
+      mixerChanceBps:bps(q('#flashera-mixer').value),
+      sanctuaryChanceBps:bps(q('#flashera-sanctuary').value)
+    };
+    if(settings.acquisitionEnabled&&!config.acquisitionEnabled){
+      const signature=JSON.stringify(settings);
+      if(pendingActivation!==signature){pendingActivation=signature;status.textContent='⚠ Activación REAL: revisá fuentes y probabilidades y presioná Guardar otra vez para confirmar.';return;}
+    }
+    pendingActivation=null;
+    const fields=['acquisitionEnabled','packEnabled','evolutionEnabled','mixerEnabled','sanctuaryEnabled','visualEnabled','packChanceBps','evolutionChanceBps','mixerChanceBps','sanctuaryChanceBps'];
+    const mismatches=read=>fields.filter(field=>read?.[field]!==settings[field]);
+    saveInFlight=true; q('#flashera-save').disabled=true;
+    try {
+      status.textContent='Guardando y verificando en Firebase…';
+      const saved=await adminSaveFlasheraConfig(settings);
+      if(!saved||mismatches(saved).length)throw new Error('El servidor rechazó o modificó estos campos: '+mismatches(saved).join(', '));
+      // Independent read: no false success if a cached/legacy client sent the wrong schema.
+      const statusResponse=await adminGetFlasheraStatus();
+      const persisted=statusResponse?.config;
+      if(!persisted||mismatches(persisted).length)throw new Error('No coincide la lectura real desde Firestore: '+mismatches(persisted).join(', '));
+      renderConfig(persisted);
+      status.textContent=`✓ HF6 · Verificado con SEGUNDA lectura de servidor · master ${persisted.acquisitionEnabled?'ON':'OFF'} · Sobres ${persisted.packEnabled?'ON':'OFF'} · Evolución ${persisted.evolutionEnabled?'ON':'OFF'} · Mezcladora ${persisted.mixerEnabled?'ON':'OFF'} · Santuario ${persisted.sanctuaryEnabled?'ON':'OFF'}.`;
+    } catch(error) {
+      // Do NOT reset the toggles to true: keep exactly the choice the Admin made.
+      status.textContent=`✖ HF6 · No se confirmó el guardado: ${String(error?.message||error)}. Los interruptores no se restablecieron.`;
+    } finally {saveInFlight=false;q('#flashera-save').disabled=false;}
+  });
   const resolveUid=()=>{const raw=String(q('#flashera-user-search').value||'').trim();if(profiles.some(p=>p.uid===raw))return raw;const norm=raw.toLowerCase();const matches=profiles.filter(p=>[p.username,p.email].some(v=>String(v||'').trim().toLowerCase()===norm));return matches.length===1?matches[0].uid:'';};
   const runAdjust=async sign=>{const out=q('#flashera-debug-result');const uid=resolveUid(),baseId=String(q('#flashera-card-id').value||'').trim(),state=q('#flashera-state').value,qty=Math.max(1,Math.min(20,Math.floor(Number(q('#flashera-qty').value)||1))),reason=String(q('#flashera-reason').value||'').trim();if(!uid){out.textContent='Elegí/escribí un UID válido.';return;}const stateId=cardVariantId(baseId,{state,flashera:false});if(!stateId){out.textContent='Card ID / estado inválido.';return;}try{out.textContent='Aplicando autoridad…';const result=await adminAdjustFlasheraDebug(uid,stateId,sign*qty,reason);out.innerHTML=`✓ <b>${esc(result.variantId||stateId)}</b> · ${result.before} → <b>${result.after}</b> Flashera · normales restantes: ${result.normalAfter} · capacidad física: ${result.capacity}${result.favoriteCleared?' · vitrina limpiada por pérdida de ownership':''}.`;}catch(err){out.textContent=err?.message||'No se pudo ajustar la Flashera.';}};
   q('#flashera-grant').addEventListener('click',()=>runAdjust(1)); q('#flashera-revoke').addEventListener('click',()=>runAdjust(-1));
