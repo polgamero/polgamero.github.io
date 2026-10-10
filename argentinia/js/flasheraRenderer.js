@@ -61,7 +61,7 @@ function styles(){return `
 .card.flashera-card[data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation:none!important;will-change:auto;}
 .card.flashera-card[data-flashera-visual="off"]>.card-inner>.${FX_CLASS}{display:none!important;}
 
-.card.flashera-card[data-flashera-effect="prisma-federal"]>.card-inner>.${FX_CLASS}::before{background:linear-gradient(118deg,rgba(255,40,80,.12),rgba(255,205,40,.22),rgba(60,255,160,.20),rgba(70,180,255,.22),rgba(155,80,255,.22),rgba(255,70,145,.16));background-size:220% 220%;background-position:var(--arg-fl-x) var(--arg-fl-y);mix-blend-mode:color-dodge;opacity:.68;animation:arg-fl-prisma 7s linear infinite;}
+.card.flashera-card[data-flashera-effect="prisma-federal"]>.card-inner>.${FX_CLASS}::before{background:linear-gradient(118deg,rgba(255,40,80,.12),rgba(255,205,40,.22),rgba(60,255,160,.20),rgba(70,180,255,.22),rgba(155,80,255,.22),rgba(255,70,145,.16));background-size:220% 220%;background-position:var(--arg-fl-x) var(--arg-fl-y);mix-blend-mode:color-dodge;opacity:.68;animation:arg-fl-prisma 9s ease-in-out infinite;}
 .card.flashera-card[data-flashera-effect="prisma-federal"]>.card-inner>.${FX_CLASS}::after{background:radial-gradient(circle at var(--arg-fl-x) var(--arg-fl-y),rgba(255,255,255,.58),rgba(255,255,255,.12) 17%,transparent 42%);mix-blend-mode:screen;opacity:.58;}
 @keyframes arg-fl-prisma{0%{filter:hue-rotate(0deg);transform:translate3d(-2%,0,0) rotate(-1deg)}50%{filter:hue-rotate(24deg);transform:translate3d(2%,1%,0) rotate(1deg)}100%{filter:hue-rotate(0deg);transform:translate3d(-2%,0,0) rotate(-1deg)}}
 
@@ -172,24 +172,81 @@ function styles(){return `
 .card.flashera-card[data-flashera-effect="tornado-prismatico"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before,
 .card.flashera-card[data-flashera-effect="llama-boreal"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-play-state:running!important;animation-duration:15s!important;will-change:auto;filter:none;}
 /* Compact establece animation:none; restauramos explícitamente el nombre sin afectar otros presets. */
-.card.flashera-card[data-flashera-effect="nebulosa-criolla"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nebula!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nebula!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
 .card.flashera-card[data-flashera-effect="solar-andino"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-solar-corona!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="cometa-del-litoral"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-comet-trail!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="mar-de-nacar"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nacre-tide!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="relampago-del-plata"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-rayo-flow!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="vitral-celeste"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-vitral-light!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="cromo-huracan"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-chrome-streak!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-comet-trail!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
+.card.flashera-card[data-flashera-effect="mar-de-nacar"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-nacre-tide!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
+.card.flashera-card[data-flashera-effect="relampago-del-plata"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-rayo-flow!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
+.card.flashera-card[data-flashera-effect="vitral-celeste"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-vitral-light!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
+.card.flashera-card[data-flashera-effect="cromo-huracan"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-chrome-streak!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
 .card.flashera-card[data-flashera-effect="polvo-de-estrellas"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-stardust-fall!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
 .card.flashera-card[data-flashera-effect="tornado-prismatico"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-tornado-vortex!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
-.card.flashera-card[data-flashera-effect="llama-boreal"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-boreal-flame!important;animation-iteration-count:infinite!important;animation-timing-function:linear!important;}
+.card.flashera-card[data-flashera-effect="llama-boreal"][data-flashera-mode="compact"]>.card-inner>.${FX_CLASS}::before{animation-name:arg-fl-boreal-flame!important;animation-iteration-count:infinite!important;animation-timing-function:ease-in-out!important;}
 /* Accesibilidad siempre por encima de la excepción compact: */
 @media (prefers-reduced-motion:reduce){.card.flashera-card>.card-inner>.${FX_CLASS}::before,.card.flashera-card>.card-inner>.${FX_CLASS}::after{animation:none!important;}}
 
+
+/* Stage42A HF3 · Continuous premium loops.
+   Every non-angular animation has matching 0/100 properties and zero-velocity
+   endpoints (ease-in-out). Full revolutions wrap at exactly 360°. No linear
+   nonperiodic scan is permitted, so there are no teleporting highlights.
+   Static Cristal Quebrado and the original Vitral geometry remain untouched. */
+@keyframes arg-fl-aurora{0%,100%{transform:translate3d(-5%,1%,0) scale(1.05) rotate(-2deg);filter:blur(7px) hue-rotate(0deg)}25%{transform:translate3d(4%,-3%,0) scale(1.11) rotate(1deg);filter:blur(8px) hue-rotate(14deg)}50%{transform:translate3d(6%,-6%,0) scale(1.07) rotate(3deg);filter:blur(10px) hue-rotate(26deg)}75%{transform:translate3d(-2%,-2%,0) scale(1.09) rotate(0);filter:blur(8px) hue-rotate(12deg)}}
+@keyframes arg-fl-metal{0%,100%{background-position:18% 50%;opacity:.55}33%{background-position:62% 50%;opacity:.9}66%{background-position:82% 50%;opacity:.68}}
+@keyframes arg-fl-wisp{0%,100%{transform:translate3d(-3%,3%,0) scaleX(1.04);filter:blur(8px) hue-rotate(0deg)}30%{transform:translate3d(3%,-9%,0) scaleX(1.08);filter:blur(10px) hue-rotate(16deg)}65%{transform:translate3d(-1%,-4%,0) scaleX(.97);filter:blur(12px) hue-rotate(29deg)}}
+@keyframes arg-fl-holo{0%,100%{background-position:0 0,0 0;opacity:.55}25%{background-position:28px -35px,-22px 25px;opacity:.82}50%{background-position:56px -70px,-44px 50px;opacity:.63}75%{background-position:28px -35px,-22px 25px;opacity:.86}}
+@keyframes arg-fl-storm{0%,100%{opacity:.2;filter:brightness(1)}21%{opacity:.3;filter:brightness(1.1)}23%{opacity:.87;filter:brightness(1.6)}25%{opacity:.28;filter:brightness(1)}66%{opacity:.2}68%{opacity:.77}70%{opacity:.24}}
+@keyframes arg-fl-storm2{0%,100%{opacity:.12}37%{opacity:.16}39%{opacity:.65}41%{opacity:.14}78%{opacity:.15}80%{opacity:.54}82%{opacity:.12}}
+@keyframes arg-fl-nebula-dust{0%,100%{background-position:0 0,0 0,0 0,36% 50%;opacity:.48}50%{background-position:49px -67px,-75px 61px,61px -87px,72% 50%;opacity:.75}}
+@keyframes arg-fl-comet-trail{0%,100%{background-position:0 0,24% 50%;opacity:.5}30%{background-position:74px -74px,68% 50%;opacity:.91}65%{background-position:148px -148px,82% 50%;opacity:.64}}
+@keyframes arg-fl-comet-sparks{0%,100%{background-position:0 0;opacity:.33}50%{background-position:82px -82px;opacity:.8}}
+@keyframes arg-fl-nacre-sheen{0%,100%{background-position:15% 50%;opacity:.51}50%{background-position:85% 50%;opacity:.91}}
+@keyframes arg-fl-rayo-flow{0%,100%{background-position:35% 50%,65% 40%,0 0;opacity:.58}35%{background-position:84% 10%,25% 85%,0 0;opacity:.9}70%{background-position:20% 80%,74% 25%,0 0;opacity:.7}}
+/* Vitral: same faceted art / first layer; only prevent second layer teleport. */
+@keyframes arg-fl-vitral-rim{0%,100%{background-position:0 0,32% 50%;opacity:.58}50%{background-position:73px -73px,66% 50%;opacity:.85}}
+@keyframes arg-fl-chrome-streak{0%,100%{background-position:14% 50%,0 0;opacity:.53}30%{background-position:64% 50%,0 0;opacity:.96}70%{background-position:85% 50%,0 0;opacity:.74}}
+@keyframes arg-fl-boreal-embers{0%,100%{background-position:0 0,50% 50%;opacity:.48}50%{background-position:43px -80px,50% 50%;opacity:.86}}
+@keyframes arg-fl-tornado-vortex{0%{transform:rotate(0deg) scale(1.1);filter:hue-rotate(0deg)}100%{transform:rotate(360deg) scale(1.1);filter:hue-rotate(360deg)}}
+/* Slowly offset secondary motion phases, no hard cuts. */
+.card.flashera-card[data-flashera-effect="aurora-austral"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-aurora 13s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="aurora-austral"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-drift 17s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="metal-liquido"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-metal 12s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="fuego-fatuo"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-wisp 12s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="holograma-pampeano"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-holo 14s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="tormenta-electrica"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-storm 11s linear infinite;}
+.card.flashera-card[data-flashera-effect="tormenta-electrica"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-storm2 13s linear infinite;}
+.card.flashera-card[data-flashera-effect="nebulosa-criolla"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-nebula-dust 16s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-comet-trail 13s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="cometa-del-litoral"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-comet-sparks 10s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="mar-de-nacar"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-nacre-sheen 12s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="relampago-del-plata"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-rayo-flow 11s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="vitral-celeste"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-vitral-rim 13s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="cromo-huracan"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-chrome-streak 11s ease-in-out infinite;}
+.card.flashera-card[data-flashera-effect="llama-boreal"]>.card-inner>.${FX_CLASS}::after{animation:arg-fl-boreal-embers 14s ease-in-out infinite;}
+/* Compact defaults to static for historical presets. HF3 restores the redesigned
+   periodic motion for animated historical effects, at lower amplitude. */
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="aurora-austral"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-aurora 18s ease-in-out infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="metal-liquido"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-metal 18s ease-in-out infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="fuego-fatuo"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-wisp 18s ease-in-out infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="holograma-pampeano"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-holo 18s ease-in-out infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="tormenta-electrica"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-storm 18s linear infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="cielo-estrellado"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-stars 19s linear infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="vidrio-tornasol"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-spin 21s linear infinite!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="espejo-negro"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-spin 24s linear infinite reverse!important;}
+.card.flashera-card[data-flashera-mode="compact"][data-flashera-effect="prisma-federal"]>.card-inner>.${FX_CLASS}::before{animation:arg-fl-prisma 18s ease-in-out infinite!important;}
+
 @keyframes arg-fl-spin{to{transform:rotate(360deg) scale(1.02)}}
 @keyframes arg-fl-drift{to{background-position:130% 70%}}
+@keyframes arg-fl-spin{0%{transform:rotate(0deg) scale(1.02)}100%{transform:rotate(360deg) scale(1.02)}}
+@keyframes arg-fl-drift{0%,100%{background-position:36% 44%}50%{background-position:66% 57%}}
+
 
 @media (prefers-reduced-motion:reduce){
  .card.flashera-card>.card-inner>.${FX_CLASS}::before,.card.flashera-card>.card-inner>.${FX_CLASS}::after{animation:none!important;}
+}
+@media (prefers-reduced-motion:reduce){
+ .card.flashera-card[data-flashera-mode="compact"][data-flashera-effect]>.card-inner>.${FX_CLASS}::before,
+ .card.flashera-card[data-flashera-mode="compact"][data-flashera-effect]>.card-inner>.${FX_CLASS}::after{animation:none!important;transition:none!important;}
 }
 @media (max-width:850px){
  .card.flashera-card[data-flashera-mode="standard"]{--arg-fl-intensity:.72;}
