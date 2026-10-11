@@ -3458,4 +3458,4 @@ html.argentinia-mobile .solo-priority-shortcuts.is-collapsed{width:max-content!i
 /* Stage C: Stops de combate táctiles sin modificar el grid principal ni su altura. */
 html.argentinia-mobile .priority-combat-stops {gap:2px;margin:0;padding:2px}
 html.argentinia-mobile .priority-combat-stops button {font-size:9px;padding:2px 1px;min-height:21px}
-html.argentinia-mobile .phase-dot.priority-stop-enabled::before {font-size:9px;top:0;right:0}
+html.argentinia-mobile .phase-indicator.priority-stops-available {padding-top:16px!important}

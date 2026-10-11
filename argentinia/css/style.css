@@ -3053,8 +3053,17 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .solo-priority-shortcuts.is-collapsed .solo-priority-current{margin-left:0}
 .solo-priority-shortcuts.is-collapsed .solo-priority-toggle{margin-left:auto}
 /* Prioridad Inteligente Stage C — fases existentes, no modifica el HUD canónico. */
-.phase-dot.priority-stop-enabled {border-color:#f4d278!important;box-shadow:0 0 0 2px #e3ac3f,0 0 6px #d7a32f!important;position:relative}
-.phase-dot.priority-stop-enabled::before {content:'⚑';position:absolute;top:0;right:0;font:700 9px/1 sans-serif;color:#ffde77;text-shadow:0 1px 2px #000;pointer-events:none;z-index:2}
+/* Stops have a separate marker row; phase color/glow still means progress only.
+   Fixed geometry avoids font-dependent flags colliding with 1 / swords / 2. */
+.phase-indicator.priority-stops-available {padding-top:16px}
+.phase-dot.priority-stop-enabled::before {
+  content:'';position:absolute;left:50%;top:calc(50% - 26px);
+  width:12px;height:12px;box-sizing:border-box;transform:translateX(-50%);
+  border:1px solid #a9823d;border-radius:3px;background-color:#131b20;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 10.5V1.5M3 1.5h7L8 4l2 2.5H3' fill='%23ffd37a' stroke='%23ffd37a' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:10px 10px;
+  pointer-events:none;z-index:2;
+}
 .phase-dot.priority-stop-available {cursor:pointer}
 .phase-dot.priority-stop-available:focus-visible {outline:2px solid #f5dc80;outline-offset:3px}
 .priority-combat-stops {display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin:2px 0 5px;padding:4px;border:1px solid #886b39;border-radius:7px;background:#111c1a;z-index:3}
