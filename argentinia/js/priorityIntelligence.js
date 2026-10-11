@@ -57,6 +57,21 @@ const BLOCKING_FIELDS = Object.freeze([
   'resolvingGraveyardChoices', 'resolvingResolvedEffectTargetChoices'
 ]);
 
+// main.js keeps the Ward queue as [] between transactions. A collection existing
+// in the state is not a pending choice. Only this canonical queue has that contract;
+// unfamiliar pending fields still fail closed, including unfamiliar empty arrays.
+function hasPendingValue(s, name) {
+  const value = s[name];
+  if (name === 'pendingWardQueue' && Array.isArray(value)) return value.length > 0;
+  return !!value;
+}
+
+function blockingDecisionField(s) {
+  return BLOCKING_FIELDS.find(name => hasPendingValue(s, name)) ||
+    Object.keys(s).find(name => /^pending[A-Z]/.test(name) &&
+      !NONBLOCKING_PENDING_METADATA.has(name) && hasPendingValue(s, name)) || null;
+}
+
 // No entregar a telemetría ni a matchSync los parámetros que identifican cartas privadas.
 // windowKey es SOLO LOCAL, opaco, y nunca se serializa a estado de juego.
 export function createPriorityWindowKey(s, { stackDepth, stackTopId = null, localEpoch = 0 } = {}) {
@@ -99,8 +114,7 @@ export function assessPriorityWindow(s, {
   else if (![0, 1].includes(s.consecutivePasses)) reason = 'passes_unstable';
   else if (!Number.isSafeInteger(stackDepth) || stackDepth < 0 || (stackDepth > 0 && !stackTopId)) reason = 'stack_unverified';
   else if (s.autoZeroBlockersQueued) reason = 'blockers_fast_window';
-  else if (BLOCKING_FIELDS.some(name => !!s[name]) || Object.keys(s).some(name =>
-    /^pending[A-Z]/.test(name) && !NONBLOCKING_PENDING_METADATA.has(name) && !!s[name])) reason = 'decision_or_transaction';
+  else if (blockingDecisionField(s)) reason = 'decision_or_transaction';
   else if (mandatoryActivities.has(activity) || (activity !== null && activity !== undefined)) reason = 'activity_pending';
   else if (s.phase === 'combat_attackers' && s.activePlayer === 'local' &&
       !(Number(s.localAttackersDeclaredThisTurn) > 0)) reason = 'attack_declaration';
@@ -108,7 +122,8 @@ export function assessPriorityWindow(s, {
       !s.localBlockersDeclaredThisCombat) reason = 'block_declaration';
   else if (!createPriorityWindowKey(s, {stackDepth, stackTopId, localEpoch})) reason = 'invalid_window_identity';
   // No recomendar nunca un pase sólo por no tener maná o no tener cartas en mano.
-  return Object.freeze({ safeToEvaluate: reason === 'ok', reason, phase: s?.phase || null });
+  return Object.freeze({ safeToEvaluate: reason === 'ok', reason, phase: s?.phase || null,
+    blockingField: reason === 'decision_or_transaction' ? blockingDecisionField(s) : null });
 }
 
 /**

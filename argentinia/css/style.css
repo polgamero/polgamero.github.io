@@ -3021,24 +3021,24 @@ button.mana-pool-chip:disabled { opacity: 1; }
 /* Prioridad Inteligente Stage C HF2 — único dock sobre el tablero en
    desktop Y mobile landscape. No ocupa espacio vertical del sidebar. */
 .solo-priority-shortcuts {
-  display:flex;flex-direction:column;gap:5px;
+  display:flex;flex-direction:column;gap:4px;box-sizing:border-box;
   position:fixed!important;left:max(12px,env(safe-area-inset-left,0px))!important;
   top:50svh!important;transform:translateY(-50%)!important;
-  z-index:2100!important;width:clamp(148px,14.5vw,202px)!important;
-  padding:6px!important;min-width:0;max-height:calc(100svh - 155px);
+  z-index:2100!important;width:150px!important;
+  padding:5px!important;min-width:0;max-height:calc(100svh - 155px);
   border:1px solid rgba(220,172,69,.78)!important;border-radius:11px!important;
   background:linear-gradient(150deg,rgba(9,14,18,.96),rgba(20,29,23,.95))!important;
   box-shadow:0 5px 22px rgba(0,0,0,.56)!important;
   font-family:system-ui,sans-serif;
 }
 .solo-priority-shortcuts.hidden {display:none!important}
-.solo-priority-mobile-bar{display:flex;align-items:center;gap:5px;min-height:23px}
-.solo-priority-mobile-title{font:800 10px/1.1 system-ui,sans-serif;color:#f3db9b;letter-spacing:.04em}
+.solo-priority-mobile-bar{display:flex;align-items:center;gap:4px;min-height:24px}
+.solo-priority-mobile-title{font:800 9px/1.1 system-ui,sans-serif;color:#f3db9b;letter-spacing:.04em}
 .solo-priority-current{font:800 9px/1.1 system-ui,sans-serif;color:#ffe3a0;white-space:nowrap;margin-left:auto}
 .solo-priority-toggle{flex:0 0 24px;width:24px;height:24px;border:1px solid #957740;border-radius:6px;background:#252923;color:#ffebaa;font:800 17px/1 sans-serif;cursor:pointer;display:grid;place-items:center}
 .solo-priority-panel{display:flex;flex-direction:column;gap:4px;min-width:0}
 .solo-priority-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;min-width:0}
-.solo-priority-button{min-width:0;aspect-ratio:1.12;max-height:63px;padding:3px 2px;border:1px solid #836e3b;border-radius:6px;background:#1c3027;color:#f1dfb5;font:800 10px/1.08 system-ui,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:nowrap;touch-action:manipulation}
+.solo-priority-button{box-sizing:border-box;min-width:0;min-height:0;height:36px;aspect-ratio:auto;padding:2px;border:1px solid #836e3b;border-radius:5px;background:#1c3027;color:#f1dfb5;font:800 10px/1.08 system-ui,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:nowrap;touch-action:manipulation}
 .solo-priority-key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;padding:1px 4px;border-radius:5px;background:#101a17;color:#ffe6a7;font:800 11px/1 system-ui,sans-serif}
 .solo-priority-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;font:800 9px/1.1 system-ui,sans-serif}
 .solo-priority-button.active{background:#f0b739!important;color:#171009!important;border:2px solid #fff0af!important;box-shadow:inset 0 0 4px #fff5ae,0 0 12px #f6b94f!important}
@@ -3047,7 +3047,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .solo-priority-button:disabled{opacity:.42;cursor:default}
 .solo-priority-dismiss{grid-column:span 1}
 .solo-priority-status{text-align:center;line-height:1.1;font:600 9px system-ui,sans-serif;color:#e6d29d}
-.solo-priority-shortcuts.is-collapsed{width:auto!important;min-width:147px!important}
+.solo-priority-shortcuts.is-collapsed{width:max-content!important;min-width:0!important;padding:4px!important;border-radius:8px!important}
 .solo-priority-shortcuts.is-collapsed .solo-priority-panel{display:none!important}
 .solo-priority-shortcuts.is-collapsed .solo-priority-mobile-title{display:none}
 .solo-priority-shortcuts.is-collapsed .solo-priority-current{margin-left:0}

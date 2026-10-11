@@ -70,6 +70,7 @@ import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, P
 import { createSoloPriorityController, SOLO_PRIORITY_B_MODES } from './soloPriorityShortcuts.js';
 import { createPriorityStops, PRIORITY_STOP_DOTS, COMBAT_STOP_PHASES } from './priorityStops.js';
 import { proveNoRelevantLegalActions } from './priorityLegalActions.js';
+import { recordPriorityDiagnostic, readPriorityVisibility } from './priorityDiagnostics.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
 import { beginEconomyReveal, getPendingEconomyReveal, clearPendingEconomyReveal, createEconomyRevealOperationId } from './economyRevealRecovery.js';
@@ -16679,18 +16680,26 @@ soloPriorityB = createSoloPriorityController({
       canActivateActivatedAbilityNow, getEffectiveKeywords, getEffectivePower, getEquipmentOn,
       canPlayLandFromGraveyard, canPlayCardFromExile, getExilePlayPermissionForCard
     }
-  }).legalActions,
+  }),
   canSkipEmptyAttack: s => canAutoDeclareNoAttack(s),
   skipEmptyAttack: () => executeLocalAttack(),
   getActivity: s => getEffectivePriorityActivity(s),
-  isVisible: () => typeof document !== 'undefined' && document.visibilityState !== 'hidden' &&
-    !document.querySelector('#main-menu-overlay, #tournament-overlay, #multiplayer-overlay, #deck-select-overlay, #mulligan-overlay, #options-menu-overlay, #game-manual-overlay, .gy-modal-overlay, #game-over-overlay:not(.hidden)') &&
-    !!document.getElementById('match-loading-overlay')?.hidden,
+  trace: recordPriorityDiagnostic,
+  isVisible: () => {
+    const visibility = readPriorityVisibility();
+    recordPriorityDiagnostic('visibility', { available:visibility.visible, blocker:visibility.blocker,
+      loadingHidden:document.getElementById('match-loading-overlay')?.hidden });
+    return visibility.visible;
+  },
   canPass: () => !!els.btnEndTurn && !els.btnEndTurn.disabled &&
     !els.btnEndTurn.classList.contains('hidden') &&
     !(state.phase === 'combat_attackers' && state.activePlayer === 'local' && !(Number(state.localAttackersDeclaredThisTurn) > 0)) &&
     !(state.phase === 'combat_blockers' && state.activePlayer === 'rival' && !state.localBlockersDeclaredThisCombat),
-  passOnce: () => passPriority('local'),
+  passOnce: () => {
+    recordPriorityDiagnostic('ui_pass_callback', { phase:state.phase, priorityPlayer:state.priorityPlayer,
+      buttonDisabled:els.btnEndTurn?.disabled, buttonHidden:els.btnEndTurn?.classList.contains('hidden') });
+    return passPriority('local');
+  },
   onChange: ({mode, available, stoppedReason}) => {
     const tools = document.getElementById('solo-priority-shortcuts');
     if (!tools) return;
@@ -16706,19 +16715,19 @@ soloPriorityB = createSoloPriorityController({
     if (cancel) cancel.disabled = mode === SOLO_PRIORITY_B_MODES.MANUAL;
     const activeMini = document.getElementById('solo-priority-current');
     if(activeMini) {
-      const shortNames={smart:'8 ⚡ SMART',until_response:'2 ⏩ RESP.',through_turn:'6 ⏭ TURNO',full_control:'✋ CONTROL',manual:'1 MANUAL'};
+      const shortNames={if_no_legal_action:'8 SMART',until_response:'2 RESP.',through_turn:'6 TURNO',full_control:'CTRL',manual:'1 MANUAL'};
       activeMini.textContent=shortNames[mode]||'1 MANUAL';
     }
     const label = document.getElementById('solo-priority-status');
     if (label) {
-      const names = {smart:'⚡ Smart Pass activo',until_response:'⏩ Hasta respuesta',through_turn:'⏭ Cediendo este turno',full_control:'✋ Control completo'};
+      const names = {if_no_legal_action:'Smart: pasa sin acciones',until_response:'⏩ Hasta respuesta',through_turn:'⏭ Cediendo este turno',full_control:'✋ Control completo'};
       const smartProof = mode === SOLO_PRIORITY_B_MODES.SMART
         ? proveNoRelevantLegalActions(state, {stackDepth:spellStack.length, adapters: {canPlayCard, canSuspendCardFromHand,
             getFinalCastingManaCost, canActivateActivatedAbilityNow, getEffectiveKeywords, getEffectivePower, getEquipmentOn,
             canPlayLandFromGraveyard, canPlayCardFromExile, getExilePlayPermissionForCard}}).legalActions : null;
       label.textContent = stoppedReason === 'stack_response' ? '⚡ Respuesta disponible' :
         stoppedReason === 'phase_stop' ? '⚑ Parada: prioridad manual' :
-        mode === SOLO_PRIORITY_B_MODES.SMART && smartProof !== 'none' ? '⚡ Smart armado · conserva prioridad' :
+        mode === SOLO_PRIORITY_B_MODES.SMART && smartProof !== 'none' ? 'Smart: conservás prioridad' :
         (names[mode] || 'Prioridad manual');
       label.title = stoppedReason === 'stack_response' ? 'Se detectó actividad en la pila: decidís vos.' :
         stoppedReason === 'phase_stop' ? 'Alcanzaste una parada marcada: se canceló el pase automático.' : ''; 
@@ -16772,8 +16781,8 @@ function renderPriorityStops() {
     dot.classList.toggle('priority-stop-available', available);
     if (available) {
       dot.setAttribute('role','button'); dot.setAttribute('aria-pressed',String(marked));
-      dot.title = `${dot.dataset.phaseLabel || phase} — ${marked?'quitar parada':'marcar parada'}`;
-    } else {dot.removeAttribute('role');dot.removeAttribute('aria-pressed');}
+      dot.setAttribute('aria-description', marked ? 'Parada marcada; activar para quitarla' : 'Activar para marcar una parada');
+    } else {dot.removeAttribute('role');dot.removeAttribute('aria-pressed');dot.removeAttribute('aria-description');}
   }
   const combat = document.getElementById('dot-combat');
   if (combat) {
@@ -16782,7 +16791,8 @@ function renderPriorityStops() {
     combat.classList.toggle('priority-stop-available', available);
     if (available) {combat.setAttribute('role','button');combat.setAttribute('aria-expanded',String(priorityCombatPopoverOpen));}
     else {combat.removeAttribute('role'); combat.removeAttribute('aria-expanded');}
-    combat.title = available ? 'Elegir paradas de combate (cinco subfases)' : (combat.dataset.phaseLabel || 'Combate');
+    if (available) combat.setAttribute('aria-description','Elegir paradas de combate (cinco subfases)');
+    else combat.removeAttribute('aria-description');
   }
   const popover=document.getElementById('priority-combat-stops');
   popover?.classList.toggle('hidden',!available || !priorityCombatPopoverOpen);
@@ -16791,7 +16801,7 @@ function renderPriorityStops() {
   });
   for (const id of ['dot-untap','dot-cleanup']) {
     const dot=document.getElementById(id);
-    if(dot && available) dot.title='Este paso no concede prioridad: no permite paradas';
+    if(dot && available) dot.setAttribute('aria-description','Este paso no concede prioridad: no permite paradas');
   }
 }
 for (const [id,phase] of Object.entries(PRIORITY_STOP_DOTS)) {

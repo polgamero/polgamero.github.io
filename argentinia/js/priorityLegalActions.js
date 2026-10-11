@@ -5,6 +5,7 @@
 import { normalizeManaPool, canPoolPayCost } from './manaPool.js';
 import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities } from './landCharacteristics.js';
+import { getLandManaBonuses } from './landStax.js';
 import { getActivatedAbilities, getGrantedAbilities, parseManaCost } from './utils.js';
 
 const COLORS = Object.freeze(['W','U','B','R','G','C']);
@@ -58,6 +59,11 @@ function readManaSources(s, helpers) {
       // Al calcular pagos NO descartamos una fuente que podría activarse en una
       // ventana 601/602, por eso sólo se omite por tap/mareo intrínsecos.
       if(!canActivateManaSourcePermanent(item,{hasHaste:haste||item.card?.keywords?.includes('haste'),ability:mana}))continue;
+      // Immediate land-mana bonuses can change amount AND color. The current
+      // assignment model represents one output color per activation; do not
+      // undercount a canonical bonus and incorrectly prove a spell unpayable.
+      if(zone==='localLands' && mana.options.some(color=>getLandManaBonuses(s,true,item,color).length>0))
+        return {status:'unknown',reason:'land_mana_bonus_not_modeled'};
       if(mana.requiresTap===false && mana.sacrificeSelf===false)
         return {status:'unknown',reason:'unbounded_repeatable_mana'};
       entries.push({options:mana.options,amount:mana.amount});
@@ -199,13 +205,13 @@ function actionSummary(s,options,h){
     for(const item of s[zone]){
       if(!item?.card)return result('unknown','invalid_permanent');
       const staticRules=[item.card.staticEffect,...(Array.isArray(item.card.staticEffects)?item.card.staticEffects:[])].filter(Boolean);
-      if(staticRules.some(e=>!KNOWN_STATIC.has(e?.type)))unknown=true;
+      if(staticRules.some(e=>!KNOWN_STATIC.has(e?.type))) {unknown=true;firstUnknown ||= 'static_effect';}
       // Cualquier concesión dinámica de habilidades aún no incorporada al inventario
       // impide demostrar ausencia. El fallo siempre es hacia prioridad MANUAL.
       if((Array.isArray(item.grantedAbilities)&&item.grantedAbilities.length>0) ||
          (Array.isArray(item.card.abilities)&&item.card.abilities.length>0) ||
          (Array.isArray(item.tempEffects)&&item.tempEffects.some(e=>e?.activatedAbility||e?.grantedAbility)))
-         unknown=true;
+         {unknown=true;firstUnknown ||= 'dynamic_granted_abilities';}
       const abilities=zone==='localLands'?getEffectiveLandActivatedAbilities(s,item,true):getActivatedAbilities(item.card);
       if(!Array.isArray(abilities))return result('unknown','invalid_ability_list');
       for(const ab of abilities){
@@ -228,7 +234,7 @@ function actionSummary(s,options,h){
     if(!item.abilityUsedThisTurn && Array.isArray(item.card.loyaltyAbilities) &&
        item.card.loyaltyAbilities.some(ab=>Number.isFinite(Number(ab.cost))&&item.loyalty+Number(ab.cost)>=0))
        return result('available','loyalty_ability',{evaluated});
-    if(!item.abilityUsedThisTurn && !Array.isArray(item.card.loyaltyAbilities))unknown=true;
+    if(!item.abilityUsedThisTurn && !Array.isArray(item.card.loyaltyAbilities)) {unknown=true;firstUnknown ||= 'loyalty_ability';}
   }
   for(const card of s.localGraveyard){
     if(!card)return result('unknown','invalid_graveyard_card');

@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "fb74c2f6e9423aada5b3",
+  "buildId": "175d521c8d9d1a8011b8",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -127,7 +127,10 @@
     "./js/phaseBanner.js",
     "./js/poolContract.js",
     "./js/prebuiltDecks.js",
+    "./js/priorityDiagnostics.js",
     "./js/priorityIntelligence.js",
+    "./js/priorityLegalActions.js",
+    "./js/priorityStops.js",
     "./js/priorityUX.js",
     "./js/privateZoneProtocol.js",
     "./js/publicProfileUI.js",
@@ -173,9 +176,7 @@
     "./js/utils.js",
     "./js/version.js",
     "./js/workshop.js",
-    "./js/zoneOwnership.js",
-    "./js/priorityStops.js",
-    "./js/priorityLegalActions.js"
+    "./js/zoneOwnership.js"
   ],
   "publicProjection": true
 }

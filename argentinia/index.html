@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'fb74c2f6e9423aada5b3';
+      const BUILD_ID = '175d521c8d9d1a8011b8';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -561,10 +561,10 @@
           </div>
           <div id="solo-priority-panel" class="solo-priority-panel">
             <div class="solo-priority-actions">
-              <button type="button" class="solo-priority-button" data-priority-b-mode="smart" title="Smart Pass (8): solo omite prioridades sin acciones demostrablemente disponibles" aria-pressed="false"><span class="solo-priority-key">8</span><span class="solo-priority-label">⚡ Smart</span></button>
-              <button type="button" class="solo-priority-button" data-priority-b-mode="until_response" title="Hasta respuesta (2 o Enter): se detiene ante actividad en la pila" aria-pressed="false"><span class="solo-priority-key">2</span><span class="solo-priority-label">⏩ Resp.</span></button>
-              <button type="button" class="solo-priority-button" data-priority-b-mode="through_turn" title="Ceder este turno (6, F6 o Shift+Enter). Respeta decisiones obligatorias" aria-pressed="false"><span class="solo-priority-key">6</span><span class="solo-priority-label">⏭ Turno</span></button>
-              <button type="button" class="solo-priority-button" data-priority-b-mode="full_control" title="Control completo (Ctrl): cada prioridad es manual" aria-pressed="false"><span class="solo-priority-key">Ctrl</span><span class="solo-priority-label">✋ Ctrl</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="if_no_legal_action" title="Smart Pass (8): solo omite prioridades sin acciones demostrablemente disponibles" aria-pressed="false"><span class="solo-priority-key">8</span><span class="solo-priority-label">Smart</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="until_response" title="Hasta respuesta (2 o Enter): se detiene ante actividad en la pila" aria-pressed="false"><span class="solo-priority-key">2</span><span class="solo-priority-label">Resp.</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="through_turn" title="Ceder este turno (6, F6 o Shift+Enter). Respeta decisiones obligatorias" aria-pressed="false"><span class="solo-priority-key">6</span><span class="solo-priority-label">Turno</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="full_control" title="Control completo (Ctrl): cada prioridad es manual" aria-pressed="false"><span class="solo-priority-key">Ctrl</span><span class="solo-priority-label">Control</span></button>
               <button type="button" class="solo-priority-button solo-priority-dismiss" id="solo-priority-cancel" title="Cancelar atajo (5 o Escape)" aria-label="Cancelar atajo" disabled><span class="solo-priority-key">5</span><span class="solo-priority-label">×</span></button>
             </div>
             <div id="solo-priority-status" class="solo-priority-status" aria-live="polite">Prioridad manual</div>
