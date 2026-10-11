@@ -10,6 +10,9 @@ import {
   handleDiscardClick,
   playCard,
   canPlayCard,
+  canActivateActivatedAbilityNow,
+  getFinalCastingManaCost,
+  canPlayLandFromGraveyard,
   tapLocalLand,
   handleCombatClick,
   handleSupportClick,
@@ -16639,6 +16642,24 @@ function syncPaymentActionRow(isPaying) {
   }
 }
 
+// Stage C HF2: sólo declaramos ataque vacío cuando ninguna unidad propia
+// podría legalmente atacar. Nunca anulamos el derecho de elegir un atacante.
+function canAutoDeclareNoAttack(s) {
+  if (!s || s.currentMatch || s.phase !== 'combat_attackers' ||
+      s.activePlayer !== 'local' || s.priorityPlayer !== 'local' ||
+      !Array.isArray(s.localCombat) || Number(s.localAttackersDeclaredThisTurn) > 0 ||
+      s.pendingLegendChoice || s.pendingTriggerOrderChoice || s.sbaKernelRunning ||
+      s.pendingCastTransaction || s.pendingTargetCard || s.pendingSpellIndex != null ||
+      s.pendingAbilitySource != null || s.pendingDecision || s.pendingModeChoice ||
+      s.damageModalOpen || s.isDiscarding || s.pendingSacrificeChoice || s.pendingActivatedAbilityChoice ||
+      s.pendingBlockerIndex != null || s.localCombat.some(unit => unit?.isAttacking)) return false;
+  return s.localCombat.every(unit => unit && (unit.tapped ||
+    (unit.summoningSickness && !hasKeyword(unit,'haste')) || hasKeyword(unit,'defender') ||
+    (s.activeEffects || []).some(effect => effect.effectType==='cant_attack_next_turn' &&
+      effect.targetPlayer==='local' && effect.appliesThisCombat===true &&
+      effect.targetObjectId && effect.targetObjectId===unit._effectObjectId)));
+}
+
 // Stage C: motor local para Solo/Torneo; sin efectos sobre protocolo ni PvP.
 let priorityCombatPopoverOpen = false;
 let soloPriorityB;
@@ -16649,9 +16670,18 @@ const priorityStops = createPriorityStops({onChange:() => {
 soloPriorityB = createSoloPriorityController({
   getState: () => state,
   getStack: () => spellStack,
-  stageCEnabled: true, allowTournament: true,
+  stageCEnabled: true, allowTournament: true, keepModeBetweenTurns:true,
   getStops: () => priorityStops.phases,
-  getLegalActions: (s, options) => proveNoRelevantLegalActions(s, options).legalActions,
+  getLegalActions: (s, options) => proveNoRelevantLegalActions(s, {
+    ...options,
+    adapters: {
+      canPlayCard, canSuspendCardFromHand, getFinalCastingManaCost,
+      canActivateActivatedAbilityNow, getEffectiveKeywords, getEffectivePower, getEquipmentOn,
+      canPlayLandFromGraveyard, canPlayCardFromExile, getExilePlayPermissionForCard
+    }
+  }).legalActions,
+  canSkipEmptyAttack: s => canAutoDeclareNoAttack(s),
+  skipEmptyAttack: () => executeLocalAttack(),
   getActivity: s => getEffectivePriorityActivity(s),
   isVisible: () => typeof document !== 'undefined' && document.visibilityState !== 'hidden' &&
     !document.querySelector('#main-menu-overlay, #tournament-overlay, #multiplayer-overlay, #deck-select-overlay, #mulligan-overlay, #options-menu-overlay, #game-manual-overlay, .gy-modal-overlay, #game-over-overlay:not(.hidden)') &&
@@ -16674,11 +16704,22 @@ soloPriorityB = createSoloPriorityController({
     });
     const cancel = document.getElementById('solo-priority-cancel');
     if (cancel) cancel.disabled = mode === SOLO_PRIORITY_B_MODES.MANUAL;
+    const activeMini = document.getElementById('solo-priority-current');
+    if(activeMini) {
+      const shortNames={smart:'8 ⚡ SMART',until_response:'2 ⏩ RESP.',through_turn:'6 ⏭ TURNO',full_control:'✋ CONTROL',manual:'1 MANUAL'};
+      activeMini.textContent=shortNames[mode]||'1 MANUAL';
+    }
     const label = document.getElementById('solo-priority-status');
     if (label) {
       const names = {smart:'⚡ Smart Pass activo',until_response:'⏩ Hasta respuesta',through_turn:'⏭ Cediendo este turno',full_control:'✋ Control completo'};
+      const smartProof = mode === SOLO_PRIORITY_B_MODES.SMART
+        ? proveNoRelevantLegalActions(state, {stackDepth:spellStack.length, adapters: {canPlayCard, canSuspendCardFromHand,
+            getFinalCastingManaCost, canActivateActivatedAbilityNow, getEffectiveKeywords, getEffectivePower, getEquipmentOn,
+            canPlayLandFromGraveyard, canPlayCardFromExile, getExilePlayPermissionForCard}}).legalActions : null;
       label.textContent = stoppedReason === 'stack_response' ? '⚡ Respuesta disponible' :
-        stoppedReason === 'phase_stop' ? '⚑ Parada: prioridad manual' : (names[mode] || 'Prioridad manual');
+        stoppedReason === 'phase_stop' ? '⚑ Parada: prioridad manual' :
+        mode === SOLO_PRIORITY_B_MODES.SMART && smartProof !== 'none' ? '⚡ Smart armado · conserva prioridad' :
+        (names[mode] || 'Prioridad manual');
       label.title = stoppedReason === 'stack_response' ? 'Se detectó actividad en la pila: decidís vos.' :
         stoppedReason === 'phase_stop' ? 'Alcanzaste una parada marcada: se canceló el pase automático.' : ''; 
     }
@@ -16687,6 +16728,9 @@ soloPriorityB = createSoloPriorityController({
 export function resetSoloPriorityShortcuts() { soloPriorityB.reset(); priorityStops.reset(); priorityCombatPopoverOpen=false; }
 export function isSoloPriorityFullControl() { return soloPriorityB.canUse() && soloPriorityB.mode === SOLO_PRIORITY_B_MODES.FULL_CONTROL; }
 const soloPriorityTools = document.getElementById('solo-priority-shortcuts');
+// HF2: transportar el dock al nivel raíz evita clipping/transform del sidebar,
+// y asegura el mismo anclaje de viewport en desktop y mobile.
+if (soloPriorityTools && soloPriorityTools.parentElement !== document.body) document.body.appendChild(soloPriorityTools);
 const SOLO_PRIORITY_COLLAPSE_KEY = 'argentinia.priorityShortcutsCollapsed';
 function setSoloPriorityCollapsed(collapsed, { persist = true } = {}) {
   if (!soloPriorityTools) return;
@@ -16769,7 +16813,11 @@ combatStopDot?.addEventListener('keydown',event=>{if(soloPriorityB.canUse()&&(ev
   event.preventDefault();event.stopPropagation();toggleCombatStopPopover();
 }});
 document.getElementById('priority-combat-stops')?.querySelectorAll('[data-priority-combat-stop]').forEach(button=>{
-  button.addEventListener('click',()=>{if(soloPriorityB.canUse()) priorityStops.toggle(button.dataset.priorityCombatStop);});
+  button.addEventListener('click',()=>{if(soloPriorityB.canUse()) {
+    priorityStops.toggle(button.dataset.priorityCombatStop);
+    priorityCombatPopoverOpen=false;
+    renderPriorityStops();
+  }});
 });
 document.getElementById('priority-stop-clear')?.addEventListener('click',()=>{
   priorityStops.clear();priorityCombatPopoverOpen=false;renderPriorityStops();
@@ -17109,7 +17157,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // Pasar una prioridad / paso manual con 1 o barra espaciadora
-  if ((e.code === 'Space' || e.key === '1') && !isTypingInField) {
+  if ((e.code === 'Space' || e.key === '1') && !isTypingInField && !e.ctrlKey && !e.altKey && !e.metaKey && !focusOnControl && (e.code === 'Space' || soloPriorityB.canUse())) {
     e.preventDefault(); // Evitamos scroll y también el click nativo del botón enfocado.
     e.stopPropagation();
     // Una pulsación física = una sola acción. Mantener la barra apretada no vuelve a

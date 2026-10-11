@@ -2,7 +2,7 @@
 // Etapa B base + adaptadores opt-in C para Torneo/Smart/Stops. PvP inalterado.
 // No selecciona objetivos, no activa habilidades, no declara combate ni altera reglas.
 import { SMART_PRIORITY_MODES, createPriorityTicketGate,
-  evaluatePriorityIntent, assessPriorityWindow } from './priorityIntelligence.js';
+  evaluatePriorityIntent, assessPriorityWindow, createPriorityWindowKey } from './priorityIntelligence.js';
 
 const B_SOLO_FLAGS = Object.freeze({
   automatedPassing: true, keyboardShortcuts: true, phaseStops: true,
@@ -26,17 +26,21 @@ export function createSoloPriorityController({
   schedule = (callback, ms) => setTimeout(callback, ms),
   cancel = id => clearTimeout(id), delayMs = 125,
   stageCEnabled = false, allowTournament = false, getStops = () => [],
-  getLegalActions = () => 'unknown'
+  getLegalActions = () => 'unknown',
+  canSkipEmptyAttack = () => false, skipEmptyAttack = () => {},
+  keepModeBetweenTurns = false
 } = {}) {
-  if ([getState,getStack,canPass,passOnce,isVisible,onChange,schedule,cancel,getStops,getLegalActions].some(f => typeof f !== 'function'))
+  if ([getState,getStack,canPass,passOnce,isVisible,onChange,schedule,cancel,getStops,getLegalActions,canSkipEmptyAttack,skipEmptyAttack].some(f => typeof f !== 'function'))
     throw new TypeError('Stage B requiere adaptadores completos');
   const gate = createPriorityTicketGate();
   let mode = SOLO_PRIORITY_B_MODES.MANUAL;
   let turn = null;
   let generation = 0;
   let pendingId = null;
+  let pendingWindowKey = null;
   let executing = false;
   let stoppedReason = null;
+  let lastAutomaticWindow = null;
 
   function eligible(s) {
     return !!s && !s.currentMatch && (allowTournament || !s.currentTournamentMatch) && !s.gameOver &&
@@ -56,12 +60,14 @@ export function createSoloPriorityController({
   }
   function clearScheduled() {
     if (pendingId !== null) { cancel(pendingId); pendingId = null; }
+    pendingWindowKey = null;
   }
   function publish() { onChange({mode, turn, stoppedReason, available:eligible(getState())}); }
   function stop(reason = 'cancelled') {
     generation++;
     clearScheduled();
     gate.reset();
+    lastAutomaticWindow = null;
     mode = SOLO_PRIORITY_B_MODES.MANUAL;
     turn = null;
     stoppedReason = reason;
@@ -76,9 +82,10 @@ export function createSoloPriorityController({
     generation++;
     clearScheduled();
     gate.reset();
+    lastAutomaticWindow = null;
     mode = next;
     // Smart stays armed across turns; the other shortcuts remain turn-scoped.
-    turn = next === SOLO_PRIORITY_B_MODES.SMART ? null : s.turnCount;
+    turn = keepModeBetweenTurns || next === SOLO_PRIORITY_B_MODES.SMART ? null : s.turnCount;
     stoppedReason = null;
     publish();
     onRender();
@@ -87,6 +94,13 @@ export function createSoloPriorityController({
   function onRender() {
     const {s,options} = snapshot();
     if (!eligible(s)) {
+      // Una ventana modal momentánea no borra la preferencia de atajo. Se revoca
+      // el pase pendiente; al volver el tablero, se evalúa una ventana NUEVA.
+      if (keepModeBetweenTurns && s && !s.currentMatch && (allowTournament || !s.currentTournamentMatch) &&
+          !s.gameOver && !s.soloRuntimeSuspended && !s.soloLifecycleReloading &&
+          !isVisible()) {
+        generation++;clearScheduled();gate.reset();publish();return;
+      }
       if (mode !== SOLO_PRIORITY_B_MODES.MANUAL || pendingId !== null) stop('out_of_solo');
       else publish();
       return;
@@ -101,10 +115,52 @@ export function createSoloPriorityController({
       stop('stack_response');
       return;
     }
+    // HF2 P0: al cambiar de ventana/turno mientras un timeout estaba pendiente,
+    // cancelarlo YA y reevaluar; el timer anterior no llamaba onRender() al abortar
+    // y dejaba al modo activo visualmente pero sin siguientes pases.
+    const liveWindowKey=createPriorityWindowKey(s,options);
+    if (pendingId !== null && pendingWindowKey !== liveWindowKey) {
+      generation++;clearScheduled();gate.reset();
+    }
     publish();
     if (!AUTOMATIC.has(mode) || pendingId !== null || executing) return;
-    if (!canPass()) return;
     const stopPhases = stageCEnabled ? getStops() : [];
+    // La parada explícita tiene prioridad incluso antes de declarar atacantes,
+    // cuando assessPriorityWindow rechaza correctamente el pase automático.
+    if (stopPhases.includes(s.phase) && s.priorityPlayer === 'local' &&
+        options.stackDepth === 0) { stop('phase_stop');return; }
+    // La declaración de ataque no es passPriority(): el botón canónico está habilitado,
+    // pero `canPass` debe prohibir pasar prioridad ANTES de declarar. La comprobación
+    // de ataque vacío debe ir antes del guard de pases normales.
+    // Declarar CERO atacantes es una ACCIÓN OBLIGATORIA, no un pase de prioridad.
+    // El motor Stage A la bloquea deliberadamente. Sólo el modo voluntario y con
+    // prueba canónica de que NO existe atacante legal ejecuta el mismo botón de UI.
+    // No evitamos el comienzo/fin de combate: triggers y ventanas siguen intactos.
+    if (stageCEnabled && s.phase === 'combat_attackers' && s.activePlayer === 'local' &&
+        s.priorityPlayer === 'local' && options.stackDepth === 0 &&
+        !stopPhases.includes(s.phase) && canSkipEmptyAttack(s) &&
+        AUTOMATIC.has(mode)) {
+      const key = createPriorityWindowKey(s, options);
+      if (!key || key === lastAutomaticWindow) return;
+      const scheduledGeneration = generation;
+      pendingWindowKey=key;
+      pendingId = schedule(async () => {
+        pendingId = null;pendingWindowKey=null;
+        const current = snapshot();
+        if (scheduledGeneration !== generation || executing ||
+            !eligible(current.s) ||
+            stopPhases.some(phase => phase === current.s?.phase) ||
+            !canSkipEmptyAttack(current.s) ||
+            createPriorityWindowKey(current.s,current.options) !== key) return;
+        executing = true;
+        lastAutomaticWindow = key;
+        try { await skipEmptyAttack(); }
+        catch(error) { stop('attack_skip_failed'); console.warn('[Prioridad Stage C] No se pudo declarar ataque vacío:',error); }
+        finally { executing=false; if (scheduledGeneration === generation) onRender(); }
+      }, delayMs);
+      return;
+    }
+    if (!canPass()) return;
     // Reaching an explicit stop returns to manual control. Nothing is chosen on behalf
     // of the human. Stops are local to the browser and override through-turn.
     if (stopPhases.includes(s.phase) &&
@@ -120,8 +176,9 @@ export function createSoloPriorityController({
     const ticket = gate.acquire(s, options);
     if (!ticket) return;
     const scheduledGeneration = generation;
+    pendingWindowKey=createPriorityWindowKey(s,options);
     pendingId = schedule(async () => {
-      pendingId = null;
+      pendingId = null;pendingWindowKey=null;
       if (scheduledGeneration !== generation || !AUTOMATIC.has(mode) || executing) {
         gate.finish(ticket); return;
       }

@@ -3018,28 +3018,43 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:hover{transform:scale(1.12);background:rgba(67,55,17,.96)}
 .encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:disabled{opacity:.65;cursor:wait}
 
-/* Prioridad Inteligente B: compacta y aislada del botón canónico de pase. */
-.solo-priority-shortcuts {display:flex;flex-direction:column;gap:2px;flex-shrink:0;min-width:0}
+/* Prioridad Inteligente Stage C HF2 — único dock sobre el tablero en
+   desktop Y mobile landscape. No ocupa espacio vertical del sidebar. */
+.solo-priority-shortcuts {
+  display:flex;flex-direction:column;gap:5px;
+  position:fixed!important;left:max(12px,env(safe-area-inset-left,0px))!important;
+  top:50svh!important;transform:translateY(-50%)!important;
+  z-index:2100!important;width:clamp(148px,14.5vw,202px)!important;
+  padding:6px!important;min-width:0;max-height:calc(100svh - 155px);
+  border:1px solid rgba(220,172,69,.78)!important;border-radius:11px!important;
+  background:linear-gradient(150deg,rgba(9,14,18,.96),rgba(20,29,23,.95))!important;
+  box-shadow:0 5px 22px rgba(0,0,0,.56)!important;
+  font-family:system-ui,sans-serif;
+}
 .solo-priority-shortcuts.hidden {display:none!important}
-.solo-priority-mobile-bar {display:none}
-.solo-priority-panel {display:flex;flex-direction:column;gap:2px;min-width:0}
-.solo-priority-actions {display:flex;align-items:stretch;gap:3px;min-width:0}
-.solo-priority-button {flex:1 1 0;min-width:0;padding:4px 2px;border:1px solid #77653c;border-radius:5px;background:#1b2922;color:#e8d9ad;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.05}
-.solo-priority-key {display:inline-flex;align-items:center;justify-content:center;min-width:18px;padding:1px 3px;border-radius:999px;background:#0f1713;color:#f8e3a4;font-size:9px;font-weight:800;letter-spacing:.02em}
-.solo-priority-label {display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.solo-priority-button.active {background:#aa7929;color:#130e08;border-color:#ecd078}
-.solo-priority-button.active .solo-priority-key {background:#4b330e;color:#ffe9a4}
-.solo-priority-button:focus-visible {outline:2px solid #f0cc62;outline-offset:1px}
-.solo-priority-button:disabled {opacity:.4;cursor:default}
-.solo-priority-dismiss {flex:0 0 28px;font-size:13px}
-.solo-priority-status {min-height:12px;text-align:center;line-height:1.1;font-size:9px;color:#d4c38e}
-.solo-priority-toggle {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid #8a7040;border-radius:7px;background:#171d20;color:#f2dd9c;font:800 18px/1 sans-serif;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.45)}
-.solo-priority-toggle:focus-visible {outline:2px solid #f0cc62;outline-offset:1px}
-.solo-priority-shortcuts.is-collapsed .solo-priority-panel {display:none}
-
+.solo-priority-mobile-bar{display:flex;align-items:center;gap:5px;min-height:23px}
+.solo-priority-mobile-title{font:800 10px/1.1 system-ui,sans-serif;color:#f3db9b;letter-spacing:.04em}
+.solo-priority-current{font:800 9px/1.1 system-ui,sans-serif;color:#ffe3a0;white-space:nowrap;margin-left:auto}
+.solo-priority-toggle{flex:0 0 24px;width:24px;height:24px;border:1px solid #957740;border-radius:6px;background:#252923;color:#ffebaa;font:800 17px/1 sans-serif;cursor:pointer;display:grid;place-items:center}
+.solo-priority-panel{display:flex;flex-direction:column;gap:4px;min-width:0}
+.solo-priority-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;min-width:0}
+.solo-priority-button{min-width:0;aspect-ratio:1.12;max-height:63px;padding:3px 2px;border:1px solid #836e3b;border-radius:6px;background:#1c3027;color:#f1dfb5;font:800 10px/1.08 system-ui,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:nowrap;touch-action:manipulation}
+.solo-priority-key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;padding:1px 4px;border-radius:5px;background:#101a17;color:#ffe6a7;font:800 11px/1 system-ui,sans-serif}
+.solo-priority-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;font:800 9px/1.1 system-ui,sans-serif}
+.solo-priority-button.active{background:#f0b739!important;color:#171009!important;border:2px solid #fff0af!important;box-shadow:inset 0 0 4px #fff5ae,0 0 12px #f6b94f!important}
+.solo-priority-button.active .solo-priority-key{background:#66420c;color:#fff0bf}
+.solo-priority-button:focus-visible,.solo-priority-toggle:focus-visible{outline:2px solid #ffdf8a;outline-offset:1px}
+.solo-priority-button:disabled{opacity:.42;cursor:default}
+.solo-priority-dismiss{grid-column:span 1}
+.solo-priority-status{text-align:center;line-height:1.1;font:600 9px system-ui,sans-serif;color:#e6d29d}
+.solo-priority-shortcuts.is-collapsed{width:auto!important;min-width:147px!important}
+.solo-priority-shortcuts.is-collapsed .solo-priority-panel{display:none!important}
+.solo-priority-shortcuts.is-collapsed .solo-priority-mobile-title{display:none}
+.solo-priority-shortcuts.is-collapsed .solo-priority-current{margin-left:0}
+.solo-priority-shortcuts.is-collapsed .solo-priority-toggle{margin-left:auto}
 /* Prioridad Inteligente Stage C — fases existentes, no modifica el HUD canónico. */
 .phase-dot.priority-stop-enabled {border-color:#f4d278!important;box-shadow:0 0 0 2px #e3ac3f,0 0 6px #d7a32f!important;position:relative}
-.phase-dot.priority-stop-enabled::after {content:'⚑';position:absolute;top:-8px;right:-5px;font:700 11px sans-serif;color:#ffde77;text-shadow:0 1px 2px #000;pointer-events:none}
+.phase-dot.priority-stop-enabled::before {content:'⚑';position:absolute;top:0;right:0;font:700 9px/1 sans-serif;color:#ffde77;text-shadow:0 1px 2px #000;pointer-events:none;z-index:2}
 .phase-dot.priority-stop-available {cursor:pointer}
 .phase-dot.priority-stop-available:focus-visible {outline:2px solid #f5dc80;outline-offset:3px}
 .priority-combat-stops {display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin:2px 0 5px;padding:4px;border:1px solid #886b39;border-radius:7px;background:#111c1a;z-index:3}

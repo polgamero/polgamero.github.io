@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'b341e0f1152fed057c14';
+      const BUILD_ID = 'fb74c2f6e9423aada5b3';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -555,7 +555,8 @@
         <!-- Stage C: prioridad local Solo/Torneo. Multiplayer conserva HF8. -->
         <div id="solo-priority-shortcuts" class="solo-priority-shortcuts hidden" aria-label="Atajos de prioridad (Solo y Torneo)">
           <div class="solo-priority-mobile-bar">
-            <span class="solo-priority-mobile-title">Atajos</span>
+            <span class="solo-priority-mobile-title">ATAJOS</span>
+            <span id="solo-priority-current" class="solo-priority-current" aria-live="polite">1 MANUAL</span>
             <button type="button" id="solo-priority-toggle" class="solo-priority-toggle" aria-expanded="true" aria-controls="solo-priority-panel" title="Ocultar controles táctiles">−</button>
           </div>
           <div id="solo-priority-panel" class="solo-priority-panel">

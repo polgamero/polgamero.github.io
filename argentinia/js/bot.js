@@ -2267,6 +2267,24 @@ export async function takeBotPriorityAction() {
   if (state.currentMatch) return;
   if (state.gameOver || state.priorityPlayer !== 'rival' || hasBotRuntimeBlocker()) return;
 
+  // Stage C HF2: sin criaturas rivales, declarar CERO atacantes es determinístico.
+  // No cancelar la fase ni saltar prioridades humanas: se usa el pase canónico,
+  // que transfiere el control al jugador para que sus Stops/atajos decidan.
+  // Multiplayer nunca ingresa aquí (guard currentMatch más arriba).
+  if (state.activePlayer === 'rival' && state.phase === 'combat_attackers' &&
+      spellStack.length === 0 && Array.isArray(state.rivalCombat) &&
+      state.rivalCombat.every(unit => unit && (unit.tapped || hasKeyword(unit,'defender') ||
+        (unit.summoningSickness && !hasKeyword(unit,'haste')) ||
+        (state.activeEffects || []).some(effect => effect.effectType === 'cant_attack_next_turn' &&
+          effect.targetPlayer === 'rival' && effect.appliesThisCombat === true &&
+          effect.targetObjectId && effect.targetObjectId === unit._effectObjectId))) &&
+      (state.rivalAttackersDeclaredThisTurn || 0) === 0) {
+    logMsg(gameText('bot.noAttack'));
+    state.rivalAttackersDeclaredThisTurn = 0;
+    await passPriority('rival');
+    return;
+  }
+
   await botThinkDelay(600); // El Tano "piensa"
 
   // A delayed callback may have started before the resolver opened an interactive choice.
