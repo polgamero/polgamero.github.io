@@ -2,7 +2,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
+import { resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
@@ -1065,6 +1065,7 @@ const cloneGameplayValue = value => {
 };
 const INITIAL_GAMEPLAY_STATE = Object.fromEntries(Object.entries(state).map(([key,value])=>[key,cloneGameplayValue(value)]));
 function resetGameplayStateForNewMatch() {
+  resetSoloPriorityShortcuts();
   const preserved = Object.fromEntries([...GAMEPLAY_STATE_PERSIST_KEYS].map(key => [key,state[key]]));
   Object.entries(INITIAL_GAMEPLAY_STATE).forEach(([key,value]) => {
     if (!GAMEPLAY_STATE_PERSIST_KEYS.has(key)) state[key] = cloneGameplayValue(value);
@@ -1203,6 +1204,7 @@ async function paintMatchInitializationOverlay() {
 }
 
 async function returnToMainMenuAfterAbandon({ destination = 'main' } = {}) {
+  resetSoloPriorityShortcuts();
   const matchId = state.currentMatch?.matchId || null;
   const uid = state.currentUser?.uid || null;
   stopMultiplayerPresenceHeartbeat();

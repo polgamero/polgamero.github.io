@@ -3445,3 +3445,35 @@ html.argentinia-mobile .trade-notification-panel{width:min(94vw,700px);max-heigh
 html.argentinia-mobile .trade-notification-panel .trade-pair{gap:6px}
 html.argentinia-mobile .trade-history-actions{justify-content:stretch}
 html.argentinia-mobile .trade-history-actions .trade-btn{width:100%}
+
+/* Stage B/C HF: panel táctil flotante a la izquierda en landscape mobile. */
+html.argentinia-mobile .solo-priority-shortcuts {
+  position:fixed!important;
+  left:max(env(safe-area-inset-left,0px),8px)!important;
+  top:50svh!important;
+  transform:translateY(-50%)!important;
+  z-index:2200!important;
+  width:min(112px,26vw)!important;
+  padding:4px!important;
+  gap:3px!important;
+  border:1px solid rgba(214,167,60,.72)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,rgba(10,12,17,.94),rgba(18,24,21,.92))!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.48)!important;
+  backdrop-filter:blur(3px)!important;
+}
+html.argentinia-mobile .solo-priority-mobile-bar {display:flex!important;align-items:center;justify-content:space-between;gap:4px}
+html.argentinia-mobile .solo-priority-mobile-title {font:800 9px/1.1 system-ui,sans-serif;color:#ecd590;letter-spacing:.06em;text-transform:uppercase}
+html.argentinia-mobile .solo-priority-panel {gap:3px!important}
+html.argentinia-mobile .solo-priority-actions {display:flex!important;flex-direction:column!important;gap:3px!important}
+html.argentinia-mobile .solo-priority-button {padding:3px 2px!important;min-height:26px!important;font-size:9px!important;line-height:1!important}
+html.argentinia-mobile .solo-priority-key {min-width:22px!important;font-size:8px!important;padding:1px 4px!important}
+html.argentinia-mobile .solo-priority-label {font-size:8px!important}
+html.argentinia-mobile .solo-priority-dismiss {flex-basis:auto!important}
+html.argentinia-mobile .solo-priority-status {min-height:10px!important;font-size:8px!important;line-height:1.1!important}
+html.argentinia-mobile .solo-priority-shortcuts.is-collapsed {width:auto!important;padding:3px!important}
+html.argentinia-mobile .solo-priority-shortcuts.is-collapsed .solo-priority-mobile-title {display:none!important}
+/* Stage C: Stops de combate táctiles sin modificar el grid principal ni su altura. */
+html.argentinia-mobile .priority-combat-stops {gap:2px;margin:0;padding:2px}
+html.argentinia-mobile .priority-combat-stops button {font-size:9px;padding:2px 1px;min-height:21px}
+html.argentinia-mobile .phase-dot.priority-stop-enabled::after {font-size:10px;top:-7px;right:-3px}

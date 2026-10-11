@@ -59,6 +59,7 @@ import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActi
 import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
 import { addToStack, spellStack, isStackItemLegalCounterTarget, isStackItemLegalCopyTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { gameText } from './gameTexts.js';
+import { isSoloPriorityFullControl } from './ui.js';
 import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
@@ -999,6 +1000,9 @@ export async function checkRivalCounterOrResponse() {
   // que llaman a esto: así queda protegido sin importar desde dónde se lo llame, incluso si
   // en el futuro se agrega un séptimo lugar y alguien se olvida de este chequeo ahí.
   if (state.currentMatch) return false;
+  // Stage B: CTRL/Control completo retiene la prioridad del humano sobre su propia pila.
+  // El Tano responde por el carril NORMAL cuando el humano haga passPriority('local').
+  if (state.priorityPlayer === 'local' && isSoloPriorityFullControl()) return false;
   if (spellStack.length === 0) return false;
   // Grupo C, Etapa 4: en Fácil, el Tano nunca juega en velocidad instantánea — ni
   // contrarresta, ni se defiende, ni responde a nada. Pasa prioridad y ya (comportamiento
@@ -1006,6 +1010,8 @@ export async function checkRivalCounterOrResponse() {
   if (!botHasCapability(state.botDifficulty, 'reactiveStack')) return false;
 
   await botThinkDelay(600);
+  // Si se activó Ctrl mientras el Tano estaba pensando, retener igual la prioridad.
+  if (state.priorityPlayer === 'local' && isSoloPriorityFullControl()) return false;
 
   // ETAPA 1 (Grupo C, IA reactiva): si algo en la pila amenaza con destruir/exiliar/matar
   // (de daño letal) a una criatura del Tano, y tiene un instantáneo que le dé Intocable

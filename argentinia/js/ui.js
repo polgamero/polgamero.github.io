@@ -64,6 +64,9 @@ import { checkpointSoloRecovery } from './soloRecovery.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, RELEASE_DISPLAY_VERSION } from './version.js';
 import { withEconomyButtonPending, ensureEconomyPendingStyles } from './economyPending.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
+import { createSoloPriorityController, SOLO_PRIORITY_B_MODES } from './soloPriorityShortcuts.js';
+import { createPriorityStops, PRIORITY_STOP_DOTS, COMBAT_STOP_PHASES } from './priorityStops.js';
+import { proveNoRelevantLegalActions } from './priorityLegalActions.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
 import { beginEconomyReveal, getPendingEconomyReveal, clearPendingEconomyReveal, createEconomyRevealOperationId } from './economyRevealRecovery.js';
@@ -16636,6 +16639,142 @@ function syncPaymentActionRow(isPaying) {
   }
 }
 
+// Stage C: motor local para Solo/Torneo; sin efectos sobre protocolo ni PvP.
+let priorityCombatPopoverOpen = false;
+let soloPriorityB;
+const priorityStops = createPriorityStops({onChange:() => {
+  soloPriorityB?.onStopsChanged();
+  renderPriorityStops();
+}});
+soloPriorityB = createSoloPriorityController({
+  getState: () => state,
+  getStack: () => spellStack,
+  stageCEnabled: true, allowTournament: true,
+  getStops: () => priorityStops.phases,
+  getLegalActions: (s, options) => proveNoRelevantLegalActions(s, options).legalActions,
+  getActivity: s => getEffectivePriorityActivity(s),
+  isVisible: () => typeof document !== 'undefined' && document.visibilityState !== 'hidden' &&
+    !document.querySelector('#main-menu-overlay, #tournament-overlay, #multiplayer-overlay, #deck-select-overlay, #mulligan-overlay, #options-menu-overlay, #game-manual-overlay, .gy-modal-overlay, #game-over-overlay:not(.hidden)') &&
+    !!document.getElementById('match-loading-overlay')?.hidden,
+  canPass: () => !!els.btnEndTurn && !els.btnEndTurn.disabled &&
+    !els.btnEndTurn.classList.contains('hidden') &&
+    !(state.phase === 'combat_attackers' && state.activePlayer === 'local' && !(Number(state.localAttackersDeclaredThisTurn) > 0)) &&
+    !(state.phase === 'combat_blockers' && state.activePlayer === 'rival' && !state.localBlockersDeclaredThisCombat),
+  passOnce: () => passPriority('local'),
+  onChange: ({mode, available, stoppedReason}) => {
+    const tools = document.getElementById('solo-priority-shortcuts');
+    if (!tools) return;
+    const indicator = document.getElementById('phase-indicator-container');
+    indicator?.classList.toggle('priority-stops-available', available);
+    tools.classList.toggle('hidden', !available);
+    tools.querySelectorAll('[data-priority-b-mode]').forEach(button => {
+      const active = button.dataset.priorityBMode === mode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const cancel = document.getElementById('solo-priority-cancel');
+    if (cancel) cancel.disabled = mode === SOLO_PRIORITY_B_MODES.MANUAL;
+    const label = document.getElementById('solo-priority-status');
+    if (label) {
+      const names = {smart:'⚡ Smart Pass activo',until_response:'⏩ Hasta respuesta',through_turn:'⏭ Cediendo este turno',full_control:'✋ Control completo'};
+      label.textContent = stoppedReason === 'stack_response' ? '⚡ Respuesta disponible' :
+        stoppedReason === 'phase_stop' ? '⚑ Parada: prioridad manual' : (names[mode] || 'Prioridad manual');
+      label.title = stoppedReason === 'stack_response' ? 'Se detectó actividad en la pila: decidís vos.' :
+        stoppedReason === 'phase_stop' ? 'Alcanzaste una parada marcada: se canceló el pase automático.' : ''; 
+    }
+  }
+});
+export function resetSoloPriorityShortcuts() { soloPriorityB.reset(); priorityStops.reset(); priorityCombatPopoverOpen=false; }
+export function isSoloPriorityFullControl() { return soloPriorityB.canUse() && soloPriorityB.mode === SOLO_PRIORITY_B_MODES.FULL_CONTROL; }
+const soloPriorityTools = document.getElementById('solo-priority-shortcuts');
+const SOLO_PRIORITY_COLLAPSE_KEY = 'argentinia.priorityShortcutsCollapsed';
+function setSoloPriorityCollapsed(collapsed, { persist = true } = {}) {
+  if (!soloPriorityTools) return;
+  const next = !!collapsed;
+  soloPriorityTools.classList.toggle('is-collapsed', next);
+  const toggle = document.getElementById('solo-priority-toggle');
+  if (toggle) {
+    toggle.textContent = next ? '+' : '−';
+    toggle.setAttribute('aria-expanded', next ? 'false' : 'true');
+    toggle.title = next ? 'Mostrar controles táctiles' : 'Ocultar controles táctiles';
+  }
+  if (persist) { try { localStorage.setItem(SOLO_PRIORITY_COLLAPSE_KEY, next ? '1' : '0'); } catch {} }
+}
+try { if (soloPriorityTools) setSoloPriorityCollapsed(localStorage.getItem(SOLO_PRIORITY_COLLAPSE_KEY) === '1', { persist:false }); } catch {}
+document.getElementById('solo-priority-toggle')?.addEventListener('click', () => {
+  if (!soloPriorityTools || soloPriorityTools.classList.contains('hidden')) return;
+  setSoloPriorityCollapsed(!soloPriorityTools.classList.contains('is-collapsed'));
+});
+soloPriorityTools?.querySelectorAll('[data-priority-b-mode]').forEach(button => button.addEventListener('click', () => {
+  const next=button.dataset.priorityBMode;
+  if (soloPriorityB.mode === next) soloPriorityB.cancel('toggle_off');
+  else soloPriorityB.setMode(next);
+}));
+document.getElementById('solo-priority-cancel')?.addEventListener('click', () => soloPriorityB.cancel('cancel_button'));
+document.addEventListener('visibilitychange', () => {
+  // Al salir al background, nunca conservar una cesión programada para el regreso.
+  if (document.visibilityState === 'hidden') { soloPriorityB.reset();priorityCombatPopoverOpen=false;renderPriorityStops(); }
+});
+
+// Stops: macropasos 1-click, combate tiene elección de sus cinco subpasos.
+// Sólo alteran preferencias locales de pases, no transiciones de combate.
+function renderPriorityStops() {
+  const available = soloPriorityB.canUse();
+  for (const [id,phase] of Object.entries(PRIORITY_STOP_DOTS)) {
+    const dot = document.getElementById(id);
+    if (!dot) continue;
+    const marked=available && priorityStops.has(phase);
+    dot.classList.toggle('priority-stop-enabled', marked);
+    dot.classList.toggle('priority-stop-available', available);
+    if (available) {
+      dot.setAttribute('role','button'); dot.setAttribute('aria-pressed',String(marked));
+      dot.title = `${dot.dataset.phaseLabel || phase} — ${marked?'quitar parada':'marcar parada'}`;
+    } else {dot.removeAttribute('role');dot.removeAttribute('aria-pressed');}
+  }
+  const combat = document.getElementById('dot-combat');
+  if (combat) {
+    const marked = available && COMBAT_STOP_PHASES.some(phase=>priorityStops.has(phase));
+    combat.classList.toggle('priority-stop-enabled', marked);
+    combat.classList.toggle('priority-stop-available', available);
+    if (available) {combat.setAttribute('role','button');combat.setAttribute('aria-expanded',String(priorityCombatPopoverOpen));}
+    else {combat.removeAttribute('role'); combat.removeAttribute('aria-expanded');}
+    combat.title = available ? 'Elegir paradas de combate (cinco subfases)' : (combat.dataset.phaseLabel || 'Combate');
+  }
+  const popover=document.getElementById('priority-combat-stops');
+  popover?.classList.toggle('hidden',!available || !priorityCombatPopoverOpen);
+  popover?.querySelectorAll('[data-priority-combat-stop]').forEach(button=> {
+    button.setAttribute('aria-pressed',String(priorityStops.has(button.dataset.priorityCombatStop)));
+  });
+  for (const id of ['dot-untap','dot-cleanup']) {
+    const dot=document.getElementById(id);
+    if(dot && available) dot.title='Este paso no concede prioridad: no permite paradas';
+  }
+}
+for (const [id,phase] of Object.entries(PRIORITY_STOP_DOTS)) {
+  const dot=document.getElementById(id);
+  const toggle=()=>{if(soloPriorityB.canUse()) priorityStops.toggle(phase);};
+  dot?.addEventListener('click',toggle);
+  dot?.addEventListener('keydown',event=>{if(soloPriorityB.canUse() && (event.key==='Enter'||event.key===' ')){
+    event.preventDefault();event.stopPropagation();toggle();
+  }});
+}
+const combatStopDot=document.getElementById('dot-combat');
+function toggleCombatStopPopover() {
+  if(!soloPriorityB.canUse()) return;
+  priorityCombatPopoverOpen=!priorityCombatPopoverOpen;
+  renderPriorityStops();
+}
+combatStopDot?.addEventListener('click',toggleCombatStopPopover);
+combatStopDot?.addEventListener('keydown',event=>{if(soloPriorityB.canUse()&&(event.key==='Enter'||event.key===' ')){
+  event.preventDefault();event.stopPropagation();toggleCombatStopPopover();
+}});
+document.getElementById('priority-combat-stops')?.querySelectorAll('[data-priority-combat-stop]').forEach(button=>{
+  button.addEventListener('click',()=>{if(soloPriorityB.canUse()) priorityStops.toggle(button.dataset.priorityCombatStop);});
+});
+document.getElementById('priority-stop-clear')?.addEventListener('click',()=>{
+  priorityStops.clear();priorityCombatPopoverOpen=false;renderPriorityStops();
+});
+
 export function render() {
   if (HEADLESS_ENGINE) {
     try { captureTelemetryState('headless_render'); } catch {}
@@ -16900,6 +17039,8 @@ export function render() {
 
   // 23.13.54 — cada render Solo estabilizado es también un checkpoint reanudable.
   // El módulo ignora multiplayer/gameOver/elecciones transitorias y no toca reglas.
+  soloPriorityB.onRender();
+  renderPriorityStops();
   checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
 
   // FASE 4, ETAPA 2: publica mi mitad del estado en Firestore después de CUALQUIER cambio
@@ -16930,8 +17071,45 @@ document.addEventListener('keydown', (e) => {
   const activeTag = document.activeElement && document.activeElement.tagName;
   const isTypingInField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable);
 
-  // Pasar prioridad / Avanzar turno con la barra espaciadora
-  if (e.code === 'Space' && !isTypingInField) {
+  // Stage B: no interceptar formularios, diálogos ni botones enfocados.
+  // El Enter nativo sobre controles debe conservar su comportamiento.
+  const focusEl = document.activeElement;
+  const focusOnControl = !!focusEl?.closest?.('button,a,select,[tabindex],[role="dialog"],[role="button"],[role="textbox"]');
+  const bShortcut = !isTypingInField && !focusOnControl && !e.repeat && !e.altKey && !e.metaKey;
+  if (soloPriorityB.canUse() && bShortcut) {
+    if ((e.key === '2' || e.key === 'Enter') && !e.ctrlKey) {
+      e.preventDefault();
+      if (e.shiftKey) soloPriorityB.setMode(SOLO_PRIORITY_B_MODES.THROUGH_TURN);
+      else soloPriorityB.setMode(SOLO_PRIORITY_B_MODES.UNTIL_RESPONSE);
+      return;
+    }
+    if (e.key === '6' || e.key === 'F6') {
+      e.preventDefault();
+      if (soloPriorityB.mode === SOLO_PRIORITY_B_MODES.THROUGH_TURN) soloPriorityB.cancel('toggle_off');
+      else soloPriorityB.setMode(SOLO_PRIORITY_B_MODES.THROUGH_TURN);
+      return;
+    }
+    if (e.key === '8') {
+      e.preventDefault();
+      if (soloPriorityB.mode === SOLO_PRIORITY_B_MODES.SMART) soloPriorityB.cancel('toggle_off');
+      else soloPriorityB.setMode(SOLO_PRIORITY_B_MODES.SMART);
+      return;
+    }
+    if (e.key === 'Control' && !e.shiftKey) {
+      e.preventDefault();
+      if (soloPriorityB.mode === SOLO_PRIORITY_B_MODES.FULL_CONTROL) soloPriorityB.cancel('toggle_off');
+      else soloPriorityB.setMode(SOLO_PRIORITY_B_MODES.FULL_CONTROL);
+      return;
+    }
+    if ((e.key === '5' || e.key === 'Escape') && soloPriorityB.mode !== SOLO_PRIORITY_B_MODES.MANUAL) {
+      e.preventDefault();
+      soloPriorityB.cancel(e.key === '5' ? 'key_5' : 'escape');
+      return;
+    }
+  }
+
+  // Pasar una prioridad / paso manual con 1 o barra espaciadora
+  if ((e.code === 'Space' || e.key === '1') && !isTypingInField) {
     e.preventDefault(); // Evitamos scroll y también el click nativo del botón enfocado.
     e.stopPropagation();
     // Una pulsación física = una sola acción. Mantener la barra apretada no vuelve a

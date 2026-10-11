@@ -1,4 +1,7 @@
 import { gameText } from './gameTexts.js';
+// Stage A: integración export-only, no altera los guards ni el reloj HF8.
+import { assessPriorityWindow } from './priorityIntelligence.js';
+export { SMART_PRIORITY_FLAGS, SMART_PRIORITY_MODES, SMART_PRIORITY_PHASES, createPriorityWindowKey, assessPriorityWindow, evaluatePriorityIntent, createPriorityTicketGate } from './priorityIntelligence.js';
 // js/priorityUX.js
 // ENTREGA 23.9.1 — reglas PURAS del HUD compacto de turno/prioridad y del reloj multiplayer.
 // No importa main/ui/turnManager para evitar otro ciclo de módulos. Todos los módulos
@@ -204,4 +207,9 @@ export function getPriorityUxCopy(state, localName, rivalName, stackTopName = ''
     localName: safeLocal,
     rivalName: safeRival
   };
+}
+
+// Stage A — adaptador compartido. Sólo lectura; ni auto-pass ni timers nuevos.
+export function getSmartPriorityReadiness(state, stackMeta = {}) {
+  return assessPriorityWindow(state, { ...stackMeta, activity: getEffectivePriorityActivity(state) });
 }

@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "cd0587d517ca568a44ca",
+  "buildId": "b341e0f1152fed057c14",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -127,6 +127,7 @@
     "./js/phaseBanner.js",
     "./js/poolContract.js",
     "./js/prebuiltDecks.js",
+    "./js/priorityIntelligence.js",
     "./js/priorityUX.js",
     "./js/privateZoneProtocol.js",
     "./js/publicProfileUI.js",
@@ -146,6 +147,7 @@
     "./js/sanctuaryCamera.js",
     "./js/sanctuaryResonance.js",
     "./js/sanctuaryRitual.js",
+    "./js/soloPriorityShortcuts.js",
     "./js/soloRecovery.js",
     "./js/stackManager.js",
     "./js/startingCoin.js",
@@ -171,7 +173,9 @@
     "./js/utils.js",
     "./js/version.js",
     "./js/workshop.js",
-    "./js/zoneOwnership.js"
+    "./js/zoneOwnership.js",
+    "./js/priorityStops.js",
+    "./js/priorityLegalActions.js"
   ],
   "publicProjection": true
 }

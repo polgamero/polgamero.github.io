@@ -3017,3 +3017,33 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn{position:absolute;right:5px;bottom:32px;z-index:36;width:24px;height:24px;padding:0;border:1.5px solid rgba(219,199,118,.82);border-radius:50%;background:rgba(10,10,12,.90);color:#f4e5ad;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.55);font-size:12px;line-height:1;transition:transform .12s ease,background .12s ease,box-shadow .12s ease}
 .encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:hover{transform:scale(1.12);background:rgba(67,55,17,.96)}
 .encyclopedia-admin-discoverable-slot .encyclopedia-discovery-upload-btn:disabled{opacity:.65;cursor:wait}
+
+/* Prioridad Inteligente B: compacta y aislada del botón canónico de pase. */
+.solo-priority-shortcuts {display:flex;flex-direction:column;gap:2px;flex-shrink:0;min-width:0}
+.solo-priority-shortcuts.hidden {display:none!important}
+.solo-priority-mobile-bar {display:none}
+.solo-priority-panel {display:flex;flex-direction:column;gap:2px;min-width:0}
+.solo-priority-actions {display:flex;align-items:stretch;gap:3px;min-width:0}
+.solo-priority-button {flex:1 1 0;min-width:0;padding:4px 2px;border:1px solid #77653c;border-radius:5px;background:#1b2922;color:#e8d9ad;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.05}
+.solo-priority-key {display:inline-flex;align-items:center;justify-content:center;min-width:18px;padding:1px 3px;border-radius:999px;background:#0f1713;color:#f8e3a4;font-size:9px;font-weight:800;letter-spacing:.02em}
+.solo-priority-label {display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.solo-priority-button.active {background:#aa7929;color:#130e08;border-color:#ecd078}
+.solo-priority-button.active .solo-priority-key {background:#4b330e;color:#ffe9a4}
+.solo-priority-button:focus-visible {outline:2px solid #f0cc62;outline-offset:1px}
+.solo-priority-button:disabled {opacity:.4;cursor:default}
+.solo-priority-dismiss {flex:0 0 28px;font-size:13px}
+.solo-priority-status {min-height:12px;text-align:center;line-height:1.1;font-size:9px;color:#d4c38e}
+.solo-priority-toggle {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid #8a7040;border-radius:7px;background:#171d20;color:#f2dd9c;font:800 18px/1 sans-serif;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.solo-priority-toggle:focus-visible {outline:2px solid #f0cc62;outline-offset:1px}
+.solo-priority-shortcuts.is-collapsed .solo-priority-panel {display:none}
+
+/* Prioridad Inteligente Stage C — fases existentes, no modifica el HUD canónico. */
+.phase-dot.priority-stop-enabled {border-color:#f4d278!important;box-shadow:0 0 0 2px #e3ac3f,0 0 6px #d7a32f!important;position:relative}
+.phase-dot.priority-stop-enabled::after {content:'⚑';position:absolute;top:-8px;right:-5px;font:700 11px sans-serif;color:#ffde77;text-shadow:0 1px 2px #000;pointer-events:none}
+.phase-dot.priority-stop-available {cursor:pointer}
+.phase-dot.priority-stop-available:focus-visible {outline:2px solid #f5dc80;outline-offset:3px}
+.priority-combat-stops {display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin:2px 0 5px;padding:4px;border:1px solid #886b39;border-radius:7px;background:#111c1a;z-index:3}
+.priority-combat-stops.hidden {display:none!important}
+.priority-combat-stops button {font-size:10px;flex:1 0 auto;color:#e7d9ae;background:#253029;border:1px solid #6f6145;border-radius:4px;padding:4px 3px;cursor:pointer}
+.priority-combat-stops button[aria-pressed="true"] {background:#99732c;color:#130e08;border-color:#ffe09a}
+.priority-combat-stops button:focus-visible {outline:2px solid #ffdf8a}

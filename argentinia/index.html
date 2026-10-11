@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'cd0587d517ca568a44ca';
+      const BUILD_ID = 'b341e0f1152fed057c14';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -83,7 +83,10 @@
               await reloadInBatches([
                 './js/economyClient.js','./js/flasheraAdmin.js','./js/packOpening.js',
                 './js/firebaseClientImpl.js','./js/firebaseClient.js','./js/ui.js',
-                './js/gameTexts.js','./js/rankingUI.js'
+                './js/gameTexts.js','./js/rankingUI.js',
+                './js/soloPriorityShortcuts.js','./js/priorityIntelligence.js','./js/priorityUX.js',
+                './js/priorityStops.js','./js/priorityLegalActions.js',
+                './js/main.js','./js/bot.js','./css/style.css','./css/mobile.css'
               ]);
               try { sessionStorage.setItem(criticalKey,'yes'); } catch {}
             }
@@ -531,6 +534,15 @@
           <div class="phase-dot" tabindex="0" id="dot-end" data-phase-label="Paso Final" title="Paso Final" aria-label="Paso Final"></div>
           <div class="phase-dot" tabindex="0" id="dot-cleanup" data-phase-label="Limpieza" title="Limpieza" aria-label="Limpieza"></div>
         </div>
+        <!-- Stops en ventanas con prioridad: Enderezar/Limpieza no otorgan prioridad. -->
+        <div id="priority-combat-stops" class="priority-combat-stops hidden" role="group" aria-label="Paradas por paso de combate">
+          <button type="button" data-priority-combat-stop="combat_begin">Inicio</button>
+          <button type="button" data-priority-combat-stop="combat_attackers">Atacantes</button>
+          <button type="button" data-priority-combat-stop="combat_blockers">Bloqueadores</button>
+          <button type="button" data-priority-combat-stop="combat_damage">Daño</button>
+          <button type="button" data-priority-combat-stop="combat_end">Fin</button>
+          <button type="button" id="priority-stop-clear" title="Quitar todas las paradas">Limpiar</button>
+        </div>
 
         <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">
           <p id="payment-status" style="font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;">Pagando hechizo...</p>
@@ -540,8 +552,25 @@
           <button id="btn-confirm-crew" class="btn-reset hidden" style="width: 100%; background: #7d6608; border-color: #d4ac0d; margin-bottom: 5px;">⚙️ Confirmar Tripular</button>
           <button id="btn-cancel-spell" class="btn-reset" style="width: 100%; background: #c0392b; border-color: #e74c3c;">❌ Cancelar (ESC)</button>
         </div>
+        <!-- Stage C: prioridad local Solo/Torneo. Multiplayer conserva HF8. -->
+        <div id="solo-priority-shortcuts" class="solo-priority-shortcuts hidden" aria-label="Atajos de prioridad (Solo y Torneo)">
+          <div class="solo-priority-mobile-bar">
+            <span class="solo-priority-mobile-title">Atajos</span>
+            <button type="button" id="solo-priority-toggle" class="solo-priority-toggle" aria-expanded="true" aria-controls="solo-priority-panel" title="Ocultar controles táctiles">−</button>
+          </div>
+          <div id="solo-priority-panel" class="solo-priority-panel">
+            <div class="solo-priority-actions">
+              <button type="button" class="solo-priority-button" data-priority-b-mode="smart" title="Smart Pass (8): solo omite prioridades sin acciones demostrablemente disponibles" aria-pressed="false"><span class="solo-priority-key">8</span><span class="solo-priority-label">⚡ Smart</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="until_response" title="Hasta respuesta (2 o Enter): se detiene ante actividad en la pila" aria-pressed="false"><span class="solo-priority-key">2</span><span class="solo-priority-label">⏩ Resp.</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="through_turn" title="Ceder este turno (6, F6 o Shift+Enter). Respeta decisiones obligatorias" aria-pressed="false"><span class="solo-priority-key">6</span><span class="solo-priority-label">⏭ Turno</span></button>
+              <button type="button" class="solo-priority-button" data-priority-b-mode="full_control" title="Control completo (Ctrl): cada prioridad es manual" aria-pressed="false"><span class="solo-priority-key">Ctrl</span><span class="solo-priority-label">✋ Ctrl</span></button>
+              <button type="button" class="solo-priority-button solo-priority-dismiss" id="solo-priority-cancel" title="Cancelar atajo (5 o Escape)" aria-label="Cancelar atajo" disabled><span class="solo-priority-key">5</span><span class="solo-priority-label">×</span></button>
+            </div>
+            <div id="solo-priority-status" class="solo-priority-status" aria-live="polite">Prioridad manual</div>
+          </div>
+        </div>
         <div class="turn-controls">
-          <button id="btn-end-turn" class="btn-turn">Pasar Prioridad ➔</button>
+          <button id="btn-end-turn" class="btn-turn" title="Pasar una prioridad (1 o Espacio)">Pasar Prioridad ➔</button>
           <button id="btn-abandon-game" class="btn-abandon btn-exit-game" type="button" title="Menú principal" aria-label="Menú principal">
             <span class="btn-exit-fallback" aria-hidden="true">⌂</span>
             <img class="btn-exit-image" src="assets/images/ui/salir.png" alt="" draggable="false">
