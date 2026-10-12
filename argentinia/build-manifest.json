@@ -1,11 +1,11 @@
 {
   "releaseVersion": "23.22.0",
-  "releaseHotfix": "HF3.2",
-  "releaseDisplayVersion": "23.22.0 HF3.6",
+  "releaseHotfix": "HF4",
+  "releaseDisplayVersion": "23.22.0 HF4",
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "e93f35bbd8bc9b6ea761",
+  "buildId": "a7a11430319b81b0655f",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -178,5 +178,9 @@
     "./js/workshop.js",
     "./js/zoneOwnership.js"
   ],
-  "publicProjection": true
+  "publicProjection": true,
+  "releaseLabel": "23.22.0 HF4",
+  "hotfixCandidate": "HF4",
+  "hotfixLabel": "Gates acumulativos + captura inmutable de ACK + UI",
+  "releaseStatus": "PRE_RELEASE"
 }

@@ -160,7 +160,8 @@ function abilityAffordability(s,item,ability,model,h) {
 }
 function actionSummary(s,options,h){
   const stackDepth=options.stackDepth;
-  if(!s||s.currentMatch||!Number.isSafeInteger(stackDepth)||stackDepth<0)return result('unknown','nonlocal_or_unverified_stack');
+  if(!s||!Number.isSafeInteger(stackDepth)||stackDepth<0)return result('unknown','nonlocal_or_unverified_stack');
+  if(s.currentMatch && options.multiplayerReady !== true)return result('unknown','multiplayer_unconfirmed');
   if(s.priorityPlayer!=='local')return result('unknown','not_local_priority');
   if(ZONES.some(z=>!Array.isArray(s[z])))return result('unknown','unverified_zone');
   if(!s.localManaPool||typeof s.localManaPool!=='object'||Array.isArray(s.localManaPool) ||

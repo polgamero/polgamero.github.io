@@ -42,6 +42,7 @@ import {
   checkEquipmentLegality,
   runStateBasedActions,
   publishMatchState,
+  getMultiplayerPriorityStatus,
   ensureMenuIdentityReady,
   hasLandPlayFromGraveyardPermission,
   openLandFromGraveyardPlayChoice,
@@ -4105,13 +4106,26 @@ function injectEncyclopediaStyles() {
     align-content: flex-start;
     gap: 20px;
 }
-    .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; position:relative; }
+    .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; position:relative; width:var(--card-w); min-width:0; container-type:inline-size; container-name:encyclopedia-evolution-slot; }
     /* HF3.3: usa exactamente el marco canónico de carta (3px/4px). El antiguo borde de 6px con radio 4px generaba esquinas visualmente recortadas en mobile. */
     .encyclopedia-card-slot .card-inner { border-width: 3px; border-radius: 4px; }
-    .encyclopedia-publication-control { margin-top:7px; display:flex; align-items:center; justify-content:center; gap:7px; padding:5px 8px; border-radius:7px; border:1px solid rgba(45,77,52,.25); background:#eef2eb; color:#233225; font-size:11px; font-weight:850; letter-spacing:.04em; user-select:none; }
+    .encyclopedia-publication-control { width:100%; max-width:100%; min-width:0; box-sizing:border-box; margin-top:clamp(3px,2.5cqw,7px); display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,1fr); align-items:center; gap:clamp(1px,2cqw,7px); padding:clamp(2px,1.8cqw,5px) clamp(1px,2.5cqw,8px); border-radius:clamp(3px,2.6cqw,7px); border:1px solid rgba(45,77,52,.25); background:#eef2eb; color:#233225; font-size:clamp(5px,4cqw,11px); line-height:1.15; font-weight:850; letter-spacing:0; user-select:none; }
     .encyclopedia-publication-control.unpublished { background:#fff0ec; color:#8b2b22; border-color:rgba(139,43,34,.35); }
-    .encyclopedia-publication-control input { accent-color:#347a43; }
-    .encyclopedia-publication-control .publication-note { font-size:9px; font-weight:700; opacity:.75; letter-spacing:0; }
+    .encyclopedia-publication-control input { accent-color:#347a43; width:clamp(7px,7cqw,16px); height:clamp(7px,7cqw,16px); margin:0; min-width:0; }
+    .encyclopedia-publication-control > span { min-width:0; text-align:center; white-space:nowrap; }
+    .encyclopedia-publication-control .publication-note { font-size:.82em; font-weight:700; opacity:.75; letter-spacing:0; }
+    .publication-label-short { display:none; }
+    @container encyclopedia-evolution-slot (max-width:124px) {
+      .encyclopedia-publication-control { font-size:clamp(5px,6cqw,8px); }
+      .publication-label-full { display:none; }
+      .publication-label-short { display:inline; }
+      .publication-note::before { content:attr(data-compact-label); }
+    }
+    @container encyclopedia-evolution-slot (max-width:64px) {
+      .encyclopedia-publication-control { grid-template-columns:auto minmax(0,1fr); row-gap:1px; font-size:clamp(5px,9cqw,6px); }
+      .encyclopedia-publication-control input { grid-row:span 2; }
+      .encyclopedia-publication-control .publication-note { grid-column:2; font-size:1em; }
+    }
     .encyclopedia-art-edit-btn {
       position:absolute; top:30px; right:5px; z-index:35; width:24px; height:24px; padding:0;
       display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
@@ -4747,8 +4761,17 @@ export function showEncyclopedia(onBack) {
         checkbox.checked = card.enabled !== false;
         checkbox.dataset.publicationCardId = card.id;
         const labelText = document.createElement('span');
-        labelText.textContent = 'HABILITADA';
-        const note = document.createElement('span'); note.className='publication-note'; note.textContent = checkbox.checked ? 'PUBLICADA' : 'NO PUBLICADA';
+        labelText.innerHTML = '<span class="publication-label-full">HABILITADA</span><span class="publication-label-short" aria-hidden="true">HAB.</span>';
+        checkbox.setAttribute('aria-label', `Habilitada: ${card.name}`);
+        const note = document.createElement('span'); note.className='publication-note';
+        const noteText = document.createElement('span'); noteText.className='publication-label-full';
+        const syncPublicationNote = () => {
+          noteText.textContent = checkbox.checked ? 'PUBLICADA' : 'NO PUBLICADA';
+          note.dataset.compactLabel = checkbox.checked ? 'PUB.' : 'NO PUB.';
+          publication.title = `HABILITADA · ${noteText.textContent}`;
+          note.setAttribute('aria-label', noteText.textContent);
+        };
+        note.appendChild(noteText); syncPublicationNote();
         publication.append(checkbox,labelText,note);
         checkbox.addEventListener('change', async event => {
           event.preventDefault(); event.stopPropagation();
@@ -4767,7 +4790,7 @@ export function showEncyclopedia(onBack) {
             cardDb.refreshPublicationState();
             card.enabled = desired;
             publication.classList.toggle('unpublished', !desired);
-            note.textContent = desired ? 'PUBLICADA' : 'NO PUBLICADA';
+            syncPublicationNote();
             if (unpublishedOnly) refreshGrid();
           } catch (error) {
             checkbox.checked = !desired;
@@ -8537,7 +8560,7 @@ function injectDeckBuilderStyles() {
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
     .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
     .deckbuilder-pool-card-wrap.flashera .card { outline: 2px solid #8cc8ec; outline-offset:2px; border-radius:8px; }
-    .deckbuilder-flashera-marker { position:absolute; top:4px; right:4px; padding:2px 5px; border-radius:5px; background:rgba(12,21,46,.94); border:1px solid #b7d8ec; color:#eaf9ff; font-size:9px; font-weight:900; pointer-events:none; z-index:4; }
+    .deckbuilder-flashera-marker { position:absolute; top:calc(var(--card-w) * .12 + 4px); right:4px; padding:2px 5px; border-radius:5px; background:rgba(12,21,46,.94); border:1px solid #b7d8ec; color:#eaf9ff; font-size:9px; font-weight:900; pointer-events:none; z-index:4; }
 
     .deckbuilder-enhanced-marker {
       position: absolute; bottom: 4px; left: 4px; right: 4px; text-align: center;
@@ -16646,7 +16669,7 @@ function syncPaymentActionRow(isPaying) {
 // Stage C HF2: sólo declaramos ataque vacío cuando ninguna unidad propia
 // podría legalmente atacar. Nunca anulamos el derecho de elegir un atacante.
 function canAutoDeclareNoAttack(s) {
-  if (!s || s.currentMatch || s.phase !== 'combat_attackers' ||
+  if (!s || (s.currentMatch && !getMultiplayerPriorityStatus().ready) || s.phase !== 'combat_attackers' ||
       s.activePlayer !== 'local' || s.priorityPlayer !== 'local' ||
       !Array.isArray(s.localCombat) || Number(s.localAttackersDeclaredThisTurn) > 0 ||
       s.pendingLegendChoice || s.pendingTriggerOrderChoice || s.sbaKernelRunning ||
@@ -16661,7 +16684,7 @@ function canAutoDeclareNoAttack(s) {
       effect.targetObjectId && effect.targetObjectId===unit._effectObjectId)));
 }
 
-// Stage C: motor local para Solo/Torneo; sin efectos sobre protocolo ni PvP.
+// Stage D: same local controller, Multiplayer opt-in gated by original transport ACK.
 let priorityCombatPopoverOpen = false;
 let soloPriorityB;
 const priorityStops = createPriorityStops({onChange:() => {
@@ -16672,6 +16695,7 @@ soloPriorityB = createSoloPriorityController({
   getState: () => state,
   getStack: () => spellStack,
   stageCEnabled: true, allowTournament: true, keepModeBetweenTurns:true,
+  multiplayerEnabled:true, getMultiplayerStatus:getMultiplayerPriorityStatus,
   getStops: () => priorityStops.phases,
   getLegalActions: (s, options) => proveNoRelevantLegalActions(s, {
     ...options,
@@ -16682,7 +16706,11 @@ soloPriorityB = createSoloPriorityController({
     }
   }),
   canSkipEmptyAttack: s => canAutoDeclareNoAttack(s),
-  skipEmptyAttack: () => executeLocalAttack(),
+  skipEmptyAttack: async () => {
+    const multiplayer = !!state.currentMatch;
+    await executeLocalAttack();
+    if (multiplayer) await publishMatchState({force:true});
+  },
   getActivity: s => getEffectivePriorityActivity(s),
   trace: recordPriorityDiagnostic,
   isVisible: () => {
@@ -16695,10 +16723,13 @@ soloPriorityB = createSoloPriorityController({
     !els.btnEndTurn.classList.contains('hidden') &&
     !(state.phase === 'combat_attackers' && state.activePlayer === 'local' && !(Number(state.localAttackersDeclaredThisTurn) > 0)) &&
     !(state.phase === 'combat_blockers' && state.activePlayer === 'rival' && !state.localBlockersDeclaredThisCombat),
-  passOnce: () => {
+  passOnce: async () => {
     recordPriorityDiagnostic('ui_pass_callback', { phase:state.phase, priorityPlayer:state.priorityPlayer,
       buttonDisabled:els.btnEndTurn?.disabled, buttonHidden:els.btnEndTurn?.classList.contains('hidden') });
-    return passPriority('local');
+    const multiplayer = !!state.currentMatch;
+    await passPriority('local');
+    // render() publishes optimistically; force drains the original queue and awaits ACK.
+    return multiplayer ? {confirmed:await publishMatchState({force:true})} : undefined;
   },
   onChange: ({mode, available, stoppedReason}) => {
     const tools = document.getElementById('solo-priority-shortcuts');
@@ -16722,10 +16753,12 @@ soloPriorityB = createSoloPriorityController({
     if (label) {
       const names = {if_no_legal_action:'Smart: pasa sin acciones',until_response:'⏩ Hasta respuesta',through_turn:'⏭ Cediendo este turno',full_control:'✋ Control completo'};
       const smartProof = mode === SOLO_PRIORITY_B_MODES.SMART
-        ? proveNoRelevantLegalActions(state, {stackDepth:spellStack.length, adapters: {canPlayCard, canSuspendCardFromHand,
+        ? proveNoRelevantLegalActions(state, {stackDepth:spellStack.length, multiplayerReady:state.currentMatch ? getMultiplayerPriorityStatus().ready : undefined, adapters: {canPlayCard, canSuspendCardFromHand,
             getFinalCastingManaCost, canActivateActivatedAbilityNow, getEffectiveKeywords, getEffectivePower, getEquipmentOn,
             canPlayLandFromGraveyard, canPlayCardFromExile, getExilePlayPermissionForCard}}).legalActions : null;
-      label.textContent = stoppedReason === 'stack_response' ? '⚡ Respuesta disponible' :
+      const sync = state.currentMatch ? getMultiplayerPriorityStatus() : null;
+      label.textContent = sync && !sync.ready && mode !== SOLO_PRIORITY_B_MODES.MANUAL ? 'Pausado: esperando confirmación' :
+        stoppedReason === 'stack_response' ? '⚡ Respuesta disponible' :
         stoppedReason === 'phase_stop' ? '⚑ Parada: prioridad manual' :
         mode === SOLO_PRIORITY_B_MODES.SMART && smartProof !== 'none' ? 'Smart: conservás prioridad' :
         (names[mode] || 'Prioridad manual');
@@ -16734,6 +16767,7 @@ soloPriorityB = createSoloPriorityController({
     }
   }
 });
+export function refreshPriorityShortcuts() { soloPriorityB?.onRender(); renderPriorityStops(); }
 export function resetSoloPriorityShortcuts() { soloPriorityB.reset(); priorityStops.reset(); priorityCombatPopoverOpen=false; }
 export function isSoloPriorityFullControl() { return soloPriorityB.canUse() && soloPriorityB.mode === SOLO_PRIORITY_B_MODES.FULL_CONTROL; }
 const soloPriorityTools = document.getElementById('solo-priority-shortcuts');

@@ -3446,15 +3446,18 @@ html.argentinia-mobile .trade-notification-panel .trade-pair{gap:6px}
 html.argentinia-mobile .trade-history-actions{justify-content:stretch}
 html.argentinia-mobile .trade-history-actions .trade-btn{width:100%}
 
-/* HF2: mismo dock flotante que desktop; botones cuadrados en grid compacto. */
-html.argentinia-mobile .solo-priority-shortcuts{width:150px!important;min-width:0!important;padding:5px!important;gap:3px!important;left:max(7px,env(safe-area-inset-left,0px))!important}
-html.argentinia-mobile .solo-priority-actions{gap:3px!important}
-html.argentinia-mobile .solo-priority-button{min-height:0!important;height:40px!important;padding:2px 1px!important;font-size:9px!important}
-html.argentinia-mobile .solo-priority-toggle{flex-basis:32px;width:32px;height:32px;touch-action:manipulation}
-html.argentinia-mobile .solo-priority-label{font-size:8px!important}
-html.argentinia-mobile .solo-priority-key{font-size:9px!important}
-html.argentinia-mobile .solo-priority-status{font-size:8px!important}
-html.argentinia-mobile .solo-priority-shortcuts.is-collapsed{width:max-content!important;min-width:0!important}
+/* Mobile: smaller controls in the gap between the two library piles.
+   Bound the entire dock to that band, including wrapped status text. */
+html.argentinia-mobile .solo-priority-shortcuts{width:min(112px,30svh)!important;min-width:0!important;padding:3px!important;gap:2px!important;left:max(7px,env(safe-area-inset-left,0px))!important;top:31svh!important;transform:none!important;max-height:29svh!important;overflow-y:auto;border-radius:8px!important}
+html.argentinia-mobile .solo-priority-mobile-bar{gap:3px;min-height:0}
+html.argentinia-mobile .solo-priority-mobile-title,html.argentinia-mobile .solo-priority-current{font-size:clamp(5px,2svh,7px);letter-spacing:0}
+html.argentinia-mobile .solo-priority-panel,html.argentinia-mobile .solo-priority-actions{gap:2px!important}
+html.argentinia-mobile .solo-priority-button{min-height:0!important;height:clamp(18px,6.4svh,26px)!important;padding:1px!important;gap:1px;border-radius:4px;font-size:7px!important}
+html.argentinia-mobile .solo-priority-toggle{box-sizing:border-box;flex-basis:clamp(16px,5svh,20px);width:clamp(16px,5svh,20px);height:clamp(16px,5svh,20px);min-width:0;min-height:0;padding:0;border-radius:4px;font-size:13px;touch-action:manipulation}
+html.argentinia-mobile .solo-priority-label{font-size:clamp(5px,1.8svh,7px)!important}
+html.argentinia-mobile .solo-priority-key{min-width:0;padding:1px 3px;font-size:clamp(5px,2svh,8px)!important}
+html.argentinia-mobile .solo-priority-status{font-size:clamp(5px,1.8svh,7px)!important;line-height:1.1;overflow-wrap:anywhere}
+html.argentinia-mobile .solo-priority-shortcuts.is-collapsed{width:max-content!important;min-width:0!important;padding:3px!important}
 /* Stage C: Stops de combate táctiles sin modificar el grid principal ni su altura. */
 html.argentinia-mobile .priority-combat-stops {gap:2px;margin:0;padding:2px}
 html.argentinia-mobile .priority-combat-stops button {font-size:9px;padding:2px 1px;min-height:21px}

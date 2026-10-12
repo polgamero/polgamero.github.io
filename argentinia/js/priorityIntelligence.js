@@ -74,7 +74,7 @@ function blockingDecisionField(s) {
 
 // No entregar a telemetría ni a matchSync los parámetros que identifican cartas privadas.
 // windowKey es SOLO LOCAL, opaco, y nunca se serializa a estado de juego.
-export function createPriorityWindowKey(s, { stackDepth, stackTopId = null, localEpoch = 0 } = {}) {
+export function createPriorityWindowKey(s, { stackDepth, stackTopId = null, localEpoch = 0, networkRevision = 0 } = {}) {
   if (!s || typeof s !== 'object' || !Number.isSafeInteger(stackDepth) || stackDepth < 0) return null;
   const values = [
     Number(s.turnCount), s.phase, s.activePlayer, s.priorityPlayer,
@@ -82,11 +82,12 @@ export function createPriorityWindowKey(s, { stackDepth, stackTopId = null, loca
     stackDepth, stackDepth ? String(stackTopId ?? '') : '',
     s.currentMatch ? String(s.currentMatch.matchId || '') : 'solo',
     s.currentMatch ? String(s.currentMatch.myRole || '') : '',
-    Number(localEpoch)
+    Number(localEpoch), s.currentMatch ? networkRevision : 0
   ];
   if (!Number.isSafeInteger(values[0]) || values[0] < 1 || !Number.isSafeInteger(values[5]) ||
       values[5] < 0 || !Number.isSafeInteger(values[6]) || values[6] < 0 ||
-      !Number.isSafeInteger(values[11]) || values[11] < 0) return null;
+      !Number.isSafeInteger(values[11]) || values[11] < 0 ||
+      !Number.isSafeInteger(values[12]) || values[12] < 0) return null;
   return JSON.stringify(values);
 }
 
@@ -97,7 +98,7 @@ export function createPriorityWindowKey(s, { stackDepth, stackTopId = null, loca
  */
 export function assessPriorityWindow(s, {
   stackDepth, stackTopId = null, activity = null, interactionBlocked = false,
-  runtimeVisible = true, inFlight = false, localEpoch = 0
+  runtimeVisible = true, inFlight = false, localEpoch = 0, networkRevision = 0, multiplayerReady
 } = {}) {
   let reason = 'ok';
   if (!s || typeof s !== 'object') reason = 'invalid_state';
@@ -106,6 +107,7 @@ export function assessPriorityWindow(s, {
   else if (s.currentMatch && (!s.currentMatch.matchId || !['host', 'guest'].includes(s.currentMatch.myRole))) reason = 'match_identity_unverified';
   else if (s.currentMatch && (s.multiplayerSessionSuperseded || s.multiplayerSyncBlocked || s.multiplayerWaitingForReady || interactionBlocked)) reason = 'multiplayer_blocked';
   else if (s.currentMatch && (s.matchSyncBusy || s.multiplayerResolutionMarker || s.stackResolutionAuthority)) reason = 'multiplayer_in_flight';
+  else if (s.currentMatch && multiplayerReady === false) reason = 'multiplayer_unconfirmed';
   else if (inFlight) reason = 'transition_in_flight';
   else if (!phaseSet.has(s.phase)) reason = 'unknown_phase';
   else if (NO_PRIORITY_PHASES.has(s.phase)) reason = 'no_priority_in_phase';
@@ -120,7 +122,7 @@ export function assessPriorityWindow(s, {
       !(Number(s.localAttackersDeclaredThisTurn) > 0)) reason = 'attack_declaration';
   else if (s.phase === 'combat_blockers' && s.activePlayer === 'rival' &&
       !s.localBlockersDeclaredThisCombat) reason = 'block_declaration';
-  else if (!createPriorityWindowKey(s, {stackDepth, stackTopId, localEpoch})) reason = 'invalid_window_identity';
+  else if (!createPriorityWindowKey(s, {stackDepth, stackTopId, localEpoch, networkRevision})) reason = 'invalid_window_identity';
   // No recomendar nunca un pase sólo por no tener maná o no tener cartas en mano.
   return Object.freeze({ safeToEvaluate: reason === 'ok', reason, phase: s?.phase || null,
     blockingField: reason === 'decision_or_transaction' ? blockingDecisionField(s) : null });

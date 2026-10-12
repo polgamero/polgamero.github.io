@@ -1,5 +1,5 @@
 // Argentinia 23.22.0 — Prioridad Inteligente / Stage B
-// Etapa B base + adaptadores opt-in C para Torneo/Smart/Stops. PvP inalterado.
+// B/C adapters + opt-in Stage D. Default controller still excludes Multiplayer.
 // No selecciona objetivos, no activa habilidades, no declara combate ni altera reglas.
 import { SMART_PRIORITY_MODES, createPriorityTicketGate,
   evaluatePriorityIntent, assessPriorityWindow, createPriorityWindowKey } from './priorityIntelligence.js';
@@ -28,11 +28,13 @@ export function createSoloPriorityController({
   stageCEnabled = false, allowTournament = false, getStops = () => [],
   getLegalActions = () => 'unknown',
   canSkipEmptyAttack = () => false, skipEmptyAttack = () => {},
-  keepModeBetweenTurns = false, trace = () => {}
+  keepModeBetweenTurns = false, trace = () => {},
+  multiplayerEnabled = false, getMultiplayerStatus = () => ({ready:false, revision:0, reason:'unverified'})
 } = {}) {
-  if ([getState,getStack,canPass,passOnce,isVisible,onChange,schedule,cancel,getStops,getLegalActions,canSkipEmptyAttack,skipEmptyAttack].some(f => typeof f !== 'function'))
+  if ([getState,getStack,canPass,passOnce,isVisible,onChange,schedule,cancel,getStops,getLegalActions,canSkipEmptyAttack,skipEmptyAttack,getMultiplayerStatus].some(f => typeof f !== 'function'))
     throw new TypeError('Stage B requiere adaptadores completos');
   const gate = createPriorityTicketGate();
+  const featureFlags = Object.freeze({...B_SOLO_FLAGS, multiplayerAutomation:multiplayerEnabled === true});
   let mode = SOLO_PRIORITY_B_MODES.MANUAL;
   let turn = null;
   let generation = 0;
@@ -76,7 +78,9 @@ export function createSoloPriorityController({
   }
 
   function eligible(s) {
-    return !!s && !s.currentMatch && (allowTournament || !s.currentTournamentMatch) && !s.gameOver &&
+    return !!s && (!s.currentMatch || (multiplayerEnabled === true &&
+      s.currentMatch.matchId && ['host','guest'].includes(s.currentMatch.myRole) && s.currentUser?.uid)) &&
+      (allowTournament || !s.currentTournamentMatch) && !s.gameOver &&
       !s.terminalProcessedLocally && !s.abandonedBy && !s.soloRuntimeSuspended &&
       !s.soloLifecycleReloading && isVisible() &&
       Number.isSafeInteger(s.turnCount) && s.turnCount > 0;
@@ -86,10 +90,13 @@ export function createSoloPriorityController({
     const stack = getStack();
     const depth = Array.isArray(stack) ? stack.length : NaN;
     const top = depth > 0 ? stack[depth - 1] : null;
+    const network = s?.currentMatch ? getMultiplayerStatus() : null;
     // No inventar identidad cuando un item en pila no tiene ID.
     return {s, options:{ stackDepth: depth,
       stackTopId: top?.id || null, activity:getActivity(s),
-      runtimeVisible:isVisible(), inFlight: executing }};
+      runtimeVisible:isVisible(), inFlight: executing,
+      multiplayerReady:network ? network.ready === true : undefined,
+      networkRevision:network?.revision ?? 0, networkReason:network?.reason }};
   }
   function clearScheduled() {
     if (pendingId !== null) diagnostic('lease_cancelled');
@@ -133,17 +140,18 @@ export function createSoloPriorityController({
     const {s,options} = snapshot();
     const assessment = assessPriorityWindow(s, options);
     diagnostic('window', { available:eligible(s), stackDepth:options.stackDepth,
+      networkReady:options.multiplayerReady, networkRevision:options.networkRevision, networkReason:options.networkReason,
       activity:options.activity, reason:assessment.reason, blockingField:assessment.blockingField,
       window:windowIdentity(s, options), stopCount:stageCEnabled ? getStops().length : 0 });
     if (!eligible(s)) {
       // Una ventana modal momentánea no borra la preferencia de atajo. Se revoca
       // el pase pendiente; al volver el tablero, se evalúa una ventana NUEVA.
-      if (keepModeBetweenTurns && s && !s.currentMatch && (allowTournament || !s.currentTournamentMatch) &&
+      if (keepModeBetweenTurns && s && (!s.currentMatch || multiplayerEnabled === true) && (allowTournament || !s.currentTournamentMatch) &&
           !s.gameOver && !s.soloRuntimeSuspended && !s.soloLifecycleReloading &&
           !isVisible()) {
         generation++;clearScheduled();gate.reset();publish();return;
       }
-      if (mode !== SOLO_PRIORITY_B_MODES.MANUAL || pendingId !== null) stop('out_of_solo');
+      if (mode !== SOLO_PRIORITY_B_MODES.MANUAL || pendingId !== null) stop('out_of_game');
       else publish();
       return;
     }
@@ -165,6 +173,12 @@ export function createSoloPriorityController({
       generation++;clearScheduled();gate.reset();
     }
     publish();
+    // Keep the preference armed while waiting for the server. This also blocks the
+    // mandatory zero-attacker path: it must never bypass a transport/authority barrier.
+    if (s.currentMatch && options.multiplayerReady !== true) {
+      if (pendingId !== null) { generation++;clearScheduled();gate.reset(); }
+      return;
+    }
     if (!AUTOMATIC.has(mode) || pendingId !== null || executing) return;
     const stopPhases = stageCEnabled ? getStops() : [];
     // La parada explícita tiene prioridad incluso antes de declarar atacantes,
@@ -199,7 +213,7 @@ export function createSoloPriorityController({
         lastAutomaticWindow = key;
         try { diagnostic('empty_attack_invoked');await skipEmptyAttack();diagnostic('empty_attack_returned'); }
         catch(error) { stop('attack_skip_failed'); console.warn('[Prioridad Stage C] No se pudo declarar ataque vacío:',error); }
-        finally { executing=false; if (scheduledGeneration === generation) onRender(); }
+        finally { executing=false; onRender(); }
       }, delayMs);
       return;
     }
@@ -211,7 +225,7 @@ export function createSoloPriorityController({
         assessPriorityWindow(s, options).safeToEvaluate) { stop('phase_stop');return; }
     const legalActions = legalProof(s, options);
     const intent = evaluatePriorityIntent(s, {
-      ...options, mode, featureFlags:B_SOLO_FLAGS, originalTurnCount:turn ?? s.turnCount,
+      ...options, mode, featureFlags, originalTurnCount:turn ?? s.turnCount,
       opposingActionOnStack:options.stackDepth > 0,
       legalActions, stopPhases
     });
@@ -231,7 +245,7 @@ export function createSoloPriorityController({
       const freshStops = stageCEnabled ? getStops() : [];
       const freshLegalActions = legalProof(fresh.s, fresh.options);
       const evaluation = evaluatePriorityIntent(fresh.s, {
-        ...fresh.options, mode, featureFlags:B_SOLO_FLAGS, originalTurnCount:turn ?? fresh.s?.turnCount,
+        ...fresh.options, mode, featureFlags, originalTurnCount:turn ?? fresh.s?.turnCount,
         opposingActionOnStack:fresh.options.stackDepth > 0,
         legalActions:freshLegalActions, stopPhases:freshStops
       });
@@ -247,14 +261,16 @@ export function createSoloPriorityController({
       executing = true;
       try {
         // La única mutación permitida es pasar UNA prioridad mediante el motor canónico.
-        const before = createPriorityWindowKey(fresh.s, fresh.options);
+        const before = createPriorityWindowKey(fresh.s, {...fresh.options, networkRevision:0});
         diagnostic('pass_invoked', { ticketSerial:ticket.serial });
-        await passOnce();
+        const result = await passOnce();
         const after = snapshot();
-        const committed = before !== createPriorityWindowKey(after.s, after.options);
-        diagnostic('pass_returned', { ticketSerial:ticket.serial, committed });
+        // An ACK revision alone is not an observable gameplay transition.
+        const transitioned = before !== createPriorityWindowKey(after.s, {...after.options, networkRevision:0});
+        const committed = transitioned && result?.confirmed !== false;
+        diagnostic('pass_returned', { ticketSerial:ticket.serial, committed, ackConfirmed:result?.confirmed });
         gate.finish(ticket, {committedPass:committed});
-        if (!committed) stop('pass_no_transition');
+        if (!transitioned) stop('pass_no_transition');
       } catch (error) {
         gate.finish(ticket);
         stop('pass_failed');
@@ -262,7 +278,9 @@ export function createSoloPriorityController({
         console.warn('[Prioridad Stage B] Pase abortado:', error);
       } finally {
         executing = false;
-        if (scheduledGeneration === generation) onRender();
+        // A user can cancel/change mode while the ACK is pending. Reevaluate the
+        // latest preference and session; never reuse the intent of the completed pass.
+        onRender();
       }
     }, delayMs);
   }
@@ -274,6 +292,6 @@ export function createSoloPriorityController({
     canUse:() => eligible(getState()),
     onStopsChanged() { if (!stageCEnabled) return; generation++;clearScheduled();gate.reset();onRender(); },
     // La detección Smart requiere adaptadores Stage C explícitos; B sigue OFF.
-    flags:B_SOLO_FLAGS
+    flags:featureFlags
   });
 }

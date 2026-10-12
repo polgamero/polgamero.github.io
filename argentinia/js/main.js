@@ -2,7 +2,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
+import { refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
@@ -12,7 +12,7 @@ import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
+import { RELEASE_DISPLAY_VERSION, ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
@@ -273,6 +273,8 @@ function stopActiveMatchListener() {
     try { activeMatchListenerStop(); } catch {}
   }
   activeMatchListenerStop = null;
+  priorityServerFrontier = null;
+  notifyPrioritySyncChanged();
 }
 function stopMultiplayerPresenceHeartbeat() {
   if (multiplayerPresenceTimer !== null) clearInterval(multiplayerPresenceTimer);
@@ -1992,10 +1994,11 @@ async function boot() {
   const freshness = await checkBuildFreshness();
   if (!freshness.ok) {
     const serverVersion = freshness.manifest?.engineVersion || 'más nueva';
+    const serverRelease = freshness.manifest?.releaseDisplayVersion || 'una versión más nueva';
     markEngineBootState('error', { code: 'BUILD_MISMATCH', serverVersion });
     const loadingOverlay = document.getElementById('boot-loading-overlay');
     if (loadingOverlay) loadingOverlay.remove();
-    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:620px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>♻️ Actualización disponible</h2><p>Esta pestaña cargó Argentinia ${ENGINE_VERSION}, pero el servidor publica ${serverVersion}.</p><p>Recargá la página con Ctrl+F5 / recarga completa antes de jugar.</p></div></div>`;
+    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:620px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>♻️ Actualización disponible</h2><p>Esta pestaña cargó Argentinia ${RELEASE_DISPLAY_VERSION} (motor ${ENGINE_VERSION}), pero el servidor publica ${serverRelease} (motor ${serverVersion}).</p><p>Recargá la página con Ctrl+F5 / recarga completa antes de jugar.</p></div></div>`;
     return;
   }
 
@@ -2720,6 +2723,41 @@ const lastAppliedFieldRevisions = new Map();
 let rivalPresenceStatus = 'unknown';
 const lastAppliedWriterSeq = new Map();
 
+// Stage D: read-only, browser-local confirmation frontier. Never part of state,
+// matchSync, telemetry or Firestore. The existing atomic commit/authority owns writes.
+let priorityServerFrontier = null;
+let priorityRefreshQueued = false;
+function notifyPrioritySyncChanged() {
+  if (priorityRefreshQueued) return;
+  priorityRefreshQueued = true;
+  queueMicrotask(() => {
+    priorityRefreshQueued = false;
+    refreshPriorityShortcuts();
+  });
+}
+export function getMultiplayerPriorityStatus() {
+  const match = state.currentMatch;
+  const revision = priorityServerFrontier?.revision ?? 0;
+  let reason = 'ok';
+  if (!match || !state.currentUser || !['host','guest'].includes(match.myRole)) reason = 'identity_unverified';
+  else if (!priorityServerFrontier || priorityServerFrontier.matchId !== match.matchId ||
+      priorityServerFrontier.role !== match.myRole || !priorityServerFrontier.confirmed) reason = 'server_snapshot_unconfirmed';
+  else if (globalThis.navigator?.onLine === false) reason = 'offline';
+  else if (state.gameOver || state.terminalProcessedLocally || state.abandonedBy) reason = 'terminal';
+  else if (state.multiplayerSessionSuperseded || state.multiplayerSyncBlocked || state.multiplayerWaitingForReady) reason = 'session_or_sync_blocked';
+  else if (remoteSyncApplyDepth > 0 || matchPublishInFlight || matchPublishQueued || state.matchSyncBusy) reason = 'awaiting_ack';
+  else if (state.multiplayerResolutionMarker || state.stackResolutionAuthority) reason = 'resolution_in_flight';
+  else if (!lastKnownPublicWire || !lastKnownPrivateWire ||
+      Object.keys(buildWireDelta(buildMyPublicPatch(state,match.myRole,spellStack),lastKnownPublicWire)).length ||
+      Object.keys(buildWireDelta(buildMyPrivatePatch(state),lastKnownPrivateWire)).length) reason = 'unpublished_changes';
+  return Object.freeze({ready:reason === 'ok', revision, reason});
+}
+globalThis.addEventListener?.('offline', () => {
+  if (priorityServerFrontier) priorityServerFrontier.confirmed = false;
+  notifyPrioritySyncChanged();
+});
+globalThis.addEventListener?.('online', notifyPrioritySyncChanged);
+
 function wireClone(value) {
   try { return JSON.parse(JSON.stringify(value)); }
   catch { return value; }
@@ -2852,8 +2890,10 @@ async function drainMatchPublishQueue() {
   while (matchPublishQueued && state.currentMatch && state.currentUser) {
     matchPublishQueued = false;
     const { matchId, myRole } = state.currentMatch;
-    const publicCandidate = buildMyPublicPatch(state, myRole, spellStack);
-    const privateCandidate = buildMyPrivatePatch(state);
+    // Keep the sent delta and its acknowledged baseline independent of live state.
+    // Another click can mutate board/hand arrays while the atomic commit awaits ACK.
+    const publicCandidate = wireClone(buildMyPublicPatch(state, myRole, spellStack));
+    const privateCandidate = wireClone(buildMyPrivatePatch(state));
     const publicPatch = buildWireDelta(publicCandidate, lastKnownPublicWire);
     const privatePatch = buildWireDelta(privateCandidate, lastKnownPrivateWire);
 
@@ -2978,6 +3018,7 @@ export function publishMatchState(options = {}) {
       // Puede haberse encolado un cambio en el micro-instante entre el último chequeo del
       // while y este finally. Lo drenamos en otro microtask, siempre serializado.
       if (matchPublishQueued) publishMatchState().catch(() => {});
+      notifyPrioritySyncChanged();
     });
   }
   return matchPublishInFlight;
@@ -4632,6 +4673,8 @@ function respondToDecision(requestId, responseData) {
 
 export function startListeningToMatch(matchId, myRole) {
   stopActiveMatchListener();
+  priorityServerFrontier = null;
+  notifyPrioritySyncChanged();
   // Evita procesar la MISMA pregunta dos veces si el listener vuelve a disparar por algo
   // no relacionado mientras pendingDecision sigue siendo la misma — sin esto, podría
   // mostrarse el modal de "Pagar/No pagar" repetido.
@@ -4641,7 +4684,11 @@ export function startListeningToMatch(matchId, myRole) {
   const handledPresentationCueIds = new Set((Array.isArray(state.rivalPresentationCues) ? state.rivalPresentationCues : []).map(cue=>cue?.id).filter(Boolean));
 
   activeMatchListenerStop = listenToMatch(matchId, (publicDoc, snapshotMeta = {}) => {
-    if (!publicDoc) return;
+    if (!publicDoc) {
+      priorityServerFrontier = null;
+      notifyPrioritySyncChanged();
+      return;
+    }
     const receivePerfStarted = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const receiveClientMs = Number(snapshotMeta.receivedAtClientMs || Date.now());
 
@@ -4659,8 +4706,22 @@ export function startListeningToMatch(matchId, myRole) {
       }
       setMultiplayerSyncBlocked('session_superseded', { permanent:true });
       stopMultiplayerPresenceHeartbeat();
+      priorityServerFrontier = null;
+      notifyPrioritySyncChanged();
       return;
     }
+
+    const revision = publicDoc.syncRevision;
+    // Cached/local-echo data can render normally; only an authenticated, compatible,
+    // server-confirmed snapshot may arm an automatic pass. No new wire fields.
+    priorityServerFrontier = {matchId, role:myRole,
+      revision:Number.isSafeInteger(revision) && revision >= 0 ? revision : 0,
+      confirmed:snapshotMeta.fromCache === false && snapshotMeta.hasPendingWrites === false &&
+        publicDoc[`${myRole}Uid`] === state.currentUser?.uid &&
+        Number.isSafeInteger(revision) && revision >= lastAppliedServerRevision &&
+        isExactMultiplayerVersionCompatible(publicDoc.engineVersion,publicDoc.engineProtocolVersion) &&
+        publicDoc.hostReady === true && publicDoc.guestReady === true && !!publicDoc.bothReadyAt};
+    notifyPrioritySyncChanged();
 
     const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
     const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
@@ -4987,6 +5048,8 @@ export function startListeningToMatch(matchId, myRole) {
       processMyTurnStart();
     }
   }, (error) => {
+    priorityServerFrontier = null;
+    notifyPrioritySyncChanged();
     recordTelemetryNetwork('sync_listener_error', {
       matchId,
       myRole,
@@ -5000,6 +5063,8 @@ export function startListeningToMatch(matchId, myRole) {
       try { activeMatchListenerStop(); } catch {}
       activeMatchListenerStop = null;
     }
+    priorityServerFrontier = null;
+    notifyPrioritySyncChanged();
   };
 }
 
