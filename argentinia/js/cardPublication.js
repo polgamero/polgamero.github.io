@@ -4,11 +4,18 @@
 
 import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
 import { PUBLISHED_CARD_BASELINE_SET, PUBLISHED_CARD_BASELINE_VERSION } from './publishedCardBaseline.js';
-import { isDiscoveryCard } from './discoveryCards.js';
+import { isDiscoveryCard, isDiscoveryCardId } from './discoveryCards.js';
 
 export const CARD_CATALOG_SCHEMA_VERSION = 1;
 export const CARD_CATALOG_DOCUMENT_ID = 'cardCatalog';
 export const CARD_CATALOG_CACHE_KEY = 'argentinia.cardCatalog.v1';
+export const CARD_FLAVOR_MAX_LENGTH = 1000;
+export function cleanCardFlavorText(value){
+  if(typeof value!=='string')throw new Error('El texto de ambientación debe ser texto.');
+  const text=value.replace(/\r\n?/g,'\n').trim();
+  if(text.length>CARD_FLAVOR_MAX_LENGTH)throw new Error(`El texto de ambientación admite hasta ${CARD_FLAVOR_MAX_LENGTH} caracteres.`);
+  return text;
+}
 const CARD_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 
 let overrides = Object.freeze({});
@@ -30,13 +37,14 @@ function normalizeOverride(value) {
   const out = {};
   if (typeof value.enabled === 'boolean') out.enabled = value.enabled;
   if (typeof value.name === 'string' && value.name.trim()) out.name = value.name.replace(/\s+/g,' ').trim().slice(0,90);
+  if(typeof value.flavorText==='string')out.flavorText=value.flavorText.replace(/\r\n?/g,'\n').trim().slice(0,CARD_FLAVOR_MAX_LENGTH);
   return Object.keys(out).length ? Object.freeze(out) : null;
 }
 function normalizeDocument(doc) {
   const source = doc?.overrides && typeof doc.overrides === 'object' && !Array.isArray(doc.overrides) ? doc.overrides : {};
   const out = {};
   for (const [id,value] of Object.entries(source)) {
-    if (!CARD_ID_RE.test(id)) continue;
+    if (!CARD_ID_RE.test(id)||isDiscoveryCardId(id)) continue;
     const normalized = normalizeOverride(value);
     if (normalized) out[id] = normalized;
   }
@@ -63,6 +71,7 @@ export function getCardPublicationState(cardOrId) {
     id,
     enabled: typeof override?.enabled === 'boolean' ? override.enabled : isHistoricalPublishedCardId(id),
     nameOverride: override?.name || null,
+    flavorTextOverride: typeof override?.flavorText==='string'?override.flavorText:null,
     historicalBaseline: isHistoricalPublishedCardId(id),
     explicitEnabledOverride: typeof override?.enabled === 'boolean'
   });
@@ -84,10 +93,14 @@ export function applyCardCatalogToCard(rawCard) {
   if (!rawCard || typeof rawCard !== 'object') return rawCard;
   const state = getCardPublicationState(rawCard);
   const canonicalName = String(rawCard.canonicalName || rawCard.name || rawCard.id || '');
-  const displayName = state.nameOverride || canonicalName;
+  const privateDiscovery=isDiscoveryCard(rawCard);
+  const displayName = privateDiscovery?String(rawCard.name||canonicalName):state.nameOverride || canonicalName;
+  const canonicalFlavorText=String(rawCard.canonicalFlavorText??rawCard.flavorText??'');
   const effective = replaceOwnName(rawCard, canonicalName, displayName);
   effective.name = displayName;
   effective.canonicalName = canonicalName;
+  effective.canonicalFlavorText=canonicalFlavorText;
+  if(!privateDiscovery&&state.flavorTextOverride!==null)effective.flavorText=state.flavorTextOverride;
   effective.enabled = state.enabled;
   effective.publication = state;
   return effective;
@@ -127,7 +140,7 @@ function assertUniqueDisplayName(cardId, desiredName, allCards=[]) {
 }
 export async function saveCardCatalogOverride(card, changes={}, {allCards=[]}={}) {
   const id = String(card?.id || card || '').trim();
-  if (typeof card === 'object' && isDiscoveryCard(card)) throw new Error('DISCOVERY_PUBLICATION_SERVER_ONLY');
+  if (isDiscoveryCardId(id)||(typeof card === 'object' && isDiscoveryCard(card))) throw new Error('DISCOVERY_PUBLICATION_SERVER_ONLY');
   if (!CARD_ID_RE.test(id)) throw new Error('CARD_CATALOG_INVALID_CARD_ID');
   let base;
   try { base = normalizeDocument(await loadPublicGameConfigDocument(CARD_CATALOG_DOCUMENT_ID)); }
@@ -143,6 +156,11 @@ export async function saveCardCatalogOverride(card, changes={}, {allCards=[]}={}
     const desired = cleanDisplayName(changes.name);
     assertUniqueDisplayName(id,desired,allCards);
     if (normalizeName(desired) === normalizeName(canonical) && desired === canonical) delete current.name; else current.name = desired;
+  }
+  if(Object.hasOwn(changes,'flavorText')){
+    const canonical=String(card?.canonicalFlavorText??card?.flavorText??'').replace(/\r\n?/g,'\n').trim();
+    const desired=cleanCardFlavorText(changes.flavorText);
+    if(desired===canonical)delete current.flavorText;else current.flavorText=desired;
   }
   const next = {...base};
   if (Object.keys(current).length) next[id] = current; else delete next[id];

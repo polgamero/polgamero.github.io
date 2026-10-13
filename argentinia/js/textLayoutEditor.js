@@ -1,15 +1,15 @@
 // js/textLayoutEditor.js — Entrega 23.16.5.2 · DFC face-aware editor
-// Editor Admin-only de identidad visible + PRESENTACIÓN. Reglas/flavor siguen siendo canónicos;
-// el nombre se persiste como override sparse sin cambiar jamás el cardId.
+// Editor Admin-only de nombre, flavor y presentación. Las reglas y el cardId siguen canónicos.
+// Discovery persiste exclusivamente mediante su autoridad privada.
 
 import {
   TEXT_LAYOUT_DEFAULT, TEXT_LAYOUT_LIMITS, normalizeCardTextLayout,
   getCardTextLayout, hasCustomCardTextLayout, ensureCardTextLayoutsLoaded,
   applyCardTextLayoutToBox, saveCardTextLayout
 } from './textLayout.js';
-import { saveCardCatalogOverride } from './cardPublication.js';
+import { saveCardCatalogOverride, cleanCardFlavorText, CARD_FLAVOR_MAX_LENGTH } from './cardPublication.js';
 import { isDiscoveryCard } from './discoveryCards.js';
-import { adminSaveDiscoveryPresentation, loadAuthorizedDiscoveryCards } from './firebaseClient.js';
+import { adminSaveDiscoveryPresentation } from './firebaseClient.js';
 import { cardDb } from './cardLoader.js';
 
 function injectStyles() {
@@ -24,12 +24,14 @@ function injectStyles() {
     .text-layout-editor-subtitle { margin-top:4px; font-size:12px; color:#aaa18e; }
     .text-layout-editor-close { width:34px; height:34px; border-radius:50%; border:1px solid rgba(212,175,55,.55); background:#101810; color:#f0e0b0; cursor:pointer; font-size:22px; }
     .text-layout-editor-grid { display:grid; grid-template-columns:minmax(260px,390px) 1fr; gap:22px; align-items:start; }
+    .text-layout-editor-grid[hidden] { display:none; }
     .text-layout-preview-wrap { min-height:560px; display:flex; justify-content:center; align-items:flex-start; padding:16px; border:1px solid rgba(212,175,55,.22); border-radius:12px; background:rgba(255,255,255,.035); --card-w:38vh; }
     .text-layout-preview-wrap .card { cursor:default; }
     .text-layout-preview-wrap .card:hover { transform:none !important; }
     .text-layout-editor-help { font-size:13px; line-height:1.45; color:#d8cfbb; margin-bottom:16px; padding:10px 12px; border-radius:9px; background:rgba(212,175,55,.075); }
     .text-layout-identity { margin:0 0 16px; padding:11px 12px; border:1px solid rgba(212,175,55,.24); border-radius:9px; background:rgba(0,0,0,.12); }
     .text-layout-name-input { width:100%; box-sizing:border-box; margin-top:6px; padding:9px 10px; border-radius:7px; border:1px solid rgba(212,175,55,.4); background:#0d1510; color:#f4ead2; font:600 13px inherit; }
+    .text-layout-flavor-input { min-height:90px; resize:vertical; white-space:pre-wrap; }
     .text-layout-control-row { margin:0 0 15px; }
     .text-layout-control-label { display:flex; justify-content:space-between; gap:10px; font-size:12px; color:#d6ccb5; margin-bottom:5px; }
     .text-layout-control-label strong { color:#f0e0b0; }
@@ -65,11 +67,12 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
 
   const overlay = document.createElement('div');
   overlay.id = 'text-layout-editor-overlay';
+  overlay.setAttribute('aria-busy','true');
   overlay.innerHTML = `
     <div class="text-layout-editor-panel" role="dialog" aria-modal="true" aria-label="Editor de texto de carta">
       <div class="text-layout-editor-header">
         <div>
-          <div class="text-layout-editor-title">✏️ Ajuste de texto · ${String(card.name || card.id)}</div>
+          <div class="text-layout-editor-title"></div>
           <div class="text-layout-editor-subtitle">Cargando configuración…</div>
         </div>
         <button type="button" class="text-layout-editor-close" aria-label="Cerrar">×</button>
@@ -77,8 +80,9 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
       <div class="text-layout-editor-grid" hidden>
         <div class="text-layout-preview-wrap" id="text-layout-preview"></div>
         <div>
-          <div class="text-layout-editor-help"><strong>Identidad + presentación.</strong> Podés cambiar el nombre visible global sin alterar el ID. Si el rules text menciona el nombre canónico, el renderer lo sustituye automáticamente. Reglas y flavor siguen viniendo de los JSON.</div>
+          <div class="text-layout-editor-help"><strong>Nombre, ambientación y presentación.</strong> Podés editar el nombre y el flavor sin alterar las reglas ni el ID. Los cambios de Discovery se guardan de forma privada; su pista sigue siendo el único contenido público.</div>
           <div class="text-layout-identity"><label><strong>Nombre real de la carta</strong><input id="text-layout-name" class="text-layout-name-input" type="text" maxlength="90" autocomplete="off"></label></div>
+          <div class="text-layout-identity"><label><strong>Texto de ambientación (flavor)</strong><textarea id="text-layout-flavor" class="text-layout-name-input text-layout-flavor-input" maxlength="${CARD_FLAVOR_MAX_LENGTH}" rows="4"></textarea></label></div>
           <div class="text-layout-control-row" data-key="nameScale"><div class="text-layout-control-label"><span>Tamaño del nombre</span><strong data-label></strong></div><div class="text-layout-control"><button class="text-layout-small-btn" data-minus>−</button><input type="range" min="${TEXT_LAYOUT_LIMITS.minNameScale}" max="${TEXT_LAYOUT_LIMITS.maxNameScale}" step="0.01"><button class="text-layout-small-btn" data-plus>+</button></div></div>
           <div class="text-layout-control-row" data-key="fontScale"><div class="text-layout-control-label"><span>Tamaño general de letra</span><strong data-label></strong></div><div class="text-layout-control"><button class="text-layout-small-btn" data-minus>−</button><input type="range" min="${TEXT_LAYOUT_LIMITS.minFontScale}" max="${TEXT_LAYOUT_LIMITS.maxFontScale}" step="0.01"><button class="text-layout-small-btn" data-plus>+</button></div></div>
           <div class="text-layout-control-row" data-key="boxHeight"><div class="text-layout-control-label"><span>Altura del recuadro de texto</span><strong data-label></strong></div><div class="text-layout-control"><button class="text-layout-small-btn" data-minus>−</button><input type="range" min="${TEXT_LAYOUT_LIMITS.minBoxHeight}" max="${TEXT_LAYOUT_LIMITS.maxBoxHeight}" step="0.5"><button class="text-layout-small-btn" data-plus>+</button></div></div>
@@ -101,6 +105,7 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  overlay.querySelector('.text-layout-editor-title').textContent=`✏️ Ajuste de texto · ${String(card.name || card.id)}`;
 
   const close=()=>overlay.remove();
   overlay.querySelector('.text-layout-editor-close').addEventListener('click',close);
@@ -109,35 +114,47 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
 
   try { await ensureCardTextLayoutsLoaded({force:true}); }
   catch(error){
+    overlay.setAttribute('aria-busy','false');
     overlay.querySelector('.text-layout-editor-subtitle').textContent='No se pudo cargar gameConfig/textLayouts.';
     overlay.querySelector('#text-layout-error').textContent=`Error: ${error?.message || error}`;
     return;
   }
+  if(!overlay.isConnected)return;
 
   let draft={...getCardTextLayout(layoutKey)};
   const canonicalName=String(card.canonicalName || card.name || card.id);
   let draftName=String(card.name || canonicalName);
+  const canonicalFlavor=String(card.canonicalFlavorText??card.flavorText??'');
+  let draftFlavor=String(card.flavorText??'');
   let saveInFlight=false;
   const grid=overlay.querySelector('.text-layout-editor-grid');
   const subtitle=overlay.querySelector('.text-layout-editor-subtitle');
-  subtitle.innerHTML=`${layoutKey}${hasCustomCardTextLayout(layoutKey)?' <span class="text-layout-custom-chip">ajuste personalizado guardado</span>':''}`;
+  subtitle.textContent=layoutKey;
+  if(hasCustomCardTextLayout(layoutKey)){
+    const chip=document.createElement('span');chip.className='text-layout-custom-chip';chip.textContent='ajuste personalizado guardado';subtitle.append(chip);
+  }
 
-  const previewCard=renderCard(card);
+  let previewCard=renderCard(card);
   previewCard.classList.add('text-layout-editor-card-preview');
   overlay.querySelector('#text-layout-preview').appendChild(previewCard);
-  const textBox=previewCard.querySelector('.card-text-box');
+  let textBox=previewCard.querySelector('.card-text-box');
   const saveBtn=overlay.querySelector('#text-layout-save');
   const nameInput=overlay.querySelector('#text-layout-name');
   nameInput.value=draftName;
+  const flavorInput=overlay.querySelector('#text-layout-flavor');flavorInput.value=draftFlavor;
   const errorEl=overlay.querySelector('#text-layout-error');
   if(!textBox){
-    grid.hidden=false; errorEl.textContent='Esta carta no tiene un recuadro de texto editable.'; saveBtn.disabled=true; return;
+    grid.hidden=false;overlay.setAttribute('aria-busy','false');errorEl.textContent='Esta carta no tiene un recuadro de texto editable.';saveBtn.disabled=true;return;
   }
 
   const rows=[...overlay.querySelectorAll('.text-layout-control-row[data-key]')];
   const stepFor={nameScale:.03,fontScale:.03,boxHeight:1,lineHeightScale:.03,flavorScale:.03,flavorGapScale:.1};
   function labelFor(key,value){ return key==='boxHeight'?heightLabel(value):percent(value); }
-  function renderDraft(){
+  function renderDraft(contentChanged=false){
+    if(contentChanged){
+      const next=renderCard({...card,name:draftName||canonicalName,flavorText:draftFlavor});next.classList.add('text-layout-editor-card-preview');
+      previewCard.replaceWith(next);previewCard=next;textBox=next.querySelector('.card-text-box');
+    }
     draft=normalizeCardTextLayout(draft);
     applyCardTextLayoutToBox(textBox,layoutKey,draft);
     rows.forEach(row=>{ const key=row.dataset.key; row.querySelector('input').value=String(draft[key]); row.querySelector('[data-label]').textContent=labelFor(key,draft[key]); });
@@ -154,30 +171,40 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
     row.querySelector('[data-minus]').addEventListener('click',()=>{ draft[key]=clamp(Number(draft[key])-stepFor[key],Number(input.min),Number(input.max)); renderDraft(); });
     row.querySelector('[data-plus]').addEventListener('click',()=>{ draft[key]=clamp(Number(draft[key])+stepFor[key],Number(input.min),Number(input.max)); renderDraft(); });
   });
-  nameInput.addEventListener('input',()=>{ draftName=nameInput.value.replace(/\s+/g,' ').slice(0,90); renderDraft(); });
-  overlay.querySelector('#text-layout-reset').addEventListener('click',()=>{ draft={...TEXT_LAYOUT_DEFAULT}; draftName=canonicalName; nameInput.value=draftName; renderDraft(); });
+  nameInput.addEventListener('input',()=>{ draftName=nameInput.value.replace(/\s+/g,' ').slice(0,90); renderDraft(true); });
+  flavorInput.addEventListener('input',()=>{draftFlavor=flavorInput.value;renderDraft(true);});
+  overlay.querySelector('#text-layout-reset').addEventListener('click',()=>{ draft={...TEXT_LAYOUT_DEFAULT}; draftName=canonicalName;draftFlavor=canonicalFlavor;nameInput.value=draftName;flavorInput.value=draftFlavor;renderDraft(true); });
   saveBtn.addEventListener('click',async()=>{
     if(saveInFlight)return; saveInFlight=true; saveBtn.disabled=true; saveBtn.textContent='⏳ Guardando…'; errorEl.textContent='';
     try{
       const cleanName=String(draftName||'').replace(/\s+/g,' ').trim();
       if(!cleanName) throw new Error('El nombre no puede quedar vacío.');
+      const cleanFlavor=cleanCardFlavorText(draftFlavor);
       let identity=null; let saved=null;
       if(isDiscoveryCard(card)){
-        await adminSaveDiscoveryPresentation(card.id,{name:cleanName,textLayout:draft});
-        await loadAuthorizedDiscoveryCards();
+        await adminSaveDiscoveryPresentation(card.id,{name:cleanName,flavorText:cleanFlavor,textLayout:draft});
+        const savedCard=(cardDb.authorizedDiscoveryCards||[]).find(row=>String(row.id)===String(card.id));
+        if(!savedCard||String(savedCard.flavorText??'').replace(/\r\n?/g,'\n').trim()!==cleanFlavor)throw Object.assign(new Error('El servidor privado no confirmó el flavor. Verificá que la actualización de Functions esté publicada.'),{code:'DISCOVERY_FLAVOR_NOT_CONFIRMED'});
         saved={...getCardTextLayout(layoutKey)};
         identity={cardId:card.id,name:cleanName,privateDiscovery:true};
       }else{
-        identity=await saveCardCatalogOverride(card,{name:cleanName},{allCards:cardDb.allCards});
+        identity=await saveCardCatalogOverride(card,{name:cleanName,flavorText:cleanFlavor},{allCards:cardDb.allCards});
         cardDb.refreshPublicationState();
         saved=await saveCardTextLayout(layoutKey,draft);
       }
-      onSaved?.(saved,{custom:!layoutsEqual(saved,TEXT_LAYOUT_DEFAULT),identity,nameChanged:cleanName!==String(card.name||'')});
+      onSaved?.(saved,{custom:!layoutsEqual(saved,TEXT_LAYOUT_DEFAULT),identity,nameChanged:cleanName!==String(card.name||''),flavorChanged:cleanFlavor!==String(card.flavorText??'')});
       saveBtn.textContent='✅ Guardado'; setTimeout(()=>{if(overlay.isConnected)close();},350);
-    }catch(error){ console.error('No se pudo guardar el ajuste de texto:',error); errorEl.textContent=`No se pudo guardar: ${error?.message || error}`; saveBtn.textContent='💾 Guardar'; }
+    }catch(error){
+      const safeMessage=isDiscoveryCard(card)
+        ?error?.code==='DISCOVERY_FLAVOR_NOT_CONFIRMED'?'El servidor privado no confirmó el flavor. Verificá la versión publicada de Functions.':String(draftName||'').trim()===''?'El nombre no puede quedar vacío.':'No se pudo guardar la presentación privada. Revisá tu sesión Admin y volvé a intentar.'
+        :String(error?.message||'No se pudo guardar la presentación.');
+      errorEl.textContent=safeMessage;saveBtn.textContent='💾 Guardar';
+    }
     finally{ saveInFlight=false; if(overlay.isConnected)saveBtn.disabled=false; }
   });
 
   grid.hidden=false;
   renderDraft();
+  overlay.dataset.textEditorReady='true';
+  overlay.setAttribute('aria-busy','false');
 }

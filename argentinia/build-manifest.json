@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "a7a11430319b81b0655f",
+  "buildId": "62e5dad805a3a576cf2d",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -176,7 +176,9 @@
     "./js/utils.js",
     "./js/version.js",
     "./js/workshop.js",
-    "./js/zoneOwnership.js"
+    "./js/zoneOwnership.js",
+    "./js/discoveryArtUpload.js",
+    "./js/discoveryArtUploadUI.js"
   ],
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF4",

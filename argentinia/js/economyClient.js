@@ -307,6 +307,7 @@ export function adminMigrateDiscoveryPresentationServer() {
 export function adminSaveDiscoveryPresentationServer(cardId, patch = {}) {
   const payload={action:'discovery_presentation',cardId:String(cardId||'').trim()};
   if(Object.prototype.hasOwnProperty.call(patch,'name')) payload.name=String(patch.name??'');
+  if(Object.prototype.hasOwnProperty.call(patch,'flavorText'))payload.flavorText=patch.flavorText===null?null:String(patch.flavorText??'');
   if(Object.prototype.hasOwnProperty.call(patch,'clue')) payload.clue=patch.clue===null?null:String(patch.clue??'');
   if(Object.prototype.hasOwnProperty.call(patch,'adminNote')) payload.adminNote=patch.adminNote===null?null:String(patch.adminNote??'');
   if(Object.prototype.hasOwnProperty.call(patch,'artLayout')) payload.artLayout=patch.artLayout;

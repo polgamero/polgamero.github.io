@@ -1,3 +1,4 @@
+import { uploadDiscoveryArt } from './discoveryArtUpload.js';
 // js/firebaseClient.js
 //
 // Fase 0 del multiplayer: conecta el SDK de Firebase (Auth + Firestore) y expone un puñado
@@ -862,30 +863,15 @@ export async function adminSaveDiscoveryPresentation(cardId, patch = {}) {
 }
 
 const discoveryArtUploadInflight=new Map();
-export async function adminUploadDiscoveryArt(cardId, file) {
+export async function adminUploadDiscoveryArt(cardId, file, options = {}) {
   const id=String(cardId||'').trim();
-  if(!id) throw new Error('DISCOVERY_CARD_ID_REQUIRED');
-  if(!(file instanceof Blob)) throw new Error('DISCOVERY_PNG_REQUIRED');
-  if(file.type && file.type!=='image/png') throw new Error('DISCOVERY_ART_MUST_BE_PNG');
-  if(Number(file.size||0)<=0 || Number(file.size||0)>12*1024*1024) throw new Error('DISCOVERY_ART_SIZE_INVALID');
   if(discoveryArtUploadInflight.has(id)) return discoveryArtUploadInflight.get(id);
-  const task=(async()=>{
-    let target=null; let upload=null;
-    for(let attempt=0;attempt<2;attempt+=1){
-      const response=await adminCreateDiscoveryArtUploadServer(id);
-      target=response?.discoveryAssetUpload;
-      if(!target?.uploadUrl||!target?.uploadId||!target?.uploadObjectPath) throw new Error('DISCOVERY_UPLOAD_URL_UNAVAILABLE');
-      upload=await fetch(target.uploadUrl,{method:'PUT',headers:{'Content-Type':'image/png'},body:file,cache:'no-store'});
-      if(upload.ok)break;
-      if(attempt===0 && (upload.status===401||upload.status===403))continue;
-      throw new Error(`DISCOVERY_ART_UPLOAD_FAILED_${upload.status}`);
-    }
-    if(!upload?.ok) throw new Error('DISCOVERY_ART_UPLOAD_FAILED');
-    const finalized=await adminFinalizeDiscoveryArtUploadServer(id,target.uploadId,target.uploadObjectPath);
-    if(finalized?.discoveryAssetFinalize?.assetReady!==true) throw new Error('DISCOVERY_ART_FINALIZE_FAILED');
-    const cards=await loadAuthorizedDiscoveryCards();
-    return {ok:true,target,finalized:finalized.discoveryAssetFinalize,card:cards.find(card=>String(card?.id||'')===id)||null};
-  })();
+  const task=uploadDiscoveryArt(id,file,{
+    authorize:adminCreateDiscoveryArtUploadServer,
+    put:fetch,
+    finalize:adminFinalizeDiscoveryArtUploadServer,
+    refresh:loadAuthorizedDiscoveryCards
+  },options);
   discoveryArtUploadInflight.set(id,task);
   try{return await task;}finally{if(discoveryArtUploadInflight.get(id)===task)discoveryArtUploadInflight.delete(id);}
 }

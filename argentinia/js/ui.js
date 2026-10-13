@@ -96,6 +96,7 @@ import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, achievementTrophyPath, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
 import { EVOLUTION_PATHS, normalizeEvolutionProfile, evolutionStageForProfile, evolutionVariantId, parseEvolutionVariantId, applyEvolutionStage, isEvolutionEligibleCard, isEvolutionStageDiscovered } from './evolution.js';
 import { isDiscoveryCard, DISCOVERY_ICON_ASSET } from './discoveryCards.js';
+import { mountDiscoveryArtUploadControl, waitForDiscoveryArtImage } from './discoveryArtUploadUI.js';
 import { discoveryCatalogForEncyclopedia, discoveryEncyclopediaProgress, buildDiscoveryEncyclopediaEntry, discoveryEntrySearchText } from './discoveryEncyclopedia.js';
 import { sanctuaryCameraSupported, openSanctuaryCamera, stopSanctuaryCameraStream, nextSanctuaryVideoInput, sanctuaryCameraErrorKind } from './sanctuaryCamera.js';
 import { startSanctuaryBarcodeScan, stopSanctuaryBarcodeScan } from './sanctuaryBarcode.js';
@@ -1968,11 +1969,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
     const landSymbolUrl = `./assets/images/${landSymbolImg}`;
+    const basicFlavor=String(card.flavorText||'').trim();
+    const basicFlavorHTML=basicFlavor?`<div class="card-flavor-text" style="position:absolute;left:5%;right:5%;bottom:4%;padding:3%;background:rgba(253,251,247,.92);white-space:pre-line;z-index:2">${escapeCardTextHtml(basicFlavor)}</div>`:'';
     // 23.13.17 — una sola capa real. El asset ocupa toda la caja inferior con cover;
     // el PNG puede prepararse con margen/expansión vertical sin que el renderer duplique el
     // mismo dibujo como fondo + foreground (artefacto visual que se notaba especialmente en móvil).
-    formattedTextHTML = `<div class="card-text-box basic-land-symbol-box" style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden;">
+    formattedTextHTML = `<div class="card-text-box basic-land-symbol-box"${basicFlavor?' data-auto-text-cqw="6"':''} style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden;${basicFlavor?'font-size:clamp(3px,var(--card-text-effective-size,6cqw),26px);':''}">
         <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
+        ${basicFlavorHTML}
       </div>`;
   } else {
     // 23.15.5.3 — el rules box ya no concatena flavor + texto en bold. Se construye una
@@ -2024,7 +2028,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     }).join('');
 
     const flavorHTML = textLayout.flavorText
-      ? `<div class="card-flavor-text">${escapeCardTextHtml(textLayout.flavorText)}</div>`
+      ? `<div class="card-flavor-text" style="white-space:pre-line">${escapeCardTextHtml(textLayout.flavorText)}</div>`
       : '';
 
     // El fit considera reminder text y separación real en párrafos. No altera el contenido;
@@ -4448,24 +4452,6 @@ export function showEncyclopedia(onBack) {
   // Base/Evo1/Evo2 sin que eso altere la colección ni el stage persistido del perfil.
   function encyclopediaPresentationLayoutId(card) { return transformFaceLayoutId(card); }
 
-  async function validateDiscoveryAdminPng(file) {
-    if (!(file instanceof Blob) || (file.type && file.type !== 'image/png')) throw new Error('Elegí un archivo PNG.');
-    if (!file.size || file.size > 12 * 1024 * 1024) throw new Error('El PNG debe pesar entre 1 byte y 12 MB.');
-    let width=0, height=0, bitmap=null;
-    try {
-      if (typeof createImageBitmap === 'function') { bitmap=await createImageBitmap(file); width=bitmap.width; height=bitmap.height; }
-      else {
-        const url=URL.createObjectURL(file);
-        try { const img=await new Promise((resolve,reject)=>{const el=new Image();el.onload=()=>resolve(el);el.onerror=()=>reject(new Error('No se pudo leer el PNG.'));el.src=url;}); width=img.naturalWidth; height=img.naturalHeight; }
-        finally { URL.revokeObjectURL(url); }
-      }
-    } finally { try { bitmap?.close?.(); } catch {} }
-    if (!width || !height) throw new Error('No se pudieron validar las dimensiones del PNG.');
-    const ratio=width/height;
-    if (Math.abs(ratio-(4/3))>0.015) throw new Error(`El arte debe ser 4:3. Este archivo es ${width}×${height}.`);
-    return {width,height};
-  }
-
   function mountEncyclopediaTextEditor(slot, displayCard) {
     if (!isAdminUser()) return;
     const textBox = slot.querySelector(':scope > .card .card-text-box');
@@ -4488,7 +4474,7 @@ export function showEncyclopedia(onBack) {
           onSaved: (_layout, meta) => {
             editTextBtn.classList.toggle('has-custom-layout', !!meta?.custom);
             editTextBtn.title = meta?.custom ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
-            if (meta?.nameChanged) setTimeout(() => { if (overlay.isConnected) { overlay.remove(); showEncyclopedia(onBack); } }, 450);
+            if(meta?.nameChanged||meta?.flavorChanged)slot.dispatchEvent(new CustomEvent('encyclopedia-presentation-saved'));
           }
         });
       } catch (error) {
@@ -4667,6 +4653,14 @@ export function showEncyclopedia(onBack) {
         slot.dispatchEvent(new CustomEvent('encyclopedia-stage-change', { detail:{ card:displayCard, stage:normalizedStage, visible } }));
       };
       renderEncyclopediaStage(0);
+      slot.addEventListener('encyclopedia-presentation-saved',()=>{
+        const updated=isDiscoveryCard(card)?discoveryAdminCardById(card.id):cardDb.getById(card.id);
+        if(!updated)return;
+        card=updated;
+        const record=entry.records.find(row=>row.node===slot);if(record)record.card=card;
+        renderEncyclopediaStage(slot.__encyclopediaEvolutionStage||0);
+        refreshGrid();
+      });
 
       // HF23.3.16.2.22 — Base/Evo1/Evo2 cambian la carta EN EL MISMO slot. Para jugadores
       // el arte no descubierto sigue oculto; Admin siempre puede inspeccionar los 40 stages
@@ -4728,27 +4722,23 @@ export function showEncyclopedia(onBack) {
         editMetaBtn.setAttribute('aria-label',`Editar pista pública y nota interna de ${card.name}`);
         editMetaBtn.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openDiscoveryMetadataEditor(card.id);});
         slot.appendChild(editMetaBtn);
-        const uploadArtBtn=document.createElement('button');
-        uploadArtBtn.type='button'; uploadArtBtn.className='encyclopedia-discovery-upload-btn'; uploadArtBtn.textContent='🖼️';
-        uploadArtBtn.title='Subir o reemplazar PNG privado 4:3';
-        uploadArtBtn.setAttribute('aria-label', `Subir arte privado de ${card.name}`);
-        const input=document.createElement('input'); input.type='file'; input.accept='image/png,.png'; input.hidden=true;
-        input.addEventListener('change', async()=>{
-          const file=input.files?.[0]; input.value=''; if(!file)return;
-          uploadArtBtn.disabled=true; const previous=uploadArtBtn.textContent; uploadArtBtn.textContent='⏳';
-          try {
-            await validateDiscoveryAdminPng(file);
-            await adminUploadDiscoveryArt(card.id,file);
-            uploadArtBtn.textContent='✅'; uploadArtBtn.title='PNG privado actualizado';
-            setTimeout(()=>{ if(overlay.isConnected){ overlay.remove(); showEncyclopedia(onBack); } },350);
-          } catch(error) {
-            console.error('No se pudo subir el arte Discovery:',error);
-            uploadArtBtn.textContent='⚠️'; uploadArtBtn.title=String(error?.message||error||'No se pudo subir el PNG privado');
-            setTimeout(()=>{ if(uploadArtBtn.isConnected){uploadArtBtn.textContent=previous;uploadArtBtn.title='Subir o reemplazar PNG privado 4:3';} },2600);
-          } finally { if(uploadArtBtn.isConnected)uploadArtBtn.disabled=false; }
+        mountDiscoveryArtUploadControl(slot,card,{
+          upload:adminUploadDiscoveryArt,
+          onSaved:async result=>{
+            const updated=result?.card || discoveryAdminCardById(card.id);
+            if(!overlay.isConnected||!updated||String(updated.id)!==String(card.id)||!/^https:\/\//i.test(String(updated.runtimeImageUrl||'')))throw new Error('Discovery preview unavailable');
+            const nextData=Object.freeze({...card,...updated});
+            const nextCard=createCardElement(nextData,false,true,null,'encyclopedia',null);
+            await waitForDiscoveryArtImage(nextCard.querySelector('.card-art-image'));
+            if(!overlay.isConnected)throw new Error('Discovery preview closed');
+            card=nextData;
+            const record=entry.records.find(row=>row.node===slot);if(record)record.card=card;
+            slot.querySelector(':scope > .card')?.replaceWith(nextCard);
+            slot.__encyclopediaDisplayCard=card;
+            mountEncyclopediaTextEditor(slot,card);
+            slot.dispatchEvent(new CustomEvent('encyclopedia-stage-change',{detail:{card,stage:0,visible:true}}));
+          }
         });
-        uploadArtBtn.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();input.click();});
-        slot.append(uploadArtBtn,input);
       }
 
       // 23.21.5 — publication authority. Admin sees the entire physical catalog; players
