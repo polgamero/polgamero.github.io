@@ -1,6 +1,8 @@
 import { gameText } from './gameTexts.js';
 import { playSfx } from './audioManager.js';
 import { decorateFlasheraCard } from './flasheraRenderer.js';
+import { bindPackCardInspector } from './packCardInspector.js';
+import { fitRewardCardToViewport } from './rewardViewport.js';
 
 const STYLE_ID = 'sanctuary-stage14-ritual-styles';
 const CARD_BACK_IMAGE = './assets/images/card_back.png';
@@ -34,9 +36,10 @@ function injectStyles() {
 
     .sanctuary-reveal-layer {
       --sanctuary-reveal-card-w:clamp(126px,min(30vw,43vh),250px);
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-      z-index:45; width:min(94vw,760px); height:min(92vh,650px);
-      display:grid; place-items:center; pointer-events:none; overflow:visible;
+      position:absolute; inset:0; box-sizing:border-box;
+      padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+      z-index:45; width:100%; height:100%;
+      display:grid; grid-template-rows:minmax(0,1fr) auto; gap:8px; place-items:center; pointer-events:none; overflow:hidden;
       text-align:center; isolation:isolate;
     }
     .sanctuary-reveal-layer::before,
@@ -82,12 +85,12 @@ function injectStyles() {
     .sanctuary-reveal-word.is-visible { opacity:1; transform:translate(-50%,-50%) scale(1); }
 
     .sanctuary-reveal-card-zone {
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.72);
-      width:calc(var(--sanctuary-reveal-card-w) + 84px); height:calc(var(--sanctuary-reveal-card-w) * 1.4 + 70px);
+      position:relative; transform:scale(.72); min-height:0;
+      width:100%; height:100%;
       display:grid; place-items:center; perspective:1400px; opacity:0; z-index:12;
       transition:opacity .45s ease,transform .62s cubic-bezier(.2,.85,.18,1);
     }
-    .sanctuary-reveal-layer.is-card-ready .sanctuary-reveal-card-zone { opacity:1; transform:translate(-50%,-50%) scale(1); }
+    .sanctuary-reveal-layer.is-card-ready .sanctuary-reveal-card-zone { opacity:1; transform:scale(1); }
     .sanctuary-reveal-halo {
       position:absolute; width:calc(var(--sanctuary-reveal-card-w) * 1.85); aspect-ratio:1; border-radius:50%;
       background:rgba(238,198,72,.44); filter:blur(25px); opacity:.36; transform:scale(.74);
@@ -99,15 +102,21 @@ function injectStyles() {
     .sanctuary-reveal-card-shell {
       position:relative; width:var(--sanctuary-reveal-card-w); aspect-ratio:5/7;
       transform-style:preserve-3d; transition:transform .78s cubic-bezier(.18,.82,.18,1);
-      filter:drop-shadow(0 22px 34px rgba(0,0,0,.70));
+      /* No filter/opacity/overflow clipping here: those flatten the two 3D faces. */
+      pointer-events:auto; will-change:transform;
     }
     .sanctuary-reveal-layer.is-charging .sanctuary-reveal-card-shell { animation:sanctuary-reveal-shiver .14s ease-in-out infinite alternate; }
-    .sanctuary-reveal-layer.is-flipped .sanctuary-reveal-card-shell { transform:rotateY(180deg); animation:none; }
+    .sanctuary-reveal-layer.is-flipped .sanctuary-reveal-card-shell { transform:rotateX(var(--arg-pack3d-rx,0deg)) rotateY(calc(180deg + var(--arg-pack3d-ry,0deg))); animation:none; }
+    .sanctuary-reveal-card-shell.arg-pack3d-ready { cursor:grab; touch-action:none; }
+    .sanctuary-reveal-card-shell.arg-pack3d-dragging { cursor:grabbing; transition:none!important; }
+    .sanctuary-reveal-card-shell.arg-pack3d-settling { transition:transform .6s cubic-bezier(.25,1,.5,1)!important; }
+    .sanctuary-reveal-layer.is-flipped .sanctuary-reveal-card-shell.arg-pack3d-intro { pointer-events:none; animation:arg-pack3d-intro-spawn 1.2s cubic-bezier(.25,1,.5,1) both; }
     .sanctuary-reveal-face {
       position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
-      display:flex; align-items:center; justify-content:center;
+      display:flex; align-items:center; justify-content:center; transform-style:preserve-3d;
     }
     .sanctuary-reveal-front { transform:rotateY(180deg); }
+    .sanctuary-reveal-front .arg-pack3d-shine { position:absolute; inset:0; z-index:40; pointer-events:none; border-radius:10px; mix-blend-mode:overlay; }
     .sanctuary-reveal-back-card {
       width:100%; height:100%; border:5px solid #111; border-radius:9px; box-sizing:border-box;
       background:#321b09 repeating-linear-gradient(45deg,#321b09 0 7px,#492709 7px 14px);
@@ -123,11 +132,11 @@ function injectStyles() {
     .sanctuary-reveal-front .card:hover { transform:none!important; }
 
     .sanctuary-reveal-result {
-      position:absolute; left:50%; top:50%; transform:translate(-50%,calc(-50% + var(--sanctuary-reveal-card-w) * .92));
-      width:min(90vw,620px); z-index:15; opacity:0; transition:opacity .35s ease,transform .35s ease;
+      position:relative; transform:none;
+      width:min(100%,620px); z-index:15; opacity:0; transition:opacity .35s ease;
       pointer-events:none;
     }
-    .sanctuary-reveal-layer.is-final .sanctuary-reveal-result { opacity:1; transform:translate(-50%,calc(-50% + var(--sanctuary-reveal-card-w) * 1.00)); }
+    .sanctuary-reveal-layer.is-final .sanctuary-reveal-result { opacity:1; }
     .sanctuary-reveal-layer[data-flashera='yes'].is-revealed .sanctuary-reveal-halo { background:conic-gradient(from 20deg,#eaa7fc,#a6ffd3,#f9e5a5,#9dc9ff,#eaa7fc);filter:blur(30px); }
     .sanctuary-reveal-layer[data-flashera='yes'].is-final .sanctuary-reveal-success {color:#fff2c1;text-shadow:0 0 15px #d87ef7,0 0 28px #7affde;}
     .sanctuary-reveal-success { color:#dfc668; font-size:10px; font-weight:950; letter-spacing:.18em; text-transform:uppercase; text-shadow:0 2px 8px #000; }
@@ -148,8 +157,8 @@ function injectStyles() {
     @media(max-height:520px), (max-width:900px) {
       .sanctuary-reveal-layer { --sanctuary-reveal-card-w:clamp(118px,min(27vw,41vh),180px); }
       .sanctuary-reveal-word { font-size:clamp(16px,4vmin,25px); }
-      .sanctuary-reveal-result { transform:translate(-50%,calc(-50% + var(--sanctuary-reveal-card-w) * .93)); }
-      .sanctuary-reveal-layer.is-final .sanctuary-reveal-result { transform:translate(-50%,calc(-50% + var(--sanctuary-reveal-card-w) * 1.02)); }
+      .sanctuary-reveal-result { transform:none; }
+      .sanctuary-reveal-layer.is-final .sanctuary-reveal-result { transform:none; }
       .sanctuary-reveal-continue { padding:6px 13px; min-width:128px; font-size:9px; }
     }
     @media (prefers-reduced-motion:reduce) {
@@ -165,7 +174,7 @@ function safePlay(id, options = {}) {
   try { return playSfx(id, options); } catch { return null; }
 }
 
-export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypass = false, onContinue = null, source = 'barcode', flashera = false } = {}) {
+export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypass = false, onContinue = null, source = 'barcode', flashera = false, presentationWarning = false } = {}) {
   if (!(overlay instanceof HTMLElement)) throw new Error('SANCTUARY_RITUAL_OVERLAY_REQUIRED');
   if (!card?.id) throw new Error('SANCTUARY_RITUAL_CARD_REQUIRED');
   if (typeof renderCard !== 'function') throw new Error('SANCTUARY_RITUAL_RENDERER_REQUIRED');
@@ -173,7 +182,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
 
   const anchor = overlay.querySelector('#sanctuary-ritual-anchor');
   if (!anchor) throw new Error('SANCTUARY_RITUAL_ANCHOR_MISSING');
-  anchor.querySelector('.sanctuary-reveal-layer')?.remove();
+  cancelSanctuaryRitual(overlay);
 
   const token = Symbol('sanctuary-ritual');
   const ritualSource = String(source || 'barcode').toLowerCase() === 'resonance' ? 'resonance' : 'barcode';
@@ -203,9 +212,12 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
       <div class="sanctuary-reveal-success">${flashera===true?'💫 FLASHERA · DESCUBRIMIENTO':esc(gameText('sanctuary.ritual.success'))}</div>
       <div class="sanctuary-reveal-name">${esc(card.name || card.id)}</div>
       ${adminBypass ? `<div class="sanctuary-reveal-admin">${esc(gameText('sanctuary.ritual.adminUnlimited'))}</div>` : ''}
+      ${presentationWarning ? `<div class="sanctuary-reveal-admin">${esc(gameText('sanctuary.claim.presentationPending'))}</div>` : ''}
       <button type="button" class="sanctuary-reveal-continue">${esc(gameText('sanctuary.ritual.continue'))}</button>
     </div>`;
-  anchor.appendChild(layer);
+  // The background stage uses a cover transform. A reveal attached there inherits
+  // its oversized coordinates; attach to the real viewport overlay instead.
+  overlay.appendChild(layer);
 
   const front = layer.querySelector('.sanctuary-reveal-front');
   const rendered = renderCard(card);
@@ -213,6 +225,10 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
   rendered.style.setProperty('--card-w', 'var(--sanctuary-reveal-card-w)');
   front.appendChild(rendered);
   if(flashera===true) decorateFlasheraCard(rendered,{mode:'full'});
+  const shell=layer.querySelector('.sanctuary-reveal-card-shell');
+  const inspector=bindPackCardInspector(shell,{frontFace:front,introMs:reducedMotion()?0:1200,canDrag:()=>layer.classList.contains('is-final')});
+  const stopFit=fitRewardCardToViewport({overlay,panel:layer,host:layer.querySelector('.sanctuary-reveal-card-zone'),card:shell,sizeOwner:layer,sizeVariable:'--sanctuary-reveal-card-w',maxWidth:250,gutter:12});
+  overlay.__sanctuaryRitualCleanup=()=>{inspector.destroy();stopFit();};
 
   const word = layer.querySelector('.sanctuary-reveal-word');
   const alive = () => document.body.contains(overlay) && overlay.__sanctuaryRitualToken === token;
@@ -260,6 +276,7 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
 
   layer.classList.remove('is-charging');
   layer.classList.add('is-flipped');
+  inspector.startRevealIntro();
   safePlay('permanentTransformed', { volumeMultiplier:.84 });
   await wait(timings.flip);
   if (!alive()) return null;
@@ -269,12 +286,14 @@ export async function runSanctuaryRitual({ overlay, card, renderCard, adminBypas
   await wait(timings.final);
   if (!alive()) return null;
   layer.classList.add('is-final');
+  layer.querySelector('.sanctuary-reveal-card-zone').setAttribute('aria-hidden','false');
   overlay.dataset.sanctuaryShellState = 'RITUAL_REVEALED';
 
   const continueBtn = layer.querySelector('.sanctuary-reveal-continue');
   continueBtn?.addEventListener('click', () => {
     if (!alive()) return;
     overlay.__sanctuaryRitualToken = null;
+    overlay.__sanctuaryRitualCleanup?.();overlay.__sanctuaryRitualCleanup=null;
     overlay.classList.remove('sanctuary-cinematic-active');
     layer.remove();
     overlay.dataset.sanctuaryShellState = 'RITUAL_COMPLETE';
@@ -291,6 +310,7 @@ export function runSanctuaryBarcodeRitual(options = {}) {
 
 export function cancelSanctuaryRitual(overlay) {
   if (!(overlay instanceof HTMLElement)) return;
+  overlay.__sanctuaryRitualCleanup?.();overlay.__sanctuaryRitualCleanup=null;
   overlay.__sanctuaryRitualToken = null;
   overlay.classList.remove('sanctuary-cinematic-active');
   overlay.querySelector('.sanctuary-reveal-layer')?.remove();

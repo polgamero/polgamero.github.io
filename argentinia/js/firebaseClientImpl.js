@@ -1,4 +1,5 @@
 import { uploadDiscoveryArt } from './discoveryArtUpload.js';
+import { settleSanctuaryClaimPresentation } from './sanctuaryClaimPresentation.js';
 // js/firebaseClient.js
 //
 // Fase 0 del multiplayer: conecta el SDK de Firebase (Auth + Firestore) y expone un puñado
@@ -792,11 +793,14 @@ let discoveryPresentationMigrationChecked=false;
 export async function loadAuthorizedDiscoveryCards() {
   const uid=auth.currentUser?.uid; if(!uid) return [];
   let response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
+  if(auth.currentUser?.uid!==uid)return [];
   if(response?.discoveryAccessScope==='admin'&&!discoveryPresentationMigrationChecked){
     discoveryPresentationMigrationChecked=true;
     const migrated=await adminMigrateDiscoveryPresentationServer().catch(error=>{console.warn('[DISCOVERY_PRESENTATION_MIGRATION_SKIPPED]',error?.message||error);return null;});
     if(Number(migrated?.discoveryPresentationMigration?.total||0)>0) response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
   }
+  // A refresh may finish after sign-out/account change. Never hydrate the next viewer.
+  if(auth.currentUser?.uid!==uid)return [];
   if(Array.isArray(response?.publicDiscoveryCatalog)){
     const accepted=cardDb.setDiscoveryPublicCatalog(response.publicDiscoveryCatalog);
     if(!accepted) console.warn('[DISCOVERY_PUBLIC_CATALOG_REJECTED] Server catalog failed spoiler-safe 100-clue contract; keeping bundled fallback.');
@@ -822,8 +826,10 @@ export async function claimSanctuaryBarcode(gtin,{allowDuplicate=false}={}) {
   if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
   const request={gtin:String(gtin||''),allowDuplicate:allowDuplicate===true};
   const outcome=await runEconomyActionAuthority(uid,'sanctuaryBarcodeClaim',request,operationId=>claimSanctuaryBarcodeServer(request.gtin,operationId,{allowDuplicate:request.allowDuplicate}));
-  if(outcome?.result?.card) await loadAuthorizedDiscoveryCards();
-  return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
+  return settleSanctuaryClaimPresentation({...outcome?.result,replayed:!!outcome?.replayed,operationId:String(outcome?.operationId||'')},{
+    inject:card=>{if(auth.currentUser?.uid===uid)cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]).filter(row=>String(row.id)!==String(card.id)),card]);},
+    refresh:()=>auth.currentUser?.uid===uid?loadAuthorizedDiscoveryCards():[],onWarning:()=>console.info('[SANCTUARY_CLAIM_PRESENTATION_PENDING]')
+  });
 }
 
 export async function resolveSanctuaryResonance(signature) {
@@ -836,8 +842,10 @@ export async function claimSanctuaryResonance(signature,{allowDuplicate=false}={
   if(!uid) throw usernameError('AUTH_REQUIRED','Tenés que iniciar sesión.');
   const request={signature:String(signature||''),allowDuplicate:allowDuplicate===true};
   const outcome=await runEconomyActionAuthority(uid,'sanctuaryResonanceClaim',request,operationId=>claimSanctuaryResonanceServer(request.signature,operationId,{allowDuplicate:request.allowDuplicate}));
-  if(outcome?.result?.card) await loadAuthorizedDiscoveryCards();
-  return { ...(outcome?.result||{}), replayed:!!outcome?.replayed, operationId:String(outcome?.operationId||'') };
+  return settleSanctuaryClaimPresentation({...outcome?.result,replayed:!!outcome?.replayed,operationId:String(outcome?.operationId||'')},{
+    inject:card=>{if(auth.currentUser?.uid===uid)cardDb.injectAuthorizedDiscoveryCards([...(cardDb.authorizedDiscoveryCards||[]).filter(row=>String(row.id)!==String(card.id)),card]);},
+    refresh:()=>auth.currentUser?.uid===uid?loadAuthorizedDiscoveryCards():[],onWarning:()=>console.info('[SANCTUARY_CLAIM_PRESENTATION_PENDING]')
+  });
 }
 
 export async function adminPreviewSanctuary(type, input) {

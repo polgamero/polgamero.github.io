@@ -86,6 +86,9 @@ import { openArtLayoutEditor } from './artLayoutEditor.js';
 import { registerCardTextBox, hasCustomCardTextLayout, ensureCardTextLayoutsLoaded } from './textLayout.js';
 import { openCardTextLayoutEditor } from './textLayoutEditor.js';
 import { saveCardCatalogOverride } from './cardPublication.js';
+import { cardWithCurrentSelfReferences } from './cardSelfReference.js';
+import { fitRewardCardToViewport } from './rewardViewport.js';
+import { showSanctuaryClaimFailure } from './sanctuaryClaimPresentation.js';
 import { ARCHETYPE_IDS, inferCardDeckProfile, getArchetypeDefinition } from './deckIntelligence.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
@@ -1828,7 +1831,7 @@ function ensureDfcFacePreviewInteractions() {
 }
 
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
-  const card = itemObj.card || itemObj;
+  const card = cardWithCurrentSelfReferences(itemObj.card || itemObj);
   const isBattlefieldLand = !!itemObj?.card && isLandPermanent(itemObj) && (zone === 'land' || zone === 'combat' || zone === 'support');
   const el = document.createElement('div');
 
@@ -7432,6 +7435,7 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
     return;
   }
   if(cameraState.arbiter && !cameraState.arbiter.markClaiming?.('resonance')) return;
+  overlay.querySelector('[data-sanctuary-claim-error]')?.remove();
   const messageEl=overlay.querySelector('.sanctuary-ritual-message');
   const noteEl=overlay.querySelector('.sanctuary-ritual-note');
   cameraState.claimBusy=true;
@@ -7446,7 +7450,7 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
     if(!result?.granted||!result?.cardId||result?.type!=='resonance') throw new Error('SANCTUARY_RESONANCE_CLAIM_RESULT_INVALID');
     committed=true;
     cameraState.arbiter?.markRitual?.('resonance');
-    const card=cardDb.getById(String(result.cardId||''));
+    const card=result.card&&String(result.card.id)===String(result.cardId)?result.card:cardDb.getById(String(result.cardId||''));
     if(!card) throw new Error('SANCTUARY_RESONANCE_CARD_MISSING');
     stopSanctuaryCameraPreview(overlay,{restoreStatus:false});
     const committedState=overlay.__sanctuaryCamera||{};
@@ -7464,6 +7468,7 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
       source:'resonance',
       flashera:result.flashera?.awarded===true,
       adminBypass:!!result.adminBypass,
+      presentationWarning:result.presentationWarning===true,
       renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
       onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
     });
@@ -7475,9 +7480,11 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
       overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_COMMITTED_RITUAL_ERROR';
       if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committed');
       if(noteEl) noteEl.textContent=gameText('sanctuary.claim.committedRevealError');
+      cancelSanctuaryRitual(overlay);
+      showSanctuaryClaimFailure(overlay,gameText('sanctuary.claim.committedRevealError'));
       setSanctuaryCameraRevealState(overlay,{visible:false,disabled:true});
       void refreshSanctuaryPostClaimStateBestEffort(overlay);
-      console.error('Sanctuary resonance claim committed but reveal failed',error);
+      console.warn('[SANCTUARY_RESONANCE_COMMITTED_REVEAL_ERROR]');
       return;
     }
     stateNow.arbiter?.markPrepared?.('resonance');
@@ -7492,11 +7499,12 @@ async function claimPreparedSanctuaryResonance(overlay,{duplicateConfirmed=false
       return;
     }
     const text=sanctuaryResonanceServerErrorText(error)||gameText('sanctuary.claim.failed');
+    showSanctuaryClaimFailure(overlay,text);
     if(messageEl) messageEl.textContent=gameText('sanctuary.resonance.serverReady');
     if(noteEl) noteEl.textContent=text;
     markSanctuaryPreparedUi(overlay);
     overlay.dataset.sanctuaryShellState='RESONANCE_CLAIM_ERROR';
-    console.warn('Sanctuary resonance claim failed',error);
+    console.warn('[SANCTUARY_RESONANCE_CLAIM_FAILED]',String(error?.code||'unknown'));
   }
 }
 
@@ -7584,6 +7592,7 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
     return;
   }
   if(cameraState.arbiter && !cameraState.arbiter.markClaiming?.('barcode')) return;
+  overlay.querySelector('[data-sanctuary-claim-error]')?.remove();
   const messageEl=overlay.querySelector('.sanctuary-ritual-message');
   const noteEl=overlay.querySelector('.sanctuary-ritual-note');
   cameraState.claimBusy=true;
@@ -7598,7 +7607,7 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
     if(!result?.granted||!result?.cardId) throw new Error('SANCTUARY_CLAIM_RESULT_INVALID');
     committed=true;
     cameraState.arbiter?.markRitual?.('barcode');
-    const card=cardDb.getById(String(result.cardId||''));
+    const card=result.card&&String(result.card.id)===String(result.cardId)?result.card:cardDb.getById(String(result.cardId||''));
     if(!card) throw new Error('SANCTUARY_RITUAL_CARD_MISSING');
     stopSanctuaryCameraPreview(overlay,{restoreStatus:false});
     const committedState=overlay.__sanctuaryCamera||{};
@@ -7614,6 +7623,7 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
       source:'barcode',
       flashera:result.flashera?.awarded===true,
       adminBypass:!!result.adminBypass,
+      presentationWarning:result.presentationWarning===true,
       renderCard:ritualCard=>createCardElement(ritualCard,false,true,null,'encyclopedia',null),
       onContinue:()=>{ void refreshSanctuaryPostClaimStateBestEffort(overlay); }
     });
@@ -7625,9 +7635,11 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
       overlay.dataset.sanctuaryShellState='CLAIM_COMMITTED_RITUAL_ERROR';
       if(messageEl) messageEl.textContent=gameText('sanctuary.claim.committed');
       if(noteEl) noteEl.textContent=gameText('sanctuary.claim.committedRevealError');
+      cancelSanctuaryRitual(overlay);
+      showSanctuaryClaimFailure(overlay,gameText('sanctuary.claim.committedRevealError'));
       setSanctuaryCameraRevealState(overlay,{visible:false,disabled:true});
       void refreshSanctuaryPostClaimStateBestEffort(overlay);
-      console.error('Sanctuary barcode claim committed but reveal failed',error);
+      console.warn('[SANCTUARY_BARCODE_COMMITTED_REVEAL_ERROR]');
       return;
     }
     stateNow.arbiter?.markPrepared?.('barcode');
@@ -7642,12 +7654,13 @@ async function claimPreparedSanctuaryBarcode(overlay,{duplicateConfirmed=false}=
       return;
     }
     const text=sanctuaryBarcodeServerErrorText(error)||gameText('sanctuary.claim.failed');
+    showSanctuaryClaimFailure(overlay,text);
     if(messageEl) messageEl.textContent=gameText('sanctuary.seal.serverReady');
     if(noteEl) noteEl.textContent=text;
     setSanctuaryBarcodeStatus(overlay,text,'error');
     markSanctuaryPreparedUi(overlay);
     overlay.dataset.sanctuaryShellState='CLAIM_ERROR';
-    console.warn('Sanctuary claim failed',error);
+    console.warn('[SANCTUARY_BARCODE_CLAIM_FAILED]',String(error?.code||'unknown'));
   }
 }
 
@@ -8041,6 +8054,17 @@ function injectWorkshopStyles() {
     .workshop-mixer-success-reminder{max-width:640px;margin:0;color:#c8dbd2;font-size:13px;line-height:1.45}
     @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-panel.workshop-panel--machine-detail{max-height:calc(100dvh - 84px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;width:min(96vw,620px);padding-bottom:12px}.workshop-panel--machine-detail .workshop-evolution-preview{margin:6px auto;gap:6px}.workshop-panel--machine-detail .workshop-evolution-preview .card{--card-w:min(142px,31vw)}.workshop-panel--machine-detail .workshop-evolution-picker{margin:6px 0}.workshop-panel--machine-detail .workshop-panel-cost{margin:5px 0}.workshop-panel--machine-detail .workshop-panel-actions{margin-top:6px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card,.workshop-evolution-success-card .card,.workshop-mixer-success-card .card{--card-w:min(225px,68vw)}.workshop-evolution-success-title,.workshop-mixer-success-title{font-size:22px} }
     @media(max-width:850px){.workshop-panel.workshop-panel--machine-detail{bottom:8px;max-height:calc(100dvh - 76px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;width:min(96vw,620px);padding:10px 11px 12px}.workshop-panel--machine-detail .workshop-evolution-preview{margin:6px auto;gap:6px}.workshop-panel--machine-detail .workshop-evolution-preview .card{--card-w:min(142px,31vw)}.workshop-panel--machine-detail .workshop-evolution-picker{margin:6px 0}.workshop-panel--machine-detail .workshop-panel-cost{margin:5px 0}.workshop-panel--machine-detail .workshop-panel-actions{margin-top:6px}}
+    :is(.workshop-enhancement-success-overlay,.workshop-evolution-success-overlay,.workshop-mixer-success-overlay) { box-sizing:border-box; padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); overflow:hidden; }
+    :is(.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal) { box-sizing:border-box; max-height:100%; overflow:hidden; min-height:0; gap:8px; }
+    :is(.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal)>* { flex-shrink:0; }
+    @media(max-height:600px) {
+      :is(.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal) { padding:8px 12px; gap:4px; }
+      :is(.workshop-enhancement-success-title,.workshop-evolution-success-title,.workshop-mixer-success-title) { font-size:clamp(14px,4.7vmin,24px); line-height:1.08; letter-spacing:.025em; }
+      :is(.workshop-enhancement-success-ability,.workshop-evolution-success-stage,.workshop-mixer-success-rarity) { font-size:10px; padding:3px 8px; }
+      :is(.workshop-enhancement-success-reminder,.workshop-evolution-success-reminder,.workshop-mixer-success-reminder) { font-size:10px; line-height:1.2; }
+      :is(.stage34-flashera-title,.stage35-mixer-flashera-title) { font-size:clamp(13px,4vmin,21px); }
+      :is(.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal)>.workshop-action-btn { padding:6px 12px; min-height:32px; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -8132,7 +8156,8 @@ export function showWorkshopScreen(onBack, options = {}) {
     const cardEl=createCardElement(displayCard,false,true,null,'preview',null);
     cardEl.setAttribute('aria-label',`${card.name} · ${keywordLabel}`);
     cardHost?.appendChild(cardEl);
-    const dismiss=()=>modal.remove();
+    const stopFit=fitRewardCardToViewport({overlay:modal,panel:modal.querySelector('.workshop-enhancement-success-modal'),host:cardHost,card:cardEl});
+    const dismiss=()=>{stopFit();modal.remove();};
     modal.querySelector('#workshop-enhancement-success-close')?.addEventListener('click',dismiss);
   }
 
@@ -8170,7 +8195,8 @@ export function showWorkshopScreen(onBack, options = {}) {
     const cardEl=createCardElement(displayCard,false,true,null,'preview',null);
     cardEl.setAttribute('aria-label',`${displayCard.name} · EVO ${resolvedStage}${displayCard.flashera?' · FLASHERA':''}`);
     cardHost?.appendChild(cardEl);
-    const dismiss=()=>modal.remove();
+    const stopFit=fitRewardCardToViewport({overlay:modal,panel:modal.querySelector('.workshop-evolution-success-modal'),host:cardHost,card:cardEl});
+    const dismiss=()=>{stopFit();modal.remove();};
     modal.querySelector('#workshop-evolution-success-close')?.addEventListener('click',dismiss);
   }
 
@@ -8191,8 +8217,9 @@ export function showWorkshopScreen(onBack, options = {}) {
       <button class="workshop-action-btn" id="workshop-mixer-success-close">${gameTextHtml('workshop.mixer.continue')}</button>
     </div>`;
     document.body.appendChild(modal);
-    modal.querySelector('#workshop-mixer-success-card')?.appendChild(createCardElement(displayCard,false,true,null,'preview',null));
-    modal.querySelector('#workshop-mixer-success-close')?.addEventListener('click',()=>modal.remove());
+    const host=modal.querySelector('#workshop-mixer-success-card'),rendered=createCardElement(displayCard,false,true,null,'preview',null);host?.appendChild(rendered);
+    const stopFit=fitRewardCardToViewport({overlay:modal,panel:modal.querySelector('.workshop-mixer-success-modal'),host,card:rendered});
+    modal.querySelector('#workshop-mixer-success-close')?.addEventListener('click',()=>{stopFit();modal.remove();});
   }
 
   function renderWallet() {

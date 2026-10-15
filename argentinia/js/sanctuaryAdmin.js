@@ -224,7 +224,7 @@ function historyClaimRows(snapshot){
     const validity=row.valid===false?`<span class="admin-sanctuary-history-invalid">${esc(gameText('sanctuary.admin.historyInvalid'))}</span>`:'';
     return `<tr>
       <td>${esc(historyDate(row.claimedAtMs))}${validity}</td>
-      <td><code title="${esc(String(row.uid||''))}">${esc(historyShort(row.uid,20)||'—')}</code></td>
+      <td><strong title="${esc(String(row.uid||''))}">${esc(row.username||row.userLabel||'Usuario sin perfil disponible')}</strong></td>
       <td><strong>${esc(row.type==='barcode'?gameText('sanctuary.admin.historySourceBarcode'):gameText('sanctuary.admin.historySourceResonance'))}</strong></td>
       <td><code title="${esc(String(row.cardId||''))}">${esc(historyShort(historyCardLabel(row.cardId),36))}</code></td>
       <td>${esc(bucket)}</td>
