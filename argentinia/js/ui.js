@@ -95,6 +95,7 @@ import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBasicLandPackProfileState, countOwnedClassifiedCard } from './classifieds.js';
 import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
+import { mainMenuMarkup, resetMenuAccountPorts, presentMenuAccount, refreshMenuCopy, bindMenuPresentation } from './menuPresentation.js';
 import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, achievementTrophyPath, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
 import { EVOLUTION_PATHS, normalizeEvolutionProfile, evolutionStageForProfile, evolutionVariantId, parseEvolutionVariantId, applyEvolutionStage, isEvolutionEligibleCard, isEvolutionStageDiscovered } from './evolution.js';
@@ -10041,7 +10042,8 @@ function pendingAchievementIds(runtime){
 function unreadModerationCases(cases=[]){return (Array.isArray(cases)?cases:[]).filter(item=>item?.hasUserUnread===true||(item?.hasUserUnread==null&&item?.status==='resolved'&&!item?.acknowledgedAtMs));}
 function mainMenuBadgeText(count){const n=Math.max(0,Math.floor(Number(count)||0));return n>99?'99+':String(n);}
 function setMainMenuActionBadge(container,buttonId,count){
-  const btn=container?.querySelector?.(`#${buttonId}`); if(!btn)return;
+  const scope=container?.closest?.('#main-menu-overlay') || container;
+  const btn=scope?.querySelector?.(`#${buttonId}`); if(!btn)return;
   btn.querySelector(':scope > .main-menu-reward-badge[data-account-pending]')?.remove();
   const n=Math.max(0,Math.floor(Number(count)||0)); if(!n)return;
   const badge=document.createElement('span');badge.className='main-menu-reward-badge';badge.dataset.accountPending='true';badge.textContent=mainMenuBadgeText(n);btn.appendChild(badge);
@@ -10180,6 +10182,7 @@ function openCurrentUserRename({onUpdated=null}={}) {
 
 function renderAccountBox(container, user) {
   if (!container) return;
+  resetMenuAccountPorts(container);
 
   if (user) {
     // Fase 2: los puntos viven en el perfil de Firestore (state.userProfile), no en el
@@ -10225,7 +10228,7 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
-          <div class="main-menu-account-name">${getLocalPlayerName()}</div>
+          <div class="main-menu-account-name">${escapeHtml(getLocalPlayerName())}</div>
           ${walletHTML}
           <button class="main-menu-logout-btn" id="menu-logout">${gameTextHtml('account.logout')}</button>
         </div>
@@ -10325,6 +10328,7 @@ function renderAccountBox(container, user) {
       });
     });
   }
+  presentMenuAccount(container, user, {profile:state.userProfile, name:getLocalPlayerName(), admin:isAdminUser(user), t:gameText, dailyCount:state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0});
 }
 
 // Se llama desde boot() (main.js) cada vez que Firebase avisa un cambio de sesión — no
@@ -10387,14 +10391,15 @@ function refreshVisibleGameTextCopy() {
   };
   Object.entries(labels).forEach(([id, key]) => {
     const el = menu.querySelector(`#${id}`);
-    if (el) el.textContent = gameText(key);
+    if (el) (el.querySelector('[data-menu-label]') || el).textContent = gameText(key);
   });
   const iconLabels = { 'menu-store':'menu.store', 'menu-ranking':'menu.ranking', 'menu-trade-market':'menu.tradeMarket' };
   Object.entries(iconLabels).forEach(([id,key])=>{
-    const el=menu.querySelector(`#${id}`); if(!el)return; const label=gameText(key); el.title=label; el.setAttribute('aria-label',label);
+    const el=menu.querySelector(`#${id}`); if(!el)return; const label=gameText(key); el.title=label; el.setAttribute('aria-label',label); const caption=el.querySelector('[data-menu-label]'); if(caption)caption.textContent=label;
   });
   const newsTitle = menu.querySelector('.main-menu-news-title');
   if (newsTitle) newsTitle.textContent = gameText('menu.news.title');
+  refreshMenuCopy(menu, gameText);
   const account = menu.querySelector('#main-menu-account');
   if (account) renderAccountBox(account, state.currentUser);
   updateMainMenuLoginGatedButtons(menu);
@@ -14841,38 +14846,14 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   document.querySelectorAll('#main-menu-overlay').forEach(el => el.remove());
   const overlay = document.createElement('div');
   overlay.id = 'main-menu-overlay';
-  overlay.innerHTML = `
-    <div class="main-menu-account" id="main-menu-account"></div>
-    <div class="main-menu-logo-wrap">
-      <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none'">
-    </div>
-    <div class="main-menu-buttons">
-      <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
-      <button class="main-menu-btn main-menu-btn-primary" id="menu-tournament">${gameTextHtml('menu.tournament')}</button>
-      <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
-      <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
-      <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
-      <div class="main-menu-bottom-row">
-        <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
-        <button class="main-menu-icon-btn" id="menu-store" title="${gameTextHtml('menu.store')}" aria-label="${gameTextHtml('menu.store')}"><span class="main-menu-icon-fallback" aria-hidden="true">🛒</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_tienda.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn" id="menu-ranking" title="${gameTextHtml('menu.ranking')}" aria-label="${gameTextHtml('menu.ranking')}"><span class="main-menu-icon-fallback" aria-hidden="true">📊</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_ranking.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn" id="menu-trade-market" title="${gameTextHtml('menu.tradeMarket')}" aria-label="${gameTextHtml('menu.tradeMarket')}"><span class="main-menu-icon-fallback" aria-hidden="true">🔄️</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-help-link" id="menu-how-to-play" type="button">${gameTextHtml('manual.menu.link')}</button>
-      </div>
-    </div>
-    <div id="main-menu-active-events"></div>
-    <div class="main-menu-news" id="main-menu-news">
-      <div class="main-menu-news-title">${gameTextHtml('menu.news.title')}</div>
-      <div class="main-menu-news-list" id="main-menu-news-list">
-        <div class="main-menu-news-empty">${gameTextHtml('menu.news.loading')}</div>
-      </div>
-    </div>
-  `;
+  overlay.classList.add('arg-menu-v2');
+  overlay.innerHTML = mainMenuMarkup(gameText);
   document.body.appendChild(overlay);
   enterMenuAudio();
 
 
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
+  bindMenuPresentation(overlay);
   updateMainMenuLoginGatedButtons(overlay);
   void renderActiveEventsStrip(overlay.querySelector('#main-menu-active-events'));
 

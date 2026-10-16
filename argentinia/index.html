@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = '44f41b342d32cbada6d1';
+      const BUILD_ID = '31242b2e569d0626254a';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -86,7 +86,10 @@
                 './js/gameTexts.js','./js/rankingUI.js',
                 './js/soloPriorityShortcuts.js','./js/priorityIntelligence.js','./js/priorityUX.js',
                 './js/priorityStops.js','./js/priorityLegalActions.js',
-                './js/main.js','./js/bot.js','./css/style.css','./css/mobile.css'
+                './js/main.js','./js/bot.js','./js/menuPresentation.js','./css/style.css','./css/mobile.css','./css/menu.css',
+                './assets/images/menu/city.webp','./assets/images/menu/icons.webp',
+                './assets/images/menu/frame.webp','./assets/images/menu/tano.webp',
+                './assets/fonts/menu/Cinzel.ttf','./assets/fonts/menu/AlegreyaSans-Regular.ttf','./assets/fonts/menu/AlegreyaSans-Bold.ttf'
               ]);
               try { sessionStorage.setItem(criticalKey,'yes'); } catch {}
             }
@@ -117,6 +120,7 @@
   </script>
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/mobile.css">
+  <link rel="stylesheet" href="./css/menu.css">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
