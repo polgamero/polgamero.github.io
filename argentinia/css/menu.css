@@ -7,7 +7,7 @@
   --menu-pad:clamp(16px,1.6vw,32px);--menu-gap:clamp(14px,1.5vw,28px);
   position:fixed;inset:0;z-index:9999;box-sizing:border-box;width:100%;height:100dvh;
   display:grid;grid-template-rows:104px minmax(0,1fr) 106px;gap:var(--menu-gap);padding:var(--menu-pad);
-  background:#13180f url('../assets/images/menu/city.webp') center top/cover no-repeat;
+  background:#13180f url('../assets/images/menu/city-distant.webp') center center/cover no-repeat;
   color:var(--menu-ink);font:400 18px/1.25 ArgAlegreya,'Trebuchet MS',sans-serif;isolation:isolate;
 }
 #main-menu-overlay.arg-menu-v2::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#0007,transparent 35%,transparent 65%,#0006),linear-gradient(#0003,transparent 40%,#0007);pointer-events:none;z-index:-1}
@@ -16,7 +16,7 @@
 .arg-menu-v2 button,.arg-menu-v2 summary{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .arg-menu-v2 button{margin:0;min-width:0;letter-spacing:normal;text-transform:none}
 .arg-menu-v2 button:focus-visible,.arg-menu-v2 summary:focus-visible{outline:3px solid #a7e4ff;outline-offset:3px}
-.arg-menu-v2 .main-menu-btn-disabled{opacity:.62;cursor:default}
+.arg-menu-v2 .main-menu-btn-disabled{opacity:1!important;cursor:not-allowed}
 .arg-menu-frame{position:relative;border:1px solid #967131;border-radius:7px;background:var(--menu-dark);box-shadow:0 5px 15px #0009}
 .arg-menu-frame::after{content:'';position:absolute;inset:-7px;z-index:3;border:28px solid transparent;border-image:url('../assets/images/menu/frame.webp') 25% / 28px / 0 stretch;pointer-events:none}
 .arg-menu-header{position:relative;z-index:6;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(210px,25vw,440px) minmax(0,1fr);gap:20px;align-items:start}
@@ -122,7 +122,7 @@ html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-l
 }
 
 @media(max-width:1050px),(max-height:600px){
-  #main-menu-overlay.arg-menu-v2{--menu-pad:8px;--menu-gap:10px;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));grid-template-rows:58px minmax(0,1fr) 64px;font-size:15px;background-position:center top}
+  #main-menu-overlay.arg-menu-v2{--menu-pad:8px;--menu-gap:10px;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));grid-template-rows:58px minmax(0,1fr) 64px;font-size:15px;background-position:center center}
   .arg-menu-header{grid-template-columns:minmax(0,1fr) clamp(110px,20vw,220px) minmax(0,1fr);gap:10px;align-items:center}
   .arg-menu-account{gap:4px;max-width:none}.arg-menu-profile{min-height:46px;padding:3px 6px;gap:6px}.arg-menu-avatar{width:30px;height:30px;font-size:23px;border-width:1px}.arg-menu-player-name{font:700 14px/1.15 ArgAlegreya,sans-serif}.arg-menu-profile-caption{font-size:11px}
   .arg-menu-account-details{font-size:11px}.arg-menu-account-details summary{min-width:34px;min-height:44px;flex-direction:column;gap:0;padding:3px}.arg-menu-account-popover{left:auto;right:0;min-width:160px;font-size:15px}
@@ -168,7 +168,7 @@ html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-l
 .arg-menu-brand{width:100%;aspect-ratio:2.65;max-height:none;overflow:hidden;align-self:start}
 .arg-menu-logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:block;width:100%;max-width:none;height:auto;max-height:none}
 .arg-menu-wordmark{position:relative;top:auto}
-.arg-menu-utility-slot{position:absolute;left:50%;top:calc(var(--menu-pad) + clamp(90px,9.5vw,172px));transform:translateX(-50%);z-index:8;width:max-content;max-width:calc(100% - 32px)}
+
 .arg-menu-hud{width:max-content;max-width:100%;justify-self:end}
 #arg-menu-wallet-slot{min-width:0}
 .arg-menu-wallet{justify-content:center;width:max-content;max-width:100%;gap:14px}
@@ -185,7 +185,7 @@ html.argentinia-mobile .arg-menu-utility-icon{background-position:var(--utility-
 .arg-menu-dock>#menu-more-places{border-right:0}
 @media(min-width:1051px) and (min-height:601px){.arg-menu-extra-places>#menu-ranking{border-right:0}}
 .arg-menu-panel-toggle>.arg-menu-today-notice{flex:0 0 18px!important}
-#options-menu-overlay{background-image:linear-gradient(180deg,#0004,#000b),url('../assets/images/menu/city.webp')!important;background-position:center top!important;background-size:cover!important}
+#options-menu-overlay{background-image:linear-gradient(180deg,#0004,#000b),url('../assets/images/menu/city-distant.webp')!important;background-position:center center!important;background-size:cover!important}
 @media(max-width:1400px) and (min-width:1051px) and (min-height:601px){
   .arg-menu-resource-icon{width:28px;height:32px}.arg-menu-wallet{gap:10px}
 }
@@ -193,7 +193,7 @@ html.argentinia-mobile .arg-menu-utility-icon{background-position:var(--utility-
   .arg-menu-brand{max-height:none}.arg-menu-logo{max-height:none}
   .arg-menu-hud{display:flex;gap:6px}.arg-menu-wallet{gap:7px;width:max-content;padding:4px 6px}
   .arg-menu-resource-icon{width:20px;height:24px}.arg-menu-resource strong{font-size:13px}.arg-menu-resource-label{font-size:10px}
-  .arg-menu-utility-slot{top:calc(max(8px,env(safe-area-inset-top)) + clamp(48px,8vw,82px))}
+
   .arg-menu-mode .arg-menu-mode-copy{padding-right:5%;max-width:calc(100% - 38px)}
   .arg-menu-mode-art{width:35%;opacity:.55}.arg-menu-logout-direct{width:54px;font-size:11px;padding:4px}
   .arg-menu-account-details summary>.arg-menu-chevron{width:16px;height:16px;flex-basis:16px}
@@ -210,6 +210,26 @@ html.argentinia-mobile .arg-menu-utility-icon{background-position:var(--utility-
   .arg-menu-resource{flex-direction:column;gap:0}.arg-menu-resource>span:last-child{align-items:center}
   .arg-menu-resource-label{display:none}.arg-menu-wallet{gap:6px;min-height:44px;padding:3px 5px}
 }
-html[data-arg-menu-surface="main"].argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) #arg-mobile-fullscreen-retry{
-  left:calc(50% + 54px);right:auto;top:calc(max(8px,env(safe-area-inset-top)) + clamp(48px,8vw,82px));
+
+
+/* Second real-device iteration: reserve only a narrow strip for the floating utility HUD. */
+#main-menu-overlay.arg-menu-v2{padding-top:calc(var(--menu-pad) + 28px)}
+.arg-menu-account{width:max-content;max-width:100%;justify-self:start;justify-content:flex-start}
+.arg-menu-profile{flex:0 1 auto;width:clamp(220px,18vw,290px);max-width:100%}
+#arg-menu-gate-tooltip{position:fixed;z-index:2147482000;box-sizing:border-box;width:max-content;max-width:min(248px,calc(100vw - 16px));padding:9px 13px;border:1px solid #dfb854;border-radius:7px;background:#07130f;color:#fff0ce;opacity:1;font:700 14px/1.3 ArgAlegreya,'Trebuchet MS',sans-serif;text-align:center;white-space:normal;overflow-wrap:anywhere;box-shadow:0 5px 14px #000b;pointer-events:none}
+@media(max-width:1050px),(max-height:600px){
+  #main-menu-overlay.arg-menu-v2{padding-top:calc(max(8px,env(safe-area-inset-top)) + 28px)}
+  .arg-menu-account{max-width:100%}.arg-menu-profile{width:clamp(150px,21vw,210px);flex:0 1 auto}
+  html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-v2 .arg-menu-hud{margin-right:44px;max-width:calc(100% - 44px)}
+}
+@media(max-height:320px){
+  #main-menu-overlay.arg-menu-v2{padding-top:calc(max(4px,env(safe-area-inset-top)) + 28px)}
+  .arg-menu-modes{height:100%;overflow-y:auto;overflow-x:hidden;padding:5px;margin:-5px}
+}
+
+html.argentinia-mobile #main-menu-overlay.arg-menu-v2{background-image:url('../assets/images/menu/city-distant-mobile.webp');background-position:center center}
+html.argentinia-mobile #options-menu-overlay{background-image:linear-gradient(180deg,#0004,#000b),url('../assets/images/menu/city-distant-mobile.webp')!important;background-position:center center!important}
+@media(max-width:700px){
+  html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-resource strong{font-size:10px}
+  html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-wallet{gap:3px;padding:3px}
 }

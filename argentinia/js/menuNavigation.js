@@ -1,13 +1,13 @@
 // Presentation only: one navigation row, retaining each screen's original button/listener.
 const BACK = '#chest-back,#daily-rewards-back,#enc-back,#store-back,#sanctuary-back,#workshop-back,#deckbuilder-cancel,#mydecks-back,#playpicker-back,#moderation-center-back,#achievements-back,#admin-back,#mp-back,#tournament-back,#trade-back,#ranking-back,#opt-back,#deckselect-back,.public-profile-back';
-const SCREENS = '#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay';
+const SCREENS = '#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay,#starter-deck-select-overlay,#argentinia-game-manual';
 let installed = false;
 
 export function installMenuNavigation() {
   if (installed || typeof document === 'undefined' || !document.body) return;
   installed = true;
   const watched = new Map();
-  let frame = 0, panelRef = null;
+  let frame = 0;
   function schedule() { if (!frame) frame = requestAnimationFrame(refresh); }
   function refresh() {
     frame = 0;
@@ -35,12 +35,8 @@ export function installMenuNavigation() {
     const menu = document.querySelector('#main-menu-overlay.arg-menu-v2');
     const surface = top ? 'screen' : (menu?.getClientRects().length ? 'main' : '');
     if (document.documentElement.dataset.argMenuSurface !== surface) document.documentElement.dataset.argMenuSurface = surface;
-    // A destination's removal also detaches its utility row; preserve the same panel.
-    const panel = document.getElementById('argentinia-telemetry-panel') || panelRef;
-    if (panel) panelRef = panel;
-    const slot = top?.querySelector(':scope > .arg-screen-navigation') || (menu?.getClientRects().length ? menu.querySelector('#arg-menu-utility-slot') : null);
-    if (panel && slot && panel.parentElement !== slot) slot.append(panel);
-    else if (panel && !slot && panel.parentElement !== document.body) document.body.append(panel);
+    // Utilities stay under body, floating in their original corner. CSS hides them
+    // only on menu destinations; an empty surface preserves the gameplay HUD.
   }
   new MutationObserver(schedule).observe(document.body,{childList:true});
   // The main menu is hidden/restored instead of recreated for most destinations.

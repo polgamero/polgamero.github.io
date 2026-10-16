@@ -2813,7 +2813,7 @@ function injectMainMenuStyles() {
       background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
       box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     }
-    .main-menu-btn-disabled:hover::after {
+    .main-menu-btn-disabled:not([data-menu-custom-hint]):hover::after {
       content: attr(data-tooltip);
       position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
       background: rgba(0,0,0,0.92); color: #f0e0b0;
@@ -10329,6 +10329,8 @@ function renderAccountBox(container, user) {
     });
   }
   presentMenuAccount(container, user, {profile:state.userProfile, name:getLocalPlayerName(), admin:isAdminUser(user), t:gameText, dailyCount:state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0});
+  const menu = container.closest('.arg-menu-v2');
+  if (menu) updateMainMenuLoginGatedButtons(menu);
 }
 
 // Se llama desde boot() (main.js) cada vez que Firebase avisa un cambio de sesión — no
@@ -10347,12 +10349,17 @@ function updateMainMenuLoginGatedButtons(overlay) {
   const setGate = (id, enabled, tooltip) => {
     const btn = overlay.querySelector(`#${id}`);
     if (!btn) return;
+    if (overlay.classList.contains('arg-menu-v2')) btn.setAttribute('data-menu-custom-hint','1');
     if (enabled) {
       btn.classList.remove('main-menu-btn-disabled');
       btn.removeAttribute('data-tooltip');
+      btn.removeAttribute('aria-disabled');
+      if (btn.dataset.menuOriginalTitle) {btn.title=btn.dataset.menuOriginalTitle;delete btn.dataset.menuOriginalTitle;}
     } else {
       btn.classList.add('main-menu-btn-disabled');
       btn.setAttribute('data-tooltip', tooltip);
+      btn.setAttribute('aria-disabled','true');
+      if (btn.title) {btn.dataset.menuOriginalTitle=btn.title;btn.removeAttribute('title');}
     }
   };
 
@@ -10367,7 +10374,7 @@ function updateMainMenuLoginGatedButtons(overlay) {
   // persistida. Un perfil starterDeckPending tampoco se considera listo: HF13 obliga a
   // terminar el onboarding antes de entrar a cualquier superficie dependiente de cuenta.
   setGate('menu-play', guestReady || loggedInReady, starterDeckPending ? privateTooltip : authTooltip);
-  ['menu-tournament', 'menu-trade-market', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+  ['menu-tournament', 'menu-trade-market', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store', 'menu-chest', 'menu-workshop', 'menu-daily-rewards', 'menu-sanctuary', 'menu-achievements'].forEach(id => {
     setGate(id, loggedInReady, privateTooltip);
   });
 }

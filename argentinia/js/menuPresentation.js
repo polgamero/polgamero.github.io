@@ -18,7 +18,6 @@ function button(id, icon, label, key = '', extra = '') {
 export function mainMenuMarkup(t) {
   const mode = (id, icon, key, subtitle, primary = false) => `<button type="button" id="${id}" class="arg-menu-mode arg-menu-frame${primary ? ' arg-menu-primary' : ''}">${menuIcon(icon)}<span class="arg-menu-mode-copy"><span data-menu-label data-menu-text="${key}">${escape(t(key))}</span><span class="arg-menu-subtitle" data-menu-text="${subtitle}">${escape(t(subtitle))}</span></span><img class="arg-menu-mode-art${primary ? ' arg-menu-tano' : ''}" src="./assets/images/menu/${primary ? 'tano' : icon}.webp" alt="" aria-hidden="true"></button>`;
   return `
-    <div id="arg-menu-utility-slot" class="arg-menu-utility-slot"></div>
     <header class="arg-menu-header">
       <div id="main-menu-account" class="arg-menu-account"></div>
       <div class="arg-menu-brand" aria-label="Argentinia — Magia y leyenda">
@@ -151,6 +150,7 @@ export function refreshMenuCopy(menu, t) {
 
 export function bindMenuPresentation(menu) {
   installMenuNavigation();
+  const disposeGateHints = bindGateHints(menu);
   const compact = matchMedia('(max-width: 1050px), (max-height: 600px)');
   const more = menu.querySelector('#menu-more-places'), tray = menu.querySelector('#arg-menu-extra-places'), backdrop = menu.querySelector('#menu-places-backdrop');
   function closePlaces(restore = true) {
@@ -205,6 +205,49 @@ export function bindMenuPresentation(menu) {
   // A resize must never leave a modal backdrop over the desktop places bar.
   const onResize = () => {if (!compact.matches) closePlaces(false);};
   compact.addEventListener('change',onResize);
-  const observer = new MutationObserver(()=>{if (!menu.isConnected) {compact.removeEventListener('change',onResize);observer.disconnect();}});
+  const observer = new MutationObserver(()=>{if (!menu.isConnected) {compact.removeEventListener('change',onResize);disposeGateHints();observer.disconnect();}});
   observer.observe(menu.parentNode,{childList:true});
+}
+
+// Separate DOM avoids sharing ::after with the ornamental frame, or inheriting opacity.
+function bindGateHints(menu) {
+  const controller = new AbortController(), signal = controller.signal;
+  let hint = null, current = null, touchHint = false;
+  const gate = target => target?.closest?.('.main-menu-btn-disabled[data-tooltip]');
+  function hide() {
+    if (current) {
+      const ids = (current.getAttribute('aria-describedby') || '').split(/\s+/).filter(id=>id && id !== 'arg-menu-gate-tooltip');
+      if (ids.length) current.setAttribute('aria-describedby',ids.join(' ')); else current.removeAttribute('aria-describedby');
+    }
+    hint?.remove();hint=null;current=null;touchHint=false;
+  }
+  function show(button) {
+    if (!button?.isConnected || !button.dataset.tooltip || !button.classList.contains('main-menu-btn-disabled') || !menu.getClientRects().length) return hide();
+    if (button !== current) hide();
+    current = button;
+    if (!hint) {
+      hint=document.createElement('div');hint.id='arg-menu-gate-tooltip';hint.setAttribute('role','tooltip');document.body.append(hint);
+      const ids=(button.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);ids.push(hint.id);button.setAttribute('aria-describedby',ids.join(' '));
+    }
+    hint.textContent = button.dataset.tooltip;
+    const anchor=button.getBoundingClientRect(), width=document.documentElement.clientWidth, height=innerHeight;
+    if (anchor.bottom <= 0 || anchor.top >= height) return hide();
+    hint.style.maxWidth=Math.min(248,Math.max(112,anchor.width-8),width-16)+'px';
+    const box=hint.getBoundingClientRect(), edge=8;
+    hint.style.left=Math.max(edge,Math.min(anchor.left+anchor.width/2-box.width/2,width-box.width-edge))+'px';
+    const above=anchor.top-box.height-8;
+    hint.style.top=Math.max(edge,Math.min(above>=edge?above:anchor.bottom+8,height-box.height-edge))+'px';
+  }
+  menu.addEventListener('pointerover',event=>{const button=gate(event.target);if(button)show(button);},{signal});
+  menu.addEventListener('pointerdown',event=>{const button=gate(event.target);if(button){show(button);touchHint=event.pointerType==='touch';}},{signal});
+  menu.addEventListener('focusin',event=>{const button=gate(event.target);if(button)show(button);},{signal});
+  menu.addEventListener('pointerout',event=>{if(event.pointerType!=='touch' && current?.contains(event.target) && !current.contains(event.relatedTarget))hide();},{signal});
+  menu.addEventListener('focusout',event=>{if(!touchHint && current?.contains(event.target) && !current.contains(event.relatedTarget))hide();},{signal});
+  document.addEventListener('pointerdown',event=>{if(current && !current.contains(event.target))hide();},{signal});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')hide();},{signal});
+  window.addEventListener('resize',()=>{if(current)show(current);},{signal,passive:true});
+  document.addEventListener('scroll',hide,{signal,capture:true,passive:true});
+  const observer=new MutationObserver(()=>{if(current)show(current);});
+  observer.observe(menu,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','data-tooltip']});
+  return ()=>{hide();observer.disconnect();controller.abort();};
 }

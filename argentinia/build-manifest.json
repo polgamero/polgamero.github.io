@@ -5,7 +5,7 @@
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "8acb65e82902f015de20",
+  "buildId": "e69a87d2daa7ba74f097",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -27,6 +27,8 @@
     "./assets/images/logros/soloWins_silver.png",
     "./assets/images/menu/chevron-down.png",
     "./assets/images/menu/chevron-up.png",
+    "./assets/images/menu/city-distant-mobile.webp",
+    "./assets/images/menu/city-distant.webp",
     "./assets/images/menu/city.webp",
     "./assets/images/menu/frame.webp",
     "./assets/images/menu/icons.webp",
@@ -222,6 +224,8 @@
     "assets/images/ui/esencia.png": "85885027c9d6e6078fd50d080c72095df8c5297a980797cdc1b4e2fd02a7b732",
     "assets/images/ui/ficha.png": "a76fa2f11f18558d1cfa316f324be0617c4629dfe723cb6a82b636d924567b84",
     "assets/images/ui/logo.png": "d24169b6d4596feb17963c31208987acde3196ca3f6ceb21d66ad0dc9f80bf6b",
-    "assets/images/ui/moneda.png": "396b4e42db403a0f19f51683c2b8ed85f03e807a327be262d5b147e375339eb4"
+    "assets/images/ui/moneda.png": "396b4e42db403a0f19f51683c2b8ed85f03e807a327be262d5b147e375339eb4",
+    "assets/images/menu/city-distant.webp": "56b9df5540ce429f5e3677ddd8b58c6b656c23316fd8cbf997caf2f4176d46d7",
+    "assets/images/menu/city-distant-mobile.webp": "f00b0956e44c70ee0c2261f68fd400c5235ae44140af29b7ff47ce75e72da4ea"
   }
 }
