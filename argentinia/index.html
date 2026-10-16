@@ -40,7 +40,7 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = '31242b2e569d0626254a';
+      const BUILD_ID = '8acb65e82902f015de20';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -86,9 +86,12 @@
                 './js/gameTexts.js','./js/rankingUI.js',
                 './js/soloPriorityShortcuts.js','./js/priorityIntelligence.js','./js/priorityUX.js',
                 './js/priorityStops.js','./js/priorityLegalActions.js',
-                './js/main.js','./js/bot.js','./js/menuPresentation.js','./css/style.css','./css/mobile.css','./css/menu.css',
+                './js/main.js','./js/bot.js','./js/menuPresentation.js','./js/menuNavigation.js','./js/newsPanel.js','./js/publicProfileUI.js','./css/menuNavigation.css','./css/style.css','./css/mobile.css','./css/menu.css',
                 './assets/images/menu/city.webp','./assets/images/menu/icons.webp',
                 './assets/images/menu/frame.webp','./assets/images/menu/tano.webp',
+                './assets/images/menu/tournament.webp','./assets/images/menu/multiplayer.webp','./assets/images/menu/utilities.png',
+                './assets/images/menu/chevron-up.png','./assets/images/menu/chevron-down.png',
+                './assets/images/ui/logo.png','./assets/images/ui/moneda.png','./assets/images/ui/ficha.png','./assets/images/ui/esencia.png',
                 './assets/fonts/menu/Cinzel.ttf','./assets/fonts/menu/AlegreyaSans-Regular.ttf','./assets/fonts/menu/AlegreyaSans-Bold.ttf'
               ]);
               try { sessionStorage.setItem(criticalKey,'yes'); } catch {}
@@ -121,6 +124,7 @@
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/mobile.css">
   <link rel="stylesheet" href="./css/menu.css">
+  <link rel="stylesheet" href="./css/menuNavigation.css">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }

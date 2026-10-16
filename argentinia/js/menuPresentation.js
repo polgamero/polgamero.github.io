@@ -1,8 +1,12 @@
+import { installMenuNavigation } from './menuNavigation.js';
 // Menu-only presentation. No rules, economy actions, Auth or network access.
 const ICONS = ['play','tournament','multiplayer','decks','chest','workshop','encyclopedia','store','market','ranking','daily','sanctuary','achievements','support','options','more'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const newsCaption = value => String(value ?? '').replace(/^[\p{Extended_Pictographic}\uFE0F\s]+/u,'');
 
 export function menuIcon(name) {
+  const utility = ['today','news','achievements'].indexOf(name);
+  if (utility >= 0) return `<span class="arg-menu-icon arg-menu-utility-icon" aria-hidden="true" style="--utility-x:${utility * 50}%"></span>`;
   const index = Math.max(0, ICONS.indexOf(name));
   return `<span class="arg-menu-icon" aria-hidden="true" style="--icon-x:${(index % 4) * 100 / 3}%;--icon-y:${Math.floor(index / 4) * 100 / 7}%;--icon-mobile-y:${(Math.floor(index / 4) + 4) * 100 / 7}%"></span>`;
 }
@@ -12,8 +16,9 @@ function button(id, icon, label, key = '', extra = '') {
 }
 
 export function mainMenuMarkup(t) {
-  const mode = (id, icon, key, subtitle, primary = false) => `<button type="button" id="${id}" class="arg-menu-mode arg-menu-frame${primary ? ' arg-menu-primary' : ''}">${menuIcon(icon)}<span class="arg-menu-mode-copy"><span data-menu-label data-menu-text="${key}">${escape(t(key))}</span><span class="arg-menu-subtitle" data-menu-text="${subtitle}">${escape(t(subtitle))}</span></span>${primary ? '<img class="arg-menu-tano" src="./assets/images/menu/tano.webp" alt="" aria-hidden="true">' : ''}</button>`;
+  const mode = (id, icon, key, subtitle, primary = false) => `<button type="button" id="${id}" class="arg-menu-mode arg-menu-frame${primary ? ' arg-menu-primary' : ''}">${menuIcon(icon)}<span class="arg-menu-mode-copy"><span data-menu-label data-menu-text="${key}">${escape(t(key))}</span><span class="arg-menu-subtitle" data-menu-text="${subtitle}">${escape(t(subtitle))}</span></span><img class="arg-menu-mode-art${primary ? ' arg-menu-tano' : ''}" src="./assets/images/menu/${primary ? 'tano' : icon}.webp" alt="" aria-hidden="true"></button>`;
   return `
+    <div id="arg-menu-utility-slot" class="arg-menu-utility-slot"></div>
     <header class="arg-menu-header">
       <div id="main-menu-account" class="arg-menu-account"></div>
       <div class="arg-menu-brand" aria-label="Argentinia — Magia y leyenda">
@@ -30,8 +35,8 @@ export function mainMenuMarkup(t) {
         
       </section>
       <aside class="arg-menu-aside">
-        <section class="arg-menu-panel arg-menu-frame arg-menu-today"><button type="button" id="menu-today-toggle" class="arg-menu-panel-toggle" aria-expanded="false" aria-controls="arg-menu-today-content">${menuIcon('daily')}<span data-menu-text="menu.redesign.today">${escape(t('menu.redesign.today'))}</span><span class="arg-menu-today-notice" role="img" aria-label="${escape(t('menu.redesign.ready'))}">!</span><span class="arg-menu-chevron" aria-hidden="true">⌄</span></button><div id="arg-menu-today-content" hidden><div id="arg-menu-today-actions"></div><div id="main-menu-active-events" class="arg-menu-events"></div></div></section>
-        <section class="arg-menu-panel arg-menu-frame" id="main-menu-news"><button type="button" id="menu-news-toggle" class="arg-menu-panel-toggle" aria-expanded="false" aria-controls="main-menu-news-list"><span class="arg-menu-news-symbol" aria-hidden="true">▤</span><span class="main-menu-news-title" data-menu-text="menu.news.title">${escape(t('menu.news.title'))}</span><span class="arg-menu-chevron" aria-hidden="true">⌄</span></button><div id="main-menu-news-list" class="arg-menu-news-list" hidden><div class="main-menu-news-empty">${escape(t('menu.news.loading'))}</div></div></section>
+        <section class="arg-menu-panel arg-menu-frame arg-menu-today"><button type="button" id="menu-today-toggle" class="arg-menu-panel-toggle" aria-expanded="false" aria-controls="arg-menu-today-content">${menuIcon('today')}<span data-menu-text="menu.redesign.today">${escape(t('menu.redesign.today'))}</span><span class="arg-menu-today-notice" role="img" aria-label="${escape(t('menu.redesign.ready'))}">!</span><span class="arg-menu-chevron" aria-hidden="true"></span></button><div id="arg-menu-today-content" hidden><div id="arg-menu-today-actions"></div><div id="main-menu-active-events" class="arg-menu-events"></div></div></section>
+        <section class="arg-menu-panel arg-menu-frame" id="main-menu-news"><button type="button" id="menu-news-toggle" class="arg-menu-panel-toggle" aria-expanded="false" aria-controls="main-menu-news-list">${menuIcon('news')}<span class="main-menu-news-title" data-menu-text="menu.news.title">${escape(newsCaption(t('menu.news.title')))}</span><span class="arg-menu-chevron" aria-hidden="true"></span></button><div id="main-menu-news-list" class="arg-menu-news-list" hidden><div class="main-menu-news-empty">${escape(t('menu.news.loading'))}</div></div></section>
         ${button('menu-how-to-play','more',t('manual.menu.link'),'manual.menu.link')}
       </aside>
     </main>
@@ -40,8 +45,8 @@ export function mainMenuMarkup(t) {
       <div id="arg-menu-chest-slot" class="arg-menu-place-slot"></div><div id="arg-menu-workshop-slot" class="arg-menu-place-slot"></div>
       ${button('menu-encyclopedia','encyclopedia',t('menu.encyclopedia'),'menu.encyclopedia')}
       <div id="arg-menu-extra-places" class="arg-menu-extra-places" tabindex="-1" aria-label="${escape(t('menu.redesign.morePlaces'))}">
-        <button type="button" id="menu-close-places" class="arg-menu-close" aria-label="${escape(t('common.close'))}">×</button>
         ${button('menu-store','store',t('menu.store'),'menu.store')}${button('menu-trade-market','market',t('menu.tradeMarket'),'menu.tradeMarket')}${button('menu-ranking','ranking',t('menu.ranking'),'menu.ranking')}
+        <button type="button" id="menu-close-places" class="arg-menu-close" aria-label="${escape(t('common.close'))}">×</button>
       </div>
       ${button('menu-more-places','more',t('menu.redesign.morePlaces'),'menu.redesign.morePlaces','aria-expanded="false" aria-controls="arg-menu-extra-places"')}
     </nav>
@@ -84,9 +89,9 @@ export function presentMenuAccount(container, user, { profile, name, admin, t, d
       const labels = [t('menu.redesign.points'),t('menu.redesign.tokens'),t('menu.redesign.essence')];
       [...wallet.children].forEach((item,i) => {
         item.className = 'arg-menu-resource';
-        // Independent shapes remain readable if original coin textures are absent.
+        // Preserve the official currency artwork and authoritative amounts.
         const amount = item.querySelector('strong')?.textContent || '0';
-        item.innerHTML = `<span class="arg-menu-resource-symbol resource-${i}" aria-hidden="true">${['✹','⬡','◆'][i]}</span><span><strong>${escape(amount)}</strong><span class="arg-menu-resource-label">${escape(labels[i])}</span></span>`;
+        item.innerHTML = `<img class="arg-menu-resource-icon" src="./assets/images/ui/${['moneda','ficha','esencia'][i]}.png" alt="" aria-hidden="true"><span><strong>${escape(amount)}</strong><span class="arg-menu-resource-label">${escape(labels[i])}</span></span>`;
         item.setAttribute('aria-label', `${labels[i]}: ${amount}`);
       });
       port('arg-menu-wallet-slot').append(wallet);
@@ -112,12 +117,17 @@ export function presentMenuAccount(container, user, { profile, name, admin, t, d
         profileButton.querySelector('.arg-menu-avatar').append(image);
       }
     }
-    const details = document.createElement('details');details.className = 'arg-menu-account-details';details.open = container.__accountExpanded;
-    details.innerHTML = `<summary>${escape(t('menu.redesign.account'))}<span aria-hidden="true">⌄</span></summary><div class="arg-menu-account-popover arg-menu-frame"></div>`;
-    const actions = details.querySelector('div');
-    if (admin && adminButton) {adminButton.className = 'arg-menu-account-action';actions.append(adminButton);}
-    if (logout) {logout.className = 'arg-menu-account-action';actions.append(logout);}
-    container.replaceChildren(...[profileButton,details].filter(Boolean));
+    if (admin && adminButton) {
+      const details = document.createElement('details');details.className = 'arg-menu-account-details';details.open = container.__accountExpanded;
+      details.innerHTML = `<summary>${escape(t('menu.redesign.account'))}<span class="arg-menu-chevron" aria-hidden="true"></span></summary><div class="arg-menu-account-popover arg-menu-frame"></div>`;
+      const actions = details.querySelector('div');
+      adminButton.className = 'arg-menu-account-action';actions.append(adminButton);
+      if (logout) {logout.className = 'arg-menu-account-action';actions.append(logout);}
+      container.replaceChildren(...[profileButton,details].filter(Boolean));
+    } else {
+      if (logout) {logout.className = 'arg-menu-account-action arg-menu-logout-direct';logout.title = t('account.logout');}
+      container.replaceChildren(...[profileButton,logout].filter(Boolean));
+    }
   } else {
     const guest = document.createElement('div');guest.className = 'arg-menu-guest';
     guest.textContent = t('menu.redesign.guest');container.prepend(guest);
@@ -127,7 +137,7 @@ export function presentMenuAccount(container, user, { profile, name, admin, t, d
       el.addEventListener('click',()=>container.querySelector('#menu-login')?.focus());port(slot).append(el);
     }
     const help = document.createElement('button');help.id = 'menu-moderation';help.type = 'button';dressButton(help,'support',t('menu.redesign.support'));
-    help.addEventListener('click',()=>{port('arg-menu-today-content').hidden=false;port('menu-today-toggle').setAttribute('aria-expanded','true');container.querySelector('#menu-login')?.focus();});
+    help.addEventListener('click',()=>{menu.__setMenuPanel?.('menu-today-toggle',true);container.querySelector('#menu-login')?.focus();});
     port('arg-menu-support-slot').append(help);
     const note = document.createElement('p');note.className = 'arg-menu-login-note';note.textContent = t('menu.redesign.loginActivities');port('arg-menu-today-actions').append(note);
   }
@@ -136,10 +146,11 @@ export function presentMenuAccount(container, user, { profile, name, admin, t, d
 }
 
 export function refreshMenuCopy(menu, t) {
-  menu.querySelectorAll('[data-menu-text]').forEach(el => {el.textContent = t(el.dataset.menuText);});
+  menu.querySelectorAll('[data-menu-text]').forEach(el => {const value=t(el.dataset.menuText);el.textContent = el.dataset.menuText === 'menu.news.title' ? newsCaption(value) : value;});
 }
 
 export function bindMenuPresentation(menu) {
+  installMenuNavigation();
   const compact = matchMedia('(max-width: 1050px), (max-height: 600px)');
   const more = menu.querySelector('#menu-more-places'), tray = menu.querySelector('#arg-menu-extra-places'), backdrop = menu.querySelector('#menu-places-backdrop');
   function closePlaces(restore = true) {
@@ -152,13 +163,25 @@ export function bindMenuPresentation(menu) {
     tray.querySelector('button')?.focus({preventScroll:true});
   });
   backdrop.addEventListener('click',()=>closePlaces());menu.querySelector('#menu-close-places').addEventListener('click',()=>closePlaces());
-  for (const id of ['menu-today-toggle','menu-news-toggle']) {
-    const toggle = menu.querySelector('#'+id), content = menu.querySelector('#'+toggle.getAttribute('aria-controls'));
-    let stored = null;try {stored = localStorage.getItem('argentinia:menu-v2:'+id);}catch{}
-    const expanded = stored === 'open' || (stored === null && id === 'menu-today-toggle' && !compact.matches);
-    content.hidden = !expanded;toggle.setAttribute('aria-expanded',String(expanded));
-    toggle.addEventListener('click',()=>{const open = toggle.getAttribute('aria-expanded') !== 'true';toggle.setAttribute('aria-expanded',String(open));content.hidden=!open;try{localStorage.setItem('argentinia:menu-v2:'+id,open?'open':'closed');}catch{}});
+  const panelIds = ['menu-today-toggle','menu-news-toggle'];
+  function setPanel(id, open, persist = true) {
+    for (const panelId of panelIds) {
+      const toggle = menu.querySelector('#'+panelId);
+      const content = menu.querySelector('#'+toggle.getAttribute('aria-controls'));
+      const expanded = panelId === id ? open : (open ? false : toggle.getAttribute('aria-expanded') === 'true');
+      toggle.setAttribute('aria-expanded',String(expanded));content.hidden = !expanded;
+      if (persist) try {localStorage.setItem('argentinia:menu-v2:'+panelId,expanded?'open':'closed');}catch{}
+    }
   }
+  menu.__setMenuPanel = setPanel;
+  let initialPanel = '';
+  for (const id of panelIds) {
+    const toggle = menu.querySelector('#'+id);
+    let stored = null;try {stored = localStorage.getItem('argentinia:menu-v2:'+id);}catch{}
+    if (stored === 'open' || (stored === null && id === 'menu-today-toggle' && !compact.matches)) initialPanel = id;
+    toggle.addEventListener('click',()=>setPanel(id,toggle.getAttribute('aria-expanded') !== 'true'));
+  }
+  if (initialPanel) setPanel(initialPanel,true,false);
   // Keep the original callbacks. Close only the presentation tray before a destination opens.
   menu.addEventListener('click',event=>{
     const button = event.target.closest('button');

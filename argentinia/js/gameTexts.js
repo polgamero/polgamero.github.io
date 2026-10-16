@@ -523,7 +523,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'menu.encyclopedia': definition('Menú', 'Enciclopedia', 'Botón de acceso a la colección/enciclopedia.'),
   'menu.store': definition('Menú', 'Tienda', 'Botón de acceso a la Tienda.'),
   'menu.options': definition('Menú', 'Opciones', 'Botón de acceso a Opciones.'),
-  'menu.news.title': definition('Menú', '📰 Noticias', 'Título del panel de noticias.'),
+  'menu.news.title': definition('Menú', 'Noticias', 'Título del panel de noticias.'),
   'menu.news.loading': definition('Menú', 'Cargando…', 'Estado inicial del panel de noticias.'),
   'menu.news.empty': definition('Menú', 'Sin noticias por ahora.', 'Mensaje cuando no hay anuncios publicados.'),
   'menu.news.error': definition('Menú', 'No se pudieron cargar las noticias.', 'Mensaje cuando falla la carga de noticias.'),

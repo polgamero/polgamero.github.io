@@ -8,6 +8,8 @@ const AUTO_COLLAPSE_MS = 5000;
 
 function bindNewsPanel(panel) {
   if (!panel || panel.hasAttribute(BOUND_ATTR)) return false;
+  // The new native button owns the whole banner, keyboard and accordion state.
+  if (panel.closest('.arg-menu-v2')) return true;
   panel.setAttribute(BOUND_ATTR, '1');
   const title = panel.querySelector('.main-menu-news-title');
   if (!title) return false;

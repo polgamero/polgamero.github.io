@@ -1,0 +1,41 @@
+/* Shared screen navigation, based on Global Ranking. Original button callbacks survive. */
+html body :is(#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay).arg-screen-shell{
+  padding:24px 30px!important;box-sizing:border-box;
+}
+.arg-screen-navigation{position:relative;display:flex;align-items:flex-start;gap:12px;flex:0 0 auto;min-height:44px;margin:0 0 16px;width:100%;z-index:100;pointer-events:none}
+.arg-screen-navigation>*{pointer-events:auto}
+html body .arg-screen-navigation>.arg-screen-back{
+  position:static!important;display:inline-flex!important;align-items:center;justify-content:center;
+  flex:0 0 112px!important;width:112px!important;min-width:112px!important;max-width:112px!important;
+  height:44px!important;min-height:44px!important;max-height:44px!important;margin:0!important;padding:8px 12px!important;
+  box-sizing:border-box!important;background:linear-gradient(180deg,rgba(18,25,15,.96),rgba(11,19,14,.98))!important;
+  border:2px solid #d4af37!important;border-radius:8px!important;color:#f0e0b0!important;
+  font:700 14px/1.1 ArgAlegreya,'Trebuchet MS',sans-serif!important;letter-spacing:normal!important;text-transform:none!important;white-space:nowrap!important;cursor:pointer;
+}
+.arg-screen-navigation>.arg-screen-back:focus-visible{outline:3px solid #a7e4ff;outline-offset:3px}
+html body #options-menu-overlay.arg-screen-shell{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;overflow:auto!important}
+#options-menu-overlay.arg-screen-shell>.options-menu-panel{align-self:center;margin:auto 0;flex-shrink:0}
+html body #deck-select-overlay.arg-screen-shell{flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;overflow:auto!important}
+#deck-select-overlay.arg-screen-shell>.deck-select-panel{flex-shrink:0;margin:auto 0;max-height:calc(100dvh - 112px)}
+/* These two illustrated screens have absolute topbars; reserve the navigation lane. */
+html body #workshop-overlay.arg-screen-shell .workshop-topbar,
+html body #sanctuary-overlay.arg-screen-shell .sanctuary-topbar{left:268px!important;right:30px!important;top:24px!important;min-height:44px}
+.arg-screen-navigation>#argentinia-telemetry-panel,.arg-menu-utility-slot>#argentinia-telemetry-panel{
+  position:static!important;inset:auto!important;transform:none!important;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px!important;padding:0!important;max-width:100%!important;background:transparent;box-shadow:none;
+}
+:is(.arg-screen-navigation,.arg-menu-utility-slot) #argentinia-telemetry-panel :is(#arg-mobile-telemetry-toggle,#arg-game-music-toggle){
+  width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;padding:0!important;border-radius:7px!important;
+}
+:is(.arg-screen-navigation,.arg-menu-utility-slot) #argentinia-telemetry-panel #arg-game-music-toggle{font-size:17px!important}
+:is(.arg-screen-navigation,.arg-menu-utility-slot) #argentinia-telemetry-panel #arg-mobile-telemetry-toggle::before{font-size:18px!important}
+.arg-screen-navigation>#argentinia-telemetry-panel{flex:0 1 auto;min-width:92px}
+.arg-menu-utility-slot>#argentinia-telemetry-panel.arg-mobile-telemetry-expanded{width:min(360px,70vw);padding:5px!important;background:#0b100ff5}
+@media(max-width:1050px),(max-height:600px){
+  html body :is(#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay).arg-screen-shell{
+    padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important;
+  }
+  .arg-screen-navigation{margin-bottom:10px;gap:10px}
+  html body #workshop-overlay.arg-screen-shell .workshop-topbar,
+  html body #sanctuary-overlay.arg-screen-shell .sanctuary-topbar{left:246px!important;right:max(12px,env(safe-area-inset-right))!important;top:max(12px,env(safe-area-inset-top))!important}
+  #deck-select-overlay.arg-screen-shell>.deck-select-panel{max-height:calc(100dvh - 84px)}
+}
