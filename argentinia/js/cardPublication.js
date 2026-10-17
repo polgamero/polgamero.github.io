@@ -5,6 +5,8 @@
 import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
 import { PUBLISHED_CARD_BASELINE_SET, PUBLISHED_CARD_BASELINE_VERSION } from './publishedCardBaseline.js';
 import { isDiscoveryCard, isDiscoveryCardId } from './discoveryCards.js';
+import { EVOLUTION_PATH_BY_BASE_ID, parseEvolutionVariantId } from './evolution.js';
+import { replaceCardSelfName } from './cardSelfReference.js';
 
 export const CARD_CATALOG_SCHEMA_VERSION = 1;
 export const CARD_CATALOG_DOCUMENT_ID = 'cardCatalog';
@@ -32,20 +34,45 @@ function cleanDisplayName(value) {
   if (name.length > 90) throw new Error('CARD_CATALOG_NAME_TOO_LONG');
   return name;
 }
-function normalizeOverride(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const out = {};
-  if (typeof value.enabled === 'boolean') out.enabled = value.enabled;
-  if (typeof value.name === 'string' && value.name.trim()) out.name = value.name.replace(/\s+/g,' ').trim().slice(0,90);
-  if(typeof value.flavorText==='string')out.flavorText=value.flavorText.replace(/\r\n?/g,'\n').trim().slice(0,CARD_FLAVOR_MAX_LENGTH);
-  return Object.keys(out).length ? Object.freeze(out) : null;
+function normalizeIdentity(value) {
+  if (!value || typeof value!=='object' || Array.isArray(value)) return {};
+  const out={};
+  if (typeof value.name==='string' && value.name.trim()) out.name=value.name.replace(/\s+/g,' ').trim().slice(0,90);
+  if (typeof value.flavorText==='string') out.flavorText=value.flavorText.replace(/\r\n?/g,'\n').trim().slice(0,CARD_FLAVOR_MAX_LENGTH);
+  return out;
+}
+function normalizeOverride(value, id) {
+  if (!value || typeof value!=='object' || Array.isArray(value)) return null;
+  const out=normalizeIdentity(value);
+  if (typeof value.enabled==='boolean') out.enabled=value.enabled;
+  const path=EVOLUTION_PATH_BY_BASE_ID.get(id), stages={};
+  if (path) for (const stage of [1,2]) {
+    const identity=normalizeIdentity(value.stages?.[stage]);
+    if (Object.keys(identity).length) stages[stage]=identity;
+  }
+  // Recover only an EXACT known evolution title misplaced by the old editor.
+  // Unknown custom names remain untouched; enabled/publication is never migrated.
+  const misplaced=value.identityVersion!==2 && path && [1,2].find(stage=>out.name===path.stages[stage].name);
+  if (misplaced) {
+    stages[misplaced]={name:out.name,...(typeof out.flavorText==='string'?{flavorText:out.flavorText}:{}),...stages[misplaced]};
+    delete out.name;
+  }
+  if (Object.keys(stages).length) out.stages=Object.freeze(Object.fromEntries(Object.entries(stages).map(([k,v])=>[k,Object.freeze(v)])));
+  if (misplaced || value.identityVersion===2) out.identityVersion=2;
+  return Object.keys(out).length?Object.freeze(out):null;
+}
+function identityTarget(cardOrId) {
+  const raw=String(typeof cardOrId==='object'?cardOrId?.evolutionBaseId||cardOrId?.id:cardOrId||'');
+  const parsed=parseEvolutionVariantId(raw);
+  const stage=Number(typeof cardOrId==='object'?cardOrId?.evolutionStage??parsed.stage:parsed.stage)||0;
+  return {id:parsed.baseId,stage:stage===1||stage===2?stage:0};
 }
 function normalizeDocument(doc) {
   const source = doc?.overrides && typeof doc.overrides === 'object' && !Array.isArray(doc.overrides) ? doc.overrides : {};
   const out = {};
   for (const [id,value] of Object.entries(source)) {
     if (!CARD_ID_RE.test(id)||isDiscoveryCardId(id)) continue;
-    const normalized = normalizeOverride(value);
+    const normalized = normalizeOverride(value,id);
     if (normalized) out[id] = normalized;
   }
   return Object.freeze(out);
@@ -65,21 +92,24 @@ loadCache();
 
 export function isHistoricalPublishedCardId(cardId) { return PUBLISHED_CARD_BASELINE_SET.has(String(cardId || '')); }
 export function getCardPublicationState(cardOrId) {
-  const id = String(typeof cardOrId === 'object' ? cardOrId?.id : cardOrId || '');
+  const {id,stage}=identityTarget(cardOrId);
   const override = overrides[id] || null;
+  const identity=stage?override?.stages?.[stage]:override;
   return Object.freeze({
     id,
     enabled: typeof override?.enabled === 'boolean' ? override.enabled : isHistoricalPublishedCardId(id),
-    nameOverride: override?.name || null,
-    flavorTextOverride: typeof override?.flavorText==='string'?override.flavorText:null,
+    nameOverride: identity?.name || null,
+    flavorTextOverride: typeof identity?.flavorText==='string'?identity.flavorText:null,
+    stages: override?.stages || Object.freeze({}),
     historicalBaseline: isHistoricalPublishedCardId(id),
     explicitEnabledOverride: typeof override?.enabled === 'boolean'
   });
 }
 function replaceOwnName(value, oldName, newName, key='') {
+  if (['canonicalName','canonicalBaseName','canonicalText','canonicalFlavorText','publication'].includes(key)) return value;
   if (typeof value === 'string') {
-    if (!oldName || oldName === newName || ['id','image','backImage','audio','filename'].includes(key)) return value;
-    return value.split(oldName).join(newName);
+    if (!oldName || oldName === newName || ['id','image','backImage','audio','filename','canonicalName','canonicalText','canonicalFlavorText','publication'].includes(key)) return value;
+    return replaceCardSelfName(value,oldName,newName);
   }
   if (Array.isArray(value)) return value.map(v => replaceOwnName(v,oldName,newName,key));
   if (value && typeof value === 'object') {
@@ -99,6 +129,10 @@ export function applyCardCatalogToCard(rawCard) {
   const effective = replaceOwnName(rawCard, canonicalName, displayName);
   effective.name = displayName;
   effective.canonicalName = canonicalName;
+  if(typeof rawCard.canonicalText==='string'||typeof rawCard.text==='string'){
+    effective.canonicalText=String(rawCard.canonicalText??rawCard.text);
+    effective.text=replaceCardSelfName(effective.canonicalText,canonicalName,displayName);
+  }
   effective.canonicalFlavorText=canonicalFlavorText;
   if(!privateDiscovery&&state.flavorTextOverride!==null)effective.flavorText=state.flavorTextOverride;
   effective.enabled = state.enabled;
@@ -139,13 +173,16 @@ function assertUniqueDisplayName(cardId, desiredName, allCards=[]) {
   }
 }
 export async function saveCardCatalogOverride(card, changes={}, {allCards=[]}={}) {
-  const id = String(card?.id || card || '').trim();
+  const {id,stage}=identityTarget(card);
   if (isDiscoveryCardId(id)||(typeof card === 'object' && isDiscoveryCard(card))) throw new Error('DISCOVERY_PUBLICATION_SERVER_ONLY');
   if (!CARD_ID_RE.test(id)) throw new Error('CARD_CATALOG_INVALID_CARD_ID');
   let base;
   try { base = normalizeDocument(await loadPublicGameConfigDocument(CARD_CATALOG_DOCUMENT_ID)); }
   catch (error) { throw new Error(`CARD_CATALOG_REFRESH_BEFORE_SAVE_FAILED:${error?.message || error}`); }
+  if(stage&&!EVOLUTION_PATH_BY_BASE_ID.has(id))throw new Error('CARD_CATALOG_INVALID_EVOLUTION');
   const current = {...(base[id] || {})};
+  const stages={...(current.stages||{})};
+  const identity=stage?{...(stages[stage]||{})}:current;
   if (Object.hasOwn(changes,'enabled')) {
     const desired = !!changes.enabled;
     // Sparse default: baseline=true, future=false. Remove redundant override.
@@ -155,17 +192,22 @@ export async function saveCardCatalogOverride(card, changes={}, {allCards=[]}={}
     const canonical = String(card?.canonicalName || card?.name || '').trim();
     const desired = cleanDisplayName(changes.name);
     assertUniqueDisplayName(id,desired,allCards);
-    if (normalizeName(desired) === normalizeName(canonical) && desired === canonical) delete current.name; else current.name = desired;
+    if (normalizeName(desired) === normalizeName(canonical) && desired === canonical) delete identity.name; else identity.name = desired;
   }
   if(Object.hasOwn(changes,'flavorText')){
     const canonical=String(card?.canonicalFlavorText??card?.flavorText??'').replace(/\r\n?/g,'\n').trim();
     const desired=cleanCardFlavorText(changes.flavorText);
-    if(desired===canonical)delete current.flavorText;else current.flavorText=desired;
+    if(desired===canonical)delete identity.flavorText;else identity.flavorText=desired;
+  }
+  if(stage){
+    if(Object.keys(identity).length)stages[stage]=identity;else delete stages[stage];
+    if(Object.keys(stages).length)current.stages=stages;else delete current.stages;
   }
   const next = {...base};
+  if (Object.keys(current).length) current.identityVersion=2;
   if (Object.keys(current).length) next[id] = current; else delete next[id];
   await saveAdminGameConfigDocument(CARD_CATALOG_DOCUMENT_ID, {schemaVersion:CARD_CATALOG_SCHEMA_VERSION,baselineVersion:PUBLISHED_CARD_BASELINE_VERSION,overrides:next});
-  overrides = Object.freeze(Object.fromEntries(Object.entries(next).map(([k,v])=>[k,Object.freeze({...v})])));
+  overrides = normalizeDocument({overrides:next});
   loaded = true; saveCache(); notify();
-  return getCardPublicationState(id);
+  return getCardPublicationState(card);
 }

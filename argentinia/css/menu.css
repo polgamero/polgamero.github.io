@@ -233,3 +233,16 @@ html.argentinia-mobile #options-menu-overlay{background-image:linear-gradient(18
   html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-resource strong{font-size:10px}
   html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-wallet{gap:3px;padding:3px}
 }
+
+/* Third device-smoke iteration. 1.12 × cover, keeping the panorama undistorted. */
+html.argentinia-mobile #main-menu-overlay.arg-menu-v2{background-size:max(112vw,199.1dvh) auto}
+html.argentinia-mobile #options-menu-overlay{background-size:max(112vw,199.1dvh) auto!important}
+/* Seven responsive columns: larger circles where space exists, never a fixed-width track. */
+html.argentinia-mobile #daily-rewards-overlay .daily-rewards-scroll{min-width:0;max-width:100%;overflow-x:hidden}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-track{box-sizing:border-box;min-width:0!important;width:100%!important;max-width:100%;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:clamp(3px,.6vw,6px)!important;padding:4px 2px 7px!important}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-day{min-width:0;max-width:100%}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-circle{box-sizing:border-box;width:min(92px,100%)!important;height:auto!important;aspect-ratio:1;margin-inline:auto}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-icons{min-width:0;min-height:31px!important;max-width:90%!important}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-icon{max-width:100%;object-fit:contain}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-day .reward-action-btn{box-sizing:border-box;min-width:0;max-width:100%;width:100%;padding:7px 2px;font-size:10px;white-space:normal;overflow-wrap:anywhere}
+html.argentinia-mobile #daily-rewards-overlay .daily-reward-status{max-width:100%;overflow-wrap:anywhere}

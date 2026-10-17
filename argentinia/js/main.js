@@ -13,7 +13,6 @@ import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
 import { RELEASE_DISPLAY_VERSION, ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
-import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 import { isUsernameConfigured } from './usernames.js';
@@ -129,7 +128,12 @@ function injectGlobalChallengeStyles() {
   style.textContent=`
     .global-challenge-layer{position:fixed;inset:0;z-index:20020;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,7,4,.72);backdrop-filter:blur(2px)}
     .global-challenge-card{width:min(430px,92vw);box-sizing:border-box;background:linear-gradient(180deg,#17231a,#0d160f);border:2px solid rgba(212,175,55,.72);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.68);padding:24px;text-align:center;color:#f0e0b0}
-    .global-challenge-kicker{color:#8fd7a0;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}.global-challenge-title{font-size:21px;font-weight:900;line-height:1.25;margin-bottom:8px}.global-challenge-copy{color:#aebfb3;font-size:12px;line-height:1.45}.global-challenge-countdown{margin:16px auto;width:66px;height:66px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff0b7;font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;background:rgba(212,175,55,.06)}.global-challenge-actions{display:flex;justify-content:center;gap:10px}.global-challenge-actions button{min-width:122px}
+    .global-challenge-kicker{color:#8fd7a0;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}.global-challenge-title{font-size:21px;font-weight:900;line-height:1.25;margin-bottom:8px}.global-challenge-copy{color:#aebfb3;font-size:12px;line-height:1.45}.global-challenge-countdown{margin:16px auto;width:66px;height:66px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff0b7;font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;background:rgba(212,175,55,.06)}.global-challenge-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+    .global-challenge-actions button{appearance:none;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:122px;min-height:44px;width:auto;margin:0;padding:10px 18px;border:2px solid #cba743;border-radius:9px;background:linear-gradient(180deg,#28301c,#121d14);color:#fff0c5;font:700 14px/1.2 system-ui;letter-spacing:normal;text-transform:none;text-decoration:none;cursor:pointer;transition:background .15s,border-color .15s}
+    .global-challenge-actions #global-challenge-accept{background:linear-gradient(180deg,#e8ca6a,#b99030);color:#172014}
+    .global-challenge-actions button:hover:not(:disabled){border-color:#ffe49a;filter:brightness(1.1)}
+    .global-challenge-actions button:focus-visible{outline:3px solid #fff0b7;outline-offset:3px}
+    .global-challenge-actions button:disabled{opacity:.6;cursor:wait}
     .global-challenge-toast{position:fixed;right:18px;top:18px;z-index:20030;max-width:min(420px,76vw);padding:10px 13px;border-radius:9px;border:1px solid rgba(212,175,55,.44);background:rgba(12,20,14,.98);color:#dce8df;box-shadow:0 10px 28px rgba(0,0,0,.42);font:600 12px/1.35 system-ui}.global-challenge-toast.error{border-color:rgba(216,91,77,.55);color:#ffc0b8}
     @media(max-width:700px){.global-challenge-card{padding:16px}.global-challenge-countdown{width:54px;height:54px;font-size:22px;margin:10px auto}.global-challenge-actions{gap:7px}.global-challenge-actions button{min-width:100px}}
   `; document.head.appendChild(style);
@@ -231,6 +235,19 @@ function launchAcceptedChallengeMatch(code){
   globalAcceptedMatchStop=listenToMatch(normalized,data=>{
     if(!data?.hostUid||!data?.guestUid||data.status!=='active')return;
     const me=String(state.currentUser?.uid||''); const myRole=data.hostUid===me?'host':data.guestUid===me?'guest':''; if(!myRole)return;
+    // Refuse incompatible server-created rooms BEFORE opening the deck picker.
+    // Never rewrite remote protocol/session fields to make an incompatible room look valid.
+    if (!isExactMultiplayerVersionCompatible(data.engineVersion, data.engineProtocolVersion)) {
+      if(globalAcceptedMatchStop){try{globalAcceptedMatchStop();}catch{} globalAcceptedMatchStop=null;}
+      globalAcceptedChallengeCode='';
+      setPlayerPresenceActivity('menu',{availability:'available'});
+      console.error('MULTIPLAYER_ENGINE_MISMATCH', {
+        expectedVersion:ENGINE_VERSION, expectedProtocol:ENGINE_PROTOCOL_VERSION,
+        actualVersion:data.engineVersion || null, actualProtocol:data.engineProtocolVersion || null
+      });
+      globalChallengeToast('La partida fue creada con una versión incompatible del servidor. No se puede iniciar; contactá a Soporte.',true);
+      return;
+    }
     const rivalUid=myRole==='host'?data.guestUid:data.hostUid; const rival=data.players?.[rivalUid]||{};
     if(globalAcceptedMatchStop){try{globalAcceptedMatchStop();}catch{} globalAcceptedMatchStop=null;}
     document.querySelectorAll('#main-menu-overlay,#options-menu-overlay,#multiplayer-overlay,#mydecks-overlay,#encyclopedia-overlay,#store-overlay,#ranking-overlay,#trade-market-overlay,#tournament-overlay,#game-manual-overlay').forEach(el=>el.remove());
@@ -2447,8 +2464,7 @@ async function startTournamentFlow() {
 // así que cada cliente arma el suyo de forma totalmente independiente.
 function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', startingRole = 'host') {
   setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
-  // Multiplayer normal sigue sin mazos random. 23.8.1 agrega una ÚNICA excepción de QA:
-  // "Mazo de pruebas", determinista y no persistente, visible al pie del picker.
+  // Multiplayer only admits owned saved decks, independently attested by the server.
   const launch = (deckSource) => {
     void startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL, startingRole).catch(error => {
       hideMatchInitializationOverlay();
@@ -2459,8 +2475,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
   showPlayDeckPickerModal(
     (chosenDeck) => launch({ type: 'saved', deck: chosenDeck }),
     null,
-    () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow),
-    () => launch({ type: 'test' })
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow)
   );
 }
 
@@ -2470,6 +2485,10 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+  // Reject unsupported sources before changing presence, audio, overlays or game state.
+  if (deckSource?.type !== 'saved' || !deckSource.deck?.id || !Array.isArray(deckSource.deck.cardIds)) {
+    throw new Error('Multijugador sólo admite mazos propios guardados.');
+  }
   setPlayerPresenceActivity('multiplayer', { availability:'busy' });
   showMatchInitializationOverlay();
   // Multiplayer must never accept the reproducibility URL seed: allowing a player to
@@ -2487,11 +2506,6 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
 
   if (state.currentMatch?.engineVersion && !isExactMultiplayerVersionCompatible(state.currentMatch.engineVersion, state.currentMatch.engineProtocolVersion)) {
     throw new Error(`No se puede iniciar multiplayer con builds distintas (${ENGINE_VERSION} vs ${state.currentMatch.engineVersion}).`);
-  }
-  const isSavedDeck = deckSource?.type === 'saved' && !!deckSource.deck;
-  const isTestDeck = deckSource?.type === 'test';
-  if (!isSavedDeck && !isTestDeck) {
-    throw new Error('Multijugador sólo admite mazos propios guardados o el Mazo de pruebas de QA.');
   }
 
   resetGameplayStateForNewMatch();
@@ -2512,10 +2526,8 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
   hideMultiplayerSyncBarrier();
   lastAppliedWriterSeq.clear();
 
-  const deckLabel = isTestDeck ? MULTIPLAYER_TEST_DECK_NAME : deckSource.deck.name;
-  state.localDeck = isTestDeck
-    ? buildMultiplayerTestDeck()
-    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
+  const deckLabel = deckSource.deck.name;
+  state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).
@@ -2586,7 +2598,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
     }
     // Stage40: the server re-reads the saved deck and current ownership before PvP ready.
     // No raw cards/hand or user-crafted premium counts are sent to the callable.
-    const attested = await attestMultiplayerDeck(matchId, isSavedDeck ? String(deckSource.deck.id || '') : '', isTestDeck ? 'test' : 'saved');
+    const attested = await attestMultiplayerDeck(matchId, String(deckSource.deck.id), 'saved');
     if (!attested?.ok || attested.cardCount !== 60) {
       throw new Error('MULTIPLAYER_DECK_ADMISSION_DENIED');
     }

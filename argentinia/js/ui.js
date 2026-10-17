@@ -5574,7 +5574,7 @@ export function showStoreScreen(onBack, options = {}) {
             <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
           </div>
           <div class="chest-item store-market-item store-prebuilt-entry">
-            <div class="chest-item-content"><div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
+            <div class="chest-item-content"><div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement?.classList.add('image-missing');this.remove()"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.prebuilt.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.prebuilt.showcaseCount')}</div>
             <div class="chest-item-desc">${gameTextHtml('store.prebuilt.description')}</div></div>
@@ -9483,7 +9483,7 @@ function showMatchLoadingBeforeGameplayCommit() {
   try { globalThis.__ARGENTINIA_SHOW_MATCH_LOADING__?.(); } catch {}
 }
 
-export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, onPlayTestDeck = null) {
+export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
   injectMyDecksStyles();
   injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
@@ -9510,11 +9510,6 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
       ${onPlayRandom ? `
       <div style="text-align:center; margin-top: 24px;">
         <button class="store-back-link" id="playpicker-random">🎲 Jugar con un mazo random en cambio</button>
-      </div>
-      ` : ''}
-      ${onPlayTestDeck ? `
-      <div style="text-align:center; margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(212,175,55,.25);">
-        <button class="store-back-link" id="playpicker-testdeck" style="color:var(--gold, #d4af37); font-weight:700;">Usar &quot;Mazo de pruebas&quot;</button>
       </div>
       ` : ''}
     </div>
@@ -9551,14 +9546,6 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
       showMatchLoadingBeforeGameplayCommit();
       overlay.remove();
       onPlayRandom();
-    });
-  }
-
-  if (onPlayTestDeck) {
-    overlay.querySelector('#playpicker-testdeck').addEventListener('click', () => {
-      showMatchLoadingBeforeGameplayCommit();
-      overlay.remove();
-      onPlayTestDeck();
     });
   }
 
@@ -10207,21 +10194,21 @@ function renderAccountBox(container, user) {
     const cachedModerationPending = mainMenuPendingState.uid===user.uid ? Math.max(0,Number(mainMenuPendingState.moderationCount)||0) : 0;
     // 23.22.0 HF2 — el acceso sigue visible para todos, pero en Admin abre la bandeja
     // operativa de casos; el pill Admin cuenta conversaciones abiertas pendientes de Moderación.
-    const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedModerationPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedModerationPending)}</span>` : ''}</button>`;
+    const moderationBtnHTML = `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-moderation" title="Moderación" aria-label="Moderación"><span class="main-menu-icon-fallback" aria-hidden="true">🛡️</span><img class="main-menu-icon-image" src="./assets/images/ui/mod.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedModerationPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedModerationPending)}</span>` : ''}</button>`;
     // Santuario Stage 4: el acceso ya es visible para cualquier cuenta autenticada;
     // la autoridad real de habilitación la resuelve Functions con master kill switch y
     // bypass exclusivo para Admin.
     const sanctuaryBtnHTML = user?.uid
-      ? `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-sanctuary" title="${gameTextHtml('sanctuary.menu.tooltip')}" aria-label="${gameTextHtml('sanctuary.menu.tooltip')}"><span class="main-menu-icon-fallback" aria-hidden="true">⛩️</span><img class="main-menu-icon-image" src="./assets/images/ui/santuario.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`
+      ? `<button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-sanctuary" title="${gameTextHtml('sanctuary.menu.tooltip')}" aria-label="${gameTextHtml('sanctuary.menu.tooltip')}"><span class="main-menu-icon-fallback" aria-hidden="true">⛩️</span><img class="main-menu-icon-image" src="./assets/images/ui/santuario.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>`
       : '';
     const rewardActionsHTML = `
       <div class="main-menu-account-actions" aria-label="Accesos de cuenta">
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="Mi Cofre" aria-label="Mi Cofre"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="Mi Taller" aria-label="Mi Taller"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-chest" title="Mi Cofre" aria-label="Mi Cofre"><span class="main-menu-icon-fallback" aria-hidden="true">🎁</span><img class="main-menu-icon-image" src="./assets/images/ui/cofre.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-workshop" title="Mi Taller" aria-label="Mi Taller"><span class="main-menu-icon-fallback" aria-hidden="true">🛠️</span><img class="main-menu-icon-image" src="./assets/images/ui/taller.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         ${sanctuaryBtnHTML}
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedAchievementPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedAchievementPending)}</span>` : ''}</button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="Mi Perfil" aria-label="Mi Perfil"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="Recompensas diarias" aria-label="Recompensas diarias"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-achievements" title="Mis Logros" aria-label="Mis Logros"><span class="main-menu-icon-fallback" aria-hidden="true">🏆</span><img class="main-menu-icon-image" src="./assets/images/ui/logros.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${cachedAchievementPending ? `<span class="main-menu-reward-badge" data-account-pending="true">${mainMenuBadgeText(cachedAchievementPending)}</span>` : ''}</button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-public-profile" title="Mi Perfil" aria-label="Mi Perfil"><span class="main-menu-icon-fallback" aria-hidden="true">📋</span><img class="main-menu-icon-image" src="./assets/images/ui/perfil.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn main-menu-account-icon-btn" id="menu-daily-rewards" title="Recompensas diarias" aria-label="Recompensas diarias"><span class="main-menu-icon-fallback" aria-hidden="true">🔥</span><img class="main-menu-icon-image" src="./assets/images/ui/daily.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'">${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
     container.innerHTML = `

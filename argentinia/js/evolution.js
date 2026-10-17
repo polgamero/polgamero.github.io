@@ -1,3 +1,4 @@
+import { replaceCardSelfName } from './cardSelfReference.js';
 // HF23.3.14.1 — Cápsula de Evolución · content/balance contract.
 // Una evolución pertenece a UNA copia física de una carta base. La colección conserva
 // cardIds canónicos; los mazos marcan esa copia con ::evo1 / ::evo2.
@@ -209,5 +210,17 @@ export function applyEvolutionStage(card, stageValue) {
   out.evolutionBaseId = baseId;
   out.evolutionStage = s;
   out.evolutionPathId = baseId;
+  // Each stage has its own canonical identity; BASE metadata must not rename EVO rules twice.
+  const baseCanonical=String(card.canonicalBaseName||card.canonicalName||card.name||'');
+  const baseDisplay=String(card.baseDisplayName||card.name||baseCanonical);
+  const identity=card.publication?.stages?.[s]||{};
+  out.canonicalBaseName=baseCanonical;
+  out.baseDisplayName=baseDisplay;
+  out.canonicalName=String(spec.name||out.name||'');
+  out.canonicalText=String(out.text??'');
+  out.canonicalFlavorText=String(Object.hasOwn(spec,'flavorText')?spec.flavorText:card.canonicalFlavorText??card.flavorText??'');
+  out.name=identity.name||replaceCardSelfName(out.canonicalName,baseCanonical,baseDisplay);
+  out.text=replaceCardSelfName(out.canonicalText,out.canonicalName,out.name);
+  if(typeof identity.flavorText==='string')out.flavorText=identity.flavorText;
   return out;
 }

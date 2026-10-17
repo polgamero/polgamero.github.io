@@ -205,9 +205,9 @@ function previewHtml(c, viewport, sectionKey) {
         <button type="button">ENCICLOPEDIA</button>
         <div class="appearance-preview-bottom">
           <button type="button">OPCIONES</button>
-          <button type="button" class="icon" title="Tienda"><span class="appearance-preview-icon-fallback">🛒</span><img src="./assets/images/ui/icon_tienda.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-          <button type="button" class="icon" title="Ranking"><span class="appearance-preview-icon-fallback">📊</span><img src="./assets/images/ui/icon_ranking.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
-          <button type="button" class="icon" title="Mercado"><span class="appearance-preview-icon-fallback">🔄</span><img src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+          <button type="button" class="icon" title="Tienda"><span class="appearance-preview-icon-fallback">🛒</span><img src="./assets/images/ui/icon_tienda.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+          <button type="button" class="icon" title="Ranking"><span class="appearance-preview-icon-fallback">📊</span><img src="./assets/images/ui/icon_ranking.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+          <button type="button" class="icon" title="Mercado"><span class="appearance-preview-icon-fallback">🔄</span><img src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="if(this.previousElementSibling)this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         </div>
       </div>
       <div class="appearance-preview-live-hint">Probá el hover directamente sobre los botones</div>

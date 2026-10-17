@@ -21,7 +21,7 @@ export function mainMenuMarkup(t) {
     <header class="arg-menu-header">
       <div id="main-menu-account" class="arg-menu-account"></div>
       <div class="arg-menu-brand" aria-label="Argentinia — Magia y leyenda">
-        <img class="arg-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia — Magia y leyenda" onload="this.parentElement.classList.add('has-original-logo')" onerror="this.hidden=true">
+        <img class="arg-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia — Magia y leyenda" onload="this.parentElement?.classList.add('has-original-logo')" onerror="this.hidden=true">
         <div class="arg-menu-wordmark" aria-hidden="true">ARGENTINIA<span>MAGIA Y LEYENDA</span></div>
       </div>
       <div class="arg-menu-hud"><div id="arg-menu-wallet-slot"></div><div class="arg-menu-tools"><div id="arg-menu-support-slot"></div>${button('menu-options','options',t('menu.options'),'menu.options')}</div></div>
@@ -63,6 +63,8 @@ export function resetMenuAccountPorts(container) {
 
 function dressButton(el, icon, label, status = '') {
   if (!el) return;
+  // Detached legacy images can finish loading after the presentation replaces their siblings.
+  el.querySelectorAll('img').forEach(image => { image.onload=null; image.onerror=null; });
   const badges = [...el.querySelectorAll('.main-menu-reward-badge')];
   el.className = 'arg-menu-button';
   el.innerHTML = `${menuIcon(icon)}<span class="arg-menu-action-copy"><span data-menu-label>${escape(label)}</span>${status ? `<span class="arg-menu-action-status">${escape(status)}</span>` : ''}</span>`;
@@ -105,6 +107,7 @@ export function presentMenuAccount(container, user, { profile, name, admin, t, d
     move('menu-achievements','arg-menu-today-actions','achievements',t('menu.redesign.achievements'),t('menu.redesign.viewGoals'));
     move('menu-moderation','arg-menu-support-slot','support',t('menu.redesign.support'));
     if (profileButton) {
+      profileButton.querySelectorAll('img').forEach(image => { image.onload=null; image.onerror=null; });
       profileButton.className = 'arg-menu-profile arg-menu-frame';
       profileButton.innerHTML = `<span class="arg-menu-avatar" aria-hidden="true">✹</span><span class="arg-menu-identity-copy"><span class="arg-menu-player-name"></span><span class="arg-menu-profile-caption">${escape(t('menu.redesign.profile'))}</span></span>`;
       profileButton.querySelector('.arg-menu-player-name').textContent = name;

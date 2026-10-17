@@ -61,7 +61,7 @@ function tierLabel(tier){return gameText(`achievement.tier.${tier}`);}
 function trophyHtml(familyId,tier,unlocked){
   const icon=ACHIEVEMENT_TIER_ICONS[tier]||'🏆';
   if(!unlocked) return `<span class="public-profile-trophy locked" title="${esc(tierLabel(tier))}"><span class="public-profile-trophy-fallback">${icon}</span></span>`;
-  return `<span class="public-profile-trophy" title="${esc(tierLabel(tier))}"><span class="public-profile-trophy-fallback">${icon}</span><img src="${esc(achievementTrophyPath(familyId,tier))}" alt="${esc(tierLabel(tier))}" onload="this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></span>`;
+  return `<span class="public-profile-trophy" title="${esc(tierLabel(tier))}"><span class="public-profile-trophy-fallback">${icon}</span><img src="${esc(achievementTrophyPath(familyId,tier))}" alt="${esc(tierLabel(tier))}" onload="if(this.previousElementSibling)this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></span>`;
 }
 function stat(label,value,sub=''){return `<div class="public-profile-stat"><div class="public-profile-stat-label">${esc(label)}</div><div class="public-profile-stat-value">${esc(value)}</div>${sub?`<div class="public-profile-stat-sub">${esc(sub)}</div>`:''}</div>`;}
 function formatJoined(ms){if(!ms)return '';try{return new Date(ms).toLocaleDateString('es-AR',{year:'numeric',month:'short'});}catch{return '';}}

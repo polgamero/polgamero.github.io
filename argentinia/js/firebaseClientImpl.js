@@ -1952,18 +1952,36 @@ export function listenToPlayerPresence(onUpdate, onError = null) {
 }
 
 export function listenToActiveMultiplayerMatches(onUpdate, onError = null) {
-  const ref = query(collection(db, 'matches'), where('status', '==', 'active'), limit(40));
-  return onSnapshot(ref, { includeMetadataChanges: true }, snap => {
-    const rows = snap.docs.map(d => ({ code:d.id, ...d.data() }));
-    onUpdate(rows, {
-      fromCache: !!snap.metadata?.fromCache,
-      hasPendingWrites: !!snap.metadata?.hasPendingWrites,
-      receivedAtClientMs: Date.now()
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    onUpdate([], { fromCache:false, hasPendingWrites:false, receivedAtClientMs:Date.now() });
+    return () => {};
+  }
+  // Rules only allow participants to read active rooms. A global active query is denied.
+  const snapshots = new Map();
+  let stopped = false;
+  const stops = ['hostUid', 'guestUid'].map(field => {
+    const ref = query(collection(db, 'matches'), where('status', '==', 'active'), where(field, '==', uid), limit(40));
+    return onSnapshot(ref, { includeMetadataChanges:true }, snap => {
+      if (stopped) return;
+      snapshots.set(field, snap);
+      if (snapshots.size !== 2) return;
+      const merged = new Map();
+      for (const snapshot of snapshots.values()) for (const entry of snapshot.docs) {
+        merged.set(entry.id, { ...entry.data(), code:entry.id });
+      }
+      onUpdate([...merged.values()], {
+        fromCache:[...snapshots.values()].some(s => !!s.metadata?.fromCache),
+        hasPendingWrites:[...snapshots.values()].some(s => !!s.metadata?.hasPendingWrites),
+        receivedAtClientMs:Date.now()
+      });
+    }, error => {
+      if (stopped) return;
+      if (typeof onError === 'function') onError(error);
+      else console.error('[Lobby] Listener de partidas propias interrumpido:', error);
     });
-  }, error => {
-    if (typeof onError === 'function') onError(error);
-    else console.error('[Lobby] Listener de partidas activas interrumpido:', error);
   });
+  return () => { stopped=true; stops.forEach(stop => stop()); snapshots.clear(); };
 }
 
 
@@ -2210,7 +2228,13 @@ export async function claimMatchRoleSession(matchId, uid, role, options = {}) {
     if (expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
     if (data.gameOver) throw new Error('MULTIPLAYER_MATCH_FINISHED');
     if (!isExactMultiplayerVersionCompatible(data.engineVersion, data.engineProtocolVersion)) {
-      throw new Error('MULTIPLAYER_ENGINE_MISMATCH');
+      const error = new Error('MULTIPLAYER_ENGINE_MISMATCH');
+      error.code = 'MULTIPLAYER_ENGINE_MISMATCH';
+      error.details = {
+        expectedVersion:ENGINE_VERSION, expectedProtocol:ENGINE_PROTOCOL_VERSION,
+        actualVersion:data.engineVersion || null, actualProtocol:data.engineProtocolVersion || null
+      };
+      throw error;
     }
     const safety = classifyReconnectSafety(data, role);
     if (!safety.ok && options.allowUnsafe !== true) throw new Error(`MULTIPLAYER_RECONNECT_UNSAFE:${safety.reason}`);
@@ -2299,7 +2323,13 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
     const expectedUid = role === 'host' ? current.hostUid : current.guestUid;
     if (expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
     if (!isExactMultiplayerVersionCompatible(current.engineVersion, current.engineProtocolVersion)) {
-      throw new Error('MULTIPLAYER_ENGINE_MISMATCH');
+      const error = new Error('MULTIPLAYER_ENGINE_MISMATCH');
+      error.code = 'MULTIPLAYER_ENGINE_MISMATCH';
+      error.details = {
+        expectedVersion:ENGINE_VERSION, expectedProtocol:ENGINE_PROTOCOL_VERSION,
+        actualVersion:current.engineVersion || null, actualProtocol:current.engineProtocolVersion || null
+      };
+      throw error;
     }
     const session = validateRoleSession(current, role, MULTIPLAYER_CLIENT_SESSION_ID);
     if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
