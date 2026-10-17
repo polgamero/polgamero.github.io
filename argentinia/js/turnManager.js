@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked } from './main.js';
+import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions } from './main.js';
 import { takeBotPriorityAction, chooseBotCleanupDiscardIndex, reportBotStrategicTurnAtCleanup } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -43,6 +43,7 @@ export function checkGameOver() {
   const wasAlreadyGameOver = state.gameOver === true;
   state.terminalProcessedLocally = true;
   state.gameOver = true;
+  clearTerminalInteractions();
 
   switch (terminal.reason) {
     case 'rival_abandon':
@@ -113,6 +114,7 @@ function pvpRewardNotice(result) {
   const limits = result?.limits || {};
   const reason = result?.rewardReason || 'rewarded';
   const awarded = Math.max(0, Number(result?.appliedDelta) || 0);
+  if (reason === 'match_not_started') return gameText('game.points.pvpNotStarted');
   if (reason === 'early_abandon') {
     return gameText('game.points.pvpEarlyNoReward', {
       minutes: limits.minRewardMinutes ?? 3,
@@ -263,7 +265,7 @@ function awardMatchEndPoints(won) {
         const notice = pvpRewardNotice(result);
         const eloNotice = pvpEloNotice(result);
         const finalNotice = eloNotice ? `${notice}\n${eloNotice}` : notice;
-        const limited = ['early_abandon','pair_limit','daily_cap'].includes(result?.rewardReason);
+        const limited = ['match_not_started','early_abandon','pair_limit','daily_cap'].includes(result?.rewardReason);
         showGameRewardStatus(finalNotice, limited ? 'warning' : 'success');
         logMsg(notice);
         if (eloNotice) logMsg(eloNotice);

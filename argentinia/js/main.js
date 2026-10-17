@@ -1083,6 +1083,20 @@ const cloneGameplayValue = value => {
   }
 };
 const INITIAL_GAMEPLAY_STATE = Object.fromEntries(Object.entries(state).map(([key,value])=>[key,cloneGameplayValue(value)]));
+export function clearTerminalInteractions() {
+  if (!state.gameOver) return false;
+  const extra=new Set(['decisionResponse','awaitingRivalDecision','respondingToDecision',
+    'isDiscarding','cardsToDiscard','damageModalOpen','preparingCompositeCastCosts',
+    'tappedLandsThisSpell','paymentManaSourceRollbacks','paymentManaPoolSnapshot']);
+  for (const [key,value] of Object.entries(INITIAL_GAMEPLAY_STATE)) {
+    if (key.startsWith('pending') || extra.has(key)) state[key]=cloneGameplayValue(value);
+  }
+  // Close obsolete prompts without clicking a choice or refunding irreversible costs.
+  document.querySelectorAll('.gy-modal-overlay').forEach(node=>node.remove());
+  els.paymentControls?.classList.add('hidden');
+  return true;
+}
+
 function resetGameplayStateForNewMatch() {
   resetSoloPriorityShortcuts();
   const preserved = Object.fromEntries([...GAMEPLAY_STATE_PERSIST_KEYS].map(key => [key,state[key]]));
@@ -1304,6 +1318,7 @@ function hookGameplayButtons() {
       showAbandonConfirmModal(
         async () => {
           state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
+          clearTerminalInteractions();
           if (state.currentTournamentMatch) {
             const t = state.currentTournamentMatch;
             try {
@@ -1370,14 +1385,14 @@ function hookGameplayButtons() {
               try {
                 const abandonReceiptId = state.currentMatch?.matchId || getActiveSoloGameId() || getTelemetryStatus().sessionId || 'solo';
                 const abandonDurationMs = state.currentMatch ? (getTelemetryStatus().elapsedMs || 0) : currentSoloLifecycleDurationMs();
+                const abandonUid=state.currentUser.uid;
+                const abandonRequest={mode:state.currentMatch?'multiplayer':'solo',matchId:state.currentMatch?.matchId||'',receiptId:abandonReceiptId,durationMs:abandonDurationMs};
                 trackCleanupTask('apply_abandon_penalty',
                   abandonEvidencePromise
-                    .then(() => applyAbandonPenalty(state.currentUser.uid, {
-                      mode: state.currentMatch ? 'multiplayer' : 'solo',
-                      matchId: state.currentMatch?.matchId || '',
-                      receiptId: abandonReceiptId,
-                      durationMs: abandonDurationMs
-                    }))
+                    .then(confirmed => {
+                      if (!confirmed) throw new Error('MULTIPLAYER_ABANDON_NOT_CONFIRMED');
+                      return applyAbandonPenalty(abandonUid,abandonRequest);
+                    })
                     .catch(err => {
                       console.error('No se pudo aplicar la penalidad de abandono:', err);
                       throw err;
@@ -5187,7 +5202,9 @@ function offerReconnectIfStillActive(matchId) {
       const rivalPhotoURL = rivalProfile.photoURL || '';
 
       const reconnectIsSafe = matchData.reconnectSafety?.ok !== false;
-      const reconnectMessage = reconnectIsSafe
+      const reconnectMessage = matchData.reconnectSafety?.reason === 'initial_setup_incomplete'
+        ? gameText('multiplayer.reconnect.notStarted')
+        : reconnectIsSafe
         ? 'Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?'
         : `${gameText('multiplayer.reconnect.unsafe')} Podés abandonar la partida desde acá sin reconstruir ese estado.`;
 
@@ -5228,7 +5245,9 @@ function offerReconnectIfStillActive(matchId) {
             lastAppliedServerRevision = normalizeSyncRevision(fresh.publicDoc.syncRevision);
             lastAppliedFieldRevisions.clear();
             markFieldRevisionsApplied(lastAppliedFieldRevisions, fresh.publicDoc.syncFieldRevisions);
+            state.gameOver = true;
             state.abandonedBy = 'local';
+            clearTerminalInteractions();
             const abandonConfirmed = await publishMatchState({ force:true });
             if (!abandonConfirmed) throw new Error('MULTIPLAYER_ABANDON_NOT_CONFIRMED');
 

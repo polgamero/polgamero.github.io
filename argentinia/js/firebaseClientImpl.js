@@ -427,6 +427,8 @@ export function signInWithGoogle() {
 }
 
 export async function signOutUser() {
+  // Unsubscribe authenticated lobby reads BEFORE any await/revocation.
+  stopAuthenticatedLobbyListeners();
   const uid = auth.currentUser?.uid || null;
   if (uid) {
     try { await deleteDoc(doc(db, 'playerPresence', uid)); }
@@ -1937,7 +1939,48 @@ export async function removePlayerPresence(uid) {
   return true;
 }
 
+// A lobby subscription belongs to one authenticated UID. The returned stop is
+// idempotent; delayed callbacks from a signed-out account cannot reach its UI.
+const authenticatedLobbyListeners = new Set();
+function stopAuthenticatedLobbyListeners(nextUid = null) {
+  for (const entry of [...authenticatedLobbyListeners]) {
+    if (!nextUid || entry.uid !== nextUid) entry.stop();
+  }
+}
+onAuthStateChanged(auth, () => stopAuthenticatedLobbyListeners(auth.currentUser?.uid || null));
+function listenAuthenticatedLobby(start, onUpdate, onError, label) {
+  const uid=auth.currentUser?.uid;
+  if (!uid) { onUpdate([], {fromCache:false,hasPendingWrites:false,receivedAtClientMs:Date.now()}); return () => {}; }
+  let active=true, unsubscribe=()=>{};
+  const entry={uid,stop:()=>{
+    if (!active) return;
+    active=false;authenticatedLobbyListeners.delete(entry);unsubscribe();
+  }};
+  const current=()=>{
+    if (!active) return false;
+    if (auth.currentUser?.uid !== uid) { entry.stop();return false; }
+    return true;
+  };
+  authenticatedLobbyListeners.add(entry);
+  try {
+    unsubscribe=start((...args)=>{if(current())onUpdate(...args);},error=>{
+      if (!current()) return;
+      if (typeof onError==='function') onError(error);
+      else console.error(label,error);
+    });
+  } catch(error) { entry.stop();throw error; }
+  return entry.stop;
+}
+
+function playableReconnectSafety(data, role) {
+  if (!data?.bothReadyAt && !(data?.hostReady===true && data?.guestReady===true)) {
+    return {ok:false,reason:'initial_setup_incomplete'};
+  }
+  return classifyReconnectSafety(data,role);
+}
+
 export function listenToPlayerPresence(onUpdate, onError = null) {
+  return listenAuthenticatedLobby((onUpdate,onError)=>{
   const ref = query(collection(db, 'playerPresence'), limit(250));
   return onSnapshot(ref, { includeMetadataChanges: true }, snap => {
     onUpdate(snap.docs.map(d => ({ uid:d.id, ...d.data() })), {
@@ -1949,9 +1992,12 @@ export function listenToPlayerPresence(onUpdate, onError = null) {
     if (typeof onError === 'function') onError(error);
     else console.error('[Presence] Listener interrumpido:', error);
   });
+
+  },onUpdate,onError,'[Presence] Listener interrumpido:');
 }
 
 export function listenToActiveMultiplayerMatches(onUpdate, onError = null) {
+  return listenAuthenticatedLobby((onUpdate,onError)=>{
   const uid = auth.currentUser?.uid;
   if (!uid) {
     onUpdate([], { fromCache:false, hasPendingWrites:false, receivedAtClientMs:Date.now() });
@@ -1982,10 +2028,12 @@ export function listenToActiveMultiplayerMatches(onUpdate, onError = null) {
     });
   });
   return () => { stopped=true; stops.forEach(stop => stop()); snapshots.clear(); };
+
+  },onUpdate,onError,'[Lobby] Listener de partidas propias interrumpido:');
 }
 
-
 export function listenToLobbyCommunication(onUpdate, onError = null) {
+  return listenAuthenticatedLobby((onUpdate,onError)=>{
   const ref = doc(db, 'lobbyCommunications', 'global');
   return onSnapshot(ref, { includeMetadataChanges: true }, snap => {
     const data = snap.exists() ? (snap.data() || {}) : {};
@@ -1999,6 +2047,8 @@ export function listenToLobbyCommunication(onUpdate, onError = null) {
     if (typeof onError === 'function') onError(error);
     else console.error('[Lobby] Listener del chat global interrumpido:', error);
   });
+
+  },onUpdate,onError,'[Lobby] Listener del chat global interrumpido:');
 }
 
 export function listenAnimationPolicy(onChange, onError = null) {
@@ -2208,7 +2258,7 @@ export async function fetchMatchForReconnect(matchId, uid) {
         privateDoc
       };
     }
-    const reconnectSafety = classifyReconnectSafety(publicDoc, role);
+    const reconnectSafety = playableReconnectSafety(publicDoc, role);
     return { publicDoc, privateDoc, reconnectSafety };
   });
 }
@@ -2236,7 +2286,7 @@ export async function claimMatchRoleSession(matchId, uid, role, options = {}) {
       };
       throw error;
     }
-    const safety = classifyReconnectSafety(data, role);
+    const safety = playableReconnectSafety(data, role);
     if (!safety.ok && options.allowUnsafe !== true) throw new Error(`MULTIPLAYER_RECONNECT_UNSAFE:${safety.reason}`);
     const field = roleSessionField(role);
     const previousSessionId = data[field] || null;

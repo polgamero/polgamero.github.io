@@ -10483,6 +10483,9 @@ function installAdminDebugScrollInteractions() {
     const wrap = wrapFromEvent(event);
     if (!hasOverflow(wrap)) return;
     if (event.target?.closest?.('button,a,input,select,textarea,label')) return;
+    // The table owns this horizontal drag. Prevent native text/image dragging
+    // from competing with pointer capture and displaying the browser's drag cursor.
+    event.preventDefault();
     adminDebugScrollGesture = { wrap, pointerId:event.pointerId, startX:event.clientX, startScrollLeft:wrap.scrollLeft, dragging:false };
   }, true);
 
@@ -10606,8 +10609,8 @@ function injectAdminPanelStyles() {
     .admin-debug-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .admin-debug-summary { color:#cdb9dc; font-size:13px; }
     .admin-debug-refresh { width:auto; margin:0; padding:8px 14px; font-size:13px; }
-    .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); cursor:grab; scrollbar-gutter:stable; }
-    .admin-debug-table-wrap.dragging { cursor:grabbing; user-select:none; }
+    .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); cursor:default; scrollbar-gutter:stable; }
+    .admin-debug-table-wrap.dragging { cursor:default; user-select:none; }
     .admin-debug-table { width:100%; border-collapse:collapse; min-width:920px; font-size:12px; }
     .admin-debug-table th { position:sticky; top:0; z-index:2; background:#24162f; color:#ead9f4; text-align:left; padding:10px 9px; border-bottom:1px solid rgba(176,106,212,0.35); white-space:nowrap; }
     .admin-debug-table td { padding:9px; border-bottom:1px solid rgba(176,106,212,0.13); color:#d9cce2; vertical-align:middle; }
@@ -11633,6 +11636,10 @@ export function showAdminPanel(onBack) {
       : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(localName)}</span>`;
 
     if (reward) {
+      if (reward.rewardReason === 'match_not_started') {
+        return {resultHtml:'<span class="admin-debug-reward unknown">Inicio incompleto</span>',
+          rewardHtml:'<span class="admin-debug-reward ok">✅ Recibo cerrado · 0 puntos</span>'};
+      }
       const effective = Math.floor(Number(reward.effectiveDelta) || 0);
       const isPenalty = reward.penalty === true || reward.abandoned === true || reward.terminalKind === 'abandon' || reward.rewardReason === 'abandon_penalty';
       if (isPenalty) {
