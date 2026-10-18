@@ -154,6 +154,13 @@ html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-l
 }
 @media(prefers-reduced-motion:reduce){.arg-menu-v2 *{transition:none!important;animation:none!important}}
 
+/* Large desktop only: retain the accepted notebook and phone geometry. */
+@media(min-width:1701px) and (min-height:601px){
+  #main-menu-overlay.arg-menu-v2 .arg-menu-modes{width:clamp(430px,30vw,600px)}
+  #main-menu-overlay.arg-menu-v2 .arg-menu-mode .arg-menu-mode-copy{flex:1;max-width:none;padding-right:0}
+  #main-menu-overlay.arg-menu-v2 .arg-menu-mode [data-menu-label]{white-space:nowrap;overflow-wrap:normal}
+}
+
 /* The existing optional-fullscreen control occupies this corner after a physical tap. */
 @media(max-width:1050px),(max-height:600px){
   html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) .arg-menu-v2 .arg-menu-header{padding-right:46px}

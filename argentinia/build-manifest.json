@@ -1,11 +1,10 @@
 {
   "releaseVersion": "23.22.0",
-  "releaseHotfix": "HF5",
-  "releaseDisplayVersion": "23.22.0 HF5",
+  "releaseHotfix": "HF6",
+  "releaseDisplayVersion": "23.22.0 HF6",
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
-  "buildId": "da3d536539f899473656",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -210,12 +209,14 @@
     "./js/editorialStudio.js",
     "./js/tutorialContent.js",
     "./js/menuGuide.js",
-    "./js/tutorials.js"
+    "./js/tutorials.js",
+    "./js/campaignAdminV2.js",
+    "./js/retiredGameTexts.js"
   ],
   "publicProjection": true,
-  "releaseLabel": "23.22.0 HF5",
-  "hotfixCandidate": "HF5",
-  "hotfixLabel": "Mecha PvP + decisiones con tiempo + DUELISTA + Apariencia V2 + editor y tutoriales C/D",
+  "releaseLabel": "23.22.0 HF6",
+  "hotfixCandidate": "HF6",
+  "hotfixLabel": "Gestor editorial + Soporte + Esencia y eventos económicos; acumulativo Mecha PvP + DUELISTA + Apariencia V2",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -236,5 +237,6 @@
     "assets/images/ui/moneda.png": "396b4e42db403a0f19f51683c2b8ed85f03e807a327be262d5b147e375339eb4",
     "assets/images/menu/city-distant.webp": "56b9df5540ce429f5e3677ddd8b58c6b656c23316fd8cbf997caf2f4176d46d7",
     "assets/images/menu/city-distant-mobile.webp": "f00b0956e44c70ee0c2261f68fd400c5235ae44140af29b7ff47ce75e72da4ea"
-  }
+  },
+  "buildId": "e3580181d253ff68328d"
 }

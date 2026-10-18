@@ -7,6 +7,8 @@ export const CAMPAIGN_EVENT_TYPES = Object.freeze({
   all_points_multiplier: Object.freeze({ labelKey: 'campaign.eventType.allPoints', unit: 'multiplier', defaultValue: 2, min: 1, max: 10 }),
   match_points_multiplier: Object.freeze({ labelKey: 'campaign.eventType.matchPoints', unit: 'multiplier', defaultValue: 2, min: 1, max: 10 }),
   all_fichas_multiplier: Object.freeze({ labelKey: 'campaign.eventType.allFichas', unit: 'multiplier', defaultValue: 2, min: 1, max: 10 }),
+  essence_conversion_discount: Object.freeze({ labelKey: 'campaign.eventType.essenceDiscount', unit: 'percent', defaultValue: 50, min: 1, max: 90 }),
+  achievement_essence_multiplier: Object.freeze({ labelKey: 'campaign.eventType.achievementEssence', unit: 'multiplier', defaultValue: 2, min: 1, max: 10 }),
   pack_open_ficha_bonus: Object.freeze({ labelKey: 'campaign.eventType.packFichaBonus', unit: 'integer', defaultValue: 1, min: 1, max: 20 })
 });
 
@@ -81,18 +83,24 @@ export function validateAnnouncementPayload(payload = {}) {
 }
 
 export function buildCampaignSnapshot(events = [], now = Date.now()) {
-  const activeEvents = (Array.isArray(events) ? events : []).filter(e => isCampaignActive(e, now));
+  const activeEvents = (Array.isArray(events) ? events : []).filter(e => isCampaignActive(e, now) && (!['match_points_multiplier','achievement_essence_multiplier','essence_conversion_discount'].includes(e?.type) || (dateMs(e.startAt)>0 && dateMs(e.endAt)>dateMs(e.startAt))));
   const effects = {
     packDiscountPercent: 0,
     allPointsMultiplier: 1,
     matchPointsMultiplier: 1,
+    achievementEssenceMultiplier: 1,
+    essenceConversionDiscountPercent: 0,
     allFichasMultiplier: 1,
     packOpenFichaBonus: 0
   };
   activeEvents.forEach(event => {
-    const value = Math.max(0, Number(event?.value) || 0);
+    const raw=Number(event?.value),def=CAMPAIGN_EVENT_TYPES[event?.type];
+    const bounded=['all_points_multiplier','match_points_multiplier','achievement_essence_multiplier','essence_conversion_discount'].includes(event?.type);
+    const value=bounded?(def&&Number.isFinite(raw)?Math.max(0,Math.min(def.max,raw)):0):Math.max(0,raw||0);
     if (event.type === 'pack_discount') effects.packDiscountPercent = Math.max(effects.packDiscountPercent, value);
     if (event.type === 'all_points_multiplier') effects.allPointsMultiplier = Math.max(effects.allPointsMultiplier, value || 1);
+    if (event.type === 'essence_conversion_discount') effects.essenceConversionDiscountPercent = Math.max(effects.essenceConversionDiscountPercent,Math.round(value));
+    if (event.type === 'achievement_essence_multiplier') effects.achievementEssenceMultiplier = Math.max(effects.achievementEssenceMultiplier,value||1);
     if (event.type === 'match_points_multiplier') effects.matchPointsMultiplier = Math.max(effects.matchPointsMultiplier, value || 1);
     if (event.type === 'all_fichas_multiplier') effects.allFichasMultiplier = Math.max(effects.allFichasMultiplier, value || 1);
     if (event.type === 'pack_open_ficha_bonus') effects.packOpenFichaBonus += Math.max(0, Math.floor(value));
@@ -125,6 +133,21 @@ export function effectiveFichas(baseAmount, snapshot, { packOpen = false } = {})
   const mult = Math.max(1, Number(snapshot?.effects?.allFichasMultiplier) || 1);
   const bonus = packOpen ? Math.max(0, Math.floor(Number(snapshot?.effects?.packOpenFichaBonus) || 0)) : 0;
   return Math.round(amount * mult) + bonus;
+}
+
+export function effectiveAchievementEssence(baseAmount,snapshot) {
+  const amount=Math.max(0,Math.floor(Number(baseAmount)||0));
+  const value=Number(snapshot?.effects?.achievementEssenceMultiplier);
+  return Math.round(amount*(Number.isFinite(value)?Math.max(1,Math.min(10,value)):1));
+}
+
+export function effectiveEssenceConversionCost(policy,quantity,snapshot) {
+  const amount=Math.max(0,Math.floor(Number(quantity)||0));
+  const basePointsCost=Math.max(0,Math.floor(Number(policy?.pointsPerUnit)||0))*amount;
+  const baseFichasCost=Math.max(0,Math.floor(Number(policy?.fichasPerUnit)||0))*amount;
+  const value=Number(snapshot?.effects?.essenceConversionDiscountPercent);
+  const discountPercent=Number.isFinite(value)?Math.max(0,Math.min(90,Math.round(value))):0;
+  return {basePointsCost,baseFichasCost,pointsCost:Math.ceil(basePointsCost*(100-discountPercent)/100),fichasCost:Math.ceil(baseFichasCost*(100-discountPercent)/100),discountPercent};
 }
 
 export function eventValueLabel(event) {

@@ -1,4 +1,6 @@
 import { publicTerminologyText } from './publicTerminology.js';
+import { RETIRED_GAME_TEXT_KEYS } from './retiredGameTexts.js';
+const retiredGameTextKeys=new Set(RETIRED_GAME_TEXT_KEYS);
 // js/gameTexts.js — Entrega 23.13.31
 // Fuente central de copy humano visible + overrides Admin (gameConfig/texts).
 //
@@ -20,6 +22,59 @@ function definition(category, defaultText, description) {
 // Clasificados/Enciclopedia/Recompensas/lobby; Etapa 6 suma partida, combate, Stack/prioridad,
 // habilidades/costos y selecciones. Los discriminadores técnicos del motor siguen fuera del catálogo.
 export const GAME_TEXT_DEFINITIONS = Object.freeze({
+  // Gestor editorial y Soporte actuales
+  "support.subject": definition("Soporte","Asunto","Asunto del ticket."),
+  "support.messagePlaceholder": definition("Soporte","Contanos qué pasó…","Ayuda del campo de mensaje."),
+  "support.send": definition("Soporte","ENVIAR","Envío del formulario."),
+  "support.subjectRequired": definition("Soporte","Escribí un asunto.","Validación del asunto."),
+  "support.messageRequired": definition("Soporte","Escribí un mensaje antes de enviar.","Validación del mensaje."),
+  "support.sending": definition("Soporte","Enviando…","Estado durante envío."),
+  "support.sent": definition("Soporte","✓ Enviado a Soporte.","Confirmación del ticket."),
+  "support.sendError": definition("Soporte","No se pudo enviar. Probá de nuevo.","Fallo de envío."),
+  "support.closeConfirm": definition("Soporte","¿Cerrar este caso? El historial seguirá visible.","Confirmación propia para cerrar un ticket."),
+  'campaign.manager.unavailable': definition('Anuncios y tutoriales','No habilitado','Evento sin soporte efectivo en el servidor.'),
+  'campaign.manager.matchPointsUnsupported': definition('Anuncios y tutoriales','El multiplicador exclusivo de partidas todavía no se aplica en el servidor. Usá el multiplicador general de puntos hasta habilitar ese beneficio.','Bloquea programar un beneficio que el servidor ignora.'),
+  "support.title": definition("Soporte","Soporte","Título principal del centro de Soporte, antes Moderación."),
+  "support.adminTitle": definition("Soporte","Soporte · Bandeja","Título de la bandeja de Soporte para Admin."),
+  "support.contact": definition("Soporte","Contactar Soporte","Título del formulario de contacto."),
+  "support.newTicket": definition("Soporte","Abrir nuevo ticket","Acción de nuevo ticket de Soporte."),
+  "support.sendTicket": definition("Soporte","ABRIR TICKET","Confirma el envío de un nuevo ticket."),
+  "support.myCases": definition("Soporte","TUS CASOS","Título del listado de conversaciones."),
+  "support.selectCase": definition("Soporte","Elegí un caso para ver la conversación.","Estado sin selección de caso."),
+  "support.caseFallback": definition("Soporte","Caso de Soporte","Título de caso sin asunto."),
+  "support.empty": definition("Soporte","Sin casos.","Listado vacío de Soporte."),
+  "support.noCases": definition("Soporte","Todavía no tenés casos.","Resumen cuando no hay tickets."),
+  "support.openHelp": definition("Soporte","Abrí un nuevo ticket cuando necesites contactar a Soporte.","Ayuda de primer contacto."),
+  "support.loadError": definition("Soporte","No se pudieron cargar tus casos.","Error al consultar conversaciones."),
+  "campaign.manager.intro": definition("Anuncios y tutoriales","Anuncios, eventos y tutoriales tienen espacios propios. Cada diseño se edita y publica desde su ventana dedicada.","Introducción del gestor."),
+  "campaign.manager.announcementHelp": definition("Anuncios y tutoriales","Creá comunicaciones con plantillas, texto e imágenes. Revisá la vista previa antes de publicar.","Ayuda de Anuncios."),
+  "campaign.manager.eventHelp": definition("Anuncios y tutoriales","Programá los beneficios disponibles y diseñá su anuncio asociado.","Ayuda de Eventos."),
+  "campaign.manager.newAnnouncement": definition("Anuncios y tutoriales","Nuevo anuncio","Abre el editor dedicado."),
+  "campaign.manager.events": definition("Anuncios y tutoriales","Eventos","Sección de eventos."),
+  "campaign.manager.tutorials": definition("Anuncios y tutoriales","Tutoriales","Sección de tutoriales."),
+  "campaign.manager.tutorialHelp": definition("Anuncios y tutoriales","Los destinos y momentos de aparición están definidos por el juego. Elegí qué tutorial querés editar; podés personalizar su contenido o restaurar el diseño original.","Ayuda de Tutoriales."),
+  "campaign.manager.zoneTutorials": definition("Anuncios y tutoriales","Tutoriales de cada lugar","Grupo de tutoriales contextuales."),
+  "campaign.manager.history": definition("Anuncios y tutoriales","Historial · anuncios, eventos y tutoriales","Tabla de contenidos y estados."),
+  "campaign.manager.custom": definition("Anuncios y tutoriales","Personalizado","Tutorial publicado por Admin."),
+  "campaign.manager.default": definition("Anuncios y tutoriales","Original","Tutorial local sin personalización activa."),
+  "campaign.manager.fixedTarget": definition("Anuncios y tutoriales","Editás el contenido; su destino y aparición permanecen definidos por el juego.","Destino fijo de un tutorial."),
+  "campaign.manager.template": definition("Anuncios y tutoriales","Plantilla","Selector de punto de partida."),
+  "campaign.manager.restore": definition("Anuncios y tutoriales","Restaurar diseño original","Recupera el contenido inicial en el editor; requiere Publicar para aplicar."),
+  "campaign.manager.publication": definition("Anuncios y tutoriales","Datos de publicación","Metadatos y programación del contenido."),
+  "campaign.manager.preview": definition("Anuncios y tutoriales","Vista previa","Abre el diseño real."),
+  "campaign.manager.publish": definition("Anuncios y tutoriales","Publicar","Confirma la publicación explícita."),
+  "campaign.manager.discard": definition("Anuncios y tutoriales","Hay cambios sin publicar. ¿Querés descartarlos?","Confirmación propia al salir del editor."),
+  "campaign.manager.eventScope": definition("Anuncios y tutoriales","Puntos de partidas: Solo y PvP; se aplica el mayor multiplicador activo entre general y partidas, sin multiplicarlos entre sí. Esencia de logros: premio reclamado durante el evento. Descuento del generador de Esencia: 1–90% OFF en puntos y Fichas, tomando el mayor descuento activo; redondeo hacia arriba del coste total. No modifica la cantidad de Esencia ni grants. El general de puntos cubre Solo, PvP y recompensas diarias; Fichas cubre sobres y recompensas diarias. Los premios de Torneo no cambian. Se conservan los límites antifarming.","Alcance real de los eventos."),
+  "campaign.manager.eventAnnouncement": definition("Anuncios y tutoriales","Diseñar el anuncio asociado al guardar","Abre el editor de comunicación de evento."),
+  "campaign.manager.eventLimits": definition("Anuncios y tutoriales","Rango disponible: {min}–{max} {unit}.","Unidades y límites del beneficio."),
+  "campaign.manager.edit": definition("Anuncios y tutoriales","Editar","Acción de editar contenido."),
+  "campaign.manager.finalize": definition("Anuncios y tutoriales","Finalizar","Finalizar publicación o evento."),
+  "campaign.manager.delete": definition("Anuncios y tutoriales","Eliminar","Eliminar publicación o evento."),
+  "campaign.template.notice": definition("Anuncios y tutoriales","Información","Plantilla de anuncio informativo."),
+  "campaign.template.update": definition("Anuncios y tutoriales","Novedades","Plantilla de actualización."),
+  "campaign.template.celebration": definition("Anuncios y tutoriales","Celebración","Plantilla con fondo ilustrado."),
+  "campaign.template.body": definition("Anuncios y tutoriales","Escribí acá lo que querés contarle a los jugadores.","Texto inicial editable de anuncio."),
+
   // General
   'common.back': definition('General', 'Volver', 'Acción genérica para regresar a la pantalla anterior.'),
   'common.cancel': definition('General', 'Cancelar', 'Acción genérica para cancelar sin guardar.'),
@@ -2279,14 +2334,21 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.campaigns.confirmDelete': definition('Anuncios y Eventos', '¿Borrar definitivamente este anuncio/evento?', 'Confirmación de borrar.'),
   'campaign.popup.dontShowAgain': definition('Anuncios y Eventos', 'No me lo muestres de nuevo', 'Checkbox del popup.'),
   'campaign.popup.close': definition('Anuncios y Eventos', 'Entendido', 'Botón cerrar popup.'),
-  'campaign.popup.previous': definition('Anuncios y Eventos', 'Anuncio anterior', 'Accesibilidad del carrusel de anuncios.'),
-  'campaign.popup.next': definition('Anuncios y Eventos', 'Anuncio siguiente', 'Accesibilidad del carrusel de anuncios.'),
-  'campaign.popup.position': definition('Anuncios y Eventos', 'Anuncio {index} de {total}', 'Accesibilidad de los indicadores del carrusel.'),
+  'campaign.popup.previous': definition('Anuncios y Eventos', 'Anterior', 'Acción compartida de anuncios y tutoriales.'),
+  'campaign.popup.next': definition('Anuncios y Eventos', 'Siguiente', 'Acción compartida de anuncios y tutoriales.'),
+  'campaign.popup.position': definition('Anuncios y Eventos', 'Pantalla {index} de {total}', 'Accesibilidad de los indicadores del carrusel.'),
   'campaign.active.title': definition('Anuncios y Eventos', '🎉 EVENTO ACTIVO:', 'Prefijo del indicador público de eventos.'),
+  'campaign.eventType.essenceDiscount': definition('Anuncios y Eventos', 'Descuento al generar Esencia', 'X% OFF en puntos y Fichas del generador; no altera la cantidad generada. Descuentos simultáneos: gana el mayor.'),
+  'workshop.essence.eventCost': definition('Taller', 'Total por {quantity} Esencia: {points} puntos + {fichas} Fichas.', 'Coste total de la cantidad seleccionada, con descuento activo.'),
+  'workshop.essence.eventDiscount': definition('Taller', '{percent}% OFF · Antes: {points} puntos + {fichas} Fichas. El servidor confirma el precio al generar.', 'Descuento del generador y coste anterior de la cantidad elegida.'),
+  'workshop.essence.eventPaid': definition('Taller', 'Generaste {quantity} Esencia. Pagaste {points} puntos + {fichas} Fichas.', 'Resultado del recibo económico autoritativo.'),
+  'workshop.essence.eventLoadError': definition('Taller', 'No se pudo consultar el precio actual. Cerrá y volvé a abrir el generador.', 'Error al cargar la vista previa del evento.'),
+  'campaign.eventType.achievementEssence': definition('Anuncios y Eventos', 'Esencia de logros', 'Multiplica sólo la Esencia de logros reclamados durante el evento; no conversiones ni grants.'),
+  'achievements.event.essence': definition('Logros', 'Esencia de logros ×{multiplier}. Se confirma el evento al reclamar.', 'Aviso del evento activo; el recibo del servidor determina el premio final.'),
   'campaign.eventType.packDiscount': definition('Anuncios y Eventos', 'Descuento en sobres', 'Nombre del tipo de evento de descuento.'),
-  'campaign.eventType.allPoints': definition('Anuncios y Eventos', 'Todos los puntos ganados', 'Nombre del evento multiplicador global de puntos.'),
-  'campaign.eventType.matchPoints': definition('Anuncios y Eventos', 'Puntos de partidas', 'Nombre del evento multiplicador de puntos de partidas.'),
-  'campaign.eventType.allFichas': definition('Anuncios y Eventos', 'Todas las Fichas ganadas', 'Nombre del evento multiplicador de Fichas.'),
+  'campaign.eventType.allPoints': definition('Anuncios y Eventos', 'Puntos de Solo, PvP y recompensa diaria', 'Nombre del evento multiplicador global de puntos.'),
+  'campaign.eventType.matchPoints': definition('Anuncios y Eventos', 'Puntos de partidas Solo y PvP', 'Nombre del evento multiplicador de puntos de partidas.'),
+  'campaign.eventType.allFichas': definition('Anuncios y Eventos', 'Fichas de sobres y recompensa diaria', 'Nombre del evento multiplicador de Fichas.'),
   'campaign.eventType.packFichaBonus': definition('Anuncios y Eventos', 'Bonus de Fichas al abrir sobre', 'Nombre del evento de bonus al abrir sobres.'),
 
   // Estadísticas Admin — 23.13.37 centralizado en 23.13.38.
@@ -2964,7 +3026,8 @@ export function normalizeGameTextOverrides(documentData) {
   for (const [key, value] of Object.entries(source)) {
     if (!isValidTextValue(value)) continue;
     if (!validateGameTextOverride(key, value).ok) continue;
-    normalized[key] = publicTerminologyText(value);
+    const legacyNavigationLabels={'campaign.popup.previous':'Anuncio anterior','campaign.popup.next':'Anuncio siguiente','campaign.popup.position':'Anuncio {index} de {total}'};
+    normalized[key] = publicTerminologyText(value===legacyNavigationLabels[key]?GAME_TEXT_DEFAULTS[key]:value);
   }
   return normalized;
 }
@@ -3037,7 +3100,7 @@ export function gameText(key, variables = {}) {
 }
 
 export function getGameTextCatalog() {
-  return Object.entries(GAME_TEXT_DEFINITIONS).map(([key, def]) => ({
+  return Object.entries(GAME_TEXT_DEFINITIONS).filter(([key])=>!retiredGameTextKeys.has(key)).map(([key, def]) => ({
     key,
     category: def.category,
     description: publicTerminologyText(def.description),

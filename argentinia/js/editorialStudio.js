@@ -11,7 +11,7 @@ function studioStyles(){
 }
 
 // No remote writes. Publication belongs to the existing Admin announcement adapter.
-export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest',onChange=()=>{},onPreview=null,readMetadata=()=>({}),restoreMetadata=()=>{}}={}){
+export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest',onChange=()=>{},onPreview=null,showPreviewButton=true,readMetadata=()=>({}),restoreMetadata=()=>{}}={}){
   studioStyles();let model=editorialFor(),pageIndex=0,selected=null,viewport='desktop',undo=[],redo=[],lastSaved=null,dirty=false,destroyed=false,generation=0,selection={start:0,end:0};
   const abort=new AbortController();const listen=(n,type,fn)=>n.addEventListener(type,fn,n===board?{signal:abort.signal}:undefined);
   const toolbar=el('div',{class:'ed-toolbar'}),pages=el('div',{class:'ed-pages'}),workspace=el('div',{class:'ed-workspace'}),boardWrap=el('div',{class:'ed-board-wrap'}),board=el('div',{class:'ed-board','data-view':viewport}),inspector=el('div',{class:'ed-inspector'}),status=el('div',{class:'ed-status',role:'status'});
@@ -28,14 +28,15 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
   const setField=(parent,label,node)=>{const wrap=el('label');wrap.append(document.createTextNode(label+' '),node);parent.append(wrap);return node;};
   const input=(type,value,onInput,attrs={})=>{const n=el('input',{type,...attrs});n.value=value;listen(n,'change',()=>onInput(n.value,n));return n;};
   const saveDraft=()=>{try{const data={version:1,presentation:normalizeEditorial(model),metadata:readMetadata(),savedAt:new Date().toISOString()};localStorage.setItem(draftKey,JSON.stringify(data));lastSaved=snapshot();savedMetadata=JSON.stringify(readMetadata());dirty=false;say('Borrador guardado en este navegador. No está publicado.');}catch(e){say('No se pudo guardar el borrador: '+e.message);}renderToolbar();};
-  const loadDraft=async()=>{try{const raw=localStorage.getItem(draftKey);if(!raw){say('No hay un borrador guardado.');return;}const data=JSON.parse(raw);const next=normalizeEditorial(data.presentation);if(dirty&&!await confirmDiscard())return;restoreMetadata(data.metadata||{});model=next;pageIndex=0;selected=null;undo=[];redo=[];generation++;dirty=false;render();say('Borrador recuperado. Aún no está publicado.');}catch(e){say('No se pudo recuperar el borrador: '+e.message);}};
+  const loadDraft=async()=>{try{const raw=localStorage.getItem(draftKey);if(!raw){say('No hay un borrador guardado.');return;}const data=JSON.parse(raw);const next=normalizeEditorial(data.presentation);if(dirty&&!await confirmDiscard())return;restoreMetadata(data.metadata||{});model=next;pageIndex=0;selected=null;undo=[];redo=[];generation++;dirty=false;lastSaved=snapshot();savedMetadata=JSON.stringify(readMetadata());render();say('Borrador recuperado. Aún no está publicado.');}catch(e){say('No se pudo recuperar el borrador: '+e.message);}};
   const confirmDiscard=()=>showGameDialog('Hay cambios sin publicar. ¿Querés descartarlos?',{confirm:true,title:'Cambiar diseño',acceptLabel:'Descartar cambios'});
   const addBlock=type=>mutate(()=>{if(getPage().blocks.length>=40)throw Error('Máximo de 40 bloques por página.');const b={id:editorialId(),type,x:10,y:20,w:60,h:30,mobile:{x:8,y:18,w:84,h:35}};if(type==='text')Object.assign(b,{runs:[{text:'Escribí tu texto',bold:false,italic:false}],fontSize:28,color:'#f4e8c7'});else Object.assign(b,{src:'',alt:'Ilustración',fit:'contain'});getPage().blocks.push(b);selected=b.id;});
   function renderToolbar(){
     toolbar.replaceChildren(button('+ Texto',()=>addBlock('text'),{'data-ed-add':'text'}),button('+ Imagen',()=>addBlock('image'),{'data-ed-add':'image'}),button('Deshacer',()=>{if(!undo.length)return;redo.push(snapshot());model=JSON.parse(undo.pop());dirty=true;generation++;render();onChange();},{'data-ed-undo':''}),button('Rehacer',()=>{if(!redo.length)return;undo.push(snapshot());model=JSON.parse(redo.pop());dirty=true;generation++;render();onChange();},{'data-ed-redo':''}));
     toolbar.querySelector('[data-ed-undo]').disabled=!undo.length;toolbar.querySelector('[data-ed-redo]').disabled=!redo.length;
     for(const [key,label] of [['desktop','Desktop'],['mobile','Mobile']])toolbar.append(button(label,()=>{viewport=key;render();},{'data-ed-viewport':key,'aria-pressed':String(viewport===key)}));
-    toolbar.append(button('Vista previa',()=>{const ann={...readMetadata(),presentation:normalizeEditorial(model)};(onPreview||showEditorialPreview)(ann,{viewport});},{'data-ed-preview':''}),button('Guardar borrador',saveDraft,{'data-ed-draft':'save'}),button('Recuperar borrador',loadDraft,{'data-ed-draft':'load'}));
+    if(showPreviewButton)toolbar.append(button('Vista previa',()=>{const ann={...readMetadata(),presentation:normalizeEditorial(model)};(onPreview||showEditorialPreview)(ann,{viewport});},{'data-ed-preview':''}));
+    toolbar.append(button('Guardar borrador',saveDraft,{'data-ed-draft':'save'}),button('Recuperar borrador',loadDraft,{'data-ed-draft':'load'}));
   }
   function renderPages(){
     pages.replaceChildren();model.pages.forEach((p,i)=>pages.append(button(p.name,()=>{pageIndex=i;selected=null;render();},{'aria-pressed':String(i===pageIndex),'data-ed-page':i})));

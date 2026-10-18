@@ -2607,6 +2607,7 @@ function normalizeAnnouncementDoc(id, data = {}) {
 function normalizeCampaignEventDoc(id, data = {}) {
   return {
     id,
+    finalized: data.finalized === true,
     name: String(data.name || '').trim(),
     type: String(data.type || '').trim(),
     value: Number(data.value) || 0,
@@ -2631,7 +2632,8 @@ export async function fetchCampaignSnapshot(now = null) {
     try { effectiveNow = (await getAuthoritativeClassifiedsNow(auth.currentUser.uid)).serverNow; } catch {}
   }
   if (effectiveNow == null) effectiveNow = Date.now();
-  const events = await fetchCampaignEvents(100);
+  const snap=await getDocs(query(collection(db,'campaignEvents'),where('endAt','>',new Date(effectiveNow))));
+  const events=snap.docs.map(d=>normalizeCampaignEventDoc(d.id,d.data()));
   return buildCampaignSnapshot(events, effectiveNow);
 }
 

@@ -1,5 +1,6 @@
 // js/gameTextsAdmin.js — Entrega 23.13.29
 // Editor Admin para copy humano visible. No conoce Firebase: load/save se inyectan desde UI.
+import { showGameDialog } from './gameDialogs.js';
 
 import {
   GAME_TEXT_MAX_LENGTH,
@@ -73,7 +74,7 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     <div class="admin-section">
       <div class="admin-section-title">Textos del juego</div>
       <div style="color:#bcaec6;font-size:12px;line-height:1.5;margin-bottom:12px;">
-        Editá copy humano visible sin tocar código. Los valores se guardan como texto plano; las variables entre llaves deben conservarse.
+        Editá los textos vigentes sin tocar código. Se muestran las etiquetas del menú actual y de Soporte; los textos retirados se conservan sólo por compatibilidad. Los diseños de anuncios y el contenido de tutoriales se editan en Anuncios, eventos y tutoriales. Las variables entre llaves deben conservarse.
       </div>
       <div class="game-text-toolbar">
         <input class="game-text-search" type="search" placeholder="Buscar texto, clave o descripción…" aria-label="Buscar textos del juego">
@@ -209,7 +210,7 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
       const row = editingKey ? rowForKey(editingKey) : null;
       const box = row?.querySelector('.game-text-error');
       if (box) box.textContent = error?.message || 'No se pudo guardar el texto.';
-      else window.alert(error?.message || 'No se pudieron guardar los textos.');
+      else void showGameDialog(error?.message || 'No se pudieron guardar los textos.');
     } finally {
       saving = false;
       resetCategoryBtn.disabled = false;
@@ -258,13 +259,14 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
 
   search.addEventListener('input', render);
   category.addEventListener('change', render);
-  resetCategoryBtn.addEventListener('click', () => {
+  resetCategoryBtn.addEventListener('click', async () => {
     const selected = category.value;
     if (!selected || saving) return;
     const catalog = getGameTextCatalog();
     const affected = catalog.filter(item => item.category === selected && item.overrideText !== null);
     if (!affected.length) return;
-    if (!window.confirm(`¿Restaurar ${affected.length} texto(s) de “${selected}” a su versión original?`)) return;
+    if (!await showGameDialog(`¿Restaurar ${affected.length} texto(s) de “${selected}” a su versión original?`,{confirm:true,acceptLabel:'Restaurar'})) return;
+    if(!root.isConnected||saving)return;
     const next = { ...overrides };
     affected.forEach(item => { delete next[item.key]; });
     void persistDocument(next, `Categoría “${selected}” restaurada.`);
