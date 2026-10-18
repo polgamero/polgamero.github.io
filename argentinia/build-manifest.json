@@ -1,7 +1,7 @@
 {
   "releaseVersion": "23.22.0",
-  "releaseHotfix": "HF6",
-  "releaseDisplayVersion": "23.22.0 HF6",
+  "releaseHotfix": "HF7",
+  "releaseDisplayVersion": "23.22.0 HF7",
   "engineVersion": "23.21.6",
   "engineProtocolVersion": "mp-23.19.2-fl40",
   "protocolVersion": "mp-23.19.2-fl40",
@@ -211,12 +211,13 @@
     "./js/menuGuide.js",
     "./js/tutorials.js",
     "./js/campaignAdminV2.js",
-    "./js/retiredGameTexts.js"
+    "./js/retiredGameTexts.js",
+    "./js/editorialFrames.js"
   ],
   "publicProjection": true,
-  "releaseLabel": "23.22.0 HF6",
-  "hotfixCandidate": "HF6",
-  "hotfixLabel": "Gestor editorial + Soporte + Esencia y eventos económicos; acumulativo Mecha PvP + DUELISTA + Apariencia V2",
+  "releaseLabel": "23.22.0 HF7",
+  "hotfixCandidate": "HF7",
+  "hotfixLabel": "Contenedores editoriales por formato + tutoriales únicos; acumulativo Gestor editorial + Soporte + Esencia y eventos",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -238,5 +239,5 @@
     "assets/images/menu/city-distant.webp": "56b9df5540ce429f5e3677ddd8b58c6b656c23316fd8cbf997caf2f4176d46d7",
     "assets/images/menu/city-distant-mobile.webp": "f00b0956e44c70ee0c2261f68fd400c5235ae44140af29b7ff47ce75e72da4ea"
   },
-  "buildId": "e3580181d253ff68328d"
+  "buildId": "39b9f99083dff7c84405"
 }

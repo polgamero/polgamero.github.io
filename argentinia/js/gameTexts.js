@@ -54,7 +54,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   "campaign.manager.tutorials": definition("Anuncios y tutoriales","Tutoriales","Sección de tutoriales."),
   "campaign.manager.tutorialHelp": definition("Anuncios y tutoriales","Los destinos y momentos de aparición están definidos por el juego. Elegí qué tutorial querés editar; podés personalizar su contenido o restaurar el diseño original.","Ayuda de Tutoriales."),
   "campaign.manager.zoneTutorials": definition("Anuncios y tutoriales","Tutoriales de cada lugar","Grupo de tutoriales contextuales."),
-  "campaign.manager.history": definition("Anuncios y tutoriales","Historial · anuncios, eventos y tutoriales","Tabla de contenidos y estados."),
+  "campaign.manager.history": definition("Anuncios y tutoriales","Historial · anuncios y eventos","Tabla de contenidos y estados."),
   "campaign.manager.custom": definition("Anuncios y tutoriales","Personalizado","Tutorial publicado por Admin."),
   "campaign.manager.default": definition("Anuncios y tutoriales","Original","Tutorial local sin personalización activa."),
   "campaign.manager.fixedTarget": definition("Anuncios y tutoriales","Editás el contenido; su destino y aparición permanecen definidos por el juego.","Destino fijo de un tutorial."),
@@ -3026,7 +3026,7 @@ export function normalizeGameTextOverrides(documentData) {
   for (const [key, value] of Object.entries(source)) {
     if (!isValidTextValue(value)) continue;
     if (!validateGameTextOverride(key, value).ok) continue;
-    const legacyNavigationLabels={'campaign.popup.previous':'Anuncio anterior','campaign.popup.next':'Anuncio siguiente','campaign.popup.position':'Anuncio {index} de {total}'};
+    const legacyNavigationLabels={'campaign.popup.previous':'Anuncio anterior','campaign.popup.next':'Anuncio siguiente','campaign.popup.position':'Anuncio {index} de {total}','campaign.manager.history':'Historial · anuncios, eventos y tutoriales'};
     normalized[key] = publicTerminologyText(value===legacyNavigationLabels[key]?GAME_TEXT_DEFAULTS[key]:value);
   }
   return normalized;

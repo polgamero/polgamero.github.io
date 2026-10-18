@@ -1,5 +1,6 @@
 import { editorialId, editorialAsset, editorialFor, normalizeEditorial, normalizeRuns, formatEditorialRuns } from './editorialModel.js';
 import { renderEditorialPage, applyEditorialRect, showEditorialPreview } from './editorialRenderer.js';
+import { EDITORIAL_FORMATS,editorialFrame } from './editorialFrames.js';
 import { showGameDialog } from './gameDialogs.js';
 
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -12,7 +13,7 @@ function studioStyles(){
 
 // No remote writes. Publication belongs to the existing Admin announcement adapter.
 export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest',onChange=()=>{},onPreview=null,showPreviewButton=true,readMetadata=()=>({}),restoreMetadata=()=>{}}={}){
-  studioStyles();let model=editorialFor(),pageIndex=0,selected=null,viewport='desktop',undo=[],redo=[],lastSaved=null,dirty=false,destroyed=false,generation=0,selection={start:0,end:0};
+  studioStyles();let model=editorialFor(),pageIndex=0,selected=null,viewport='desktop',frameContext='popup',undo=[],redo=[],lastSaved=null,dirty=false,destroyed=false,generation=0,selection={start:0,end:0};
   const abort=new AbortController();const listen=(n,type,fn)=>n.addEventListener(type,fn,n===board?{signal:abort.signal}:undefined);
   const toolbar=el('div',{class:'ed-toolbar'}),pages=el('div',{class:'ed-pages'}),workspace=el('div',{class:'ed-workspace'}),boardWrap=el('div',{class:'ed-board-wrap'}),board=el('div',{class:'ed-board','data-view':viewport}),inspector=el('div',{class:'ed-inspector'}),status=el('div',{class:'ed-status',role:'status'});
   root.classList.add('ed-studio');root.replaceChildren(toolbar,pages,workspace,status);boardWrap.append(board);workspace.append(boardWrap,inspector);
@@ -34,7 +35,7 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
   function renderToolbar(){
     toolbar.replaceChildren(button('+ Texto',()=>addBlock('text'),{'data-ed-add':'text'}),button('+ Imagen',()=>addBlock('image'),{'data-ed-add':'image'}),button('Deshacer',()=>{if(!undo.length)return;redo.push(snapshot());model=JSON.parse(undo.pop());dirty=true;generation++;render();onChange();},{'data-ed-undo':''}),button('Rehacer',()=>{if(!redo.length)return;undo.push(snapshot());model=JSON.parse(redo.pop());dirty=true;generation++;render();onChange();},{'data-ed-redo':''}));
     toolbar.querySelector('[data-ed-undo]').disabled=!undo.length;toolbar.querySelector('[data-ed-redo]').disabled=!redo.length;
-    for(const [key,label] of [['desktop','Desktop'],['mobile','Mobile']])toolbar.append(button(label,()=>{viewport=key;render();},{'data-ed-viewport':key,'aria-pressed':String(viewport===key)}));
+    for(const [key,label] of [['desktop','Desktop'],['notebook','Notebook'],['mobile','Mobile']])toolbar.append(button(label,()=>{viewport=key;render();},{'data-ed-viewport':key,'aria-pressed':String(viewport===key)}));
     if(showPreviewButton)toolbar.append(button('Vista previa',()=>{const ann={...readMetadata(),presentation:normalizeEditorial(model)};(onPreview||showEditorialPreview)(ann,{viewport});},{'data-ed-preview':''}));
     toolbar.append(button('Guardar borrador',saveDraft,{'data-ed-draft':'save'}),button('Recuperar borrador',loadDraft,{'data-ed-draft':'load'}));
   }
@@ -60,6 +61,14 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
   }
   function renderInspector(){
     inspector.replaceChildren();const page=getPage(),block=getBlock();
+    const sizes=el('fieldset',{'data-ed-frame-sizes':''});sizes.append(el('legend',{},'Tamaño del contenedor · píxeles'));
+    sizes.append(el('p',{},'Incluye contenido y botones. Se limita a la pantalla disponible. Cada página puede tener sus propios tamaños.'));
+    for(const format of EDITORIAL_FORMATS){
+      const row=el('div',{class:'ed-inspector-row'}),size=editorialFrame(model,pageIndex,format,frameContext);row.append(el('strong',{},format==='desktop'?'Desktop':format==='notebook'?'Notebook':'Mobile'));
+      for(const [key,label,max] of [['width','Ancho',1920],['height','Alto',1080]])setField(row,label,input('number',size[key],value=>mutate(()=>{page.frames||={};page.frames[format]={...size,[key]:Number(value)};}),{min:180,max,step:1,'data-ed-frame':key,'data-ed-frame-format':format,'aria-label':label+' del contenedor '+format}));
+      sizes.append(row);
+    }
+    sizes.append(button('Restaurar tamaños de esta página',()=>mutate(()=>{delete page.frames;}),{'data-ed-frame-reset':''}));inspector.append(sizes);
     const pageBox=el('div');pageBox.append(el('strong',{},'Página y fondo'));
     setField(pageBox,'Nombre',input('text',page.name,v=>mutate(()=>page.name=v),{'aria-label':'Nombre de página',maxlength:80}));
     setField(pageBox,'Color',input('color',page.background.color,v=>mutate(()=>page.background.color=v),{'aria-label':'Color de fondo'}));
@@ -88,7 +97,7 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
     const actions=el('div',{class:'ed-inspector-row'});
     actions.append(button('Atrás',()=>mutate(()=>{const i=page.blocks.indexOf(block);if(i>0)[page.blocks[i-1],page.blocks[i]]=[block,page.blocks[i-1]];})),button('Adelante',()=>mutate(()=>{const i=page.blocks.indexOf(block);if(i<page.blocks.length-1)[page.blocks[i+1],page.blocks[i]]=[block,page.blocks[i+1]];})),button('Centrar',()=>mutate(()=>bounds.x=(100-bounds.w)/2)),button('Duplicar',()=>mutate(()=>{if(page.blocks.length>=40)return;const copy=clone(block);copy.id=editorialId();page.blocks.push(copy);selected=copy.id;})),button('Eliminar bloque',()=>mutate(()=>{page.blocks=page.blocks.filter(b=>b.id!==selected);selected=null;}),{'data-ed-delete':''}));box.append(actions);inspector.append(box);
   }
-  function render(){if(destroyed)return;unbindGesture?.();unbindGesture=null;pageIndex=Math.min(pageIndex,model.pages.length-1);if(!getBlock())selected=null;board.dataset.view=viewport;renderEditorialPage(board,model,{pageIndex,viewport,editable:true,selectedId:selected});renderToolbar();renderPages();renderInspector();}
+  function render(){if(destroyed)return;unbindGesture?.();unbindGesture=null;pageIndex=Math.min(pageIndex,model.pages.length-1);if(!getBlock())selected=null;board.dataset.view=viewport;const frame=editorialFrame(model,pageIndex,viewport,frameContext);const chrome=frameContext==='guide'?140:66;board.style.aspectRatio=`${Math.max(100,frame.width-32)}/${Math.max(60,frame.height-chrome)}`;renderEditorialPage(board,model,{pageIndex,viewport,editable:true,selectedId:selected,fill:true});renderToolbar();renderPages();renderInspector();}
   listen(board,'pointerdown',event=>{
     if(event.button!==0||event.target.closest('[contenteditable=true]'))return;
     const node=event.target.closest('[data-block-id]');if(!node){selected=null;render();return;}
@@ -115,7 +124,7 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
   render();
   return {
     getDocument:()=>normalizeEditorial(model),
-    async setAnnouncement(ann={}, {force=false}={}){if(!force&&hasUnsaved()&&!await confirmDiscard())return false;unbindGesture?.();model=editorialFor(ann);pageIndex=0;selected=null;undo=[];redo=[];dirty=false;generation++;render();say('Diseño cargado. Publicar requiere el botón de publicación.');return true;},
+    async setAnnouncement(ann={}, {force=false}={}){if(!force&&hasUnsaved()&&!await confirmDiscard())return false;unbindGesture?.();frameContext=ann.contentKind==='tutorial'&&ann.tutorialZone==='main'?'guide':'popup';model=editorialFor(ann);pageIndex=0;selected=null;undo=[];redo=[];dirty=false;generation++;render();say('Diseño cargado. Publicar requiere el botón de publicación.');return true;},
     markMetadataLoaded(){savedMetadata=JSON.stringify(readMetadata());},
     markPublished(){dirty=false;lastSaved=snapshot();savedMetadata=JSON.stringify(readMetadata());say('Diseño publicado.');},
     hasUnsavedChanges:hasUnsaved,

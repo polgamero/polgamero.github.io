@@ -40,6 +40,7 @@ import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction,
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { isCurrentLegalAcceptance } from './legal.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
+import { tutorialDocumentId } from './editorialFrames.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
@@ -2669,6 +2670,16 @@ export async function deleteCampaignEvent(eventId) {
 
 export async function saveAnnouncement(adminUid, payload, announcementId = null) {
   const normalized = validateAnnouncementPayload(payload);
+  if(normalized.contentKind==='tutorial'){
+    const ref=doc(db,'announcements',tutorialDocumentId(normalized.tutorialZone,normalized.tutorialStep||'welcome'));
+    await runTransaction(db,async transaction=>{
+      const previous=await transaction.get(ref);
+      const data={...normalized,adminUid,updatedAt:serverTimestamp(),finalizedAt:null};
+      if(!previous.exists())data.createdAt=serverTimestamp();
+      transaction.set(ref,data,{merge:true});
+    });
+    return ref.id;
+  }
   const ref = announcementId ? doc(db, 'announcements', announcementId) : doc(collection(db, 'announcements'));
   const base = { ...normalized, adminUid, updatedAt: serverTimestamp(), finalizedAt: null };
   if (!announcementId) base.createdAt = serverTimestamp();
@@ -2733,7 +2744,8 @@ export async function fetchAnnouncements(maxCount = 50) {
 
 export async function fetchTutorialAnnouncements(zone) {
   if(!/^[a-z]{1,30}$/.test(String(zone)))return [];
-  const q=query(collection(db,'announcements'),where('contentKind','==','tutorial'),where('tutorialZone','==',zone),limit(100));
+  const filters=[where('contentKind','==','tutorial')];if(zone!=='all')filters.push(where('tutorialZone','==',zone));
+  const q=query(collection(db,'announcements'),...filters);
   const snap=await getDocs(q);
   return snap.docs.map(d=>normalizeAnnouncementDoc(d.id,d.data()));
 }

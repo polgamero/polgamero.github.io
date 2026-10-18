@@ -1,4 +1,11 @@
 import { normalizeEditorial } from './editorialModel.js';
+import { editorialFrame,editorialViewport } from './editorialFrames.js';
+export function applyEditorialFrame(node,model,{pageIndex=0,viewport=editorialViewport(node.ownerDocument.defaultView),context='popup',availableWidth,availableHeight}={}){
+  const win=node.ownerDocument.defaultView,frame=editorialFrame(model,pageIndex,viewport,context);
+  const width=Math.min(frame.width,availableWidth??win.innerWidth-24),height=Math.min(frame.height,availableHeight??win.innerHeight-24);
+  Object.assign(node.style,{width:Math.max(0,width)+'px',height:Math.max(0,height)+'px',maxWidth:Math.max(0,availableWidth??win.innerWidth-24)+'px',maxHeight:Math.max(0,availableHeight??win.innerHeight-24)+'px',boxSizing:'border-box'});
+  node.dataset.viewport=viewport;node.dataset.frameWidth=frame.width;node.dataset.frameHeight=frame.height;return frame;
+}
 
 export function ensureEditorialStyles(doc=document) {
   if(doc.getElementById('arg-editorial-styles'))return;
@@ -10,10 +17,11 @@ export function applyEditorialRect(node,block,viewport='desktop') {
   const r=viewport==='mobile'?block.mobile:block;
   Object.assign(node.style,{left:r.x+'%',top:r.y+'%',width:r.w+'%',height:r.h+'%'});
 }
-export function renderEditorialPage(container,presentation,{pageIndex=0,viewport='desktop',editable=false,selectedId=null}={}) {
+export function renderEditorialPage(container,presentation,{pageIndex=0,viewport='desktop',editable=false,selectedId=null,fill=false}={}) {
   const model=normalizeEditorial(presentation),page=model.pages[Math.min(model.pages.length-1,Math.max(0,pageIndex))];
   const doc=container.ownerDocument;ensureEditorialStyles(doc);
   const surface=doc.createElement('div');surface.className='ed-surface'+(editable?' ed-editor':'');surface.dataset.viewport=viewport;
+  if(fill)Object.assign(surface.style,{height:'100%',minHeight:'0',aspectRatio:'auto'});
   surface.style.backgroundColor=page.background.color;surface.setAttribute('aria-label',page.name);
   if(page.background.image){const img=doc.createElement('img');img.className='ed-background';img.alt='';img.src=page.background.image;img.addEventListener('error',()=>img.remove(),{once:true});surface.append(img);}
   const shade=doc.createElement('div');shade.className='ed-shade';shade.style.background=`rgba(0,0,0,${page.background.shade})`;surface.append(shade);
@@ -45,7 +53,8 @@ export function showEditorialPreview(announcement,{onClose=()=>{},parent=documen
   const model=normalizeEditorial(announcement.presentation);let page=0,closed=false;
   const button=(label,click)=>{const b=doc.createElement('button');b.type='button';b.textContent=label;b.style.cssText='min-height:44px;border:1px solid #d4af37;border-radius:8px;background:#1b2b1f;color:#f4e8c7;padding:8px 16px;cursor:pointer';b.addEventListener('click',click);return b;};
   const counter=doc.createElement('span');
-  const update=()=>{renderEditorialPage(stage,model,{pageIndex:page,viewport:doc.defaultView.innerWidth<760?'mobile':'desktop'});counter.textContent=`${page+1} / ${model.pages.length}`;prev.disabled=page===0;next.disabled=page===model.pages.length-1;};
+  card.style.display='flex';card.style.flexDirection='column';card.style.overflow='hidden';stage.style.cssText='flex:1;min-height:0';footer.style.flexShrink='0';
+  const update=()=>{const viewport=editorialViewport(doc.defaultView);applyEditorialFrame(card,model,{pageIndex:page,viewport});renderEditorialPage(stage,model,{pageIndex:page,viewport,fill:true});prev.hidden=next.hidden=counter.hidden=model.pages.length<2;counter.textContent=`${page+1} / ${model.pages.length}`;prev.disabled=page===0;next.disabled=page===model.pages.length-1;};
   const close=()=>{if(closed)return;closed=true;shell.remove();doc.removeEventListener('keydown',key,true);doc.defaultView.removeEventListener('resize',update);previous?.isConnected&&previous.focus?.();onClose();};
   const prev=button('← Anterior',()=>{page--;update();}),next=button('Siguiente →',()=>{page++;update();}),end=button('Cerrar',close);
   footer.append(prev,counter,next,end);card.append(stage,footer);shell.append(card);

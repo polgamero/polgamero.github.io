@@ -1,3 +1,4 @@
+import { normalizeEditorialFrames } from './editorialFrames.js';
 // Versioned editorial documents. Data only: no HTML, CSS, scripts or remote uploads.
 export const EDITORIAL_VERSION = 1;
 export const EDITORIAL_MAX_BYTES = 700000;
@@ -33,7 +34,7 @@ export function normalizeEditorial(value) {
   const pageIds=new Set(),blockIds=new Set();
   const pages=value.pages.slice(0,8).map(p=>{
     let id=text(p.id,80)||editorialId();if(pageIds.has(id))id=editorialId();pageIds.add(id);
-    return {id,name:text(p.name||'Página',80),background:{color:color(p.background?.color,'#0c1811'),image:editorialAsset(p.background?.image),shade:number(p.background?.shade,.35,0,.85)},blocks:(Array.isArray(p.blocks)?p.blocks:[]).slice(0,40).map(b=>{
+    return {id,name:text(p.name||'Página',80),...(normalizeEditorialFrames(p.frames)?{frames:normalizeEditorialFrames(p.frames)}:{}),background:{color:color(p.background?.color,'#0c1811'),image:editorialAsset(p.background?.image),shade:number(p.background?.shade,.35,0,.85)},blocks:(Array.isArray(p.blocks)?p.blocks:[]).slice(0,40).map(b=>{
       let blockId=text(b.id,80)||editorialId();if(blockIds.has(blockId))blockId=editorialId();blockIds.add(blockId);
       const type=b.type==='image'?'image':'text';
       const base={id:blockId,type,...rect(b),mobile:rect(b.mobile||b),opacity:number(b.opacity,1,.1,1)};
@@ -48,13 +49,25 @@ export function normalizeEditorial(value) {
 export function legacyEditorial(ann={}) {
   const blocks=[];
   const add=(s,y,h,size,bold=false)=>{if(s)blocks.push({id:editorialId(),type:'text',x:7,y,w:86,h,fontSize:size,runs:[{text:String(s),bold}],color:bold?'#f5d777':'#f4e8c7'});};
-  add(ann.title||'Bienvenido a Argentinia',8,18,38,true);
-  add(ann.subtitle||'',28,12,23);
-  add((ann.paragraphs||[ann.text||'Creá tu anuncio con texto e imágenes.']).join('\n\n'),43,49,24);
+  add(ann.title||'Bienvenido a Argentinia',4,27,38,true);
+  add(ann.subtitle||'',31,14,23);
+  add((ann.paragraphs||[ann.text||'Creá tu anuncio con texto e imágenes.']).join('\n\n'),ann.subtitle?48:38,ann.subtitle?48:58,24);
   return normalizeEditorial({version:1,pages:[{id:editorialId(),name:'Página 1',background:{color:'#0c1811',image:ann.imageFilename?`./assets/images/ui/${ann.imageFilename}`:'',shade:.5},blocks}]});
 }
 export function editorialFor(ann={}) {
-  try{return ann.presentation?normalizeEditorial(ann.presentation):legacyEditorial(ann);}catch{return legacyEditorial(ann);}
+  try{
+    const model=ann.presentation?normalizeEditorial(ann.presentation):legacyEditorial(ann);
+    // Compact only the recognizable old default layout. Preserve hand-positioned artwork.
+    for(const page of model.pages){
+      if(page.frames||page.blocks.some(b=>b.type!=='text'||b.x!==7||b.w!==86))continue;
+      const title=page.blocks.find(b=>b.y===8&&b.h===18),body=page.blocks.find(b=>b.y===43&&b.h===49);
+      if(!title||!body)continue;
+      title.y=4;title.h=27;const subtitle=page.blocks.find(b=>b.y===28&&b.h===12);
+      if(subtitle){subtitle.y=31;subtitle.h=14;}body.y=subtitle?48:38;body.h=subtitle?48:58;
+      for(const block of [title,body,subtitle].filter(Boolean))if(block.mobile?.x===7&&block.mobile?.w===86)block.mobile={x:block.x,y:block.y,w:block.w,h:block.h};
+    }
+    return model;
+  }catch{return legacyEditorial(ann);}
 }
 export function editorialSummary(presentation) {
   let remaining=6000;

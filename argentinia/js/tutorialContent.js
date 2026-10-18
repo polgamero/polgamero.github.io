@@ -1,3 +1,4 @@
+import { tutorialDocumentId } from './editorialFrames.js';
 import { legacyEditorial, EDITORIAL_TOUR_STEPS, EDITORIAL_ZONES } from './editorialModel.js';
 export const MENU_GUIDE_ID='guide-menu-v1';
 const entries=[
@@ -39,5 +40,8 @@ export function defaultZoneTutorial(zone){return {id:zoneTutorialKey(zone),title
 export function defaultStepTutorial(stepId='welcome') {const step=MENU_GUIDE_STEPS.find(s=>s.id===stepId)||MENU_GUIDE_STEPS[0];return {title:step.title,paragraphs:[step.body],contentKind:'tutorial',tutorialZone:'main',tutorialStep:step.id,dismissible:true,presentation:legacyEditorial({title:step.title,paragraphs:[step.body]})};}
 export function selectZoneTutorial(zone,announcements=[],now=new Date()){
   const ms=value=>value?.getTime?.()||value?.toMillis?.()||Date.parse(value)||0;
-  return announcements.filter(a=>a.contentKind==='tutorial'&&a.tutorialZone===zone&&!a.finalizedAt&&(!ms(a.startAt)||ms(a.startAt)<=+now)&&(!ms(a.endAt)||ms(a.endAt)>+now)).sort((a,b)=>ms(b.updatedAt||b.createdAt)-ms(a.updatedAt||a.createdAt));
+  const rows=announcements.filter(a=>a.contentKind==='tutorial'&&a.tutorialZone===zone&&!a.finalizedAt&&(!ms(a.startAt)||ms(a.startAt)<=+now)&&(!ms(a.endAt)||ms(a.endAt)>+now));
+  const canonical=a=>a.id===tutorialDocumentId(zone,a.tutorialStep||'welcome');
+  rows.sort((a,b)=>Number(canonical(b))-Number(canonical(a))||ms(b.updatedAt||b.createdAt)-ms(a.updatedAt||a.createdAt)||String(a.id||'').localeCompare(String(b.id||'')));
+  const seen=new Set();return rows.filter(a=>{const key=zone==='main'?(a.tutorialStep||'welcome'):zone;if(seen.has(key))return false;seen.add(key);return true;});
 }

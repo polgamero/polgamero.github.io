@@ -6,7 +6,8 @@ import { fetchAnnouncements,isAnnouncementDismissed,dismissAnnouncement,fetchCam
 import { CAMPAIGN_EVENT_TYPES, campaignStatus, eventValueLabel } from './campaigns.js';
 import { gameText } from './gameTexts.js';
 import { editorialFor,isEditorialVisible } from './editorialModel.js';
-import { renderEditorialPage } from './editorialRenderer.js';
+import { applyEditorialFrame,renderEditorialPage } from './editorialRenderer.js';
+import { editorialViewport } from './editorialFrames.js';
 import { mountCampaignDashboard } from './campaignAdminV2.js';
 
 function esc(value) {
@@ -61,10 +62,18 @@ function ensureCampaignStyles() {
   const style = document.createElement('style');
   style.id = 'arg-campaign-styles';
   style.textContent = `
+    .campaign-popup-shell [hidden]{display:none!important}
+    .campaign-popup-shell:has(.campaign-popup-card[data-editorial=true]){padding:12px}
+    .campaign-popup-card[data-editorial=true]{display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
+    .campaign-popup-card[data-editorial=true]>.campaign-popup-content{display:flex;flex-direction:column;min-height:0;height:100%;box-sizing:border-box;padding:12px;gap:8px}
+    .campaign-popup-card[data-editorial=true] .campaign-editorial-host{flex:1;min-height:0;margin:0}
+    .campaign-popup-card[data-editorial=true] .campaign-popup-footer{flex-shrink:0;margin-top:0}
+    .campaign-popup-card[data-editorial=true] .campaign-actions{flex-shrink:0;margin:0}
+    .campaign-popup-card[data-editorial=true] .campaign-popup-dots:empty{display:none}
     .campaign-admin-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
     .campaign-popup-card[data-editorial=true]{width:min(960px,96vw)}
     .campaign-popup-card[data-editorial=true] .campaign-popup-content{padding:12px}
-    .campaign-editorial-host{margin:0 -12px}
+    .campaign-editorial-host{margin:0}
     .campaign-form-card{background:rgba(0,0,0,.18);border:1px solid rgba(212,175,55,.22);border-radius:12px;padding:14px}
     .campaign-field{display:flex;flex-direction:column;gap:5px;margin:8px 0;text-align:left}
     .campaign-field label{font-size:11px;color:#cfc9b6;font-weight:700}
@@ -182,9 +191,9 @@ export function showAnnouncementCarousel(announcements,{currentUser,preview=fals
     let previewFormat=previewViewport||'desktop';
     if(preview){const formats=document.createElement('div');formats.className='campaign-actions';formats.dataset.previewFormats='';
       for(const [value,label] of [['desktop','Desktop'],['notebook','Notebook'],['mobile','Mobile']]){const b=document.createElement('button');b.type='button';b.className='campaign-popup-close';b.dataset.previewFormat=value;b.textContent=label;b.addEventListener('click',()=>{previewFormat=value;applyPreviewFormat();renderPage();});formats.append(b);}
-      card.querySelector('.campaign-popup-content').prepend(formats);
+      formats.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);margin:0;z-index:5';shell.append(formats);
     }
-    const applyPreviewFormat=()=>{if(!preview)return;const [width,height]=previewFormat==='mobile'?[915,412]:previewFormat==='notebook'?[1366,768]:[1920,1080];shell.dataset.previewViewport=`${width}×${height}`;card.style.width=`min(${Math.min(960,width*.96)}px,96vw)`;card.style.maxHeight=`min(${height*.88}px,88dvh)`;shell.querySelectorAll('[data-preview-format]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.previewFormat===previewFormat)));};
+    const applyPreviewFormat=()=>{if(!preview)return;const [width,height]=previewFormat==='mobile'?[915,412]:previewFormat==='notebook'?[1366,768]:[1920,1080];shell.dataset.previewViewport=`${width}×${height}`;card.style.maxHeight=`min(${height-24}px,calc(100dvh - 24px))`;shell.querySelectorAll('[data-preview-format]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.previewFormat===previewFormat)));};
     const bg=shell.querySelector('[data-ann-bg]');
     const title=shell.querySelector('[data-title]');
     const subtitle=shell.querySelector('[data-subtitle]');
@@ -197,8 +206,10 @@ export function showAnnouncementCarousel(announcements,{currentUser,preview=fals
     const editorial=shell.querySelector('[data-editorial-host]'),pageControls=shell.querySelector('[data-editorial-pages]'),pagePrev=shell.querySelector('[data-page-prev]'),pageNext=shell.querySelector('[data-page-next]');
     const renderPage=()=>{
       const model=editorialFor(items[index]);pageIndex=Math.min(pageIndex,model.pages.length-1);
-      const viewport=preview?(previewFormat==='mobile'?'mobile':'desktop'):(window.innerWidth<760||document.documentElement.classList.contains('argentinia-mobile')?'mobile':'desktop');
-      renderEditorialPage(editorial,model,{pageIndex,viewport});
+      const viewport=preview?previewFormat:editorialViewport();
+      const bounds=preview?(previewFormat==='mobile'?[915,412]:previewFormat==='notebook'?[1366,768]:[1920,1080]):[innerWidth,innerHeight];
+      applyEditorialFrame(card,model,{pageIndex,viewport,context:items[index]?.contentKind==='tutorial'&&items[index]?.tutorialZone==='main'?'guide':'popup',availableWidth:Math.min(innerWidth,bounds[0])-24,availableHeight:Math.min(innerHeight,bounds[1])-24});
+      renderEditorialPage(editorial,model,{pageIndex,viewport,fill:true});
       pageControls.hidden=model.pages.length<2;shell.querySelector('[data-page-counter]').textContent=`${pageIndex+1} / ${model.pages.length}`;pagePrev.disabled=pageIndex===0;pageNext.disabled=pageIndex===model.pages.length-1;
     };
 
@@ -217,7 +228,7 @@ export function showAnnouncementCarousel(announcements,{currentUser,preview=fals
       pageIndex=0;
       const ann=items[index];
       card.setAttribute('aria-label',ann.title||gameText('admin.campaigns.kind.announcement'));
-      const designed=!!ann.presentation;card.dataset.editorial=String(designed);editorial.hidden=!designed;pageControls.hidden=true;
+      const designed=!!ann.presentation;card.dataset.editorial=String(designed);if(!designed){card.style.width='';card.style.height='';}editorial.hidden=!designed;pageControls.hidden=true;
       const imageUrl=announcementImageUrl(ann.imageFilename);
       if(imageUrl){bg.hidden=false;bg.src=imageUrl;}else{bg.hidden=true;bg.removeAttribute('src');}
       title.textContent=ann.title||'';
@@ -227,7 +238,7 @@ export function showAnnouncementCarousel(announcements,{currentUser,preview=fals
       paragraphs.innerHTML=(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('');
       if(designed){bg.hidden=true;renderPage();}else editorial.replaceChildren();
       counter.textContent=items.length>1?`${index+1} / ${items.length}`:'';
-      prev.hidden=next.hidden=items.length<2;
+      prev.hidden=next.hidden=items.length<2;shell.querySelector('.campaign-popup-carousel-head').hidden=items.length<2;
       if(ann.dismissible){
         dismissSlot.innerHTML=`<label class="campaign-popup-dismiss"><input type="checkbox" data-dismiss ${selectedDismissals.get(ann.id)?'checked':''}> ${esc(gameText('campaign.popup.dontShowAgain'))}</label>`;
         dismissSlot.querySelector('[data-dismiss]')?.addEventListener('change',event=>selectedDismissals.set(ann.id,!!event.currentTarget.checked));

@@ -11,7 +11,7 @@
 // ENGINE_VERSION remains a compatibility identifier for Solo recovery + multiplayer wire state.
 // Future maintenance releases use RELEASE_HOTFIX='HF1', 'HF2', ... instead of nesting decimals.
 export const RELEASE_VERSION = '23.22.0';
-export const RELEASE_HOTFIX = 'HF6';
+export const RELEASE_HOTFIX = 'HF7';
 export const RELEASE_DISPLAY_VERSION = RELEASE_HOTFIX ? `${RELEASE_VERSION} ${RELEASE_HOTFIX}` : RELEASE_VERSION;
 export const ENGINE_VERSION = '23.21.6';
 export const ENGINE_VERSION_SHORT = ENGINE_VERSION; // compatibility alias; do not use for user-facing release labels
