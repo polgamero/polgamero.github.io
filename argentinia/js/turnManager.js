@@ -1,5 +1,6 @@
+import { consumePriorityBudget } from './decisionClock.js';
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions } from './main.js';
+import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
 import { takeBotPriorityAction, chooseBotCleanupDiscardIndex, reportBotStrategicTurnAtCleanup } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -540,6 +541,7 @@ let priorityClockLastAutoPassSerial = null;
 let priorityClockLastActivity = null;
 let priorityClockWasBlocked = true;
 let priorityClockTickBusy = false;
+let priorityClockBudgetKey = null;
 
 export function resetPriorityClock(reason = 'priority_window', options = {}) {
   if (!state.currentMatch || state.gameOver) return false;
@@ -548,9 +550,12 @@ export function resetPriorityClock(reason = 'priority_window', options = {}) {
   state.priorityClockSerial = Math.max(0, Number(state.priorityClockSerial) || 0) + 1;
   state.priorityClockDeadlineLocalMs = Date.now() + durationMs;
   state.priorityClockRemainingMs = durationMs;
+  state.priorityClockSampleLocalMs = Date.now();state.priorityClockRateLocal = 1;
+  priorityClockBudgetKey = `${state.currentMatch.matchId}:${state.priorityPlayer}:${state.priorityClockSerial}`;
   state.priorityClockPausedLocal = false;
   state.priorityClockPauseReasonLocal = null;
   state.priorityActivity = null;
+  state.pendingActionTimeoutPass = null;
   priorityClockLastAutoPassSerial = null;
   priorityClockLastActivity = null;
   priorityClockWasBlocked = false;
@@ -569,24 +574,23 @@ export function resetPriorityClock(reason = 'priority_window', options = {}) {
 
 export function syncPriorityClockFromNetwork({ serial, durationMs, receivedAtClientMs, source = 'remote_sync', serverCommittedAtMs = null } = {}) {
   const nextSerial = Number(serial);
-  if (!state.currentMatch || !Number.isFinite(nextSerial)) return false;
+  if (!state.currentMatch || !Number.isFinite(nextSerial) || nextSerial<Number(state.priorityClockSerial||0)) return false;
   const duration = Math.max(1000, Number(durationMs) || PRIORITY_CLOCK_DURATION_MS);
   // Usamos el instante de RECEPCIÓN del write confirmado como ancla local. Así no dependemos
   // de que los dos Windows tengan el reloj de pared sincronizado. Ambos reciben el mismo
   // commit y quedan normalmente separados sólo por la latencia de escucha.
   const now = Number(receivedAtClientMs) || Date.now();
-  const activityAtSync = getEffectivePriorityActivity(state);
-  const preservePaused = !!state.priorityClockPausedLocal && !!activityAtSync;
-  const preservedRemaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs) || duration));
+  const budgetKey = `${state.currentMatch.matchId}:${state.priorityPlayer}:${nextSerial}`;
+  // Self ACK and coalesced repeats of the same serial cannot refill a running mecha.
+  if (priorityClockBudgetKey === budgetKey && Number(state.priorityClockSampleLocalMs)>0) return true;
+  priorityClockBudgetKey = budgetKey;
   state.priorityClockDurationMs = duration;
   state.priorityClockSerial = nextSerial;
-  state.priorityClockRemainingMs = preservePaused ? preservedRemaining : duration;
-  state.priorityClockDeadlineLocalMs = now + state.priorityClockRemainingMs;
-  state.priorityClockPausedLocal = preservePaused;
-  state.priorityClockPauseReasonLocal = preservePaused ? activityAtSync : null;
-  priorityClockLastAutoPassSerial = null;
-  priorityClockLastActivity = preservePaused ? activityAtSync : null;
-  priorityClockWasBlocked = preservePaused;
+  state.priorityClockRemainingMs = duration;
+  state.priorityClockDeadlineLocalMs = now+duration;
+  state.priorityClockSampleLocalMs = now;state.priorityClockRateLocal = 1;
+  state.priorityClockPausedLocal = false;state.priorityClockPauseReasonLocal = null;
+  priorityClockLastAutoPassSerial = null;priorityClockLastActivity = null;priorityClockWasBlocked = false;
   recordTelemetryEvent('priority_clock_sync', {
     serial: nextSerial,
     durationMs: duration,
@@ -603,13 +607,11 @@ function pausePriorityClock(activity) {
   // La lógica impedía el auto-pass, pero la mecha seguía consumiéndose visualmente durante
   // descarte/target/pago. Sólo calculamos remaining en la TRANSICIÓN hacia pausa; luego se congela.
   const wasPaused = !!state.priorityClockPausedLocal;
-  const remaining = getFrozenPriorityRemainingMs({
-    wasPaused,
-    remainingMs: state.priorityClockRemainingMs,
-    deadlineMs: state.priorityClockDeadlineLocalMs,
-    nowMs: now
-  });
+  const remaining = Number(state.priorityClockSampleLocalMs)>0
+    ? (wasPaused ? Math.max(0,Number(state.priorityClockRemainingMs)||0) : consumePriorityBudget(state,now,Number(state.priorityClockRateLocal)||1))
+    : getFrozenPriorityRemainingMs({wasPaused,remainingMs:state.priorityClockRemainingMs,deadlineMs:state.priorityClockDeadlineLocalMs,nowMs:now});
   state.priorityClockRemainingMs = remaining;
+  state.priorityClockSampleLocalMs = now;
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = activity || 'blocked';
   if (priorityClockLastActivity !== activity) {
@@ -640,14 +642,10 @@ async function priorityClockTick() {
     return;
   }
 
-  // Si el dueño local acaba de terminar una acción/selección, arranca una ventana NUEVA
-  // completa de 15s. No heredamos los 2 segundos que quizá quedaban antes de elegir target.
-  if (priorityClockWasBlocked && state.priorityPlayer === 'local') {
-    resetPriorityClock('resume_after_action', { telemetryType: 'priority_clock_reset' });
-    render(); // publica serial + priorityActivity=null en el mismo delta normal.
-  }
-  priorityClockWasBlocked = false;
-  priorityClockLastActivity = null;
+  // Finishing/cancelling a choice keeps this serial's remaining budget.
+  // Semantic engine transitions still open fresh windows via resetPriorityClock().
+  if (priorityClockWasBlocked) state.priorityClockSampleLocalMs = Date.now();
+  priorityClockWasBlocked = false;priorityClockLastActivity = null;
 
   if (!Number.isFinite(Number(state.priorityClockDeadlineLocalMs)) || Number(state.priorityClockDeadlineLocalMs) <= 0) {
     // El cliente pasivo espera a recibir el serial del dueño. El dueño puede inicializarlo.
@@ -659,7 +657,8 @@ async function priorityClockTick() {
     return;
   }
 
-  const remaining = Math.max(0, Number(state.priorityClockDeadlineLocalMs) - Date.now());
+  const slowAction = ['paying_mana','choosing_target','choosing_ability','choosing_sacrifice','choosing_mode'].includes(activity);
+  const remaining = consumePriorityBudget(state,Date.now(),slowAction ? .5 : 1);
   state.priorityClockRemainingMs = remaining;
   state.priorityClockPausedLocal = false;
   state.priorityClockPauseReasonLocal = null;
@@ -668,7 +667,7 @@ async function priorityClockTick() {
   if (remaining > 0 || state.priorityPlayer !== 'local') return;
   if (priorityClockLastAutoPassSerial === state.priorityClockSerial) return;
 
-  priorityClockLastAutoPassSerial = state.priorityClockSerial;
+  const expiredSerial = state.priorityClockSerial;
   const timeoutActivity = getEffectivePriorityActivity(state);
   recordTelemetryEvent('priority_timeout_autopass', {
     serial: state.priorityClockSerial,
@@ -685,6 +684,14 @@ async function priorityClockTick() {
     // 23.13.36: un timeout durante una declaración de combate no es un pass abstracto.
     // Confirmamos 0 atacantes / 0 bloqueadores usando el MISMO carril que el botón humano,
     // de modo que la fase pueda avanzar y nadie pause la partida indefinidamente.
+    const actionExpired=timeoutActivity&&!['choosing_attackers','choosing_blockers'].includes(timeoutActivity);
+    if(actionExpired&&!expireUncommittedAction())return;
+    if(actionExpired||state.pendingActionTimeoutPass?.serial===expiredSerial){
+      const confirmed=await publishMatchState({force:true});
+      if (!confirmed || state.gameOver || state.priorityPlayer!=='local' || state.priorityClockSerial!==expiredSerial || isMultiplayerInteractionBlocked()) return;
+      state.pendingActionTimeoutPass=null;
+    }
+    priorityClockLastAutoPassSerial = expiredSerial;
     if (timeoutActivity === 'choosing_attackers') await executeLocalAttack();
     else if (timeoutActivity === 'choosing_blockers') await executeRivalAttack();
     else await passPriority('local');

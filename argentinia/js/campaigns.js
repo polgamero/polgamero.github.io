@@ -1,5 +1,6 @@
 // js/campaigns.js — Entrega 23.13.53
 // Modelo puro de Anuncios/Eventos. Sin Firebase ni DOM.
+import { normalizeEditorial, EDITORIAL_ZONES, EDITORIAL_TOUR_STEPS } from './editorialModel.js';
 
 export const CAMPAIGN_EVENT_TYPES = Object.freeze({
   pack_discount: Object.freeze({ labelKey: 'campaign.eventType.packDiscount', unit: 'percent', defaultValue: 50, min: 1, max: 90 }),
@@ -61,12 +62,20 @@ export function validateAnnouncementPayload(payload = {}) {
   const start = dateMs(payload.startAt) || Date.now();
   const end = dateMs(payload.endAt);
   if (end && end <= start) throw new Error('La fecha de fin del anuncio debe ser posterior al inicio.');
+  const contentKind=['announcement','event','tutorial'].includes(payload.contentKind)?payload.contentKind:'announcement';
+  const presentation=payload.presentation?normalizeEditorial(payload.presentation):null;
+  const tutorialZone=contentKind==='tutorial'&&Object.hasOwn(EDITORIAL_ZONES,payload.tutorialZone)?payload.tutorialZone:null;
+  if(contentKind==='tutorial'&&!tutorialZone)throw Error('Elegí el destino del tutorial.');
+  const tutorialStep=tutorialZone==='main'?String(payload.tutorialStep||'welcome'):null;
+  if(tutorialStep&&!Object.hasOwn(EDITORIAL_TOUR_STEPS,tutorialStep))throw Error('Elegí un paso válido para el recorrido.');
+  const linkedEventId=contentKind==='event'?String(payload.linkedEventId||'').slice(0,150):null;
   return {
-    title, subtitle, paragraphs, imageFilename,
+    title:title.slice(0,120), subtitle:subtitle.slice(0,240), paragraphs, imageFilename,
+    contentKind,tutorialZone,tutorialStep,linkedEventId,presentation,
     startAt: new Date(start),
     endAt: end ? new Date(end) : null,
-    showPopup: payload.showPopup !== false,
-    showInNews: payload.showInNews !== false,
+    showPopup: contentKind!=='tutorial' && payload.showPopup !== false,
+    showInNews: contentKind!=='tutorial' && payload.showInNews !== false,
     dismissible: payload.dismissible !== false
   };
 }

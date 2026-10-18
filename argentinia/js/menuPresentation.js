@@ -162,9 +162,10 @@ export function bindMenuPresentation(menu) {
   }
   more.addEventListener('click',()=>{
     if (menu.classList.contains('places-open')) return closePlaces();
-    menu.classList.add('places-open');more.setAttribute('aria-expanded','true');backdrop.hidden=false;tray.setAttribute('role','dialog');tray.setAttribute('aria-modal','true');
-    tray.querySelector('button')?.focus({preventScroll:true});
+    setPlaces(true,true);
   });
+  function setPlaces(open,focus=false){if(!open)return closePlaces(focus);menu.classList.add('places-open');more.setAttribute('aria-expanded','true');backdrop.hidden=false;tray.setAttribute('role','dialog');tray.setAttribute('aria-modal','true');if(focus)tray.querySelector('button')?.focus({preventScroll:true});}
+  menu.__setMenuPlaces=setPlaces;
   backdrop.addEventListener('click',()=>closePlaces());menu.querySelector('#menu-close-places').addEventListener('click',()=>closePlaces());
   const panelIds = ['menu-today-toggle','menu-news-toggle'];
   function setPanel(id, open, persist = true) {

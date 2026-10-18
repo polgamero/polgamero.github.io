@@ -1,3 +1,8 @@
+import { cancelPendingActionForDeadline } from './main.js';
+import { isEditorialVisible } from './editorialModel.js';
+import { installMenuTutorials, requestMenuGuideReplay } from './tutorials.js';
+import { timedDecision, randomLegalSubset } from './decisionClock.js';
+import { recordTelemetryEvent } from './telemetry.js';
 import {
   state,
   getLocalPlayerName,
@@ -162,6 +167,33 @@ configurePublicProfileUI({
   onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; },
   openRename:onUpdated=>openCurrentUserRename({onUpdated})
 });
+
+function timedModalChoice(overlay, callback, fallbackArgs, options = {}) {
+  const action=!!(state.pendingCastTransaction||state.pendingAbilitySource||state.pendingSuspendTransaction||state.pendingCompositeCostPayment||state.pendingGraveyardChoice?.reason==='land_play');
+  return timedDecision(overlay,state,callback,fallbackArgs,{
+    action,onActionExpire:cancelPendingActionForDeadline,blocked:()=>!!(state.multiplayerSyncBlocked||state.multiplayerSessionSuperseded),record:recordTelemetryEvent,
+    notice:action?'Al vencer se cancela el intento. Los costes irreversibles ya pagados se conservan.':undefined,
+    ...Object.fromEntries(Object.entries(options).filter(([,value])=>value!==undefined))
+  });
+}
+
+let cleanupDecisionClock=null;
+function syncCleanupDecisionClock() {
+  if(HEADLESS_ENGINE)return;
+  if(!state.currentMatch||state.gameOver||!state.isDiscarding){cleanupDecisionClock?.remove();cleanupDecisionClock=null;return;}
+  if(cleanupDecisionClock?.isConnected)return;
+  const match=state.currentMatch;
+  const host=document.createElement('div');host.className='arg-cleanup-decision-clock';
+  host.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);width:min(340px,80vw);z-index:100001;pointer-events:none';
+  document.body.append(host);cleanupDecisionClock=host;
+  timedDecision(host,state,async()=>{
+    while(state.currentMatch===match&&!state.gameOver&&state.isDiscarding&&state.localHand.length){
+      const card=randomLegalSubset(state.localHand,1)[0];
+      const index=state.localHand.indexOf(card);if(index<0)break;
+      await handleDiscardClick(index);
+    }
+  },()=>[],{action:false,isCurrent:()=>state.isDiscarding,blocked:()=>!!state.multiplayerSyncBlocked,record:recordTelemetryEvent});
+}
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -435,6 +467,8 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
+  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=cancelDeadline;
 
   modalOverlay.querySelectorAll('.loyalty-ability-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -481,6 +515,8 @@ export function showXValueModal(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
+  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=cancelDeadline;
 
   let xValue = 0;
   const display = modalOverlay.querySelector('#x-value-display');
@@ -537,14 +573,9 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
   `;
   document.body.appendChild(modalOverlay);
 
-  modalOverlay.querySelector('#counter-tax-pay').addEventListener('click', () => {
-    modalOverlay.remove();
-    onPay();
-  });
-  modalOverlay.querySelector('#counter-tax-decline').addEventListener('click', () => {
-    modalOverlay.remove();
-    onDecline();
-  });
+  const finish=timedModalChoice(modalOverlay,pay=>pay?onPay?.():onDecline?.(),()=>[false],{action:false,notice:'Al vencer se rechaza el pago opcional.'});
+  modalOverlay.querySelector('#counter-tax-pay').addEventListener('click',()=>finish(true));
+  modalOverlay.querySelector('#counter-tax-decline').addEventListener('click',()=>finish(false));
 }
 
 
@@ -565,13 +596,12 @@ export function showWardDecisionModal(amount, targetCardName, sourceCardName, on
       </div>
     </div>`;
   document.body.appendChild(modalOverlay);
-  modalOverlay.querySelector('#ward-pay').addEventListener('click',()=>{modalOverlay.remove();onPay?.();});
-  modalOverlay.querySelector('#ward-decline').addEventListener('click',()=>{modalOverlay.remove();onDecline?.();});
+  const finish=timedModalChoice(modalOverlay,pay=>pay?onPay?.():onDecline?.(),()=>[false],{action:false,notice:'Al vencer se rechaza el pago opcional.'});
+  modalOverlay.querySelector('#ward-pay').onclick=()=>finish(true);
+  modalOverlay.querySelector('#ward-decline').onclick=()=>finish(false);
 }
 
-// LAND 3 — selector de biblioteca para tutores de Tierras. A diferencia del viejo Ramp
-// por color, muestra las cartas REALES que cumplen el filtro y permite encontrar menos
-// (incluso 0) cuando la búsqueda en zona oculta lo autoriza.
+
 export function showLandSearchModal(options, onConfirm) {
   if (HEADLESS_ENGINE) { const c=Array.isArray(options?.candidates)?options.candidates:[]; onConfirm?.(headlessChoice.chooseLandSearchIndexes(c,options?.maxCount,{allowFewer:options?.allowFewer!==false})); return; }
   injectMulliganStyles();
@@ -628,6 +658,7 @@ export function showLandSearchModal(options, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates,maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se buscará ninguna carta.':undefined});
   confirm().disabled = !allowFewer && maxCount > 0;
   confirm().textContent = gameText('land.search.failToFind');
   confirm().addEventListener('click', () => {
@@ -686,6 +717,7 @@ export function showLibrarySearchModal(options, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates.filter(e=>e.selectable!==false),maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se elegirá ninguna carta.':undefined});
   confirm().disabled=!allowFewer && maxCount>0;
   confirm().textContent=allowFewer?gameText('library.search.chooseNone'):gameText('library.search.confirm');
   confirm().addEventListener('click',()=>{
@@ -725,6 +757,8 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
+  const onChoice=onChoose;
+  onChoose=timedModalChoice(modalOverlay,color=>{state.pendingRampChoice=false;onChoice?.(color);},()=>[randomLegalSubset(availableColors,1)[0]],{action:false});
 
   modalOverlay.querySelectorAll('.deck-select-mono-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -765,6 +799,8 @@ export function showKickerModal(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
+  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=cancelDeadline;
 
   modalOverlay.querySelector('#kicker-yes').addEventListener('click', () => {
     modalOverlay.remove();
@@ -799,6 +835,8 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
       </div>
     </div>`;
   document.body.appendChild(modalOverlay);
+  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=cancelDeadline;
   modalOverlay.querySelector('#cast-normal').addEventListener('click', () => { modalOverlay.remove(); onConfirm(false); });
   modalOverlay.querySelector('#cast-alt').addEventListener('click', () => { modalOverlay.remove(); onConfirm(true); });
   modalOverlay.querySelector('#cast-route-cancel').addEventListener('click', () => { modalOverlay.remove(); onCancel(); });
@@ -901,6 +939,8 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  const confirmPrivate=onConfirm;
+  onConfirm=timedModalChoice(overlay,tokens=>tokens===null?onCancel?.():confirmPrivate(tokens),()=>[onCancel?null:randomLegalSubset((offer?.candidates||[]).filter(e=>e.selectable!==false),amount).map(e=>e.token)],{action:false,notice:onCancel?'Al vencer se cancela la selección opcional.':undefined});
   update();
 
   confirm().addEventListener('click', () => {
@@ -1010,6 +1050,8 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     </div>
   `;
   document.body.appendChild(modalOverlay);
+  const onChosen=onChoose;
+  onChoose=timedModalChoice(modalOverlay,index=>{if(Number.isInteger(index))onChosen?.(index);else onCancel?.();},()=>[],{action:true,abortArgs:()=>[]});
 
   modalOverlay.querySelectorAll('.loyalty-ability-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1059,6 +1101,7 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
   `;
 
   document.body.appendChild(modalOverlay);
+  timedModalChoice(modalOverlay,()=>{},()=>[],{action:true,abortArgs:()=>[],notice:'Al vencer se cierra sin activar ninguna habilidad.'});
 
   modalOverlay.querySelectorAll('.loyalty-ability-btn:not(.disabled)').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1239,7 +1282,7 @@ export function showSuspendCastModal(card) {
     document.body.appendChild(overlay);
     const preview=overlay.querySelector('#suspend-card-preview');
     const cardEl=createCardElement(card,false,true,null,'preview',()=>{}); cardEl.style.width='120px';cardEl.style.height='168px'; preview.appendChild(cardEl);
-    const finish=value=>{ overlay.remove(); resolve(value); };
+    const finish=timedModalChoice(overlay,resolve,()=>[false],{action:false,notice:'Al vencer la carta queda en Exilio.'});
     overlay.querySelector('[data-choice="cast"]').onclick=()=>finish(true);
     overlay.querySelector('[data-choice="leave"]').onclick=()=>finish(false);
   });
@@ -1251,7 +1294,7 @@ export function showSuspendedCardChoiceModal(entries,{title='Elegí una carta en
     const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
     overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>⏳ ${title}</h3><button class="gy-close-btn">Cancelar ✖</button></div><div class="gy-modal-grid" data-grid></div></div>`;
     document.body.appendChild(overlay); const grid=overlay.querySelector('[data-grid]');
-    const finish=value=>{overlay.remove();resolve(value)};
+    const finish=timedModalChoice(overlay,resolve,()=>[randomLegalSubset(entries,1)[0]||null],{action:false});
     entries.forEach(entry=>{
       const wrap=document.createElement('button'); wrap.type='button'; wrap.style.cssText='background:transparent;border:1px solid #596275;border-radius:8px;padding:6px;color:white;cursor:pointer;';
       const ce=createCardElement(entry.card,false,entry.zoneIsLocal,null,'preview',()=>{}); ce.style.width='105px';ce.style.height='147px';wrap.appendChild(ce);
@@ -1269,7 +1312,7 @@ export function showCreatureTypeChoiceModal(options,{title='Elegí un tipo de cr
   const buttons=list.map((entry,i)=>`<button class="mulligan-btn" data-typal-index="${i}">${escapeHtml(entry.name)}${entry.count!=null?` <span style="opacity:.65">(${entry.count})</span>`:''}</button>`).join('');
   overlay.innerHTML=`<div class="gy-modal-content" style="max-width:560px"><div class="gy-modal-header"><h3>🧬 ${escapeHtml(title)}</h3></div>${cardName?`<p style="padding:0 18px">${escapeHtml(cardName)}</p>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;padding:16px;max-height:55vh;overflow:auto">${buttons}</div><button class="mulligan-btn mulligan-btn-mull typal-cancel">Cancelar</button></div>`;
   document.body.appendChild(overlay);
-  const finish=value=>{overlay.remove(); if(value) onChoose?.(value); else onCancel?.();};
+  const finish=timedModalChoice(overlay,value=>{if(value)onChoose?.(value);else onCancel?.();},()=>[randomLegalSubset(list,1)[0]?.name||null]);
   overlay.querySelectorAll('[data-typal-index]').forEach(btn=>btn.onclick=()=>finish(list[Number(btn.dataset.typalIndex)]?.name||null));
   overlay.querySelector('.typal-cancel').onclick=()=>finish(null); overlay.onclick=e=>{if(e.target===overlay)finish(null)};
 }
@@ -1291,12 +1334,12 @@ export function showManaColorChoiceModal(cardName, options, onChoose) {
       <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
     </div>`;
   document.body.appendChild(overlay);
+  const finish=timedModalChoice(overlay,type=>{if(type)onChoose?.(type);},()=>[],{action:true,abortArgs:()=>[]});
   overlay.querySelectorAll('[data-mana-type]').forEach(btn => btn.addEventListener('click', () => {
     const type = btn.dataset.manaType;
-    overlay.remove();
-    onChoose?.(type);
+    finish(type);
   }));
-  const close = () => overlay.remove();
+  const close = () => finish();
   overlay.querySelector('.mana-choice-cancel').onclick = close;
   overlay.onclick = e => { if (e.target === overlay) close(); };
 }
@@ -1314,9 +1357,10 @@ export function showManaOrAbilityChoiceModal(cardName, onMana, onAbility) {
       <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.querySelector('[data-source-action="mana"]').onclick = () => { overlay.remove(); onMana?.(); };
-  overlay.querySelector('[data-source-action="ability"]').onclick = () => { overlay.remove(); onAbility?.(); };
-  const close = () => overlay.remove();
+  const finish=timedModalChoice(overlay,kind=>{if(kind==='mana')onMana?.();else if(kind==='ability')onAbility?.();},()=>[],{action:true,abortArgs:()=>[]});
+  overlay.querySelector('[data-source-action="mana"]').onclick = () => finish('mana');
+  overlay.querySelector('[data-source-action="ability"]').onclick = () => finish('ability');
+  const close = () => finish();
   overlay.querySelector('.mana-choice-cancel').onclick = close;
   overlay.onclick = e => { if (e.target === overlay) close(); };
 }
@@ -5345,6 +5389,7 @@ export function showStoreScreen(onBack, options = {}) {
   injectEncyclopediaStyles(); // .encyclopedia-back-btn: no depender del orden de navegación
   const overlay = document.createElement('div');
   overlay.id = 'store-overlay';
+  overlay.dataset.tutorialZone=craftOnly?'workshop':'store';
   overlay.innerHTML = `
     <div class="store-header">
       <button class="encyclopedia-back-btn" id="store-back">← ${gameTextHtml('common.back')}</button>
@@ -14864,7 +14909,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   Promise.all([fetchAnnouncements(), fetchCampaignSnapshot()])
     .then(([announcements, campaignSnapshot]) => {
       const now = campaignSnapshot?.now || new Date();
-      const visible = announcements.filter(a => a.showInNews !== false && campaignStatus(a, now) === 'active');
+      const visible = announcements.filter(a => isEditorialVisible(a,campaignSnapshot) && a.showInNews !== false && campaignStatus(a, now) === 'active');
       if (visible.length === 0) {
         newsListEl.innerHTML = `<div class="main-menu-news-empty">${gameTextHtml('menu.news.empty')}</div>`;
         return;
@@ -14980,6 +15025,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     overlay.style.display = 'none';
     showOptionsMenu(() => { overlay.style.display = ''; });
   });
+  installMenuTutorials(()=>({user:state.currentUser,ready:state.authIdentityReady===true&&!!state.userProfile}));
 }
 
 // Opciones: Dificultad + Audio son settings reales. Audio vive enteramente en localStorage
@@ -15028,6 +15074,8 @@ export function showOptionsMenu(onBack) {
           <div id="opt-animation-server-note" style="${initialServerAnimationPolicy.enabled ? 'display:none;' : ''}margin:4px 4px 2px;color:#d99b6b;font-size:11px;line-height:1.4;">${escapeHtml(gameText('options.animations.serverOff'))}</div>
           <div class="options-section-title">${escapeHtml(gameText('options.multiplayer'))}</div>
           <div class="options-row"><span class="options-label">${escapeHtml(gameText('options.challengeInvites'))}</span><button class="options-toggle-btn" id="opt-challenge-invites">${getChallengeInvitesEnabled()?escapeHtml(gameText('options.enabled')):escapeHtml(gameText('options.off'))}</button></div>
+          <div class="options-section-title">${escapeHtml(gameText('tutorial.options.title'))}</div>
+          <div class="options-row"><span class="options-label">${escapeHtml(gameText('tutorial.options.menu'))}</span><button class="options-toggle-btn" id="opt-replay-menu-guide" ${state.currentUser?'':'disabled'}>${escapeHtml(gameText('tutorial.options.replay'))}</button></div>
         </section>
 
         <section class="options-column options-column-audio">
@@ -15184,12 +15232,14 @@ export function showOptionsMenu(onBack) {
     });
   }
 
-  overlay.querySelector('#opt-back').addEventListener('click', () => {
+  const closeOptions=()=>{
     window.removeEventListener('argentinia:animation-policy-changed', onAnimationPolicyChanged);
     window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
     overlay.remove();
     onBack();
-  });
+  };
+  overlay.querySelector('#opt-back').addEventListener('click',closeOptions);
+  overlay.querySelector('#opt-replay-menu-guide').addEventListener('click',()=>{closeOptions();requestMenuGuideReplay();});
 }
 
 // Alerta simple de un solo botón — para avisos que no necesitan "sí/no", solo "entendido"
@@ -15832,6 +15882,7 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[[],cards],{action:false,notice:'Al vencer se conserva el orden actual y no se mueve ninguna carta.'});
 
   overlay.querySelector('#btn-confirm-scry').addEventListener('click', () => {
     overlay.remove();
@@ -15921,6 +15972,7 @@ export function showProliferateModal(eligible, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[[]],{action:false,notice:'Al vencer no se amplifica ningún objeto.'});
 
   overlay.querySelector('#btn-confirm-proliferate').addEventListener('click', () => {
     overlay.remove();
@@ -15969,6 +16021,7 @@ export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(entries.filter(e=>[...state.localLands,...state.localCombat,...state.localSupport].includes(e.item)),count).map(e=>e.index).sort((a,b)=>a-b)],{action:false});
   overlay.querySelector('#btn-confirm-land-untap').addEventListener('click', () => {
     if (chosenIndexes.size !== count) return;
     overlay.remove();
@@ -16026,6 +16079,7 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(entries,count).map(e=>e.index).sort((a,b)=>a-b)]);
 
   overlay.querySelector('#btn-confirm-graveyard-choice').addEventListener('click', () => {
     if (chosenIndexes.size !== count) return;
@@ -16103,6 +16157,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(candidates.filter(item=>[...state.localCombat,...state.localSupport,...state.localLands].includes(item)),countToSacrifice)]);
 
   overlay.querySelector('#btn-confirm-sacrifice-effect').addEventListener('click', () => {
     if (chosen.size !== countToSacrifice) return;
@@ -16154,6 +16209,7 @@ export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments 
   });
   document.body.appendChild(overlay);
   return new Promise(resolve=>{
+    resolve=timedModalChoice(overlay,resolve,()=>[[]],{action:true,abortArgs:()=>[[]]});
     overlay.querySelector('#btn-phyrexian-none').addEventListener('click',()=>{overlay.remove();resolve([]);});
     overlay.querySelector('#btn-phyrexian-confirm').addEventListener('click',()=>{overlay.remove();resolve([...chosen].sort((a,b)=>a-b));});
   });
@@ -16210,6 +16266,7 @@ export function showCostPaymentResourceModal(entries, options = {}) {
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
   return new Promise(resolve => {
+    resolve=timedModalChoice(overlay,resolve,()=>[[]],{action:true,abortArgs:()=>[[]]});
     overlay.querySelector('#btn-skip-cost-resource').addEventListener('click',()=>{ overlay.remove(); resolve([]); });
     overlay.querySelector('#btn-confirm-cost-resource').addEventListener('click',()=>{ overlay.remove(); resolve([...chosen]); });
   });
@@ -16248,6 +16305,7 @@ export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actio
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(hand.map((card,index)=>({card,index})).filter(e=>state.localHand.includes(e.card)),countToDiscard).map(e=>e.index).sort((a,b)=>a-b)]);
 
   overlay.querySelector('#btn-confirm-hand-discard').addEventListener('click', () => {
     if (chosenIndexes.size !== countToDiscard) return;
@@ -16325,7 +16383,7 @@ export function showCopyRetargetModal(cardName, targetLabel, onKeep, onChange) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  const finish=cb=>{ overlay.remove(); cb?.(); };
+  const finish=timedModalChoice(overlay,cb=>cb?.(),()=>[onKeep],{action:false,notice:'Al vencer se conserva el objetivo original.'});
   overlay.querySelector('[data-copy-keep]').onclick=()=>finish(onKeep);
   overlay.querySelector('[data-copy-change]').onclick=()=>finish(onChange);
 }
@@ -16343,10 +16401,11 @@ export function showStackObjectChoiceModal(entries = [], title = null, onConfirm
       <div class="mulligan-buttons"><button class="mulligan-btn" data-stack-cancel>${gameTextHtml('common.cancel')}</button></div>
     </div>`;
   document.body.appendChild(overlay);
+  const finish=timedModalChoice(overlay,entry=>entry?onConfirm?.(entry):onCancel?.(),()=>[onCancel?null:randomLegalSubset(entries,1)[0]],{action:false,notice:onCancel?'Al vencer se cancela esta elección opcional.':undefined});
   overlay.querySelectorAll('[data-stack-choice]').forEach(btn=>btn.onclick=()=>{
-    const entry=entries[Number(btn.dataset.stackChoice)]; overlay.remove(); onConfirm?.(entry || null);
+    const entry=entries[Number(btn.dataset.stackChoice)]; finish(entry || null);
   });
-  overlay.querySelector('[data-stack-cancel]').onclick=()=>{ overlay.remove(); onCancel?.(); };
+  overlay.querySelector('[data-stack-cancel]').onclick=()=>{ finish(null); };
 }
 
 export function showGameOverOverlay(didWin) {
@@ -16525,7 +16584,8 @@ export function refreshTurnPriorityHudClock() {
   const duration = Math.max(1000, Number(state.priorityClockDurationMs) || PRIORITY_CLOCK_DURATION_MS);
   const remaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs ?? duration)));
   const fraction = Math.max(0, Math.min(1, remaining / duration));
-  const seconds = Math.ceil(remaining / 1000);
+  const displayRate=Number(state.priorityClockRateLocal)||1;
+  const seconds = Math.ceil(remaining / (1000*displayRate));
   els.priorityFuseFill.style.width = `${(fraction * 100).toFixed(2)}%`;
   if (els.priorityFuseSpark) els.priorityFuseSpark.style.left = `calc(${(fraction * 100).toFixed(2)}% - 8px)`;
   // 23.9.1: el número queda CONGELADO y visible durante la pausa. El usuario ve cuánto
@@ -16867,6 +16927,7 @@ document.getElementById('priority-stop-clear')?.addEventListener('click',()=>{
 });
 
 export function render() {
+  syncCleanupDecisionClock();
   if (HEADLESS_ENGINE) {
     try { captureTelemetryState('headless_render'); } catch {}
     return;
@@ -16951,7 +17012,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = !!state.pendingSuspendTransaction || !!state.pendingSuspendCastChoice || !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingActionTimeoutPass || !!state.pendingActionConfirmation || !!state.pendingSuspendTransaction || !!state.pendingSuspendCastChoice || !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
@@ -17230,6 +17291,12 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   const btnConfirm = document.getElementById('btn-dmg-confirm');
   const initialButtons = document.getElementById('damage-modal-initial-buttons');
 
+  const originalAuto=onAuto,originalManual=onConfirmManual;
+  const finishDamage=timedModalChoice(overlay,(distribution=null,overflow=0)=>{
+    overlay.classList.add('hidden');state.damageModalOpen=false;
+    if(distribution===null)originalAuto?.();else originalManual?.(distribution,overflow);
+  },()=>[null],{action:false,remove:false,notice:'Al vencer se aplica la distribución automática legal de daño.'});
+  onAuto=()=>finishDamage(null);onConfirmManual=(distribution,overflow)=>finishDamage(distribution,overflow);
   const attacker = attackerItem.card;
   const canTrample = hasKeyword(attackerItem, 'trample');
   const attackerHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
@@ -17438,6 +17505,7 @@ export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente l
     const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
     overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>${gameTextHtml('sba.legend.title')}</h3></div><div style="margin:8px 0 14px">${gameTextHtml('sba.legend.subtitle',{card:cardName})}</div><div class="legend-choice-grid"></div></div>`;
     document.body.appendChild(overlay); const grid=overlay.querySelector('.legend-choice-grid');
+    resolve=timedModalChoice(overlay,resolve,()=>[randomLegalSubset(entries,1)[0]],{action:false});
     entries.forEach((entry,index)=>{ const btn=document.createElement('button'); btn.className='mulligan-btn'; btn.textContent=gameText('sba.legend.confirm',{card:entry.card?.name||cardName}); btn.onclick=()=>{overlay.remove();resolve(entry)}; grid.appendChild(btn); });
   });
 }
@@ -17513,6 +17581,7 @@ export function showTriggerOrderModal(entries = []) {
     overlay.className='gy-modal-overlay trigger-order-overlay';
     overlay.innerHTML=`<div class="gy-modal-content trigger-order-modal"><div class="gy-modal-header"><h3>${gameTextHtml('trigger.order.title')}</h3></div><div class="trigger-order-subtitle">${gameTextHtml('trigger.order.subtitle')}</div><div class="trigger-order-list"></div><button class="mulligan-btn mulligan-btn-keep trigger-order-confirm">${gameTextHtml('trigger.order.confirm')}</button></div>`;
     document.body.appendChild(overlay);
+    resolve=timedModalChoice(overlay,resolve,()=>[randomLegalSubset(entries,entries.length)],{action:false});
     const list=overlay.querySelector('.trigger-order-list');
     const draw=()=>{
       list.innerHTML='';

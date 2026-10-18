@@ -1,3 +1,6 @@
+import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decisionClock.js';
+import { refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
+import { showGameDialog, closeGameDialog } from './gameDialogs.js';
 import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
@@ -954,6 +957,8 @@ export const state = {
   pendingAlternativeCostChosen: false,
   // True mientras se están seleccionando/preparando componentes no-maná de un costo de casteo.
   pendingCompositeCostPayment: false,
+  pendingActionConfirmation: null,
+  pendingActionTimeoutPass: null,
   // LAND 3: selector de biblioteca para search_land/ramp. La elección ocurre sólo al resolver.
   pendingLandSearchChoice: null,
   // 23.15.6: selector universal de biblioteca para search_library / look_at_top.
@@ -1085,6 +1090,7 @@ const cloneGameplayValue = value => {
 const INITIAL_GAMEPLAY_STATE = Object.fromEntries(Object.entries(state).map(([key,value])=>[key,cloneGameplayValue(value)]));
 export function clearTerminalInteractions() {
   if (!state.gameOver) return false;
+  closeGameDialog();
   const extra=new Set(['decisionResponse','awaitingRivalDecision','respondingToDecision',
     'isDiscarding','cardsToDiscard','damageModalOpen','preparingCompositeCastCosts',
     'tappedLandsThisSpell','paymentManaSourceRollbacks','paymentManaPoolSnapshot']);
@@ -1336,16 +1342,28 @@ function hookGameplayButtons() {
             }
             return;
           }
+          const cleanupSessionId = getTelemetryStatus().sessionId;
           const cleanupTasks = [];
           const cleanupTaskStates = [];
           const trackCleanupTask = (name, promiseLike) => {
-            const meta = { name, status:'pending' };
+            const meta = { name, status:'pending', durable:false, committed:false };
             cleanupTaskStates.push(meta);
             const wrapped = Promise.resolve(promiseLike).then(
-              value => { meta.status = 'fulfilled'; return value; },
+              value => {
+                meta.status = 'fulfilled';
+                if (getTelemetryStatus().sessionId === cleanupSessionId) {
+                  recordTelemetryEvent('abandon_task_settled', { name, status:'fulfilled' });
+                  refreshFinalTelemetryAfterTerminalEvent('abandon_task_settled').catch(()=>{});
+                }
+                return value;
+              },
               err => {
                 meta.status = 'rejected';
                 meta.error = { name:err?.name || 'Error', message:err?.message || String(err) };
+                if (getTelemetryStatus().sessionId === cleanupSessionId) {
+                  recordTelemetryEvent('abandon_task_settled', { name, status:'rejected', error:meta.error }, 'warning');
+                  refreshFinalTelemetryAfterTerminalEvent('abandon_task_failed').catch(()=>{});
+                }
                 throw err;
               }
             );
@@ -1391,7 +1409,10 @@ function hookGameplayButtons() {
                   abandonEvidencePromise
                     .then(confirmed => {
                       if (!confirmed) throw new Error('MULTIPLAYER_ABANDON_NOT_CONFIRMED');
-                      return applyAbandonPenalty(abandonUid,abandonRequest);
+                      return applyAbandonPenalty(abandonUid,{...abandonRequest,onProgress:progress=>{
+                        const task=cleanupTaskStates.find(row=>row.name==='apply_abandon_penalty');
+                        if(task){task.durable=progress.durable===true;task.committed ||= progress.stage==='committed';}
+                      }});
                     })
                     .catch(err => {
                       console.error('No se pudo aplicar la penalidad de abandono:', err);
@@ -1410,17 +1431,20 @@ function hookGameplayButtons() {
             const outcome = await Promise.race([settle, deadline]);
             timedOut = outcome === 'timeout';
             const taskStatuses = cleanupTaskStates.map(task => ({
-              name:task.name, status:task.status, ...(task.error ? { error:task.error } : {})
+              name:task.name, status:task.status, durable:task.durable, committed:task.committed, ...(task.error ? { error:task.error } : {})
             }));
             const pendingTasks = taskStatuses.filter(task => task.status === 'pending').map(task => task.name);
 
+            const recoverableDeferred = timedOut && pendingTasks.length === 1 && pendingTasks[0] === 'apply_abandon_penalty' &&
+              taskStatuses.some(task=>task.name==='publish_match_state'&&task.status==='fulfilled') &&
+              taskStatuses.some(task=>task.name==='apply_abandon_penalty'&&(task.durable||task.committed));
             recordTelemetryEvent('abandon_cleanup_end', {
-              timedOut,
+              timedOut, recoverableDeferred,
               taskCount: cleanupTasks.length,
               deadlineMs: cleanupDeadlineMs,
               pendingTasks,
               taskStatuses
-            }, timedOut ? 'warning' : 'info');
+            }, timedOut && !recoverableDeferred ? 'warning' : 'info');
           } catch (err) {
             console.error('Error inesperado durante el cleanup de abandono:', err);
             try {
@@ -1656,7 +1680,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
     } catch (err) { console.warn('No se pudo aplicar penalidad del recovery abandonado:', err); }
   }
   clearSoloRecovery();
-  if (expired) window.alert(gameText('solo.recovery.expired'));
+  if (expired) void showGameDialog(gameText('solo.recovery.expired'));
 }
 
 async function resumeSoloRecoveryGame(candidate) {
@@ -2392,7 +2416,7 @@ async function startPlayFlow() {
   // random de invitado por falta/transición de perfil. Esa era exactamente la carrera F5.
   if (state.currentUser) {
     if (savedDecks.length <= 0) {
-      window.alert(gameText('menu.noDecksReady'));
+      void showGameDialog(gameText('menu.noDecksReady'));
       showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
       return;
     }
@@ -2427,7 +2451,7 @@ async function startTournamentFlow() {
       tournament => {
         const savedDecks = state.userProfile?.decks || [];
         if (!savedDecks.length) {
-          window.alert(gameText('menu.noDecksReady'));
+          void showGameDialog(gameText('menu.noDecksReady'));
           startTournamentFlow();
           return;
         }
@@ -2484,7 +2508,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
     void startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL, startingRole).catch(error => {
       hideMatchInitializationOverlay();
       console.error('No se pudo inicializar la partida multiplayer:', error);
-      alert('No se pudo inicializar la partida multijugador. Volvé al menú e intentá nuevamente.');
+      void showGameDialog('No se pudo inicializar la partida multijugador. Volvé al menú e intentá nuevamente.');
     });
   };
   showPlayDeckPickerModal(
@@ -2639,7 +2663,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
         stopMultiplayerPresenceHeartbeat();
         return;
       }
-      alert(gameText('multiplayer.ready.failed'));
+      void showGameDialog(gameText('multiplayer.ready.failed'));
     };
     readyBarrierTimer = setTimeout(() => failReadyBarrier('timeout'), MULTIPLAYER_READY_TIMEOUT_MS);
 
@@ -2693,7 +2717,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
       console.error('No se pudo completar la barrera de inicio multiplayer:', err);
       state.multiplayerWaitingForReady = false;
       hideMultiplayerReadyBarrier();
-      alert('No se pudo sincronizar el inicio de la partida. Volvé al menú e intentá nuevamente.');
+      void showGameDialog('No se pudo sincronizar el inicio de la partida. Volvé al menú e intentá nuevamente.');
     }); });
   }).catch(err => {
     console.error('Falló la presentación del sorteo inicial; se continúa con el resultado ya fijado:', err);
@@ -5186,12 +5210,12 @@ function offerReconnectIfStillActive(matchId) {
       }
       if (matchData.incompatible) {
         const remote = matchData.engineVersion || 'versión anterior/desconocida';
-        window.alert(`La partida guardada usa ${remote} y esta pestaña usa ${ENGINE_VERSION}. No se puede reconectar con motores distintos. Actualizá ambas notebooks.`);
+        void showGameDialog(`La partida guardada usa ${remote} y esta pestaña usa ${ENGINE_VERSION}. No se puede reconectar con motores distintos. Actualizá ambas notebooks.`);
         return;
       }
       if (matchData.integrityError) {
         console.error('Reconnect multiplayer rechazado por integridad de revisión:', matchData);
-        window.alert('No se pudo reconstruir la partida de forma segura porque el estado público y tu mano/mazo no pertenecen al mismo commit. Recargá e intentá nuevamente; la partida no fue modificada.');
+        void showGameDialog('No se pudo reconstruir la partida de forma segura porque el estado público y tu mano/mazo no pertenecen al mismo commit. Recargá e intentá nuevamente; la partida no fue modificada.');
         return;
       }
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
@@ -5221,7 +5245,7 @@ function offerReconnectIfStillActive(matchId) {
             resumeReconnectedMatch(matchId, myRole, fresh.publicDoc, fresh.privateDoc, rivalName, rivalPhotoURL);
           } catch (err) {
             console.error('No se pudo reclamar/reconstruir la sesión multiplayer:', err);
-            window.alert(String(err?.message || '').includes('MULTIPLAYER_RECONNECT_UNSAFE')
+            void showGameDialog(String(err?.message || '').includes('MULTIPLAYER_RECONNECT_UNSAFE')
               ? gameText('multiplayer.reconnect.unsafe')
               : 'No se pudo recuperar la partida de forma segura. Recargá e intentá nuevamente.');
           }
@@ -5260,7 +5284,7 @@ function offerReconnectIfStillActive(matchId) {
             if (state.userProfile) state.userProfile.activeMatchId = null;
           } catch (err) {
             console.error('No se pudo confirmar el abandono desde reconnect:', err);
-            window.alert('No se pudo confirmar el abandono con el servidor. La partida sigue guardada; recargá e intentá nuevamente.');
+            void showGameDialog('No se pudo confirmar el abandono con el servidor. La partida sigue guardada; recargá e intentá nuevamente.');
           }
         },
         { canReconnect:reconnectIsSafe, message:reconnectMessage }
@@ -5760,7 +5784,20 @@ async function chooseResolvedEffectTargetNow(options) {
     state.pendingTargetCard = cardLike;
     logMsg(gameText('target.choose', { source: cardName }));
     render();
-    return new Promise(resolve => { pendingResolvedEffectTargetResolver = resolve; });
+    return new Promise(resolve => {
+      if(!state.currentMatch){pendingResolvedEffectTargetResolver=resolve;return;}
+      const choice=state.pendingResolvedEffectTargetChoice;
+      const clock=document.createElement('div');clock.className='arg-resolution-clock';
+      clock.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);width:min(340px,80vw);z-index:100001;pointer-events:none';
+      document.body.append(clock);
+      pendingResolvedEffectTargetResolver=timedDecision(clock,state,target=>{
+        if(target&&!isResolvedEffectTargetLegal(target,{...options,sourceCard,controllerIsLocal}))target=null;
+        if(state.pendingResolvedEffectTargetChoice===choice){state.pendingResolvedEffectTargetChoice=null;state.pendingTargetCard=null;pendingResolvedEffectTargetResolver=null;render();}
+        resolve(target);
+      },()=>[randomLegalSubset(getResolvedEffectTargetCandidates({...options,sourceCard,controllerIsLocal}),1)[0]||null],{
+        action:false,blocked:isMultiplayerInteractionBlocked,record:recordTelemetryEvent
+      });
+    });
   }
 
   if (state.currentMatch) {
@@ -8236,14 +8273,14 @@ export function handlePlayerTargetClick(isLocal) {
   }
 }
 
-export function cancelPayment() {
+export function cancelPayment({ timeout = false } = {}) {
   // 23.17.5.2 — En espera usa la misma superficie de pago reversible que un casteo, pero
   // NO crea pendingCastTransaction/pendingSpellIndex. El botón Cancelar y ESC llegaban
   // correctamente acá y luego caían en el guard de abajo sin hacer nada. Tratamos la
   // acción especial explícitamente y restauramos pool/fuentes exactamente al snapshot.
   if (state.pendingSuspendTransaction) {
     const cardName = state.pendingSuspendTransaction.card?.name || 'la carta';
-    clearSuspendPaymentState({ rollback: true });
+    clearSuspendPaymentState({ rollback: true, timeout });
     logMsg(gameText('suspend.cancelled', { card: cardName }));
     render();
     return;
@@ -8251,8 +8288,8 @@ export function cancelPayment() {
   if (state.pendingCrew) { cancelCrew(); return; }
   if (state.pendingWardChoice) { declineWard(); return; }
   if (state.pendingCounterUnlessPay) { declineCounterTax(); return; }
-  if (state.pendingCastTransaction && !state.pendingCompositeCostPayment) {
-    abortCastTransaction(`Cancelaste ${state.pendingCastTransaction.card?.name || 'el casteo'}.`);
+  if (state.pendingCastTransaction && (!state.pendingCompositeCostPayment || timeout)) {
+    abortCastTransaction(`Cancelaste ${state.pendingCastTransaction.card?.name || 'el casteo'}.`, { timeout });
     return;
   }
   if (state.pendingFightChoice) {
@@ -8266,7 +8303,7 @@ export function cancelPayment() {
     logMsg(gameText('target.selectionCancel'));
     state.pendingMultiTargetChoice = null;
     state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
-    restorePaymentManaSources();
+    restorePaymentManaSources({ preserveIrreversible: timeout });
     restoreManaPaymentSnapshot();
     state.tappedLandsThisSpell = [];
     state.paymentManaSourceRollbacks = [];
@@ -8285,21 +8322,21 @@ export function cancelPayment() {
   // En Argentinia canónico, una vez pagado un costo (sacrificio incluido) la activación queda
   // irrevocablemente comprometida — acá replicamos eso negando el cancelar y obligando a
   // terminar de elegir el objetivo (si la habilidad lo pide).
-  if (state.pendingCompositeCostPayment) {
+  if (state.pendingCompositeCostPayment && !timeout) {
     logMsg(gameText('payment.cancel.components'));
     return;
   }
-  if (state.pendingAbilitySource && state.pendingAbilitySource.sacrificePaid) {
+  if (state.pendingAbilitySource && state.pendingAbilitySource.sacrificePaid && !timeout) {
     logMsg(gameText('payment.cancel.sacAbility'));
     return;
   }
-  if (state.pendingSpellIndex !== null && state.pendingSpellCostsIrreversible) {
+  if (state.pendingSpellIndex !== null && state.pendingSpellCostsIrreversible && !timeout) {
     logMsg(gameText('payment.cancel.irreversibleSpell'));
     return;
   }
 
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
-  restorePaymentManaSources();
+  restorePaymentManaSources({ preserveIrreversible: timeout });
   restoreManaPaymentSnapshot();
 
   // Si esto era un Otra vuelta/Zafar a mitad de pago (o esperando target), la carta está
@@ -8317,7 +8354,7 @@ export function cancelPayment() {
   // de "Sacrificá una criatura/artefacto" (no "self"), cancelar mientras todavía estabas
   // ELIGIENDO qué sacrificar enderezaba las tierras de maná... pero nunca al permanente que
   // había activado la habilidad, que se quedaba girado para siempre sin haber logrado nada.
-  if (state.pendingAbilitySource && state.pendingAbilitySource.requiresTap) {
+  if (state.pendingAbilitySource && state.pendingAbilitySource.requiresTap && !(timeout && state.pendingAbilitySource.sacrificePaid)) {
     const tapTarget = state.pendingAbilitySource.tapTarget || state.pendingAbilitySource.item;
     if (tapTarget) tapTarget.tapped = false;
   }
@@ -8338,6 +8375,34 @@ export function cancelPayment() {
   state.pendingTargetSource = null;
   logMsg(gameText('payment.cancel.reverted'));
   render();
+}
+
+// Owner policy: timeouts restore reversible payment only; paid life/sacrifices stay paid.
+// Safe for repeated calls and protected against stale modal continuations.
+export function expireUncommittedAction() {
+  if(state.priorityPlayer!=='local')return false;
+  return cancelPendingActionForDeadline();
+}
+export function cancelPendingActionForDeadline() {
+  if (!state.currentMatch || state.gameOver) return false;
+  const hadAction=!!(state.pendingActionConfirmation||state.pendingCastTransaction||state.pendingSuspendTransaction||
+    state.pendingAbilitySource||state.pendingTargetCard||state.pendingTargetSource||state.pendingActivatedAbilityChoice||
+    state.pendingCrew||state.pendingModeChoice||state.pendingXChoice||state.pendingKickerChoice||state.pendingLoyaltyTargetChoice||state.pendingSacrificeChoice||
+    state.pendingWardChoice||state.pendingCounterUnlessPay||state.pendingGraveyardChoice?.reason==='land_play'||state.pendingCompositeCostPayment||state.pendingSpellIndex!=null);
+  if (!hadAction) return false;
+  state.pendingActionConfirmation=null;closeGameDialog();
+  if(state.pendingGraveyardChoice?.reason==='land_play')state.pendingGraveyardChoice=null;
+  // Resolve preparatory modal promises as cancellation before detaching their DOM.
+  // Their async engine continuation verifies the transaction identity before writing.
+  cancelPayment({timeout:true});
+  cancelActionDecisions();
+  for(const key of ['pendingActivatedAbilityChoice','pendingTargetCard','pendingTargetSource','pendingModeChoice','pendingXChoice','pendingKickerChoice','pendingLoyaltyTargetChoice','pendingMultiTargetChoice','pendingAlternativeCostChoice']) state[key]=null;
+  state.pendingCompositeCostPayment=false;
+  document.querySelectorAll('#mulligan-overlay,.gy-modal-overlay').forEach(node=>node.remove());
+  if(state.priorityPlayer==='local'&&(state.consecutivePasses||0)<2)state.pendingActionTimeoutPass={serial:state.priorityClockSerial};
+  logMsg('Se agotó el tiempo: intento cancelado; se revirtieron sólo los pagos reversibles.');
+  recordTelemetryEvent('priority_action_expired',{reversiblePaymentRestored:true,irreversiblePaymentPreserved:true});
+  render();return true;
 }
 
 // LAND 4 — permisos tipo Crucible/Ramunap. Jugar una Tierra desde cementerio NO es
@@ -8384,7 +8449,7 @@ export function openLandFromGraveyardPlayChoice() {
   if (!hasLandPlayFromGraveyardPermission(true)) { logMsg(gameText('land.grave.noPermission')); return false; }
   const entries = playableLandGraveyardEntries(state.localGraveyard).filter(entry => canPlayLandFromGraveyard(entry.card, true));
   if (!entries.length) { logMsg(gameText('land.grave.nonePlayable')); return false; }
-  state.pendingGraveyardChoice = { zoneIsLocal:true, filter:'land', amount:1, cardName:gameText('land.grave.playTitle') };
+  state.pendingGraveyardChoice = { zoneIsLocal:true, filter:'land', amount:1, reason:'land_play', cardName:gameText('land.grave.playTitle') };
   render();
   showGraveyardChoiceModal(entries, 1, gameText('land.grave.playTitle'), gameText('land.grave.filter'), gameText('land.grave.action'), async (indexes) => {
     state.pendingGraveyardChoice = null;
@@ -8572,10 +8637,10 @@ export function canSuspendCardFromHand(card) {
   return suspendTimingAllows(card);
 }
 
-function clearSuspendPaymentState({rollback=true} = {}) {
+function clearSuspendPaymentState({rollback=true,timeout=false} = {}) {
   if (rollback) {
     state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
-    restorePaymentManaSources();
+    restorePaymentManaSources({ preserveIrreversible: timeout });
     restoreManaPaymentSnapshot();
   }
   state.tappedLandsThisSpell=[];
@@ -8736,6 +8801,7 @@ export async function resolveSuspendCastFromExile(effect,isLocal) {
 }
 
 export function canPlayCard(card) {
+  if(state.pendingActionConfirmation||state.pendingActionTimeoutPass)return false;
   if (isMultiplayerInteractionBlocked()) return false;
   if (state.gameOver || state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
@@ -8814,15 +8880,15 @@ function resetCastTransactionState() {
   state.paymentManaPoolSnapshot = null;
 }
 
-function abortCastTransaction(message = 'Cancelaste el casteo.') {
+function abortCastTransaction(message = 'Cancelaste el casteo.', { timeout = false } = {}) {
   const tx = state.pendingCastTransaction;
   if (!tx) return false;
-  if (state.pendingSpellCostsIrreversible) {
+  if (state.pendingSpellCostsIrreversible && !timeout) {
     logMsg(gameText('payment.cancel.irreversibleCommitted'));
     return true;
   }
   state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
-  restorePaymentManaSources();
+  restorePaymentManaSources({ preserveIrreversible: timeout });
   restoreManaPaymentSnapshot();
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
@@ -9094,6 +9160,7 @@ async function prepareOptionalCastPaymentMethods(tx, determinedCost, preparedCom
     const maxLifePayments = Math.floor(availableForPhyrexian / 2);
     if (maxLifePayments > 0) {
       const chosenIndexes = await showPhyrexianCostChoiceModal(cost.phyrexian, tx.card.name, maxLifePayments);
+      if(state.pendingCastTransaction!==tx||state.gameOver)return {plan,cost};
       const applied = applyPhyrexianLifeToCost(cost, chosenIndexes || []);
       cost = applied.cost;
       plan.phyrexianLife = applied.paidSymbols;
@@ -9109,6 +9176,7 @@ async function prepareOptionalCastPaymentMethods(tx, determinedCost, preparedCom
       const selected = await showCostPaymentResourceModal(candidates, {
         mode:'convoke', cardName:tx.card.name, max:Math.min(candidates.length,payableSymbols)
       });
+      if(state.pendingCastTransaction!==tx||state.gameOver)return {plan,cost};
       const applied = applyConvokeToCost(cost, selected || []);
       cost = applied.cost;
       plan.convoke = applied.usedItems;
@@ -9123,6 +9191,7 @@ async function prepareOptionalCastPaymentMethods(tx, determinedCost, preparedCom
       const selected = await showCostPaymentResourceModal(candidates, {
         mode:'delve', cardName:tx.card.name, max:Math.min(candidates.length,cost.generic)
       });
+      if(state.pendingCastTransaction!==tx||state.gameOver)return {plan,cost};
       const applied = applyDelveToCost(cost, selected || []);
       cost = applied.cost;
       plan.delve = applied.usedCards;
@@ -9189,6 +9258,7 @@ async function prepareCastTransactionCosts(tx, determinedCost) {
   state.pendingCompositeCostPayment = true;
   render();
   const preparedComposite = await prepareCastCompositeNonManaCosts(tx.card, true, useAlternative);
+  if (state.pendingCastTransaction !== tx || state.gameOver) return false;
   if (!preparedComposite) { state.pendingCompositeCostPayment = false; return false; }
 
   let escapeExiles = [];
@@ -9196,11 +9266,13 @@ async function prepareCastTransactionCosts(tx, determinedCost) {
     const spec = { filter:'any', amount:tx.card.escape.exileCount };
     state.pendingEscapeExileChoice = { card:tx.card, exileCount:spec.amount, prepayment:true };
     escapeExiles = await chooseGraveyardCardsForCompositeCost(true, spec, tx.card, [tx.card, ...preparedComposite.selectedGraveyard]);
+    if (state.pendingCastTransaction !== tx || state.gameOver) return false;
     state.pendingEscapeExileChoice = null;
     if (!escapeExiles) { state.pendingCompositeCostPayment = false; return false; }
   }
 
   const optional = await prepareOptionalCastPaymentMethods(tx, determinedCost, preparedComposite, escapeExiles);
+  if (state.pendingCastTransaction !== tx || state.gameOver) return false;
   state.pendingCompositeCostPayment = false;
   tx.preparedComposite = preparedComposite;
   tx.escapeExiles = escapeExiles;
@@ -9237,6 +9309,7 @@ export async function completeCastTargetDeclaration(targetObj) {
     logMsg(gameText('cost.modified',{card:tx.card.name,cost:costEngineSummary(finalCost),modifiers:tx.costModifierTrace.length}));
   }
   const prepared = await prepareCastTransactionCosts(tx, finalCost.cost);
+  if (state.pendingCastTransaction !== tx || state.gameOver) return false;
   if (!prepared) {
     logMsg(gameText('cast.prepareCostFailed', { card: tx.card.name }));
     abortCastTransaction();
@@ -9392,7 +9465,8 @@ async function commitCastTransactionAfterMana() {
   return true;
 }
 
-export function playCard(index) {
+export function playCard(index, confirmedWarningCard = null) {
+  if (state.pendingActionConfirmation) return;
   const card = state.localHand[index];
   
   if (!canPlayCard(card)) {
@@ -9445,12 +9519,21 @@ export function playCard(index) {
         counterTypes: entry.counterTypes || []
       }))
     });
-    if (proliferables.length === 0 && typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      const ok = window.confirm(`⚠️ ${card.name}: ahora mismo no se detecta ningún permanente o jugador con contadores. Amplificar puede elegir cero, así que el hechizo es legal pero podría no hacer nada. ¿Querés lanzarlo igual?`);
-      if (!ok) {
-        logMsg(gameText('proliferate.cancelNoCounters', { card: card.name }));
-        return;
-      }
+    if (proliferables.length === 0 && confirmedWarningCard !== card) {
+      const match = state.currentMatch, serial = state.priorityClockSerial;
+      const confirmation = { card };
+      state.pendingActionConfirmation = confirmation;
+      const valid = () => !state.gameOver && state.currentMatch === match && state.priorityPlayer === 'local' &&
+        state.localHand[index] === card && state.priorityClockSerial === serial && state.pendingActionConfirmation === confirmation;
+      void showGameDialog(`${card.name}: no hay permanentes ni jugadores con contadores. Amplificar permite elegir cero, pero el hechizo podría no hacer nada. ¿Querés lanzarlo igual?`, {
+        title: 'Confirmar lanzamiento', confirm: true, acceptLabel: 'Lanzar igual', valid
+      }).then(ok => {
+        if (state.pendingActionConfirmation !== confirmation) return;
+        state.pendingActionConfirmation = null;
+        if (ok) playCard(index, card);
+        else { logMsg(gameText('proliferate.cancelNoCounters', { card: card.name })); render(); }
+      });
+      render(); return;
     }
   }
 
@@ -9729,9 +9812,21 @@ function produceManaFromSource(item, isLocal, chosenType) {
   const selfPayingAnimation = isLocal && !!state.pendingCost && pendingAbility?.item === item &&
     pendingAbility?.ability?.effect?.type === 'animate_land' && manaSourceRequiresTapEffective(item, true) && !item.tapped;
   if (selfPayingAnimation && pendingAbility.selfManaWarningAccepted !== true) {
-    const accepted = window.confirm(gameText('land.animate.selfManaWarning', { card:item.card.name }));
-    if (!accepted) return false;
-    pendingAbility.selfManaWarningAccepted = true;
+    if (state.pendingActionConfirmation) return false;
+    const match = state.currentMatch, serial = state.priorityClockSerial;
+    const confirmation = { source: item };
+    state.pendingActionConfirmation = confirmation;
+    const valid = () => !state.gameOver && state.currentMatch === match && state.priorityClockSerial === serial &&
+      state.pendingAbilitySource === pendingAbility && state.pendingActionConfirmation === confirmation;
+    void showGameDialog(gameText('land.animate.selfManaWarning', { card:item.card.name }), {
+      title: 'Confirmar fuente de maná', confirm: true, acceptLabel: 'Producir maná', valid
+    }).then(accepted => {
+      if (state.pendingActionConfirmation !== confirmation) return;
+      state.pendingActionConfirmation = null;
+      if (accepted) { pendingAbility.selfManaWarningAccepted = true; produceManaFromSource(item, isLocal, chosenType); }
+      else render();
+    });
+    render(); return false;
   }
 
   const options = manaSourceOptions(item, isLocal);
@@ -9858,7 +9953,10 @@ function rememberManaSourceRollback(item, isLocal, originalTapped = false, effec
   }
 }
 
-function restorePaymentManaSources() {
+function restorePaymentManaSources({ preserveIrreversible = false } = {}) {
+  // Deadline cancellation refunds reversible mana/taps, never a sacrificed source.
+  // Voluntary cancellation retains its previous rollback behavior.
+  if (preserveIrreversible) { state.paymentManaSourceRollbacks = []; return; }
   const rollbacks = Array.isArray(state.paymentManaSourceRollbacks) ? [...state.paymentManaSourceRollbacks] : [];
   // Restauramos en orden inverso para preservar índices si alguna vez se sacrifican varias
   // fuentes de la misma zona durante un único pago.

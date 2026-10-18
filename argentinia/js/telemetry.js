@@ -840,7 +840,7 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
 
   // 23.13.39 — abandonar nunca puede dejar la UI esperando Firestore indefinidamente.
   // Si el cleanup alcanza su deadline, queda como bug automático antes del upload final.
-  if (type === 'abandon_cleanup_end' && data?.timedOut) {
+  if (type === 'abandon_cleanup_end' && data?.timedOut && data?.recoverableDeferred !== true) {
     addBugCandidate({
       code: 'ABANDON_CLEANUP_TIMEOUT',
       severity: 'warning',

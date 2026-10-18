@@ -84,15 +84,19 @@ function hasAnyResolutionChoice(state) {
 export function deriveLocalPriorityActivity(state) {
   if (!state || state.gameOver) return null;
   if (state.multiplayerWaitingForReady) return 'ready';
+  if (state.pendingActionConfirmation) return 'choosing_mode';
   if ((state.consecutivePasses || 0) >= 2) return 'resolving';
   if (state.isDiscarding) return 'discarding';
   if (state.damageModalOpen) return 'assigning_damage';
   if (state.awaitingRivalDecision || state.respondingToDecision || state.pendingDecision || state.decisionResponse) return 'remote_decision';
+  if (!state.pendingCastTransaction&&!state.pendingAbilitySource&&(state.pendingResolvedEffectTargetChoice||state.pendingSacrificeEffectChoice)) return 'resolution_choice';
+  if (state.pendingGraveyardChoice?.reason==='land_play') return 'choosing_mode';
   if (state.pendingTargetCard || state.pendingTargetSource || state.pendingCastTransaction?.stage === 'targets') return 'choosing_target';
   if (state.pendingActivatedAbilityChoice) return 'choosing_ability';
   if (state.pendingSacrificeChoice || state.pendingSacrificeEffectChoice) return 'choosing_sacrifice';
   if (state.pendingModeChoice || state.pendingAlternativeCostChoice) return 'choosing_mode';
   if (state.pendingSuspendTransaction || state.pendingSpellIndex != null || state.pendingCastTransaction?.stage === 'payment' || state.pendingAbilitySource != null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingCompositeCostPayment) return 'paying_mana';
+  if (state.pendingCastTransaction || state.pendingXChoice || state.pendingKickerChoice) return 'paying_mana';
   if (hasAnyResolutionChoice(state)) return 'choosing_cards';
 
   // 23.13.36: declarar atacantes/bloqueadores sigue siendo una decisión obligatoria, pero
@@ -120,7 +124,7 @@ export function getEffectivePriorityActivity(state) {
   return state.priorityActivity || null;
 }
 
-const PRIORITY_ACTIVITY_CLOCK_CONTINUES = new Set(['choosing_attackers', 'choosing_blockers']);
+const PRIORITY_ACTIVITY_CLOCK_CONTINUES = new Set(['choosing_attackers', 'choosing_blockers', 'paying_mana', 'choosing_target', 'choosing_ability', 'choosing_sacrifice', 'choosing_mode']);
 
 export function canPriorityClockRun(state) {
   if (!state?.currentMatch || state.gameOver || state.multiplayerWaitingForReady) return false;
@@ -171,7 +175,7 @@ export function getPriorityUxCopy(state, localName, rivalName, stackTopName = ''
     stateChipKind = 'resolving';
   } else if (activityLabels) {
     const chip = activityKey ? gameText(`priority.activity.${activityKey}.chip`) : gameText('priority.state.action');
-    priorityText = isMyPriority ? `⏸ ${chip}` : gameText('priority.waiting', { rival: safeRival.toUpperCase() });
+    priorityText = isMyPriority ? `${canPriorityClockRun(state) ? '⏳' : '⏸'} ${chip}` : gameText('priority.waiting', { rival: safeRival.toUpperCase() });
     contextText = isMyPriority
       ? activityLabels[0]
       : `${safeRival} ${activityLabels[1]}`;

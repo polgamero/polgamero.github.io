@@ -7,6 +7,8 @@ export function installMenuNavigation() {
   if (installed || typeof document === 'undefined' || !document.body) return;
   installed = true;
   const watched = new Map();
+  document.addEventListener('click',event=>{const back=event.target.closest?.(BACK),root=back?.closest(SCREENS);if(root)window.dispatchEvent(new CustomEvent('argentinia:menu-navigation-exit',{detail:{id:root.id}}));},true);
+  let lastDestination=null;
   let frame = 0;
   function schedule() { if (!frame) frame = requestAnimationFrame(refresh); }
   function refresh() {
@@ -35,6 +37,8 @@ export function installMenuNavigation() {
     const menu = document.querySelector('#main-menu-overlay.arg-menu-v2');
     const surface = top ? 'screen' : (menu?.getClientRects().length ? 'main' : '');
     if (document.documentElement.dataset.argMenuSurface !== surface) document.documentElement.dataset.argMenuSurface = surface;
+    const destination=top?.id||(surface==='main'?'main':'');
+    if(destination!==lastDestination){lastDestination=destination;window.dispatchEvent(new CustomEvent('argentinia:menu-destination',{detail:{id:destination,root:top||(surface==='main'?menu:null)}}));}
     // Utilities stay under body, floating in their original corner. CSS hides them
     // only on menu destinations; an empty surface preserves the gameplay HUD.
   }

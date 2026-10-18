@@ -9,6 +9,11 @@ import {
 } from './firebaseClient.js';
 import { CAMPAIGN_EVENT_TYPES, campaignStatus, eventValueLabel } from './campaigns.js';
 import { gameText } from './gameTexts.js';
+import { mountEditorialStudio } from './editorialStudio.js';
+import { editorialFor, editorialSummary, EDITORIAL_ZONES, EDITORIAL_TOUR_STEPS, isEditorialVisible } from './editorialModel.js';
+import { defaultZoneTutorial, defaultStepTutorial } from './tutorialContent.js';
+import { renderEditorialPage } from './editorialRenderer.js';
+import { showGameDialog } from './gameDialogs.js';
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
@@ -62,7 +67,10 @@ function ensureCampaignStyles() {
   const style = document.createElement('style');
   style.id = 'arg-campaign-styles';
   style.textContent = `
-    .campaign-admin-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+    .campaign-admin-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+    .campaign-popup-card[data-editorial=true]{width:min(960px,96vw)}
+    .campaign-popup-card[data-editorial=true] .campaign-popup-content{padding:12px}
+    .campaign-editorial-host{margin:0 -12px}
     .campaign-form-card{background:rgba(0,0,0,.18);border:1px solid rgba(212,175,55,.22);border-radius:12px;padding:14px}
     .campaign-field{display:flex;flex-direction:column;gap:5px;margin:8px 0;text-align:left}
     .campaign-field label{font-size:11px;color:#cfc9b6;font-weight:700}
@@ -101,10 +109,12 @@ function ensureCampaignStyles() {
 function eventTypeOptions(selected = '') {
   return Object.entries(CAMPAIGN_EVENT_TYPES).map(([key, def]) => `<option value="${esc(key)}" ${selected===key?'selected':''}>${esc(gameText(def.labelKey))}</option>`).join('');
 }
+const mountedCampaignPanes=new WeakMap();
 
 export function mountAdminCampaignsPane(root, { currentUser } = {}) {
   ensureCampaignStyles();
   if (!root) return;
+  mountedCampaignPanes.get(root)?.();
   root.innerHTML = `
     <div class="admin-section">
       <div class="admin-section-title">${esc(gameText('admin.campaigns.title'))}</div>
@@ -113,10 +123,15 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
         <div class="campaign-form-card">
           <div class="admin-section-title">${esc(gameText('admin.campaigns.newAnnouncement'))}</div>
           <input type="hidden" data-ann-id>
+          <div class="campaign-field"><label>${esc(gameText('editorial.kind'))}</label><select data-ann-kind><option value="announcement">${esc(gameText('editorial.announcement'))}</option><option value="event">${esc(gameText('editorial.event'))}</option><option value="tutorial">${esc(gameText('editorial.tutorial'))}</option></select></div>
+          <div class="campaign-field" data-zone-field hidden><label>${esc(gameText('editorial.zone'))}</label><select data-ann-zone>${Object.entries(EDITORIAL_ZONES).map(([id,label])=>`<option value="${id}">${esc(label)}</option>`).join('')}</select></div>
+          <div class="campaign-field" data-tutorial-step-field hidden><label>${esc(gameText('tutorial.editor.step'))}</label><select data-ann-step>${Object.entries(EDITORIAL_TOUR_STEPS).map(([id,label])=>`<option value="${id}">${esc(label)}</option>`).join('')}</select></div>
+          <div class="campaign-actions" data-tutorial-template-field hidden><button type="button" class="admin-save-btn" data-tutorial-template>${esc(gameText('tutorial.editor.template'))}</button></div>
+          <div class="campaign-field" data-link-field hidden><label>${esc(gameText('editorial.linkedEvent'))}</label><select data-ann-link><option value="">${esc(gameText('editorial.unlinked'))}</option></select></div>
           <div class="campaign-field"><label>${esc(gameText('admin.campaigns.announcement.title'))}</label><input data-ann-title maxlength="120"></div>
           <div class="campaign-field"><label>${esc(gameText('admin.campaigns.announcement.subtitle'))}</label><input data-ann-subtitle maxlength="240"></div>
-          <div class="campaign-field"><label>${esc(gameText('admin.campaigns.announcement.paragraphs'))}</label><textarea data-ann-paragraphs rows="7"></textarea></div>
-          <div class="campaign-field"><label>${esc(gameText('admin.campaigns.announcement.image'))}</label><input data-ann-image placeholder="evento_agosto.png"></div>
+          <div class="campaign-field" hidden><textarea data-ann-paragraphs rows="7"></textarea></div>
+          <div class="campaign-field" hidden><input data-ann-image></div>
           <div class="campaign-image-preview" data-ann-preview></div>
           <div class="campaign-field"><label>${esc(gameText('admin.campaigns.start'))}</label><input type="datetime-local" data-ann-start></div>
           <div class="campaign-field"><label>${esc(gameText('admin.campaigns.endOptional'))}</label><input type="datetime-local" data-ann-end></div>
@@ -125,7 +140,8 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
             <label><input type="checkbox" data-ann-news checked> ${esc(gameText('admin.campaigns.announcement.news'))}</label>
             <label><input type="checkbox" data-ann-dismissible checked> ${esc(gameText('admin.campaigns.announcement.dismissible'))}</label>
           </div>
-          <div class="campaign-actions"><button class="admin-save-btn" data-ann-save>${esc(gameText('admin.campaigns.saveAnnouncement'))}</button><button class="admin-save-btn" data-ann-cancel style="display:none">${esc(gameText('common.cancel'))}</button></div>
+          <div data-editorial-root></div>
+          <div class="campaign-actions"><button class="admin-save-btn" data-ann-save>${esc(gameText('admin.campaigns.saveAnnouncement'))}</button><button class="admin-save-btn" data-ann-cancel>${esc(gameText('editorial.new'))}</button></div>
           <div class="store-error-msg" data-ann-error></div>
         </div>
         <div class="campaign-form-card">
@@ -145,6 +161,21 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
     </div>`;
 
   const q = sel => root.querySelector(sel);
+  function metadata(){return {id:q('[data-ann-id]').value,title:q('[data-ann-title]').value,subtitle:q('[data-ann-subtitle]').value,contentKind:q('[data-ann-kind]').value,tutorialZone:q('[data-ann-zone]').value,tutorialStep:q('[data-ann-step]').value,linkedEventId:q('[data-ann-link]').value,startAt:q('[data-ann-start]').value,endAt:q('[data-ann-end]').value,showPopup:q('[data-ann-popup]').checked,showInNews:q('[data-ann-news]').checked,dismissible:q('[data-ann-dismissible]').checked};}
+  function setMetadata(a={}){
+    for(const [sel,key] of [['id','id'],['title','title'],['subtitle','subtitle'],['kind','contentKind'],['zone','tutorialZone'],['step','tutorialStep'],['link','linkedEventId']])q(`[data-ann-${sel}]`).value=a[key]||(sel==='kind'?'announcement':sel==='zone'?'main':sel==='step'?'welcome':'');
+    q('[data-ann-start]').value=asDateInput(a.startAt||new Date());q('[data-ann-end]').value=asDateInput(a.endAt);
+    for(const [sel,key] of [['popup','showPopup'],['news','showInNews'],['dismissible','dismissible']])q(`[data-ann-${sel}]`).checked=a[key]!==false;
+    updateKind();
+    studio.markMetadataLoaded();
+  }
+  function updateKind(){const kind=q('[data-ann-kind]').value;q('[data-zone-field]').hidden=kind!=='tutorial';q('[data-link-field]').hidden=kind!=='event';q('[data-tutorial-step-field]').hidden=kind!=='tutorial'||q('[data-ann-zone]').value!=='main';q('[data-tutorial-template-field]').hidden=kind!=='tutorial';for(const name of ['popup','news']){q(`[data-ann-${name}]`).disabled=kind==='tutorial';if(kind==='tutorial')q(`[data-ann-${name}]`).checked=false;}q('[data-ann-dismissible]').disabled=kind==='tutorial';if(kind==='tutorial')q('[data-ann-dismissible]').checked=true;}
+  const studio=mountEditorialStudio(q('[data-editorial-root]'),{draftKey:`argentinia:editorial:${currentUser?.uid||'admin'}`,readMetadata:metadata,restoreMetadata:setMetadata,onPreview:(ann,view)=>showAnnouncementCarousel([{...ann,id:'editor-preview',presentation:ann.presentation}],{currentUser:null,preview:true,previewViewport:view.viewport})});
+  const observer=new MutationObserver(()=>{if(!root.isConnected){studio.destroy();observer.disconnect();}});observer.observe(document.body,{childList:true,subtree:true});
+  mountedCampaignPanes.set(root,()=>{studio.destroy();observer.disconnect();});
+  q('[data-ann-kind]').addEventListener('change',updateKind);
+  q('[data-ann-zone]').addEventListener('change',updateKind);
+  q('[data-tutorial-template]').addEventListener('click',async()=>{const template=q('[data-ann-zone]').value==='main'?defaultStepTutorial(q('[data-ann-step]').value):defaultZoneTutorial(q('[data-ann-zone]').value);if(await studio.setAnnouncement(template))setMetadata({...template,id:'',startAt:new Date(),endAt:null,showPopup:false,showInNews:false});});
   const preview = q('[data-ann-preview]');
   const refreshPreview = () => {
     const url = announcementImageUrl(q('[data-ann-image]').value);
@@ -160,24 +191,28 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
   };
   q('[data-ann-image]').addEventListener('input', refreshPreview);
 
-  function resetAnnouncement() {
+  async function resetAnnouncement({force=false}={}) {
+    if(!await studio.setAnnouncement({}, {force}))return;
+    setMetadata();
     q('[data-ann-id]').value=''; q('[data-ann-title]').value=''; q('[data-ann-subtitle]').value=''; q('[data-ann-paragraphs]').value=''; q('[data-ann-image]').value='';
     q('[data-ann-start]').value=asDateInput(new Date()); q('[data-ann-end]').value=''; q('[data-ann-popup]').checked=true; q('[data-ann-news]').checked=true; q('[data-ann-dismissible]').checked=true;
-    q('[data-ann-cancel]').style.display='none'; q('[data-ann-error]').textContent=''; refreshPreview();
+    q('[data-ann-error]').textContent=''; refreshPreview();
   }
   function resetEvent() {
     q('[data-event-id]').value=''; q('[data-event-name]').value=''; q('[data-event-type]').value='pack_discount'; q('[data-event-value]').value='50'; q('[data-event-start]').value=asDateInput(new Date()); q('[data-event-end]').value=''; q('[data-event-cancel]').style.display='none'; q('[data-event-error]').textContent='';
   }
-  resetAnnouncement(); resetEvent();
+  void resetAnnouncement({force:true}); resetEvent();
 
   let announcements=[]; let events=[]; let campaignNow=new Date();
+  q('[data-ann-link]').addEventListener('change',()=>{const event=events.find(e=>e.id===q('[data-ann-link]').value);if(event){q('[data-ann-start]').value=asDateInput(event.startAt);q('[data-ann-end]').value=asDateInput(event.endAt);}});
   async function reload() {
     const table=q('[data-campaign-table]'); table.innerHTML=`<div class="admin-debug-empty">${esc(gameText('admin.campaigns.loading'))}</div>`;
     try {
       const loaded = await Promise.all([fetchAnnouncements(100), fetchCampaignEvents(100), fetchCampaignSnapshot()]);
       announcements=loaded[0]; events=loaded[1]; campaignNow=loaded[2]?.now || new Date();
+      const previousLink=q('[data-ann-link]').value;q('[data-ann-link]').replaceChildren(new Option('Sin vincular',''),...events.map(e=>new Option(e.name,e.id)));q('[data-ann-link]').value=previousLink;
       const rows = [
-        ...announcements.map(a => ({ kind:'announcement', item:a, name:a.title, type:gameText('admin.campaigns.kind.announcement') })),
+        ...announcements.map(a => ({ kind:'announcement', item:a, name:a.title, type:a.contentKind==='tutorial'?`Tutorial · ${EDITORIAL_ZONES[a.tutorialZone]||a.tutorialZone}`:a.contentKind==='event'?'Comunicación de evento':gameText('admin.campaigns.kind.announcement') })),
         ...events.map(e => ({ kind:'event', item:e, name:e.name, type:`${CAMPAIGN_EVENT_TYPES[e.type]?.labelKey ? gameText(CAMPAIGN_EVENT_TYPES[e.type].labelKey) : e.type} ${eventValueLabel(e)}` }))
       ].sort((a,b) => (b.item.startAt?.getTime?.()||0)-(a.item.startAt?.getTime?.()||0));
       if (!rows.length) { table.innerHTML=`<div class="admin-debug-empty">${esc(gameText('admin.campaigns.empty'))}</div>`; return; }
@@ -188,10 +223,11 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
     } catch(error) { table.innerHTML=`<div class="admin-debug-empty">${esc(error?.message || gameText('admin.campaigns.error'))}</div>`; }
   }
 
-  function editRow(tr) {
+  async function editRow(tr) {
     const id=tr.dataset.id, kind=tr.dataset.kind;
     if (kind==='announcement') {
       const a=announcements.find(x=>x.id===id); if(!a)return;
+      if(!await studio.setAnnouncement(a))return;setMetadata(a);
       q('[data-ann-id]').value=id; q('[data-ann-title]').value=a.title||''; q('[data-ann-subtitle]').value=a.subtitle||''; q('[data-ann-paragraphs]').value=(a.paragraphs||[]).join('\n\n'); q('[data-ann-image]').value=a.imageFilename||'';
       q('[data-ann-start]').value=asDateInput(a.startAt); q('[data-ann-end]').value=asDateInput(a.endAt); q('[data-ann-popup]').checked=a.showPopup!==false; q('[data-ann-news]').checked=a.showInNews!==false; q('[data-ann-dismissible]').checked=a.dismissible!==false; q('[data-ann-cancel]').style.display='inline-block'; refreshPreview();
     } else {
@@ -200,23 +236,26 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
     }
   }
   async function finalizeRow(tr) {
-    if (!window.confirm(gameText('admin.campaigns.confirmFinalize'))) return;
+    if (!await showGameDialog(gameText('admin.campaigns.confirmFinalize'),{confirm:true,acceptLabel:'Finalizar'})) return;
     tr.querySelector('[data-finalize]').disabled=true;
-    try { await (tr.dataset.kind==='announcement'?finalizeAnnouncement(tr.dataset.id):finalizeCampaignEvent(tr.dataset.id)); await reload(); } catch(e){alert(e.message||gameText('admin.campaigns.error'));}
+    try { await (tr.dataset.kind==='announcement'?finalizeAnnouncement(tr.dataset.id):finalizeCampaignEvent(tr.dataset.id)); await reload(); } catch(e){void showGameDialog(e.message||gameText('admin.campaigns.error'));tr.querySelector('[data-finalize]').disabled=false;}
   }
   async function deleteRow(tr) {
-    if (!window.confirm(gameText('admin.campaigns.confirmDelete'))) return;
-    try { await (tr.dataset.kind==='announcement'?deleteAnnouncement(tr.dataset.id):deleteCampaignEvent(tr.dataset.id)); await reload(); } catch(e){alert(e.message||gameText('admin.campaigns.error'));}
+    if (!await showGameDialog(gameText('admin.campaigns.confirmDelete'),{confirm:true,acceptLabel:'Eliminar'})) return;
+    try { await (tr.dataset.kind==='announcement'?deleteAnnouncement(tr.dataset.id):deleteCampaignEvent(tr.dataset.id)); await reload(); } catch(e){void showGameDialog(e.message||gameText('admin.campaigns.error'));}
   }
 
   q('[data-ann-save]').addEventListener('click', async()=>{
-    const box=q('[data-ann-error]'); box.textContent='';
+    const box=q('[data-ann-error]'),save=q('[data-ann-save]');if(save.disabled)return;box.textContent='';save.disabled=true;
     try {
-      const payload={ title:q('[data-ann-title]').value, subtitle:q('[data-ann-subtitle]').value, paragraphs:q('[data-ann-paragraphs]').value, imageFilename:q('[data-ann-image]').value, startAt:dateFromInput(q('[data-ann-start]').value)||new Date(), endAt:dateFromInput(q('[data-ann-end]').value), showPopup:q('[data-ann-popup]').checked, showInNews:q('[data-ann-news]').checked, dismissible:q('[data-ann-dismissible]').checked };
+      const presentation=studio.getDocument(),meta=metadata();
+      const payload={...meta,presentation,paragraphs:editorialSummary(presentation),imageFilename:'',startAt:dateFromInput(meta.startAt)||new Date(),endAt:dateFromInput(meta.endAt)};
       const id=q('[data-ann-id]').value;
-      if(id) await updateAnnouncement(id,currentUser.uid,payload); else await saveAnnouncement(currentUser.uid,payload);
-      resetAnnouncement(); await reload();
-    } catch(e){box.textContent=e.message||gameText('admin.campaigns.error');}
+      const savedId=id?await updateAnnouncement(id,currentUser.uid,payload):await saveAnnouncement(currentUser.uid,payload);
+      if(metadata().id===id&&metadata().title===meta.title&&JSON.stringify(studio.getDocument())===JSON.stringify(presentation)){q('[data-ann-id]').value=savedId||id;studio.markPublished();}
+      await reload();
+      window.dispatchEvent(new CustomEvent('argentinia:editorial-published'));
+    } catch(e){box.textContent=e.message||gameText('admin.campaigns.error');}finally{save.disabled=false;}
   });
   q('[data-event-save]').addEventListener('click', async()=>{
     const box=q('[data-event-error]'); box.textContent='';
@@ -247,21 +286,23 @@ async function announcementDismissedForViewer(ann, currentUser) {
 export async function maybeShowAnnouncementPopup({ currentUser } = {}) {
   ensureCampaignStyles();
   if (document.querySelector('.campaign-popup-shell')) return false;
-  let list=[]; let now=new Date();
+  let list=[]; let now=new Date();let snapshot=null;
   try {
     const loaded=await Promise.all([fetchAnnouncements(50), fetchCampaignSnapshot()]);
-    list=loaded[0]; now=loaded[1]?.now || now;
+    list=loaded[0];snapshot=loaded[1]; now=loaded[1]?.now || now;
   } catch { return false; }
-  const candidates=list.filter(a=>campaignStatus(a,now)==='active' && a.showPopup && !a.finalizedAt);
+  const candidates=list.filter(a=>campaignStatus(a,now)==='active' && a.showPopup && !a.finalizedAt).filter(a=>isEditorialVisible(a,snapshot));
   if (!candidates.length) return false;
   const dismissed=await Promise.all(candidates.map(ann=>announcementDismissedForViewer(ann,currentUser)));
   const visible=candidates.filter((_,index)=>!dismissed[index]);
   if (!visible.length) return false;
+  if (document.querySelector('.campaign-popup-shell')) return false;
   await showAnnouncementCarousel(visible,{currentUser});
   return true;
 }
 
-function showAnnouncementCarousel(announcements,{currentUser}={}) {
+export function showAnnouncementCarousel(announcements,{currentUser,preview=false,previewViewport=null,isCurrent=()=>true,onDismissSelected=null}={}) {
+  ensureCampaignStyles();
   return new Promise(resolveClosed => {
     const items=Array.isArray(announcements)?announcements.filter(Boolean):[];
     if(!items.length){resolveClosed(false);return;}
@@ -278,6 +319,8 @@ function showAnnouncementCarousel(announcements,{currentUser}={}) {
         <h2 class="campaign-popup-title" data-title></h2>
         <div class="campaign-popup-subtitle" data-subtitle></div>
         <div data-paragraphs></div>
+        <div class="campaign-editorial-host" data-editorial-host hidden></div>
+        <div class="campaign-actions" data-editorial-pages hidden><button type="button" class="campaign-popup-close" data-page-prev>${esc(gameText('campaign.popup.previous'))}</button><span data-page-counter></span><button type="button" class="campaign-popup-close" data-page-next>${esc(gameText('campaign.popup.next'))}</button></div>
         <div class="campaign-popup-dots" data-dots></div>
         <div class="campaign-popup-footer">
           <div data-dismiss-slot></div>
@@ -287,9 +330,12 @@ function showAnnouncementCarousel(announcements,{currentUser}={}) {
     </div>`;
     const selectedDismissals=new Map();
     let index=0;
+    let pageIndex=0;
     let timer=null;
     let closed=false;
+    let validityTimer=null;
     const card=shell.querySelector('.campaign-popup-card');
+    if(preview&&previewViewport==='mobile')card.style.width='min(640px,96vw)';
     const bg=shell.querySelector('[data-ann-bg]');
     const title=shell.querySelector('[data-title]');
     const subtitle=shell.querySelector('[data-subtitle]');
@@ -299,10 +345,18 @@ function showAnnouncementCarousel(announcements,{currentUser}={}) {
     const dismissSlot=shell.querySelector('[data-dismiss-slot]');
     const prev=shell.querySelector('[data-prev]');
     const next=shell.querySelector('[data-next]');
+    const editorial=shell.querySelector('[data-editorial-host]'),pageControls=shell.querySelector('[data-editorial-pages]'),pagePrev=shell.querySelector('[data-page-prev]'),pageNext=shell.querySelector('[data-page-next]');
+    const renderPage=()=>{
+      const model=editorialFor(items[index]);pageIndex=Math.min(pageIndex,model.pages.length-1);
+      const viewport=preview&&['desktop','mobile'].includes(previewViewport)?previewViewport:(window.innerWidth<760||document.documentElement.classList.contains('argentinia-mobile')?'mobile':'desktop');
+      renderEditorialPage(editorial,model,{pageIndex,viewport});
+      pageControls.hidden=model.pages.length<2;shell.querySelector('[data-page-counter]').textContent=`${pageIndex+1} / ${model.pages.length}`;pagePrev.disabled=pageIndex===0;pageNext.disabled=pageIndex===model.pages.length-1;
+    };
 
     const stopTimer=()=>{if(timer){clearTimeout(timer);timer=null;}};
     const schedule=()=>{
       stopTimer();
+      if(items[index]?.presentation)return;
       if(items.length>1 && !closed) timer=setTimeout(()=>{showIndex((index+1)%items.length,{auto:true});},9000);
     };
     const renderDots=()=>{
@@ -311,13 +365,17 @@ function showAnnouncementCarousel(announcements,{currentUser}={}) {
     };
     const showIndex=(nextIndex,{auto=false}={})=>{
       index=((Number(nextIndex)||0)%items.length+items.length)%items.length;
+      pageIndex=0;
       const ann=items[index];
+      const designed=!!ann.presentation;card.dataset.editorial=String(designed);editorial.hidden=!designed;pageControls.hidden=true;
       const imageUrl=announcementImageUrl(ann.imageFilename);
       if(imageUrl){bg.hidden=false;bg.src=imageUrl;}else{bg.hidden=true;bg.removeAttribute('src');}
       title.textContent=ann.title||'';
+      title.hidden=designed;paragraphs.hidden=designed;
       subtitle.textContent=ann.subtitle||'';
-      subtitle.hidden=!ann.subtitle;
+      subtitle.hidden=designed||!ann.subtitle;
       paragraphs.innerHTML=(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('');
+      if(designed){bg.hidden=true;renderPage();}else editorial.replaceChildren();
       counter.textContent=items.length>1?`${index+1} / ${items.length}`:'';
       prev.hidden=next.hidden=items.length<2;
       if(ann.dismissible){
@@ -327,27 +385,39 @@ function showAnnouncementCarousel(announcements,{currentUser}={}) {
       renderDots();
       if(!auto) schedule(); else schedule();
     };
-    const close=async()=>{
+    const close=async(cancelled=false)=>{
       if(closed)return;
       closed=true;stopTimer();
-      const selected=items.filter(ann=>ann.dismissible && selectedDismissals.get(ann.id));
+      clearInterval(validityTimer);
+      document.removeEventListener('keydown',keydown,true);window.removeEventListener('resize',resize);
+      const selected=cancelled?[]:items.filter(ann=>ann.dismissible && selectedDismissals.get(ann.id));
+      if(!preview&&onDismissSelected)for(const ann of selected)onDismissSelected(ann);
       shell.remove();
-      resolveClosed(true);
+      if(!cancelled&&previousFocus?.isConnected)previousFocus.focus?.();
+      resolveClosed(!cancelled);
+      if(preview||cancelled||onDismissSelected)return;
       await Promise.all(selected.map(async ann=>{
         if(currentUser?.uid){try{await dismissAnnouncement(currentUser.uid,ann.id);}catch{}}
         else{try{localStorage.setItem(guestDismissKey(ann.id),'1');}catch{}}
       }));
     };
+    const previousFocus=document.activeElement;
+    const keydown=event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();void close();}if(event.key==='Tab'){const nodes=[...card.querySelectorAll('button:not(:disabled),input')].filter(n=>!n.closest('[hidden]')),i=nodes.indexOf(document.activeElement);event.preventDefault();nodes[(i+(event.shiftKey?nodes.length-1:1))%nodes.length]?.focus();}};
+    const resize=()=>{if(items[index]?.presentation)renderPage();};
+    document.addEventListener('keydown',keydown,true);window.addEventListener('resize',resize);
+    pagePrev.addEventListener('click',()=>{if(pageIndex>0){pageIndex--;renderPage();}});pageNext.addEventListener('click',()=>{if(pageIndex<editorialFor(items[index]).pages.length-1){pageIndex++;renderPage();}});
     bg.addEventListener('error',()=>{bg.hidden=true;bg.removeAttribute('src');});
     prev.addEventListener('click',()=>showIndex(index-1));
     next.addEventListener('click',()=>showIndex(index+1));
-    shell.querySelector('[data-close]').addEventListener('click',()=>void close());
+    shell.querySelector('[data-close]').addEventListener('click',()=>{void close();if(previousFocus?.isConnected)previousFocus.focus?.();});
     card.addEventListener('mouseenter',stopTimer);
     card.addEventListener('mouseleave',schedule);
     card.addEventListener('focusin',stopTimer);
     card.addEventListener('focusout',schedule);
     document.body.appendChild(shell);
     showIndex(0);
+    shell.querySelector('[data-close]').focus();
+    validityTimer=setInterval(()=>{if(!isCurrent()||!shell.isConnected)void close(true);},250);
   });
 }
 

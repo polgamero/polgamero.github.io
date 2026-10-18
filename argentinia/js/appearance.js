@@ -296,6 +296,34 @@ export function appearanceCssVariables(configLike) {
 }
 
 const STYLE_ID = 'arg-appearance-v1-style';
+// Shared by the real main menu and the isolated Admin preview.
+export function menuV2AppearanceCss() {
+  return `
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 {
+ --menu-ink:var(--arg-menu-text);--menu-gold:var(--arg-menu-border);
+ --v2-width:var(--arg-menu-button-width);--v2-height:var(--arg-menu-button-height);
+ --v2-gap:var(--arg-menu-gap);--v2-font:var(--arg-menu-font-size);--v2-primary-font:var(--arg-menu-primary-font-size);
+ --v2-px:var(--arg-menu-padding-x);--v2-py:var(--arg-menu-padding-y);--v2-radius:var(--arg-menu-radius);--v2-border:var(--arg-menu-border-width);
+ --v2-logo-width:var(--arg-menu-logo-max-width);--v2-logo-height:var(--arg-menu-logo-max-height);
+}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-modes {width:clamp(240px,var(--v2-width),29vw);gap:clamp(4px,var(--v2-gap),22px)}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode {min-height:clamp(72px,calc(var(--v2-height)*2),144px);padding:var(--v2-py) var(--v2-px);border-color:var(--arg-menu-border);border-width:var(--v2-border);border-radius:var(--v2-radius);background:linear-gradient(110deg,var(--arg-menu-bg-top),var(--arg-menu-bg-bottom));box-shadow:var(--arg-menu-shadow);text-align:var(--arg-menu-text-align)}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-primary {border-color:var(--arg-menu-primary-border);background:linear-gradient(110deg,var(--arg-menu-primary-top),var(--arg-menu-bg-bottom))}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-label] {font-size:var(--v2-font);font-weight:var(--arg-menu-font-weight);letter-spacing:var(--arg-menu-letter-spacing);color:var(--arg-menu-text)}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-primary [data-menu-label] {font-size:var(--v2-primary-font)}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-logo {width:auto;max-width:min(100%,var(--v2-logo-width));max-height:var(--v2-logo-height);object-fit:contain}
+@media(hover:hover) and (pointer:fine){html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode:hover {filter:brightness(var(--arg-menu-hover-brightness));background:linear-gradient(110deg,rgba(var(--arg-menu-hover-rgb),.25),var(--arg-menu-bg-bottom))}}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-button {color:var(--arg-menu-text);box-shadow:var(--arg-menu-shadow)}
+@media(max-width:1050px),(max-height:600px){html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 {
+ --v2-width:var(--arg-menu-mobile-button-width);--v2-height:var(--arg-menu-mobile-button-height);--v2-gap:var(--arg-menu-mobile-gap);
+ --v2-font:var(--arg-menu-mobile-font-size);--v2-primary-font:var(--arg-menu-mobile-primary-font-size);
+ --v2-px:var(--arg-menu-mobile-padding-x);--v2-py:var(--arg-menu-mobile-padding-y);--v2-radius:var(--arg-menu-mobile-radius);--v2-border:var(--arg-menu-mobile-border-width);
+ --v2-logo-width:var(--arg-menu-mobile-logo-max-width);--v2-logo-height:var(--arg-menu-mobile-logo-max-height);
+}html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-modes {width:clamp(150px,var(--v2-width),30vw)}
+html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode {min-height:clamp(44px,var(--v2-height),76px)}}
+`;
+}
+
 function ensureAppearanceStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
@@ -333,6 +361,7 @@ html[data-arg-appearance-inputs="1"] :is(.admin-field-input,.options-menu-panel 
 html[data-arg-appearance-badges="1"] :is(.badge,.counter-badge,.pile-badge,.priority-owner-badge,.stack-badge,.turn-phase-badge,.tournament-badge,.dfc-face-badge,.workshop-machine-badge,.main-menu-reward-badge) { border-radius:var(--arg-badge-radius)!important; border-width:var(--arg-badge-border-width)!important; font-size:var(--arg-badge-font-size)!important; padding:var(--arg-badge-padding-y) var(--arg-badge-padding-x)!important; box-shadow:var(--arg-badge-shadow)!important; }
 html[data-arg-appearance-notifications="1"] :is(.notification,.mp-lobby-toast,.trade-notification-panel) { border-radius:var(--arg-notification-radius)!important; border-width:var(--arg-notification-border-width)!important; box-shadow:var(--arg-notification-shadow)!important; }
 `;
+  style.textContent += menuV2AppearanceCss();
   document.head.appendChild(style);
 }
 

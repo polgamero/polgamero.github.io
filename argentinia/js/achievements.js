@@ -8,7 +8,7 @@ const TIER_REWARDS = Object.freeze({
 });
 export const ACHIEVEMENT_FAMILIES = Object.freeze([
   Object.freeze({id:'soloWins',metric:'soloWins',targets:Object.freeze([5,25,75,150,300])}),
-  Object.freeze({id:'pvpWins',metric:'multiplayerWins',targets:Object.freeze([3,15,40,100,250])}),
+  Object.freeze({id:'pvpWins',metric:'duelistWins',targets:Object.freeze([3,15,40,100,250])}),
   Object.freeze({id:'tournamentWins',metric:'tournamentChampionships',targets:Object.freeze([1,3,5,10,25])}),
   Object.freeze({id:'packsOpened',metric:'packsOpened',targets:Object.freeze([10,50,150,300,600])}),
   Object.freeze({id:'uniqueCards',metric:'uniqueCards',targets:Object.freeze([50,150,300,600,850])}),

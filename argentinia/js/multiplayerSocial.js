@@ -1,3 +1,4 @@
+import { resolveSocialAsset } from './socialAssets.js';
 // 23.21.3 — Multiplayer Social Layer.
 // Visualmente convive con la bitácora; técnicamente NO viaja por el snapshot gameplay ni
 // entra en telemetry. Chat/emotes usan un canal server-authoritative separado para que una
@@ -17,7 +18,6 @@ let sendingChat = false;
 let sendingEmote = false;
 let rivalMuted = false;
 let preKeyboardViewportHeight = 0;
-const assetProbeCache = new Map();
 
 function byId(id){ return typeof document !== 'undefined' ? document.getElementById(id) : null; }
 function muted(){ return rivalMuted === true; }
@@ -42,22 +42,6 @@ function appendSocialLog(event) {
   const text=document.createElement('span'); text.className='mp-social-message'; text.textContent=escapeText(event.text || ''); row.appendChild(text);
   log.appendChild(row); log.scrollTop=log.scrollHeight;
 }
-async function resolveAvailableAsset(urls=[]) {
-  const list=Array.isArray(urls)?urls.filter(Boolean):[];
-  for(const url of list){
-    if(assetProbeCache.has(url)){
-      if(assetProbeCache.get(url)===true) return url;
-      continue;
-    }
-    try{
-      const response=await fetch(url,{method:'HEAD',cache:'force-cache',credentials:'same-origin'});
-      const ok=response.ok;
-      assetProbeCache.set(url,ok);
-      if(ok) return url;
-    }catch{ assetProbeCache.set(url,false); }
-  }
-  return null;
-}
 function renderEmoteFallback(holder,def,{decorative=false}={}){
   if(!holder)return;
   holder.replaceChildren();
@@ -68,7 +52,7 @@ function mountEmoteAsset(holder, def, { decorative=false } = {}) {
   renderEmoteFallback(holder,def,{decorative});
   if(!def) return;
   const urls=emoteAssetCandidates(def);
-  void resolveAvailableAsset(urls).then(url=>{
+  void resolveSocialAsset(urls).then(url=>{
     if(!url || !holder.isConnected) return;
     const img=document.createElement('img'); img.className='mp-emote-img'; img.alt=decorative?'':def.label; img.decoding='async'; img.draggable=false;
     img.addEventListener('error',()=>renderEmoteFallback(holder,def,{decorative}),{once:true});
@@ -77,7 +61,7 @@ function mountEmoteAsset(holder, def, { decorative=false } = {}) {
 }
 function playEmoteAudio(def) {
   const urls=emoteAudioCandidates(def); if(!urls.length) return;
-  void resolveAvailableAsset(urls).then(url=>{
+  void resolveSocialAsset(urls).then(url=>{
     if(!url)return;
     playExternalSfx(url);
   });

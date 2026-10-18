@@ -1081,7 +1081,7 @@ function removePendingAbandonPenalty(uid, operationId) {
   writePendingAbandonPenalties(readPendingAbandonPenalties().filter(row => !(row.uid === uid && row.operationId === operationId)));
 }
 
-export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null } = {}) {
+export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null, onProgress = null } = {}) {
   if (!uid || uid !== auth.currentUser?.uid) throw new Error('AUTH_UID_MISMATCH');
   const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
   const stableSource = normalizedMode === 'multiplayer'
@@ -1095,10 +1095,14 @@ export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', re
     durationMs: Math.max(0, Math.floor(Number(durationMs) || 0)),
     operationId: stableOperationId
   });
+  const progress = value => { try { onProgress?.(value); } catch {} };
+  const durable = readPendingAbandonPenalties().some(row => row.uid === uid && row.operationId === stableOperationId);
+  progress({ stage:'queued', durable });
   try {
     const response = await applyAbandonPenaltyServer(pending);
     const result = response?.result || null;
     if (!result) throw new Error('ABANDON_PENALTY_SERVER_RESULT_MISSING');
+    progress({ stage:'committed', durable, receiptId:result.receiptId || stableSource });
     removePendingAbandonPenalty(uid, stableOperationId);
     // El commit server-side es la autoridad. Una lectura de perfil que falle después del
     // commit no puede convertir una penalidad ya aplicada en un falso "falló" ni dejar
@@ -2583,9 +2587,14 @@ function normalizeAnnouncementDoc(id, data = {}) {
     paragraphs,
     text: paragraphs.join('\n\n'),
     imageFilename: String(data.imageFilename || '').trim(),
-    showPopup: data.showPopup !== false && !legacyText,
-    showInNews: data.showInNews !== false,
+    showPopup: data.contentKind !== 'tutorial' && data.showPopup !== false && (!legacyText || Array.isArray(data.paragraphs)),
+    showInNews: data.contentKind !== 'tutorial' && data.showInNews !== false,
     dismissible: data.dismissible !== false,
+    contentKind: ['announcement','event','tutorial'].includes(data.contentKind)?data.contentKind:'announcement',
+    tutorialZone: data.tutorialZone || null,
+    tutorialStep: data.tutorialStep || (data.tutorialZone==='main'?'welcome':null),
+    linkedEventId: data.linkedEventId || null,
+    presentation: data.presentation || null,
     adminUid: data.adminUid || null,
     startAt: campaignDate(data.startAt) || campaignDate(data.createdAt),
     endAt: campaignDate(data.endAt),
@@ -2681,9 +2690,29 @@ export async function isAnnouncementDismissed(uid, announcementId) {
 
 export async function dismissAnnouncement(uid, announcementId) {
   if (!uid || !announcementId) return;
-  await setDoc(doc(db, 'announcementDismissals', `${uid}_${announcementId}`), {
-    uid, announcementId, dismissedAt: serverTimestamp()
+  if(auth.currentUser?.uid!==uid)throw new Error('La cuenta cambió antes de guardar la preferencia.');
+  // Existing Rules allow create, never update. Repeated closes must be idempotent.
+  const ref=doc(db,'announcementDismissals',`${uid}_${announcementId}`);
+  await runTransaction(db,async transaction=>{
+    const existing=await transaction.get(ref);if(existing.exists())return;
+    transaction.set(ref,{uid,announcementId,dismissedAt:serverTimestamp()});
   });
+}
+
+export async function claimTutorialPresentation(uid, guideId='guide-menu-v1') {
+  if(auth.currentUser?.uid!==uid||!/^guide-[a-z0-9-]{1,64}$/.test(guideId))throw Error('Identidad o recorrido inválido.');
+  const announcementId=`${guideId}-started`,ref=doc(db,'announcementDismissals',`${uid}_${announcementId}`);
+  return runTransaction(db,async transaction=>{
+    const existing=await transaction.get(ref);if(existing.exists())return false;
+    transaction.set(ref,{uid,announcementId,dismissedAt:serverTimestamp()});return true;
+  });
+}
+
+export async function fetchTutorialProgress(uid,guideId='guide-menu-v1') {
+  if(auth.currentUser?.uid!==uid||!/^guide-[a-z0-9-]{1,64}$/.test(guideId))throw Error('Identidad o recorrido inválido.');
+  const statuses=['started','completed','abandoned'];
+  const rows=await Promise.all(statuses.map(status=>getDoc(doc(db,'announcementDismissals',`${uid}_${guideId}-${status}`))));
+  return {guideId,status:rows[1].exists()?'completed':rows[2].exists()?'abandoned':rows[0].exists()?'started':'pending'};
 }
 
 // ============================================================================
@@ -2698,6 +2727,13 @@ export async function fetchAnnouncements(maxCount = 50) {
   const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(maxCount));
   const snap = await getDocs(q);
   return snap.docs.map(d => normalizeAnnouncementDoc(d.id, d.data()));
+}
+
+export async function fetchTutorialAnnouncements(zone) {
+  if(!/^[a-z]{1,30}$/.test(String(zone)))return [];
+  const q=query(collection(db,'announcements'),where('contentKind','==','tutorial'),where('tutorialZone','==',zone),limit(100));
+  const snap=await getDocs(q);
+  return snap.docs.map(d=>normalizeAnnouncementDoc(d.id,d.data()));
 }
 
 // Compatibilidad con el formulario histórico: publica un anuncio simple en Noticias.

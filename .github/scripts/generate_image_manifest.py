@@ -498,6 +498,14 @@ def main() -> int:
         "tokenEffectsWithoutImage": token_effects_without_image,
         "missingTokenImages": missing_token_images,
         "files": existing_files,
+        # Public cosmetic asset names only. Generated from retained repository assets.
+        "socialAssets": {
+            "schemaVersion": 1,
+            "images": sorted(p.name for p in (root / "assets/images/emotes").glob("*")
+                             if p.is_file() and p.suffix.lower() in {".webp", ".gif", ".png"}),
+            "audio": sorted(p.name for p in (root / "assets/sounds/sfx").glob("*")
+                            if p.is_file() and p.suffix.lower() in {".opus", ".mp3", ".wav"}),
+        },
     }
 
     manifest_path = image_dir / "cards-image-manifest.json"

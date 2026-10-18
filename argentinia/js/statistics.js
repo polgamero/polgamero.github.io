@@ -18,6 +18,7 @@ export function emptyPlayerStats() {
     soloWins: 0,
     soloLosses: 0,
     multiplayerWins: 0,
+    duelistWins: 0,
     multiplayerLosses: 0,
     abandons: 0,
     totalDurationMs: 0,
