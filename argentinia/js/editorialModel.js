@@ -12,7 +12,8 @@ const text=(v,max)=>String(v??'').slice(0,max);
 export function editorialAsset(value) {
   const v=String(value||'').trim();
   if(/^data:image\/(?:png|jpeg|webp);base64,[a-z\d+/=]+$/i.test(v)&&v.length<=350000)return v;
-  if(/^\.\/assets\/images\/(?:ui|menu|tutorials)\/[a-z\d_ .-]+\.(?:png|jpg|jpeg|webp)$/i.test(v)&&!v.includes('..'))return v;
+  // Any published image subfolder is valid; no remote URLs, traversal or URL suffixes.
+  if(/^\.\/assets\/images\/(?:[a-z\d_ -]+\/)*[a-z\d_ .-]+\.(?:png|jpg|jpeg|webp)$/i.test(v)&&!v.includes('..'))return v;
   return '';
 }
 function rect(v={},base={x:8,y:12,w:84,h:24}) {

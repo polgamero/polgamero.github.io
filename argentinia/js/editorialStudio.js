@@ -46,7 +46,7 @@ export function mountEditorialStudio(root,{draftKey='argentinia:editorial:guest'
     pages.querySelector('[data-ed-page-copy]').disabled=model.pages.length>=8;pages.querySelector('[data-ed-page-remove]').disabled=model.pages.length<2;
   }
   function assetPicker(parent,current,set,caption){
-    const row=el('div',{class:'ed-inspector-row'}),path=input('text',current?.startsWith('data:')?'':current,v=>{const src=editorialAsset(v);if(v&&!src){say('Usá una imagen PNG/JPG/WebP de assets/images/ui, menu o tutorials.');return;}mutate(()=>set(src));},{placeholder:'./assets/images/ui/imagen.png','aria-label':caption+' · archivo del juego'});
+    const row=el('div',{class:'ed-inspector-row'}),path=input('text',current?.startsWith('data:')?'':current,v=>{const src=editorialAsset(v);if(v&&!src){say('Usá una ruta ./assets/images/ a un PNG/JPG/WebP del juego, por ejemplo ./assets/images/matito/imagen.png.');return;}mutate(()=>set(src));},{placeholder:'./assets/images/matito/imagen.png','aria-label':caption+' · archivo del juego'});
     row.append(path);const file=input('file','',()=>{}, {accept:'image/png,image/jpeg,image/webp','aria-label':caption+' · importar imagen'});
     listen(file,'change',async()=>{
       const chosen=file.files?.[0];if(!chosen)return;const epoch=generation,pageId=getPage().id,blockId=selected;

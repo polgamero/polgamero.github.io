@@ -9538,13 +9538,15 @@ function showMatchLoadingBeforeGameplayCommit() {
   try { globalThis.__ARGENTINIA_SHOW_MATCH_LOADING__?.(); } catch {}
 }
 
-export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
+export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, options = {}) {
   injectMyDecksStyles();
   injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
+  // The same styled picker serves several modes; Solo supplies its tutorial identity.
+  if (options.tutorialZone) overlay.dataset.tutorialZone = options.tutorialZone;
   const decks = (state.userProfile && state.userProfile.decks) || [];
 
   const slotsHTML = decks.map(deck => `

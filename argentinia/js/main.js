@@ -2423,7 +2423,8 @@ async function startPlayFlow() {
     showPlayDeckPickerModal(
       (chosenDeck) => initGame({ type: 'saved', deck: chosenDeck }),
       null,
-      () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow)
+      () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow),
+      { tutorialZone: 'play' }
     );
     return;
   }

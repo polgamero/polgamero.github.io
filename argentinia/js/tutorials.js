@@ -1,7 +1,7 @@
 import { fetchTutorialAnnouncements,isAnnouncementDismissed,dismissAnnouncement,claimTutorialPresentation } from './firebaseClient.js';
 import { showAnnouncementCarousel } from './campaignsUI.js';
 import { showMenuGuide } from './menuGuide.js';
-import { MENU_GUIDE_ID,MENU_GUIDE_STEPS,TUTORIAL_ZONE_SCREENS,zoneTutorialKey,defaultZoneTutorial,selectZoneTutorial } from './tutorialContent.js';
+import { MENU_GUIDE_ID,MENU_GUIDE_STEPS,TUTORIAL_ZONE_SCREENS,zoneTutorialKey,defaultZoneTutorial,defaultStepTutorial,selectZoneTutorial } from './tutorialContent.js';
 
 const visible=node=>!!node?.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
 const screenSelector='#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay,#starter-deck-select-overlay,#argentinia-game-manual';
@@ -16,6 +16,9 @@ function pending(uid){if(!pendingPreferences.has(uid)){try{pendingPreferences.se
 function remember(uid,id){pending(uid).add(id);try{localStorage.setItem(key(uid),JSON.stringify([...pending(uid)].slice(-100)));}catch{}}
 function flush(uid){if(flushTasks.has(uid))return flushTasks.get(uid);const task=(async()=>{for(const id of [...pending(uid)]){if(context().user?.uid!==uid)return;try{await dismissAnnouncement(uid,id);pending(uid).delete(id);try{localStorage.setItem(key(uid),JSON.stringify([...pending(uid)]));}catch{}}catch{return;}}})().finally(()=>flushTasks.delete(uid));flushTasks.set(uid,task);return task;}
 async function contents(zone){if(!cache)cache=new Map();const previous=cache.get(zone);if(previous&&Date.now()-previous.at<60000)return previous.rows;const result=await fetchTutorialAnnouncements(zone),rows=Array.isArray(result)?result:[];if(!cache)cache=new Map();cache.set(zone,{at:Date.now(),rows});return rows;}
+// Partida simple already has an editable document at main/play. Reuse that source
+// while keeping the picker's dismissal independent from Mis mazos and the menu tour.
+function destinationContents(zone,rows){return zone==='play'?selectZoneTutorial('main',rows).filter(a=>a.tutorialStep==='play'):selectZoneTutorial(zone,rows);}
 async function guide(menu,uid,forced){
   const owner=()=>context().user?.uid===uid&&context().ready&&destination()==='main';
   let overrides={};try{const rows=selectZoneTutorial('main',await contents('main'));for(const ann of rows){const step=ann.tutorialStep||'welcome';if(!overrides[step])overrides[step]=ann;}}catch{/* Built-in instructions remain available. */}
@@ -44,9 +47,9 @@ async function pump(){
   try{
     await flush(uid);const id=zoneTutorialKey(zone);
     if(pending(uid).has(id)||await isAnnouncementDismissed(uid,id)){if(valid())handledEntry=thisEntry;return;}
-    let rows=[];try{rows=selectZoneTutorial(zone,await contents(zone));}catch{/* Default guide instead of blocking the destination. */}
+    let rows=[];try{rows=destinationContents(zone,await contents(zone==='play'?'main':zone));}catch{/* Default guide instead of blocking the destination. */}
     if(!valid()||blockers())return;
-    handledEntry=thisEntry;const selected=rows[0]||defaultZoneTutorial(zone);
+    handledEntry=thisEntry;const selected=rows[0]||(zone==='play'?defaultStepTutorial('play'):defaultZoneTutorial(zone));
     await showAnnouncementCarousel([{...selected,id,dismissible:true}],{currentUser:{uid},isCurrent:valid,onDismissSelected:()=>remember(uid,id)});
     void flush(uid);
   }catch{retryAfter=Date.now()+15000;}finally{busy=false;}
