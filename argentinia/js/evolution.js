@@ -4,7 +4,7 @@ import { replaceCardSelfName } from './cardSelfReference.js';
 // cardIds canónicos; los mazos marcan esa copia con ::evo1 / ::evo2.
 //
 // CONTRATO DE DISEÑO:
-// - catálogo inicial cerrado: 20 bases / 20 EVO1 / 20 EVO2;
+// - catálogo acumulado cerrado: 22 bases / 22 EVO1 / 22 EVO2 (20 líneas históricas + 2 aprobadas);
 // - EVO1/EVO2 son cartas jugables completas: pueden sobrescribir coste, CMC, rareza,
 //   P/T, keywords, texto y triggers/habilidades estructurados;
 // - cada stage tiene arte propio determinístico en assets/images/evolutions/;
@@ -120,6 +120,103 @@ export const EVOLUTION_PATHS = Object.freeze([
   path('crea_050',
     { name:'Ángel del Descampado · Vigía', manaCost:'{5}{W}', cmc:6, rarity:'Rare', power:5, toughness:6, keywords:['flying','vigilance'], text:'Vuela, Alerta.' },
     { name:'Ángel del Descampado · Custodio del Cielo', manaCost:'{5}{W}{W}', cmc:7, rarity:'Mythic', power:6, toughness:7, keywords:['flying','vigilance','lifelink'], text:'Vuela, Alerta, Absorción.' }
+  ),
+  // Owner-approved small addendum, 20-oct-2026; prices and copy authority unchanged.
+  path('crea_368',
+    {
+      "name": "Mator · Caballero feroz",
+      "type": "Criatura — Planta Caballero",
+      "manaCost": "{3}{G}{W}",
+      "cmc": 5,
+      "rarity": "Rare",
+      "colors": [
+        "G",
+        "W"
+      ],
+      "power": 4,
+      "toughness": 4,
+      "keywords": [
+        "vigilance",
+        "trample"
+      ],
+      "text": "Vaquita. Alerta. Arrolla.",
+      "flavorText": "La ronda sigue. El que la interrumpe conoce el filo."
+    },
+    {
+      "name": "Materex · El destructor",
+      "type": "Criatura — Planta Caballero",
+      "manaCost": "{4}{G}{G}{W}",
+      "cmc": 7,
+      "rarity": "Mythic",
+      "colors": [
+        "G",
+        "W"
+      ],
+      "power": 6,
+      "toughness": 6,
+      "keywords": [
+        "vigilance",
+        "trample"
+      ],
+      "text": "Vaquita. Alerta. Arrolla. Siempre que Materex · El destructor ataque, creá una ficha de criatura Vecino 1/1.",
+      "flavorText": "Cuando la ronda se levanta, hasta el asfalto se corre.",
+      "attackTrigger": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenName": "Vecino",
+        "tokenStats": {
+          "power": 1,
+          "toughness": 1
+        },
+        "tokenKeywords": [],
+        "image": "token_vecino.png"
+      }
+    }
+  ),
+  path('crea_369',
+    {
+      "name": "Aguará Guazú · Rey de la oscuridad",
+      "manaCost": "{2}{B}{G}",
+      "cmc": 4,
+      "rarity": "Rare",
+      "colors": [
+        "B",
+        "G"
+      ],
+      "power": 4,
+      "toughness": 3,
+      "keywords": [
+        "menace"
+      ],
+      "text": "Intimidante. Siempre que Aguará Guazú · Rey de la oscuridad le haga daño de combate al jugador rival, Chusmeá 2.",
+      "flavorText": "La noche no lo esconde. Le pertenece.",
+      "combatDamageTrigger": {
+        "type": "surveil",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Aguará Guazú · Devora mundos",
+      "manaCost": "{3}{B}{B}{G}",
+      "cmc": 6,
+      "rarity": "Mythic",
+      "colors": [
+        "B",
+        "G"
+      ],
+      "power": 5,
+      "toughness": 5,
+      "keywords": [
+        "menace",
+        "deathtouch"
+      ],
+      "text": "Intimidante. Letal. Siempre que Aguará Guazú · Devora mundos le haga daño de combate al jugador rival, Chusmeá 2.",
+      "flavorText": "En el último claro ya no quedan huellas de regreso.",
+      "combatDamageTrigger": {
+        "type": "surveil",
+        "amount": 2
+      }
+    }
   )
 ]);
 

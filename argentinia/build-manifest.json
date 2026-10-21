@@ -212,12 +212,14 @@
     "./js/tutorials.js",
     "./js/campaignAdminV2.js",
     "./js/retiredGameTexts.js",
-    "./js/editorialFrames.js"
+    "./js/editorialFrames.js",
+    "./assets/images/evolutions/evolution_art_manifest.json",
+    "./js/editorialShapes.js"
   ],
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
   "hotfixCandidate": "HF7",
-  "hotfixLabel": "Contenedores editoriales por formato + tutoriales únicos; acumulativo Gestor editorial + Soporte + Esencia y eventos",
+  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -239,5 +241,16 @@
     "assets/images/menu/city-distant.webp": "56b9df5540ce429f5e3677ddd8b58c6b656c23316fd8cbf997caf2f4176d46d7",
     "assets/images/menu/city-distant-mobile.webp": "f00b0956e44c70ee0c2261f68fd400c5235ae44140af29b7ff47ce75e72da4ea"
   },
-  "buildId": "03fb18b8755a8c83b231"
+  "pool": 1010,
+  "publicPool": 910,
+  "poolMilestone": "cards_addendum_1010",
+  "publicPoolMilestone": "cards_addendum_public_910",
+  "label": "Agregado puntual de cartas · Pool 1010",
+  "cardAddendum": {
+    "physicalCardsAdded": 10,
+    "evolutionVariantsAdded": 4,
+    "newCardsPublished": false,
+    "artworkStatus": "PENDING"
+  },
+  "buildId": "e5387265d67b7b7aad48"
 }

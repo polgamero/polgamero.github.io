@@ -201,7 +201,7 @@ html, body {
 }
 
 /* EFECTO HOVER PARA LA MANO LOCAL */
-#local-hand:hover { z-index: 1000; }
+html:not(.argentinia-mobile) #local-hand:hover { z-index: 1000; }
 /* The empty hand row must not intercept clicks on the adjacent mana pool. */
 html:not(.argentinia-mobile) #local-hand { pointer-events: none; }
 html:not(.argentinia-mobile) #local-hand .card { pointer-events: auto; }

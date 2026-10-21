@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "contract": "23.21.6 HF23.3.14.1",
-  "baseCount": 20,
-  "stageCount": 40,
+  "contract": "23.22.0 HF7 · Agregado puntual",
+  "baseCount": 22,
+  "stageCount": 44,
   "directory": "assets/images/evolutions",
   "entries": [
     {
@@ -284,6 +284,34 @@
       "name": "Ángel del Descampado · Custodio del Cielo",
       "image": "crea_050_evo2.png",
       "path": "assets/images/evolutions/crea_050_evo2.png"
+    },
+    {
+      "baseId": "crea_368",
+      "stage": 1,
+      "name": "Mator · Caballero feroz",
+      "image": "crea_368_evo1.png",
+      "path": "assets/images/evolutions/crea_368_evo1.png"
+    },
+    {
+      "baseId": "crea_368",
+      "stage": 2,
+      "name": "Materex · El destructor",
+      "image": "crea_368_evo2.png",
+      "path": "assets/images/evolutions/crea_368_evo2.png"
+    },
+    {
+      "baseId": "crea_369",
+      "stage": 1,
+      "name": "Aguará Guazú · Rey de la oscuridad",
+      "image": "crea_369_evo1.png",
+      "path": "assets/images/evolutions/crea_369_evo1.png"
+    },
+    {
+      "baseId": "crea_369",
+      "stage": 2,
+      "name": "Aguará Guazú · Devora mundos",
+      "image": "crea_369_evo2.png",
+      "path": "assets/images/evolutions/crea_369_evo2.png"
     }
   ],
   "lines": [

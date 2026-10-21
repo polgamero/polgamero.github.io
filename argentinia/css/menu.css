@@ -156,7 +156,7 @@ html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-l
 
 /* Large desktop only: retain the accepted notebook and phone geometry. */
 @media(min-width:1701px) and (min-height:601px){
-  #main-menu-overlay.arg-menu-v2 .arg-menu-modes{width:clamp(430px,30vw,600px)}
+  #main-menu-overlay.arg-menu-v2 .arg-menu-modes{width:min(420px,30vw)}
   #main-menu-overlay.arg-menu-v2 .arg-menu-mode .arg-menu-mode-copy{flex:1;max-width:none;padding-right:0}
   #main-menu-overlay.arg-menu-v2 .arg-menu-mode [data-menu-label]{white-space:nowrap;overflow-wrap:normal}
 }
@@ -253,3 +253,9 @@ html.argentinia-mobile #daily-rewards-overlay .daily-reward-icons{min-width:0;mi
 html.argentinia-mobile #daily-rewards-overlay .daily-reward-icon{max-width:100%;object-fit:contain}
 html.argentinia-mobile #daily-rewards-overlay .daily-reward-day .reward-action-btn{box-sizing:border-box;min-width:0;max-width:100%;width:100%;padding:7px 2px;font-size:10px;white-space:normal;overflow-wrap:anywhere}
 html.argentinia-mobile #daily-rewards-overlay .daily-reward-status{max-width:100%;overflow-wrap:anywhere}
+
+/* Stable maximum at every desktop width, including browser zoom and ultrawide. */
+#main-menu-overlay.arg-menu-v2 .arg-menu-modes{max-width:420px;min-width:0}
+#arg-menu-today-actions{display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+#arg-menu-today-actions>.arg-menu-button{box-sizing:border-box;width:100%;min-width:0;max-width:100%;justify-self:stretch}
+#arg-menu-today-actions .arg-menu-action-copy{min-width:0;overflow-wrap:anywhere}

@@ -89,7 +89,7 @@ function controlsFor(sectionKey, c) {
     ])
   ].join('');
   if (sectionKey === 'mainMenu') return [
-    sectionHeader('Menú principal','Menú actual: tarjetas de partida, identidad, economía, novedades y barra inferior. La cuadrícula conserva sus posiciones adaptables.'),
+    sectionHeader('Menú principal','Menú actual: tarjetas de partida, identidad, economía, novedades y barra inferior. Desktop: más de 1400 px. Notebook: 1051–1400 px. Mobile: hasta 1050 px o 600 px de alto. Los anchos se limitan al espacio disponible; los botones de partida tienen un máximo de 420 px.'),
     group('General',[
       field('Activar personalización','mainMenu.enabled',c.mainMenu.enabled,{type:'checkbox'}),
       field('Alineación de texto','mainMenu.textAlign',c.mainMenu.textAlign,{type:'select',options:[['left','Izquierda'],['center','Centro'],['right','Derecha']]}),
@@ -103,6 +103,10 @@ function controlsFor(sectionKey, c) {
       field('Tinte hover','mainMenu.colors.hoverTint',c.mainMenu.colors.hoverTint,{type:'color'})
     ]),
     group('Desktop',[
+      field('Ancho columna derecha','mainMenu.desktop.asideWidth',c.mainMenu.desktop.asideWidth,{min:160,max:520,step:1,suffix:'px'}),
+      field('Separación paneles derechos','mainMenu.desktop.asideGap',c.mainMenu.desktop.asideGap,{min:0,max:40,step:1,suffix:'px'}),
+      field('Alto cabeceras Hoy / Noticias','mainMenu.desktop.panelHeight',c.mainMenu.desktop.panelHeight,{min:44,max:100,step:1,suffix:'px'}),
+      field('Alto filas de Hoy','mainMenu.desktop.todayRowHeight',c.mainMenu.desktop.todayRowHeight,{min:44,max:130,step:1,suffix:'px'}),
       field('Ancho botón','mainMenu.desktop.buttonWidth',c.mainMenu.desktop.buttonWidth,{min:160,max:420,step:1,suffix:'px'}), field('Base de alto de tarjeta','mainMenu.desktop.buttonHeight',c.mainMenu.desktop.buttonHeight,{min:30,max:72,step:1,suffix:'px'}),
       field('Separación','mainMenu.desktop.gap',c.mainMenu.desktop.gap,{min:0,max:30,step:1,suffix:'px'}), 
       field('Radio','mainMenu.desktop.radius',c.mainMenu.desktop.radius,{min:0,max:30,step:1,suffix:'px'}),
@@ -113,7 +117,26 @@ function controlsFor(sectionKey, c) {
       
       field('Logo: ancho máx.','mainMenu.desktop.logoMaxWidth',c.mainMenu.desktop.logoMaxWidth,{min:20,max:85,step:1,suffix:'vw'}), field('Logo: alto máx.','mainMenu.desktop.logoMaxHeight',c.mainMenu.desktop.logoMaxHeight,{min:10,max:60,step:1,suffix:'vh'})
     ]),
+    group('Notebook',[
+      field('Ancho columna derecha','mainMenu.notebook.asideWidth',c.mainMenu.notebook.asideWidth,{min:160,max:520,step:1,suffix:'px'}),
+      field('Separación paneles derechos','mainMenu.notebook.asideGap',c.mainMenu.notebook.asideGap,{min:0,max:40,step:1,suffix:'px'}),
+      field('Alto cabeceras Hoy / Noticias','mainMenu.notebook.panelHeight',c.mainMenu.notebook.panelHeight,{min:44,max:100,step:1,suffix:'px'}),
+      field('Alto filas de Hoy','mainMenu.notebook.todayRowHeight',c.mainMenu.notebook.todayRowHeight,{min:44,max:130,step:1,suffix:'px'}),
+      field('Ancho botón','mainMenu.notebook.buttonWidth',c.mainMenu.notebook.buttonWidth,{min:160,max:420,step:1,suffix:'px'}), field('Base de alto de tarjeta','mainMenu.notebook.buttonHeight',c.mainMenu.notebook.buttonHeight,{min:30,max:72,step:1,suffix:'px'}),
+      field('Separación','mainMenu.notebook.gap',c.mainMenu.notebook.gap,{min:0,max:30,step:1,suffix:'px'}), 
+      field('Radio','mainMenu.notebook.radius',c.mainMenu.notebook.radius,{min:0,max:30,step:1,suffix:'px'}),
+      field('Borde','mainMenu.notebook.borderWidth',c.mainMenu.notebook.borderWidth,{min:0,max:5,step:1,suffix:'px'}), field('Fuente','mainMenu.notebook.fontSize',c.mainMenu.notebook.fontSize,{min:11,max:28,step:1,suffix:'px'}),
+      field('Fuente primarios','mainMenu.notebook.primaryFontSize',c.mainMenu.notebook.primaryFontSize,{min:11,max:30,step:1,suffix:'px'}), field('Peso','mainMenu.notebook.fontWeight',c.mainMenu.notebook.fontWeight,{type:'select',options:[[400,'400'],[500,'500'],[600,'600'],[700,'700'],[800,'800'],[900,'900']]}),
+      field('Letter spacing','mainMenu.notebook.letterSpacing',c.mainMenu.notebook.letterSpacing,{min:-1,max:3,step:.1,suffix:'px'}), field('Padding vertical','mainMenu.notebook.paddingY',c.mainMenu.notebook.paddingY,{min:2,max:18,step:1,suffix:'px'}),
+      field('Padding horizontal','mainMenu.notebook.paddingX',c.mainMenu.notebook.paddingX,{min:4,max:30,step:1,suffix:'px'}), 
+      
+      field('Logo: ancho máx.','mainMenu.notebook.logoMaxWidth',c.mainMenu.notebook.logoMaxWidth,{min:20,max:85,step:1,suffix:'vw'}), field('Logo: alto máx.','mainMenu.notebook.logoMaxHeight',c.mainMenu.notebook.logoMaxHeight,{min:10,max:60,step:1,suffix:'vh'})
+    ]),
     group('Mobile horizontal',[
+      field('Ancho columna derecha','mainMenu.mobile.asideWidth',c.mainMenu.mobile.asideWidth,{min:130,max:300,step:1,suffix:'px'}),
+      field('Separación paneles derechos','mainMenu.mobile.asideGap',c.mainMenu.mobile.asideGap,{min:0,max:40,step:1,suffix:'px'}),
+      field('Alto cabeceras Hoy / Noticias','mainMenu.mobile.panelHeight',c.mainMenu.mobile.panelHeight,{min:44,max:100,step:1,suffix:'px'}),
+      field('Alto filas de Hoy','mainMenu.mobile.todayRowHeight',c.mainMenu.mobile.todayRowHeight,{min:44,max:130,step:1,suffix:'px'}),
       field('Ancho botón','mainMenu.mobile.buttonWidth',c.mainMenu.mobile.buttonWidth,{min:130,max:260,step:1,suffix:'px'}), field('Base de alto de tarjeta','mainMenu.mobile.buttonHeight',c.mainMenu.mobile.buttonHeight,{min:28,max:52,step:1,suffix:'px'}),
       field('Separación','mainMenu.mobile.gap',c.mainMenu.mobile.gap,{min:0,max:16,step:1,suffix:'px'}), 
       field('Radio','mainMenu.mobile.radius',c.mainMenu.mobile.radius,{min:0,max:22,step:1,suffix:'px'}),
@@ -157,7 +180,7 @@ function contrastRatio(hexA, hexB) {
 function previewHtml(c, viewport, sectionKey) {
   const { vars } = appearanceCssVariables(c);
   const mobileViewport = viewport === 'android' || viewport === 'iphone';
-  const mm = mobileViewport ? c.mainMenu.mobile : c.mainMenu.desktop;
+  const mm = mobileViewport ? c.mainMenu.mobile : viewport === 'notebook' ? c.mainMenu.notebook : c.mainMenu.desktop;
   const previewVars = {
     ...vars,
     '--preview-menu-button-width': `${mm.buttonWidth}px`,
@@ -268,7 +291,7 @@ function ensureStyles() {
 @media(max-width:760px){.appearance-flashera-picker{grid-template-columns:1fr}.appearance-flashera-3d{width:161px;height:225px}.appearance-flashera-scene{height:253px}}
 @media(prefers-reduced-motion:reduce){.appearance-flashera-3d{transition:none!important}}
 `
-  style.textContent += '.appearance-preview-shell.preview-section-mainMenu{min-height:0}.appearance-preview-shell.preview-section-mainMenu.viewport-desktop{aspect-ratio:16/9}';
+  style.textContent += '.appearance-preview-toolbar{flex-wrap:wrap}.appearance-preview-shell.viewport-notebook{aspect-ratio:1366/768}.appearance-preview-shell.viewport-wide{aspect-ratio:1778/801}.appearance-preview-shell.preview-section-mainMenu{min-height:0}.appearance-preview-shell.preview-section-mainMenu.viewport-desktop{aspect-ratio:16/9}';
   document.head.appendChild(style);
 }
 
@@ -371,7 +394,7 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
       </div>
       <div class="appearance-studio-grid">
         <div class="appearance-controls" data-appearance-controls></div>
-        <aside class="appearance-preview-column"><div class="appearance-preview-toolbar"><strong style="margin-right:auto;color:#d4af37">Preview</strong><button type="button" data-appearance-zoom-out title="Alejar">−</button><span class="appearance-preview-zoom-label" data-appearance-zoom-label>100%</span><button type="button" data-appearance-zoom-in title="Acercar">+</button><button type="button" data-appearance-pan title="Mano: arrastrar preview">✋</button><button type="button" data-appearance-reset-view title="Restablecer vista">↺</button><span class="appearance-preview-tool-sep"></span><button type="button" data-appearance-viewport="desktop">Desktop</button><button type="button" data-appearance-viewport="android">Android</button><button type="button" data-appearance-viewport="iphone">iPhone</button></div><div data-appearance-warning></div><div data-appearance-preview></div><div class="appearance-schema-note">Preview local e interactivo: hover real sobre botones, rueda para zoom, <strong>✋</strong> + arrastre para desplazarte y −/+ para escala. No escribe Firestore hasta PUBLICAR. La preview usa los assets/estructura canónicos y conserva identidades semánticas especiales como <strong>Descubribles</strong>.</div></aside>
+        <aside class="appearance-preview-column"><div class="appearance-preview-toolbar"><strong style="margin-right:auto;color:#d4af37">Preview</strong><button type="button" data-appearance-zoom-out title="Alejar">−</button><span class="appearance-preview-zoom-label" data-appearance-zoom-label>100%</span><button type="button" data-appearance-zoom-in title="Acercar">+</button><button type="button" data-appearance-pan title="Mano: arrastrar preview">✋</button><button type="button" data-appearance-reset-view title="Restablecer vista">↺</button><span class="appearance-preview-tool-sep"></span><button type="button" data-appearance-viewport="desktop">Desktop</button><button type="button" data-appearance-viewport="notebook">Notebook</button><button type="button" data-appearance-viewport="wide">Desktop 90%</button><button type="button" data-appearance-viewport="android">Android</button><button type="button" data-appearance-viewport="iphone">iPhone</button></div><div data-appearance-warning></div><div data-appearance-preview></div><div class="appearance-schema-note">Preview local e interactivo: hover real sobre botones, rueda para zoom, <strong>✋</strong> + arrastre para desplazarte y −/+ para escala. No escribe Firestore hasta PUBLICAR. La preview usa los assets/estructura canónicos y conserva identidades semánticas especiales como <strong>Descubribles</strong>.</div></aside>
       </div>
     </div>`;
     bindShell(); renderAll();
@@ -398,7 +421,8 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
     const frame = document.createElement('iframe'); frame.title = 'Vista previa del menú principal actual';
     // No game engine, authentication, network writes or scripts run in this frame.
     frame.setAttribute('sandbox','allow-same-origin');
-    const mobile = viewport !== 'desktop', width = viewport === 'iphone' ? 936 : mobile ? 960 : 1600, height = mobile ? 432 : 900;
+    const mobile = viewport === 'android' || viewport === 'iphone';
+    const [width,height] = viewport === 'notebook' ? [1366,768] : viewport === 'wide' ? [1778,801] : viewport === 'iphone' ? [936,432] : mobile ? [960,432] : [1600,900];
     Object.assign(holder.style,{position:'relative',width:'100%',height:'100%'});
     Object.assign(frame.style,{position:'absolute',top:'0',left:'0',width:`${width}px`,height:`${height}px`,border:'0',transformOrigin:'top left'});
     const config = clone(draft);
@@ -423,7 +447,7 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
       menu.querySelector('#arg-menu-support-slot').innerHTML=iconButton('menu-moderation','support','Soporte');
       menu.querySelector('#arg-menu-chest-slot').innerHTML=iconButton('menu-chest','chest','Mi Cofre');
       menu.querySelector('#arg-menu-workshop-slot').innerHTML=iconButton('menu-workshop','workshop','Mi Taller');
-      menu.querySelector('#arg-menu-today-actions').innerHTML=iconButton('menu-daily-rewards','daily','Recompensa diaria')+iconButton('menu-sanctuary','sanctuary','Santuario')+iconButton('menu-achievements','achievements','Mis logros');
+      menu.querySelector('#arg-menu-today-actions').innerHTML=[['menu-daily-rewards','daily','Recompensa diaria','Ver calendario'],['menu-sanctuary','sanctuary','Santuario','Rituales y descubrimientos'],['menu-achievements','achievements','Mis logros','Objetivos y recompensas']].map(([id,icon,label,status])=>`<button type="button" id="${id}" class="arg-menu-button">${menuIcon(icon)}<span class="arg-menu-action-copy"><span data-menu-label>${esc(label)}</span><span class="arg-menu-action-status">${esc(status)}</span></span></button>`).join('');
       menu.querySelector('#main-menu-news-list').textContent='Novedades y anuncios del juego';
       const panels=[['menu-today-toggle','arg-menu-today-content'],['menu-news-toggle','main-menu-news-list']];
       for(const [id,target] of panels) menu.querySelector(`#${id}`).addEventListener('click',()=>{

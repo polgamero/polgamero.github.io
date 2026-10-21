@@ -9130,5 +9130,110 @@
       }
     },
     "enabled": false
+  },
+  {
+    "id": "crea_368",
+    "name": "Matito",
+    "type": "Criatura — Planta",
+    "manaCost": "{2}{G}{W}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G",
+      "W"
+    ],
+    "text": "Vaquita. Alerta.",
+    "flavorText": "Siempre alcanza para convidar a uno más.",
+    "image": "matito.png",
+    "enabled": false,
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "vigilance"
+    ],
+    "convoke": true
+  },
+  {
+    "id": "crea_369",
+    "name": "Aguará Guazú",
+    "type": "Criatura — Canino",
+    "manaCost": "{1}{B}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "Intimidante. Siempre que Aguará Guazú le haga daño de combate al jugador rival, Chusmeá 1.",
+    "flavorText": "Antes de verlo entre los pastos, el monte ya sabe que llegó.",
+    "image": "aguara_guazu.png",
+    "enabled": false,
+    "power": 3,
+    "toughness": 2,
+    "keywords": [
+      "menace"
+    ],
+    "combatDamageTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_370",
+    "name": "Gatapeluda",
+    "type": "Criatura — Insecto",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Letal. Cuando Gatapeluda muera, Chusmeá 1.",
+    "flavorText": "Parece suave. El monte recomienda no comprobarlo.",
+    "image": "gatapeluda.png",
+    "enabled": false,
+    "power": 1,
+    "toughness": 2,
+    "keywords": [
+      "deathtouch"
+    ],
+    "diesTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_371",
+    "name": "Escarabajo Torito",
+    "type": "Criatura — Insecto",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Arrolla. Cuando Escarabajo Torito entre al campo de batalla, poné un contador de Escudo sobre él.",
+    "flavorText": "La primera embestida prueba el cuerno. La segunda, la paciencia.",
+    "image": "escarabajo_torito.png",
+    "enabled": false,
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "trample"
+    ],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "self": true
+        },
+        "target": "self",
+        "effect": {
+          "type": "add_counter",
+          "counterType": "shield",
+          "amount": 1
+        }
+      }
+    ]
   }
 ]

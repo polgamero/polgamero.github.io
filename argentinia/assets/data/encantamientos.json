@@ -3240,5 +3240,137 @@
       }
     ],
     "enabled": false
+  },
+  {
+    "id": "ench_111",
+    "name": "Reloj de la Municipalidad Roto",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "{1}, {T}: Poné un contador de Tiempo sobre una carta en espera.\n{1}{U}, {T}: Remové un contador de Tiempo de una carta en espera que poseés.",
+    "flavorText": "Está detenido, pero las demoras siguen llegando a horario.",
+    "image": "reloj_de_la_municipalidad_roto.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": false,
+    "adjunta": false,
+    "activatedAbilities": [
+      {
+        "cost": "{1}{T}",
+        "effect": {
+          "type": "add_time_counter_suspended",
+          "owner": "any",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      },
+      {
+        "cost": "{1}{U}{T}",
+        "effect": {
+          "type": "remove_time_counter_suspended",
+          "owner": "self",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      }
+    ]
+  },
+  {
+    "id": "ench_112",
+    "name": "Festejos Mundiales",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{R}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R",
+      "W"
+    ],
+    "text": "I — Creá dos fichas de criatura Vecino 1/1.\nII — Ganás 3 Puntos de Vida.\nIII — Poné un contador de Escudo sobre la criatura objetivo que controlás.",
+    "flavorText": "La copa era de once. El abrazo, de todos.",
+    "image": "festejos_mundiales.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": false,
+    "adjunta": false,
+    "saga": {
+      "chapters": [
+        {
+          "id": "festejos_i",
+          "number": 1,
+          "text": "Creá dos fichas de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 2,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          }
+        },
+        {
+          "id": "festejos_ii",
+          "number": 2,
+          "text": "Ganás 3 Puntos de Vida.",
+          "effect": {
+            "type": "heal",
+            "amount": 3
+          }
+        },
+        {
+          "id": "festejos_iii",
+          "number": 3,
+          "text": "Poné un contador de Escudo sobre la criatura objetivo que controlás.",
+          "requiresTarget": true,
+          "effect": {
+            "type": "add_counter",
+            "counterType": "shield",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "self"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_113",
+    "name": "Superchino",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Cuando Superchino entre al campo de batalla, robá una carta y luego descartá una carta. Tus hechizos de artefacto cuestan {1} menos.",
+    "flavorText": "Si no está en la góndola, preguntá en la caja.",
+    "image": "superchino.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": false,
+    "adjunta": false,
+    "etbEffect": {
+      "type": "loot",
+      "amount": 1
+    },
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "reduce",
+      "scope": "own",
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact"
+      }
+    }
   }
 ]

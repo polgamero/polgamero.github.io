@@ -31,6 +31,28 @@ const CLASSIC = Object.freeze({
   mainMenu: Object.freeze({
     enabled: false,
     desktop: Object.freeze({
+      asideWidth: 420, asideGap: 18, panelHeight: 55, todayRowHeight: 80,
+      buttonWidth: 230,
+      buttonHeight: 40,
+      gap: 10,
+      left: 5,
+      bottom: 8,
+      logoTop: 5,
+      logoMaxWidth: 55,
+      logoMaxHeight: 32,
+      radius: 10,
+      borderWidth: 2,
+      fontSize: 17,
+      primaryFontSize: 18,
+      fontWeight: 700,
+      letterSpacing: 0.5,
+      paddingY: 7,
+      paddingX: 10,
+      iconImageInset: 4,
+      iconRadius: 10
+    }),
+    notebook: Object.freeze({
+      asideWidth: 420, asideGap: 18, panelHeight: 55, todayRowHeight: 80,
       buttonWidth: 230,
       buttonHeight: 40,
       gap: 10,
@@ -51,6 +73,7 @@ const CLASSIC = Object.freeze({
       iconRadius: 10
     }),
     mobile: Object.freeze({
+      asideWidth: 245, asideGap: 10, panelHeight: 46, todayRowHeight: 50,
       buttonWidth: 210,
       buttonHeight: 34,
       gap: 4,
@@ -179,6 +202,7 @@ export function normalizeAppearanceConfig(raw = {}) {
   const g = section(source.global, c.global);
   const mm = section(source.mainMenu, c.mainMenu);
   const mmd = section(mm.desktop, c.mainMenu.desktop);
+  const mmn = {...mmd,...section(mm.notebook, {})};
   const mmm = section(mm.mobile, c.mainMenu.mobile);
   const mmc = section(mm.colors, c.mainMenu.colors);
   const buttons = section(source.buttons, c.buttons);
@@ -202,6 +226,10 @@ export function normalizeAppearanceConfig(raw = {}) {
     mainMenu: {
       enabled: bool(mm.enabled, true),
       desktop: {
+        asideWidth: num(mmd.asideWidth,c.mainMenu.desktop.asideWidth,160,520,0),
+        asideGap: num(mmd.asideGap,c.mainMenu.desktop.asideGap,0,40,0),
+        panelHeight: num(mmd.panelHeight,c.mainMenu.desktop.panelHeight,44,100,0),
+        todayRowHeight: num(mmd.todayRowHeight,c.mainMenu.desktop.todayRowHeight,44,130,0),
         buttonWidth: num(mmd.buttonWidth, c.mainMenu.desktop.buttonWidth, 160, 420, 0),
         buttonHeight: num(mmd.buttonHeight, c.mainMenu.desktop.buttonHeight, 30, 72, 0),
         gap: num(mmd.gap, c.mainMenu.desktop.gap, 0, 30, 0), left: num(mmd.left, c.mainMenu.desktop.left, 0, 40, 1),
@@ -214,7 +242,28 @@ export function normalizeAppearanceConfig(raw = {}) {
         paddingX: num(mmd.paddingX, c.mainMenu.desktop.paddingX, 4, 30, 0), iconImageInset: num(mmd.iconImageInset, c.mainMenu.desktop.iconImageInset, 0, 12, 0),
         iconRadius: num(mmd.iconRadius, c.mainMenu.desktop.iconRadius, 0, 30, 0)
       },
+      notebook: {
+        asideWidth: num(mmn.asideWidth,c.mainMenu.desktop.asideWidth,160,520,0),
+        asideGap: num(mmn.asideGap,c.mainMenu.desktop.asideGap,0,40,0),
+        panelHeight: num(mmn.panelHeight,c.mainMenu.desktop.panelHeight,44,100,0),
+        todayRowHeight: num(mmn.todayRowHeight,c.mainMenu.desktop.todayRowHeight,44,130,0),
+        buttonWidth: num(mmn.buttonWidth, c.mainMenu.desktop.buttonWidth, 160, 420, 0),
+        buttonHeight: num(mmn.buttonHeight, c.mainMenu.desktop.buttonHeight, 30, 72, 0),
+        gap: num(mmn.gap, c.mainMenu.desktop.gap, 0, 30, 0), left: num(mmn.left, c.mainMenu.desktop.left, 0, 40, 1),
+        bottom: num(mmn.bottom, c.mainMenu.desktop.bottom, 0, 40, 1), logoTop: num(mmn.logoTop, c.mainMenu.desktop.logoTop, 0, 30, 1),
+        logoMaxWidth: num(mmn.logoMaxWidth, c.mainMenu.desktop.logoMaxWidth, 20, 85, 1), logoMaxHeight: num(mmn.logoMaxHeight, c.mainMenu.desktop.logoMaxHeight, 10, 60, 1),
+        radius: num(mmn.radius, c.mainMenu.desktop.radius, 0, 30, 0), borderWidth: num(mmn.borderWidth, c.mainMenu.desktop.borderWidth, 0, 5, 0),
+        fontSize: num(mmn.fontSize, c.mainMenu.desktop.fontSize, 11, 28, 0), primaryFontSize: num(mmn.primaryFontSize, c.mainMenu.desktop.primaryFontSize, 11, 30, 0),
+        fontWeight: choice(Number(mmn.fontWeight), [400,500,600,700,800,900], c.mainMenu.desktop.fontWeight),
+        letterSpacing: num(mmn.letterSpacing, c.mainMenu.desktop.letterSpacing, -1, 3, 1), paddingY: num(mmn.paddingY, c.mainMenu.desktop.paddingY, 2, 18, 0),
+        paddingX: num(mmn.paddingX, c.mainMenu.desktop.paddingX, 4, 30, 0), iconImageInset: num(mmn.iconImageInset, c.mainMenu.desktop.iconImageInset, 0, 12, 0),
+        iconRadius: num(mmn.iconRadius, c.mainMenu.desktop.iconRadius, 0, 30, 0)
+      },
       mobile: {
+        asideWidth: num(mmm.asideWidth,c.mainMenu.mobile.asideWidth,130,300,0),
+        asideGap: num(mmm.asideGap,c.mainMenu.mobile.asideGap,0,40,0),
+        panelHeight: num(mmm.panelHeight,c.mainMenu.mobile.panelHeight,44,100,0),
+        todayRowHeight: num(mmm.todayRowHeight,c.mainMenu.mobile.todayRowHeight,44,130,0),
         buttonWidth: num(mmm.buttonWidth, c.mainMenu.mobile.buttonWidth, 130, 260, 0), buttonHeight: num(mmm.buttonHeight, c.mainMenu.mobile.buttonHeight, 28, 52, 0),
         gap: num(mmm.gap, c.mainMenu.mobile.gap, 0, 16, 0), left: num(mmm.left, c.mainMenu.mobile.left, 0, 18, 1), bottom: num(mmm.bottom, c.mainMenu.mobile.bottom, 0, 20, 1),
         logoTop: num(mmm.logoTop, c.mainMenu.mobile.logoTop, 0, 16, 1), logoMaxWidth: num(mmm.logoMaxWidth, c.mainMenu.mobile.logoMaxWidth, 20, 65, 1),
@@ -292,6 +341,11 @@ export function appearanceCssVariables(configLike) {
     '--arg-badge-radius': `${c.badges.radius}px`, '--arg-badge-border-width': `${c.badges.borderWidth}px`, '--arg-badge-font-size': `${c.badges.fontSize}px`, '--arg-badge-padding-x': `${c.badges.paddingX}px`, '--arg-badge-padding-y': `${c.badges.paddingY}px`, '--arg-badge-shadow': SHADOWS[c.badges.shadowPreset],
     '--arg-notification-radius': `${c.notifications.radius}px`, '--arg-notification-border-width': `${c.notifications.borderWidth}px`, '--arg-notification-shadow': SHADOWS[c.notifications.shadowPreset]
   };
+  for(const profile of ['desktop','notebook','mobile'])for(const [key,value] of Object.entries(c.mainMenu[profile])){
+    const name=key.replace(/[A-Z]/g,ch=>'-'+ch.toLowerCase());
+    const unit=key==='fontWeight'?'':['left','logoMaxWidth'].includes(key)?(profile==='mobile'?'dvw':'vw'):['bottom','logoTop','logoMaxHeight'].includes(key)?(profile==='mobile'?'dvh':'vh'):'px';
+    vars[`--arg-menu-${profile}-${name}`]=`${value}${unit}`;
+  }
   return { config: c, vars };
 }
 
@@ -305,22 +359,49 @@ html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 {
  --v2-gap:var(--arg-menu-gap);--v2-font:var(--arg-menu-font-size);--v2-primary-font:var(--arg-menu-primary-font-size);
  --v2-px:var(--arg-menu-padding-x);--v2-py:var(--arg-menu-padding-y);--v2-radius:var(--arg-menu-radius);--v2-border:var(--arg-menu-border-width);
  --v2-logo-width:var(--arg-menu-logo-max-width);--v2-logo-height:var(--arg-menu-logo-max-height);
+ --v2-aside:var(--arg-menu-desktop-aside-width);--v2-aside-gap:var(--arg-menu-desktop-aside-gap);
+ --v2-panel-height:var(--arg-menu-desktop-panel-height);--v2-row-height:var(--arg-menu-desktop-today-row-height);
+ --v2-weight:var(--arg-menu-font-weight);--v2-spacing:var(--arg-menu-letter-spacing);
 }
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-modes {width:clamp(240px,var(--v2-width),29vw);gap:clamp(4px,var(--v2-gap),22px)}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode {min-height:clamp(72px,calc(var(--v2-height)*2),144px);padding:var(--v2-py) var(--v2-px);border-color:var(--arg-menu-border);border-width:var(--v2-border);border-radius:var(--v2-radius);background:linear-gradient(110deg,var(--arg-menu-bg-top),var(--arg-menu-bg-bottom));box-shadow:var(--arg-menu-shadow);text-align:var(--arg-menu-text-align)}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-primary {border-color:var(--arg-menu-primary-border);background:linear-gradient(110deg,var(--arg-menu-primary-top),var(--arg-menu-bg-bottom))}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-label] {font-size:var(--v2-font);font-weight:var(--arg-menu-font-weight);letter-spacing:var(--arg-menu-letter-spacing);color:var(--arg-menu-text)}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-primary [data-menu-label] {font-size:var(--v2-primary-font)}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-logo {width:auto;max-width:min(100%,var(--v2-logo-width));max-height:var(--v2-logo-height);object-fit:contain}
-@media(hover:hover) and (pointer:fine){html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode:hover {filter:brightness(var(--arg-menu-hover-brightness));background:linear-gradient(110deg,rgba(var(--arg-menu-hover-rgb),.25),var(--arg-menu-bg-bottom))}}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-button {color:var(--arg-menu-text);box-shadow:var(--arg-menu-shadow)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-modes {width:min(var(--v2-width),29vw);gap:clamp(4px,var(--v2-gap),22px)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-mode {min-height:clamp(72px,calc(var(--v2-height)*2),144px);padding:var(--v2-py) var(--v2-px);border-color:var(--arg-menu-border);border-width:var(--v2-border);border-radius:var(--v2-radius);background:linear-gradient(110deg,var(--arg-menu-bg-top),var(--arg-menu-bg-bottom));box-shadow:var(--arg-menu-shadow);text-align:var(--arg-menu-text-align)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-primary {border-color:var(--arg-menu-primary-border);background:linear-gradient(110deg,var(--arg-menu-primary-top),var(--arg-menu-bg-bottom))}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-mode [data-menu-label] {font-size:var(--v2-font);font-weight:var(--v2-weight);letter-spacing:var(--v2-spacing);color:var(--arg-menu-text)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-primary [data-menu-label] {font-size:var(--v2-primary-font)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-logo {width:auto;max-width:min(100%,var(--v2-logo-width));max-height:var(--v2-logo-height);object-fit:contain}
+@media(hover:hover) and (pointer:fine){html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-mode:hover {filter:brightness(var(--arg-menu-hover-brightness));background:linear-gradient(110deg,rgba(var(--arg-menu-hover-rgb),.25),var(--arg-menu-bg-bottom))}}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-button {color:var(--arg-menu-text);box-shadow:var(--arg-menu-shadow)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-aside{width:min(var(--v2-aside),32vw);gap:var(--v2-aside-gap)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-panel-toggle{min-height:var(--v2-panel-height)}
+html[data-arg-appearance-main-menu="1"] #arg-menu-today-actions>.arg-menu-button{min-height:var(--v2-row-height)}
+@media(max-width:1400px) and (min-width:1051px) and (min-height:601px){html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2{
+ --v2-width:var(--arg-menu-notebook-button-width);
+ --v2-height:var(--arg-menu-notebook-button-height);
+ --v2-gap:var(--arg-menu-notebook-gap);
+ --v2-font:var(--arg-menu-notebook-font-size);
+ --v2-primary-font:var(--arg-menu-notebook-primary-font-size);
+ --v2-px:var(--arg-menu-notebook-padding-x);
+ --v2-py:var(--arg-menu-notebook-padding-y);
+ --v2-radius:var(--arg-menu-notebook-radius);
+ --v2-border:var(--arg-menu-notebook-border-width);
+ --v2-logo-width:var(--arg-menu-notebook-logo-max-width);
+ --v2-logo-height:var(--arg-menu-notebook-logo-max-height);
+ --v2-aside:var(--arg-menu-notebook-aside-width);
+ --v2-aside-gap:var(--arg-menu-notebook-aside-gap);
+ --v2-panel-height:var(--arg-menu-notebook-panel-height);
+ --v2-row-height:var(--arg-menu-notebook-today-row-height);
+ --v2-weight:var(--arg-menu-notebook-font-weight);
+ --v2-spacing:var(--arg-menu-notebook-letter-spacing);
+}}
 @media(max-width:1050px),(max-height:600px){html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 {
+ --v2-aside:var(--arg-menu-mobile-aside-width);--v2-aside-gap:var(--arg-menu-mobile-aside-gap);
+ --v2-panel-height:var(--arg-menu-mobile-panel-height);--v2-row-height:var(--arg-menu-mobile-today-row-height);
  --v2-width:var(--arg-menu-mobile-button-width);--v2-height:var(--arg-menu-mobile-button-height);--v2-gap:var(--arg-menu-mobile-gap);
  --v2-font:var(--arg-menu-mobile-font-size);--v2-primary-font:var(--arg-menu-mobile-primary-font-size);
  --v2-px:var(--arg-menu-mobile-padding-x);--v2-py:var(--arg-menu-mobile-padding-y);--v2-radius:var(--arg-menu-mobile-radius);--v2-border:var(--arg-menu-mobile-border-width);
  --v2-logo-width:var(--arg-menu-mobile-logo-max-width);--v2-logo-height:var(--arg-menu-mobile-logo-max-height);
-}html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-modes {width:clamp(150px,var(--v2-width),30vw)}
-html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode {min-height:clamp(44px,var(--v2-height),76px)}}
+}html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-modes {width:min(var(--v2-width),30vw)}
+html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2 .arg-menu-mode {min-height:clamp(44px,var(--v2-height),76px)}}
 `;
 }
 

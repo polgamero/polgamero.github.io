@@ -16259,7 +16259,9 @@ export function showCostPaymentResourceModal(entries, options = {}) {
   row.className = 'mulligan-hand-row';
   const hint = () => overlay.querySelector('#cost-resource-count-hint');
   list.forEach(entry => {
-    const value = entry?.item || entry?.card || entry;
+    // Vaquita returns physical battlefield items; Rebuscar returns graveyard cards.
+    // Unwrapping item.card loses colors, duplicate identity and payment validation.
+    const value = mode === 'convoke' ? (entry?.item || entry) : (entry?.card || entry);
     let cardEl;
     const toggle = () => {
       if (chosen.has(value)) { chosen.delete(value); cardEl.classList.remove('chosen'); }

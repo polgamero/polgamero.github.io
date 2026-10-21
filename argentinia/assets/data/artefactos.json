@@ -2289,5 +2289,28 @@
       "allowFewer": true
     },
     "enabled": false
+  },
+  {
+    "id": "art_090",
+    "name": "Lapicera Común",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{3}, {T}: Robá una carta y luego descartá una carta.",
+    "flavorText": "No firma decretos. Con suerte, escribe.",
+    "image": "lapicera_comun.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "loot",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
   }
 ]

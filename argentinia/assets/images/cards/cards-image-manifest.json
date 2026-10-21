@@ -1,49 +1,94 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-09T22:16:29Z",
+  "generatedAt": "2026-10-20T00:00:00Z",
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "dragons_buenos_aires_900",
-    "contractVersion": "23.21.6",
-    "total": 900,
+    "milestone": "cards_addendum_public_910",
+    "contractVersion": "23.22.0 HF7 · Agregado puntual",
+    "total": 910,
     "categories": {
       "tierras": 68,
-      "artefactos": 89,
-      "criaturas": 367,
-      "instantaneos": 149,
+      "artefactos": 90,
+      "criaturas": 371,
+      "instantaneos": 151,
       "conjuros": 109,
-      "encantamientos": 110,
+      "encantamientos": 113,
       "planeswalkers": 8
     },
-    "uniqueIds": 900
+    "uniqueIds": 910
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 900,
-    "referencedFaceCount": 916,
+    "referencedCardCount": 910,
+    "referencedFaceCount": 926,
     "doubleFacedCardCount": 16,
-    "uniqueReferencedFileCount": 915,
-    "missingCardCount": 916,
+    "uniqueReferencedFileCount": 925,
+    "missingCardCount": 926,
     "cardsWithoutImageFieldCount": 0
   },
   "evolutionImages": {
     "directory": "assets/images/evolutions",
     "contractFile": "assets/images/evolutions/evolution_art_manifest.json",
-    "expectedFileCount": 0,
+    "expectedFileCount": 44,
     "existingFileCount": 0,
-    "missingFileCount": 0,
-    "missingFiles": [],
+    "missingFileCount": 44,
+    "missingFiles": [
+      "crea_001_evo1.png",
+      "crea_001_evo2.png",
+      "crea_002_evo1.png",
+      "crea_002_evo2.png",
+      "crea_003_evo1.png",
+      "crea_003_evo2.png",
+      "crea_004_evo1.png",
+      "crea_004_evo2.png",
+      "crea_005_evo1.png",
+      "crea_005_evo2.png",
+      "crea_006_evo1.png",
+      "crea_006_evo2.png",
+      "crea_007_evo1.png",
+      "crea_007_evo2.png",
+      "crea_008_evo1.png",
+      "crea_008_evo2.png",
+      "crea_009_evo1.png",
+      "crea_009_evo2.png",
+      "crea_010_evo1.png",
+      "crea_010_evo2.png",
+      "crea_011_evo1.png",
+      "crea_011_evo2.png",
+      "crea_012_evo1.png",
+      "crea_012_evo2.png",
+      "crea_024_evo1.png",
+      "crea_024_evo2.png",
+      "crea_025_evo1.png",
+      "crea_025_evo2.png",
+      "crea_034_evo1.png",
+      "crea_034_evo2.png",
+      "crea_036_evo1.png",
+      "crea_036_evo2.png",
+      "crea_039_evo1.png",
+      "crea_039_evo2.png",
+      "crea_041_evo1.png",
+      "crea_041_evo2.png",
+      "crea_046_evo1.png",
+      "crea_046_evo2.png",
+      "crea_050_evo1.png",
+      "crea_050_evo2.png",
+      "crea_368_evo1.png",
+      "crea_368_evo2.png",
+      "crea_369_evo1.png",
+      "crea_369_evo2.png"
+    ],
     "files": []
   },
   "tokenImages": {
-    "producerEffectCount": 56,
+    "producerEffectCount": 57,
     "uniqueTokenNameCount": 31,
-    "assignedEffectCount": 56,
+    "assignedEffectCount": 57,
     "unassignedEffectCount": 0,
     "uniqueReferencedFileCount": 31,
-    "missingEffectCount": 56,
+    "missingEffectCount": 57,
     "missingUniqueFileCount": 31
   },
   "missing": [
@@ -382,6 +427,13 @@
       "category": "artefactos",
       "face": "front",
       "image": "lancha_colectiva_del_delta.png"
+    },
+    {
+      "id": "art_090",
+      "name": "Lapicera Común",
+      "category": "artefactos",
+      "face": "front",
+      "image": "lapicera_comun.png"
     },
     {
       "id": "art_044",
@@ -1490,6 +1542,13 @@
       "image": "agronoma_de_parque_leloir.png"
     },
     {
+      "id": "crea_369",
+      "name": "Aguará Guazú",
+      "category": "criaturas",
+      "face": "front",
+      "image": "aguara_guazu.png"
+    },
+    {
       "id": "crea_025",
       "name": "Alma en Pena",
       "category": "criaturas",
@@ -2393,6 +2452,13 @@
       "image": "enfermera_guardia.png"
     },
     {
+      "id": "crea_371",
+      "name": "Escarabajo Torito",
+      "category": "criaturas",
+      "face": "front",
+      "image": "escarabajo_torito.png"
+    },
+    {
       "id": "crea_119",
       "name": "Escarabajo del Estero",
       "category": "criaturas",
@@ -2538,6 +2604,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "garganta_de_fuego_carmesi.png"
+    },
+    {
+      "id": "crea_370",
+      "name": "Gatapeluda",
+      "category": "criaturas",
+      "face": "front",
+      "image": "gatapeluda.png"
     },
     {
       "id": "crea_098",
@@ -3028,6 +3101,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "martin_fierro.png"
+    },
+    {
+      "id": "crea_368",
+      "name": "Matito",
+      "category": "criaturas",
+      "face": "front",
+      "image": "matito.png"
     },
     {
       "id": "crea_213",
@@ -4388,6 +4468,13 @@
       "image": "feria_de_ventana_abierta.png"
     },
     {
+      "id": "ench_112",
+      "name": "Festejos Mundiales",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "festejos_mundiales.png"
+    },
+    {
       "id": "ench_018",
       "name": "Fogón de la Previa",
       "category": "encantamientos",
@@ -4731,6 +4818,13 @@
       "image": "rebenque.png"
     },
     {
+      "id": "ench_111",
+      "name": "Reloj de la Municipalidad Roto",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "reloj_de_la_municipalidad_roto.png"
+    },
+    {
       "id": "ench_049",
       "name": "Reserva Cercada",
       "category": "encantamientos",
@@ -4785,6 +4879,13 @@
       "category": "encantamientos",
       "face": "front",
       "image": "sirena_de_fabrica.png"
+    },
+    {
+      "id": "ench_113",
+      "name": "Superchino",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "superchino.png"
     },
     {
       "id": "ench_020",
@@ -5767,6 +5868,13 @@
       "image": "riff_que_vuelve_del_galpon.png"
     },
     {
+      "id": "inst_151",
+      "name": "Roca Antiguo",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "roca_antiguo.png"
+    },
+    {
       "id": "inst_106",
       "name": "Rotación de Parcelas de Pereyra",
       "category": "instantaneos",
@@ -5779,6 +5887,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "sacrificio_ritual.png"
+    },
+    {
+      "id": "inst_150",
+      "name": "Salida en Helicóptero",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "salida_en_helicoptero.png"
     },
     {
       "id": "inst_054",
@@ -7153,6 +7268,19 @@
       "image": "token_vecino.png"
     },
     {
+      "cardId": "ench_112",
+      "cardName": "Festejos Mundiales",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
       "cardId": "pw_001",
       "cardName": "El Cacique del Barrio",
       "category": "planeswalkers",
@@ -7824,6 +7952,19 @@
       "tokenName": "Vecino",
       "tokenType": "Criatura — Token",
       "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_112",
+      "cardName": "Festejos Mundiales",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
       "power": 1,
       "toughness": 1,
       "keywords": [],

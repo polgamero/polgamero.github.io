@@ -3153,5 +3153,51 @@
       "targetSubtype": "Dragón"
     },
     "enabled": false
+  },
+  {
+    "id": "inst_150",
+    "name": "Salida en Helicóptero",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Exiliá la criatura objetivo. En el próximo paso final de su propietario, devolvela al campo de batalla bajo su control como una criatura nueva.",
+    "flavorText": "La salida de emergencia siempre estuvo arriba.",
+    "image": "salida_en_helicoptero.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "exile_and_return"
+    }
+  },
+  {
+    "id": "inst_151",
+    "name": "Roca Antiguo",
+    "type": "Instantáneo",
+    "manaCost": "{3}{G}{G}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Rebuscar. Poné dos contadores +1/+1 sobre la criatura objetivo que controlás.",
+    "flavorText": "La tierra se olvida de muchas cosas. La piedra, de ninguna.",
+    "image": "roca_antiguo.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "delve": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 2,
+      "targetKind": "creature",
+      "targetController": "self"
+    }
   }
 ]

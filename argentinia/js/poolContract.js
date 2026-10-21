@@ -144,12 +144,35 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 125,
     planeswalkers: 8
   }),
+  cards_addendum_public_910: makeMilestone('23.22.0 HF7 · Agregado puntual', 910, {
+    tierras: 68,
+    artefactos: 90,
+    criaturas: 371,
+    instantaneos: 151,
+    conjuros: 109,
+    encantamientos: 113,
+    planeswalkers: 8,
+  }),
+  cards_addendum_1010: makeMilestone('23.22.0 HF7 · Agregado puntual', 1010, {
+    tierras: 68,
+    artefactos: 100,
+    criaturas: 421,
+    instantaneos: 166,
+    conjuros: 119,
+    encantamientos: 128,
+    planeswalkers: 8,
+  }),
+
 });
 
-export const CURRENT_POOL_MILESTONE = 'sanctuary_discovery_1000';
+export const CURRENT_POOL_MILESTONE = 'cards_addendum_1010';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];
 
-// Santuario Stage22: el pool físico/server sigue en 1000, pero el bootstrap público
-// contiene sólo las 900 cartas no-Discovery. Las 100 Discovery se hidratan con autoridad.
-export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.dragons_buenos_aires_900;
+// Agregado puntual aprobado: 1010 cartas físicas; 910 en el bootstrap público.
+// Las 100 Discovery siguen hidratándose con autoridad; los hitos históricos no cambian.
+export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.cards_addendum_public_910;
 export const PHYSICAL_POOL_BASELINE = POOL_BASELINE;
+
+// Metadata only: ten physical additions, four EVO variants under two bases.
+export const CARD_ADDENDUM_BASE_IDS = Object.freeze(["crea_368", "crea_369", "inst_150", "ench_111", "ench_112", "crea_370", "crea_371", "ench_113", "art_090", "inst_151"]);
+export const CARD_ADDENDUM_EVOLUTION_BASE_IDS = Object.freeze(["crea_368", "crea_369"]);

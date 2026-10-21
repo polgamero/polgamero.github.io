@@ -1,3 +1,4 @@
+import { EDITORIAL_SHAPES } from './editorialShapes.js';
 import { normalizeEditorialFrames } from './editorialFrames.js';
 // Versioned editorial documents. Data only: no HTML, CSS, scripts or remote uploads.
 export const EDITORIAL_VERSION = 1;
@@ -37,10 +38,10 @@ export function normalizeEditorial(value) {
     let id=text(p.id,80)||editorialId();if(pageIds.has(id))id=editorialId();pageIds.add(id);
     return {id,name:text(p.name||'Página',80),...(normalizeEditorialFrames(p.frames)?{frames:normalizeEditorialFrames(p.frames)}:{}),background:{color:color(p.background?.color,'#0c1811'),image:editorialAsset(p.background?.image),shade:number(p.background?.shade,.35,0,.85)},blocks:(Array.isArray(p.blocks)?p.blocks:[]).slice(0,40).map(b=>{
       let blockId=text(b.id,80)||editorialId();if(blockIds.has(blockId))blockId=editorialId();blockIds.add(blockId);
-      const type=b.type==='image'?'image':'text';
+      const type=['image','shape'].includes(b.type)?b.type:'text';
       const base={id:blockId,type,...rect(b),mobile:rect(b.mobile||b),opacity:number(b.opacity,1,.1,1)};
       return type==='image'?{...base,src:editorialAsset(b.src),alt:text(b.alt||'Ilustración',200),fit:b.fit==='cover'?'cover':'contain'}:
-        {...base,runs:normalizeRuns(b.runs),fontSize:number(b.fontSize,28,12,96),color:color(b.color,'#f4e8c7'),align:['left','center','right'].includes(b.align)?b.align:'left',background:color(b.background,'#0c1811'),panel:b.panel===true};
+        {...base,...(type==='shape'?{shape:Object.hasOwn(EDITORIAL_SHAPES,b.shape)?b.shape:'rectangle',fill:color(b.fill,'#fff4d2'),stroke:color(b.stroke,'#a77b28'),strokeWidth:number(b.strokeWidth,2,0,6),tail:b.tail==='right'?'right':'left'}:{}),runs:normalizeRuns(b.runs),fontSize:number(b.fontSize,28,12,96),color:color(b.color,'#f4e8c7'),align:['left','center','right'].includes(b.align)?b.align:'left',background:color(b.background,'#0c1811'),panel:b.panel===true};
     })};
   });
   const result={version:EDITORIAL_VERSION,pages};
@@ -72,7 +73,7 @@ export function editorialFor(ann={}) {
 }
 export function editorialSummary(presentation) {
   let remaining=6000;
-  return normalizeEditorial(presentation).pages.flatMap(p=>p.blocks.filter(b=>b.type==='text').map(b=>b.runs.map(r=>r.text).join(''))).filter(Boolean).map(value=>{const result=value.slice(0,remaining);remaining-=result.length;return result;}).filter(Boolean);
+  return normalizeEditorial(presentation).pages.flatMap(p=>p.blocks.filter(b=>b.type!=='image').map(b=>b.runs.map(r=>r.text).join(''))).filter(Boolean).map(value=>{const result=value.slice(0,remaining);remaining-=result.length;return result;}).filter(Boolean);
 }
 export function formatEditorialRuns(runs,start,end,mark) {
   const safe=normalizeRuns(runs),length=safe.reduce((n,r)=>n+r.text.length,0);
