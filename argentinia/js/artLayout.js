@@ -10,12 +10,13 @@
 // real necesita el layout o cuando el Admin abre el editor. Una cache local permite aplicar
 // de inmediato el último encuadre conocido sin bloquear el render mientras llega Firestore.
 
-import { loadPublicGameConfigDocument, saveAdminGameConfigDocument, adminSaveDiscoveryPresentation } from './firebaseClient.js';
+import { loadPublicGameConfigDocument, saveAdminPresentationLayoutsPatch, adminSaveDiscoveryPresentation } from './firebaseClient.js';
 import { isDiscoveryCardId } from './discoveryCards.js';
 
 export const ART_LAYOUT_SCHEMA_VERSION = 1;
 export const ART_LAYOUT_DOCUMENT_ID = 'artLayouts';
 export const ART_LAYOUT_CACHE_KEY = 'argentinia.artLayouts.v1';
+export const ART_LAYOUT_BACKUP_KEY = 'argentinia.artLayouts.backup.v1';
 export const ART_LAYOUT_DEFAULT = Object.freeze({ scale: 1, x: 0, y: 0 });
 export const ART_LAYOUT_LIMITS = Object.freeze({
   minScale: 0.75,
@@ -72,11 +73,13 @@ export function isDefaultArtLayout(layout) {
 
 function normalizeLayoutsDocument(documentData) {
   if (!isRecord(documentData)) return {};
-  if (documentData.schemaVersion != null && documentData.schemaVersion !== ART_LAYOUT_SCHEMA_VERSION) return {};
+  if (documentData.schemaVersion != null && documentData.schemaVersion !== ART_LAYOUT_SCHEMA_VERSION) throw new Error('ART_LAYOUT_UNSUPPORTED_SCHEMA');
+  if(documentData.layouts!=null&&!isRecord(documentData.layouts))throw new Error('ART_LAYOUT_INVALID_LAYOUTS');
   const source = isRecord(documentData.layouts) ? documentData.layouts : {};
   const normalized = {};
   for (const [cardId, rawLayout] of Object.entries(source)) {
     if (!CARD_ID_RE.test(cardId)) continue;
+    if(!isRecord(rawLayout)||Object.keys(rawLayout).some(key=>!Object.hasOwn(ART_LAYOUT_DEFAULT,key)||typeof rawLayout[key]!=='number'||!Number.isFinite(rawLayout[key])))throw new Error('ART_LAYOUT_INVALID_ENTRY');
     const layout = normalizeArtLayout(rawLayout);
     if (!isDefaultArtLayout(layout)) normalized[cardId] = layout;
   }
@@ -162,6 +165,7 @@ export function buildArtLayoutsDocument(layouts = activeLayouts) {
 }
 
 function replaceActiveLayouts(layouts) {
+  if(Object.keys(activeLayouts).length){try{localStorage.setItem(ART_LAYOUT_BACKUP_KEY,JSON.stringify(buildArtLayoutsDocument(activeLayouts)));}catch{}}
   activeLayouts = freezeLayouts(layouts);
   writeLocalCache(activeLayouts);
 }
@@ -211,7 +215,9 @@ export async function ensureArtLayoutsLoaded({ force = false } = {}) {
 
   loadPromise = (async () => {
     try {
-      const documentData = await loadPublicGameConfigDocument(ART_LAYOUT_DOCUMENT_ID);
+      const documentData = await loadPublicGameConfigDocument(ART_LAYOUT_DOCUMENT_ID,{server:true});
+      if(!isRecord(documentData))throw new Error('ART_LAYOUT_DOCUMENT_MISSING');
+      if(!isRecord(documentData.layouts)&&Object.keys(activeLayouts).length)throw new Error('ART_LAYOUT_LAYOUTS_MISSING');
       const normalized = normalizeLayoutsDocument(documentData);
       replaceActiveLayouts(normalized);
       remoteLoaded = true;
@@ -265,25 +271,22 @@ export async function saveArtLayout(cardId, layoutOrNull) {
     return {...normalized};
   }
 
-  let baseLayouts = getArtLayoutsSnapshot();
   try {
-    const latest = await loadPublicGameConfigDocument(ART_LAYOUT_DOCUMENT_ID);
-    baseLayouts = normalizeLayoutsDocument(latest);
+    const latest = await loadPublicGameConfigDocument(ART_LAYOUT_DOCUMENT_ID,{server:true});
+    if(!isRecord(latest)||!isRecord(latest.layouts))throw new Error('ART_LAYOUT_DOCUMENT_MISSING_OR_INVALID');
+    normalizeLayoutsDocument(latest);
   } catch (error) {
     // Para GUARDAR no ocultamos un error remoto: si no podemos leer la versión actual,
     // evitamos escribir una copia potencialmente stale encima del documento.
     throw new Error(`ART_LAYOUT_REFRESH_BEFORE_SAVE_FAILED:${error?.message || error}`);
   }
 
-  const next = { ...baseLayouts };
   const normalized = layoutOrNull == null ? { ...ART_LAYOUT_DEFAULT } : normalizeArtLayout(layoutOrNull);
   const legacyId = legacyFrontLayoutId(id);
-  if (legacyId) delete next[legacyId];
-  if (isDefaultArtLayout(normalized)) delete next[id];
-  else next[id] = normalized;
 
-  await saveAdminGameConfigDocument(ART_LAYOUT_DOCUMENT_ID, buildArtLayoutsDocument(next));
-  replaceActiveLayouts(next);
+  const patch={[id]:normalized};if(legacyId)patch[legacyId]={...ART_LAYOUT_DEFAULT};
+  const saved=await saveAdminPresentationLayoutsPatch({kind:'art',layouts:patch});
+  replaceActiveLayouts(normalizeLayoutsDocument(saved));
   remoteLoaded = true;
   lastLoadError = null;
   applyArtLayoutToVisibleCardImages(id);

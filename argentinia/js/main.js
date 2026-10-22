@@ -1539,7 +1539,7 @@ async function initGame(deckSource, options = {}) {
 
   let deckLabel;
   const lessonDecks = lesson ? buildLessonDecks(cardDb.allCards) : null;
-  if (lesson) { state.localDeck = lessonDecks.local; deckLabel = 'Práctica guiada con El Tano'; }
+  if (lesson) { state.localDeck = lessonDecks.local; deckLabel = gameText('guided.deckName'); }
   else if (deckSource.type === 'saved') {
     state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
     deckLabel = deckSource.deck.name;
@@ -2500,14 +2500,14 @@ async function startPlayFlow() {
 export async function startLearningMatch(){
   try{await ensureMenuIdentityReady();}catch(error){console.warn('Guided lesson identity:',error);return false;}
   if(state.currentMatch||state.currentTournamentMatch||loadSoloRecoveryCandidate()){
-    await showGameDialog('Primero cerrá o resolvé la partida pendiente. La práctica no reemplaza una partida guardada.');return false;
+    await showGameDialog(gameText('guided.pendingMatch'));return false;
   }
   const owner=state.currentUser?.uid||null;
   try{await cardDb.loadAll();if((state.currentUser?.uid||null)!==owner)return false;
     await endTelemetrySession('learning_practice_start');if((state.currentUser?.uid||null)!==owner)return false;
     const ready=await initGame({type:'guided'},{lessonOwner:owner});return ready!==false;}
   catch(error){stopGuidedMatch();state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();hideMatchInitializationOverlay();
-    await returnToMainMenuAfterAbandon();await showGameDialog('No se pudo preparar la práctica. No se modificó tu colección ni tus puntos.');console.error('Guided lesson setup:',error);return false;}
+    await returnToMainMenuAfterAbandon();await showGameDialog(gameText('guided.setupFailed'));console.error('Guided lesson setup:',error);return false;}
 }
 if(typeof window!=='undefined')window.addEventListener('argentinia:replay-guided-match',()=>{
   if(document.getElementById('main-menu-overlay'))void startLearningMatch().then(started=>{if(started)document.getElementById('main-menu-overlay')?.remove();});

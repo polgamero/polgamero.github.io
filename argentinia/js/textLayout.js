@@ -7,12 +7,13 @@
 // - cualquiera puede leer (todas las superficies renderizan igual)
 // - sólo Admin puede escribir (Firestore Rules ya protegen gameConfig)
 
-import { loadPublicGameConfigDocument, saveAdminGameConfigDocument, adminSaveDiscoveryPresentation } from './firebaseClient.js';
+import { loadPublicGameConfigDocument, saveAdminPresentationLayoutsPatch, adminSaveDiscoveryPresentation } from './firebaseClient.js';
 import { isDiscoveryCardId } from './discoveryCards.js';
 
 export const TEXT_LAYOUT_SCHEMA_VERSION = 2;
 export const TEXT_LAYOUT_DOCUMENT_ID = 'textLayouts';
 export const TEXT_LAYOUT_CACHE_KEY = 'argentinia.textLayouts.v2';
+export const TEXT_LAYOUT_BACKUP_KEY = 'argentinia.textLayouts.backup.v2';
 export const TEXT_LAYOUT_DEFAULT = Object.freeze({
   nameScale: 1,
   fontScale: 1,
@@ -69,11 +70,13 @@ export function isDefaultCardTextLayout(layout) {
 
 function normalizeLayoutsDocument(documentData) {
   if (!isRecord(documentData)) return {};
-  if (documentData.schemaVersion != null && documentData.schemaVersion !== TEXT_LAYOUT_SCHEMA_VERSION) return {};
+  if (documentData.schemaVersion != null && documentData.schemaVersion !== TEXT_LAYOUT_SCHEMA_VERSION) throw new Error('TEXT_LAYOUT_UNSUPPORTED_SCHEMA');
+  if (documentData.layouts != null && !isRecord(documentData.layouts)) throw new Error('TEXT_LAYOUT_INVALID_LAYOUTS');
   const source = isRecord(documentData.layouts) ? documentData.layouts : {};
   const normalized = {};
   for (const [cardId, rawLayout] of Object.entries(source)) {
     if (!CARD_ID_RE.test(cardId)) continue;
+    if(!isRecord(rawLayout)||Object.keys(rawLayout).some(key=>!Object.hasOwn(TEXT_LAYOUT_DEFAULT,key)||typeof rawLayout[key]!=='number'||!Number.isFinite(rawLayout[key])))throw new Error('TEXT_LAYOUT_INVALID_ENTRY');
     const layout = normalizeCardTextLayout(rawLayout);
     if (!isDefaultCardTextLayout(layout)) normalized[cardId] = layout;
   }
@@ -140,6 +143,11 @@ export function buildCardTextLayoutsDocument(layouts = activeLayouts) {
 }
 
 function replaceActiveLayouts(layouts) {
+  // Keep the last nonempty local copy before accepting a new remote snapshot.
+  // This backup is never uploaded or restored automatically over the server.
+  if(Object.keys(activeLayouts).length){
+    try{localStorage.setItem(TEXT_LAYOUT_BACKUP_KEY,JSON.stringify(buildCardTextLayoutsDocument(activeLayouts)));}catch{}
+  }
   activeLayouts = freezeLayouts(layouts);
   writeLocalCache(activeLayouts);
 }
@@ -184,7 +192,9 @@ export async function ensureCardTextLayoutsLoaded({ force = false } = {}) {
   if (loadPromise && !force) return loadPromise;
   loadPromise = (async () => {
     try {
-      const documentData = await loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID);
+      const documentData = await loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID,{server:true});
+      if(!isRecord(documentData))throw new Error('TEXT_LAYOUT_DOCUMENT_MISSING');
+      if(!isRecord(documentData.layouts)&&Object.keys(activeLayouts).length)throw new Error('TEXT_LAYOUT_LAYOUTS_MISSING');
       const normalized = normalizeLayoutsDocument(documentData);
       replaceActiveLayouts(normalized);
       remoteLoaded = true;
@@ -225,23 +235,20 @@ export async function saveCardTextLayout(cardId, layoutOrNull) {
     return {...normalized};
   }
 
-  let baseLayouts = getCardTextLayoutsSnapshot();
   try {
-    const latest = await loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID);
-    baseLayouts = normalizeLayoutsDocument(latest);
+    const latest = await loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID,{server:true});
+    if(!isRecord(latest)||!isRecord(latest.layouts))throw new Error('TEXT_LAYOUT_DOCUMENT_MISSING_OR_INVALID');
+    normalizeLayoutsDocument(latest);
   } catch (error) {
     throw new Error(`TEXT_LAYOUT_REFRESH_BEFORE_SAVE_FAILED:${error?.message || error}`);
   }
 
-  const next = { ...baseLayouts };
   const normalized = layoutOrNull == null ? { ...TEXT_LAYOUT_DEFAULT } : normalizeCardTextLayout(layoutOrNull);
   const legacyId = legacyFrontLayoutId(id);
-  if (legacyId) delete next[legacyId];
-  if (isDefaultCardTextLayout(normalized)) delete next[id];
-  else next[id] = normalized;
 
-  await saveAdminGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID, buildCardTextLayoutsDocument(next));
-  replaceActiveLayouts(next);
+  const patch={[id]:normalized};if(legacyId)patch[legacyId]={...TEXT_LAYOUT_DEFAULT};
+  const saved=await saveAdminPresentationLayoutsPatch({kind:'text',layouts:patch});
+  replaceActiveLayouts(normalizeLayoutsDocument(saved));
   remoteLoaded = true;
   lastLoadError = null;
   applyCardTextLayoutToVisibleBoxes(id);
@@ -250,4 +257,15 @@ export async function saveCardTextLayout(cardId, layoutOrNull) {
 
 export function getCardTextLayoutLoadState() {
   return { remoteLoaded, loading: !!loadPromise, lastError: lastLoadError || null, customCount: Object.keys(activeLayouts).length };
+}
+
+// Read-only owner diagnostic. No write to Firestore, no token/IP/profile export.
+export async function inspectCardTextLayouts(){
+  const cached=(()=>{try{return JSON.parse(localStorage.getItem(TEXT_LAYOUT_CACHE_KEY)||'null');}catch{return null;}})();
+  const backup=(()=>{try{return JSON.parse(localStorage.getItem(TEXT_LAYOUT_BACKUP_KEY)||'null');}catch{return null;}})();
+  let remote=null,error=null;
+  try{remote=await loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID,{server:true});}catch(e){error=String(e?.code||e?.message||e);}
+  let formatError=null,remoteCustomCount=null;
+  try{if(remote!=null)remoteCustomCount=Object.keys(normalizeLayoutsDocument(remote)).length;}catch(e){formatError=e.message;}
+  return {document:'gameConfig/textLayouts',cacheKey:TEXT_LAYOUT_CACHE_KEY,activeCustomCount:Object.keys(activeLayouts).length,remoteExists:remote!=null,remoteCustomCount,error,formatError,remote,cached,backup};
 }

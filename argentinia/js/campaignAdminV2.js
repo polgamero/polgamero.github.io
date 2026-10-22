@@ -5,6 +5,8 @@ import { defaultZoneTutorial,defaultStepTutorial,selectZoneTutorial } from './tu
 import { mountEditorialStudio } from './editorialStudio.js';
 import { showGameDialog } from './gameDialogs.js';
 import { gameText } from './gameTexts.js';
+import {createGameTextsAdminPane} from './gameTextsAdmin.js';
+import {loadGameTextOverrides,saveGameTextOverrides} from './firebaseClient.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const t=key=>esc(gameText(key));
@@ -27,10 +29,16 @@ export function mountCampaignDashboard(root,{currentUser,preview}={}){
   root.innerHTML=`<div class="cp-dashboard"><div><h2>${t('admin.campaigns.title')}</h2><p class="cp-note">${t('campaign.manager.intro')}</p></div>
     <div class="cp-launches"><section class="cp-card"><h3>${t('editorial.announcement')}</h3><p>${t('campaign.manager.announcementHelp')}</p><button type="button" class="cp-action primary" data-new-announcement>${t('campaign.manager.newAnnouncement')}</button></section>
     <section class="cp-card"><h3>${t('campaign.manager.events')}</h3><p>${t('campaign.manager.eventHelp')}</p><button type="button" class="cp-action primary" data-new-event>${t('admin.campaigns.newEvent')}</button></section></div>
-    <section class="cp-tutorials"><h3>${t('campaign.manager.tutorials')}</h3><p class="cp-note">${t('campaign.manager.tutorialHelp')}</p><details open><summary>${esc(EDITORIAL_ZONES.main)}</summary><div class="cp-targets" data-main-targets></div></details><details><summary>${t('campaign.manager.zoneTutorials')}</summary><div class="cp-targets" data-zone-targets></div></details></section>
+    <section class="cp-tutorials"><h3>${t('campaign.manager.tutorials')}</h3><p class="cp-note">${t('campaign.manager.tutorialHelp')}</p><details open><summary>${esc(EDITORIAL_ZONES.main)}</summary><div class="cp-targets" data-main-targets></div></details><details><summary>${t('campaign.manager.zoneTutorials')}</summary><div class="cp-targets" data-zone-targets></div></details><details data-guided-tutorial-editor><summary>${t('guided.adminTitle')}</summary><p class="cp-note">${t('guided.adminHelp')}</p><div data-guided-tutorial-texts></div></details></section>
     <section><h3>${t('campaign.manager.history')}</h3><div class="cp-history" data-campaign-table></div></section></div>`;
   const q=s=>root.querySelector(s);
   const listen=(node,type,fn)=>node.addEventListener(type,fn,{signal:lifecycle.signal});
+  let guidedTexts=null;
+  listen(q('[data-guided-tutorial-editor]'),'toggle',()=>{
+    if(!q('[data-guided-tutorial-editor]').open||guidedTexts)return;
+    guidedTexts=createGameTextsAdminPane({loadDocument:loadGameTextOverrides,saveDocument:saveGameTextOverrides,keyPrefix:'guided.',title:gameText('guided.adminTitle'),help:gameText('guided.adminHelp'),onApplied:()=>window.dispatchEvent(new CustomEvent('argentinia:game-texts-updated'))});
+    q('[data-guided-tutorial-texts]').append(guidedTexts.element);void guidedTexts.load();
+  });
   const selectedTutorial=target=>selectZoneTutorial(target.zone,announcements,now).find(a=>target.zone!=='main'||(a.tutorialStep||'welcome')===target.step);
   function renderTargets(){for(const [selector,main] of [['[data-main-targets]',true],['[data-zone-targets]',false]]){
     const box=q(selector);box.replaceChildren();

@@ -2,10 +2,10 @@
 export const GUIDED_MATCH_VERSION = 'tano-learning-v1';
 export const LESSON_CARDS = Object.freeze({land:'tier_005',pibe:'crea_010',artifact:'art_012',semigod:'pw_004',burn:'inst_023',bottom:'crea_098',botBlue:'tier_003',botRed:'tier_005',botCreature:'crea_099',botInstant:'inst_009',botSorcery:'conj_002'});
 export const PLAYER_DECK = Object.freeze({tier_005:24,crea_010:4,crea_099:4,art_012:4,pw_004:4,inst_023:4,inst_053:4,inst_027:4,crea_098:4,art_061:4});
-export const TANO_DECK = Object.freeze({tier_003:12,tier_005:12,crea_010:4,crea_099:4,inst_009:4,conj_002:4,inst_023:4,inst_053:4,inst_027:4,crea_098:4,art_061:4});
+export const TANO_DECK = Object.freeze({tier_003:12,tier_005:12,crea_010:4,crea_099:4,inst_009:4,conj_002:4,inst_001:4,inst_053:4,inst_027:4,crea_098:4,art_061:4});
 export const FIRST_HAND = Object.freeze(['tier_005','tier_005','tier_005','tier_005','tier_005','crea_010','art_012']);
 export const REDRAW_HAND = Object.freeze(['tier_005','tier_005','crea_010','art_012','pw_004','inst_023','crea_098']);
-export const TANO_HAND = Object.freeze(['tier_003','tier_005','tier_003','tier_005','inst_009','inst_009','crea_099']);
+export const TANO_HAND = Object.freeze(['tier_003','tier_005','tier_003','tier_005','inst_009','inst_001','crea_099']);
 export function orderLibrary(library, drawIds) {
   const rest=[...library],top=[];
   for(const id of drawIds){const index=rest.findIndex(card=>card.id===id);if(index<0)throw Error(`GUIDED_CARD_UNAVAILABLE:${id}`);top.push(rest.splice(index,1)[0]);}
@@ -21,7 +21,7 @@ export function buildLessonDecks(cards) {
 }
 const pile=(side,zone)=>`[data-board-side="${side}"] [data-animation-zone="${zone}"]`;
 const card=(zone,id)=>`#${zone} .card[data-card-id="${id}"]`;
-const info=(id,title,body,selector,extra={})=>({id,title,body,selector,kind:'info',...extra});
+const info=(id,title,body,selector,extra={})=>({id,title,body:body+(/^(rival|your)-(lands|combat|support|planeswalkers)$/.test(id)?' Las cartas transparentes son ejemplos de esta zona; desaparecen antes de comenzar a jugar.':''),selector,kind:'info',...extra});
 const action=(id,title,body,goal,selector,extra={})=>({id,title,body,goal,selector,kind:'action',...extra});
 export const BOARD_TOUR = Object.freeze([
   info('rival-library','El mazo de El Tano','Cada mazo empieza con 60 cartas. Algunas ya están en la mano: el contador muestra las que quedan en la biblioteca. Se pierde al intentar robar sin cartas, no simplemente al quedar en cero.',pile('rival','library')),
@@ -78,11 +78,10 @@ export const LESSON_STEPS = Object.freeze([
   action('turn4','Preparémonos para responder','Avanzá al siguiente turno tuyo. El Tano conserva maná para una respuesta.','localTurn4','#btn-end-turn'),
   action('land4','Una tierra más','Bajá otra tierra. Ahora vamos a lanzar un instantáneo y ver una respuesta encima.','land4',card('local-hand','tier_005')),
   action('burn','Apuntá al jugador','Lanzá Chispazo, elegí el badge de El Tano como objetivo y pagá un rojo. Esta vez el objetivo es el jugador, no el semidiós ni una criatura.','burnStack',card('local-hand','inst_023'),{cast:'inst_023',playerTarget:true}),
-  action('response','Ofrecé una respuesta','Pasá prioridad. El Tano responderá con otro Beso en la Mejilla: tendremos dos objetos en la pila.','depth2','#btn-end-turn'),
-  info('depth2','La pila: último en entrar, primero en salir','Abajo: tu Chispazo. Arriba: Beso en la Mejilla de El Tano. Primero resolverá su robo; Chispazo seguirá esperando. Una respuesta no borra el hechizo anterior.','#stack-container'),
-  action('resolve-top','Resolvé sólo lo de arriba','Pasá prioridad. Después del robo quedará Chispazo en la pila: todavía no hizo daño.','oneLeft','#btn-end-turn'),
-  info('one-left','Vuelve a haber prioridad','Entre dos resoluciones se abre otra ventana de prioridad. No se resuelve toda la pila de una sola vez.','#stack-container'),
-  action('resolve-bottom','Ahora resolvé Chispazo','Pasá otra vez hasta que resuelva el segundo objeto.','burnResolved','#btn-end-turn'),
+  action('response','El Tano puede responder','Pasá prioridad. El Tano pagará dos manás azules y lanzará Corta la Bocha apuntando a tu Chispazo: habrá dos hechizos en la pila.','depth2','#btn-end-turn'),
+  info('depth2','La pila: último en entrar, primero en salir','Abajo está tu Chispazo, que intenta hacer daño a El Tano. Arriba está Corta la Bocha, cuyo objetivo es ese hechizo. Primero resolverá el contrahechizo; mientras ambos están en la pila todavía hay oportunidad de responder.','#stack-container'),
+  action('resolve-top','Resolvé el contrahechizo','Pasá prioridad. Corta la Bocha contrarrestará Chispazo: ambos irán al cementerio y El Tano seguirá en 17 vidas. Chispazo no resolverá ni hará daño.','burnCountered','#btn-end-turn'),
+  info('countered','Tu Chispazo quedó sin efecto','Corta la Bocha resolvió primero y retiró Chispazo de la pila. Contrarrestar no es prevenir daño: el hechizo directamente no resuelve. Si el hechizo de abajo siguiera en la pila, habría otra ventana de prioridad antes de resolverlo. Ahora la pila está vacía.','#stack-container'),
   action('sorcery','Una última diferencia','Avanzá hasta la siguiente principal de El Tano. Lanzará La Picadita, un conjuro para robar dos cartas.','sorceryStack','#btn-end-turn'),
   info('sorcery-info','Conjuro o instantáneo','Un conjuro normalmente se lanza en una fase principal propia, con prioridad y la pila vacía. El instantáneo es más flexible. Ambos usan la pila. Artefactos, criaturas, encantamientos y semidioses normalmente comparten el timing de conjuro.','#stack-container'),
   action('sorcery-resolve','La última resolución','Pasá prioridad para que El Tano robe dos cartas.','sorceryResolved','#btn-end-turn'),
@@ -100,8 +99,8 @@ export function lessonGoal(goal,s,stack,progress) {
     blockWindow:()=>s.activePlayer==='rival'&&s.phase==='combat_blockers'&&s.priorityPlayer==='local'&&s.rivalCombat.some(unit=>unit.isAttacking),blockAssigned:()=>s.localCombat.some(unit=>unit.card.id==='crea_010'&&Number.isInteger(unit.blockingIndex)),creaturesDied:()=>has(s.localGraveyard,'crea_010')&&has(s.rivalGraveyard,'crea_099'),
     localTurn3:()=>localMain(5),land3:()=>s.localLands.length>=3,semigodStack:()=>top('pw_004'),semigodField:()=>has(s.localPlaneswalkers,'pw_004')&&!stack.length,
     loyaltyStack:()=>stack.some(item=>item.type==='ability'&&item.abilityKind==='loyalty'&&item.card?.id==='pw_004'),loyaltyResolved:()=>s.rivalHP===17&&!stack.length,
-    localTurn4:()=>localMain(7),land4:()=>s.localLands.length>=4,burnStack:()=>top('inst_023'),depth2:()=>stack.length===2&&stack[0].card?.id==='inst_023'&&stack[1].card?.id==='inst_009',
-    oneLeft:()=>stack.length===1&&stack[0].card?.id==='inst_023'&&s.rivalHP===17&&s.rivalHand.length===progress.doubleHandBefore+1,burnResolved:()=>!stack.length&&s.rivalHP===15,
+    localTurn4:()=>localMain(7),land4:()=>s.localLands.length>=4,burnStack:()=>top('inst_023'),depth2:()=>stack.length===2&&stack[0].card?.id==='inst_023'&&stack[1].card?.id==='inst_001'&&stack[1].targetObj?.type==='stack'&&stack[1].targetObj.stackId===stack[0].id,
+    burnCountered:()=>!stack.length&&s.rivalHP===17&&has(s.localGraveyard,'inst_023')&&has(s.rivalGraveyard,'inst_001'),
     sorceryStack:()=>top('conj_002'),sorceryResolved:()=>!stack.length&&has(s.rivalGraveyard,'conj_002')&&s.rivalHand.length===progress.sorceryHandBefore+2
   }[goal]||(()=>false))();
 }

@@ -2283,7 +2283,7 @@ async function takeGuidedBotAction() {
   progress.botCastKeys ||= new Set();
   let id=null,key=null;
   if(spellStack.length){
-    if(state.turnCount===7&&step==='response'&&spellStack.length===1&&spellStack[0].card?.id==='inst_023') {id='inst_009';key='response';}
+    if(state.turnCount===7&&step==='response'&&spellStack.length===1&&spellStack[0].card?.id==='inst_023') {id='inst_001';key='response';}
     else {await passPriority('rival');return true;}
   }else if(state.activePlayer==='rival'&&state.phase==='main1'){
     if(!state.rivalLandPlayedThisTurn){
@@ -2302,15 +2302,17 @@ async function takeGuidedBotAction() {
   else {await passPriority('rival');return true;}
   if(progress.botCastKeys.has(key)){await passPriority('rival');return true;}
   const index=state.rivalHand.findIndex(card=>card.id===id),card=state.rivalHand[index];
-  if(!card||card.requiresTarget)throw Error('GUIDED_BOT_SPELL_MISSING');
+  const counterTarget=key==='response'?legalBotCounterTargets(card?.effect?.type).find(item=>item.card?.id==='inst_023'):null;
+  const targetObj=counterTarget?{type:'stack',stackId:counterTarget.id}:null;
+  if(!card||(card.requiresTarget&&!targetObj))throw Error('GUIDED_BOT_SPELL_MISSING');
   const route=chooseBotCastRoute(card,{excludeCard:card});
   if(route===null)throw Error('GUIDED_BOT_CANNOT_PAY');
-  if(!canBotBuildMainPhaseCastProposal(card))throw Error('GUIDED_BOT_ILLEGAL_PROPOSAL');
+  if(targetObj?!(card.effect?.type==='counter'&&isStackItemLegalCounterTarget(card.effect.type,counterTarget)):!canBotBuildMainPhaseCastProposal(card))throw Error('GUIDED_BOT_ILLEGAL_PROPOSAL');
   await payBotCastRoute(card,route,{excludeCard:card});
   if(guidedMatchProgress()!==progress||state.currentMatch||state.gameOver)return true;
   state.rivalHand.splice(state.rivalHand.indexOf(card),1);
   progress.botCastKeys.add(key);progress.botHighlight='#stack-container';
-  const stackItem={card,isLocal:false,targetObj:null,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
+  const stackItem={card,isLocal:false,targetObj,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
   addToStack(stackItem);flushDeferredLandManaTriggers();await triggerSpellCast(false,card,stackItem);
   state.priorityPlayer='local';state.consecutivePasses=0;render();return true;
 }

@@ -1,3 +1,4 @@
+import { LESSON_STEPS } from './guidedMatchModel.js';
 import { publicTerminologyText } from './publicTerminology.js';
 import { RETIRED_GAME_TEXT_KEYS } from './retiredGameTexts.js';
 const retiredGameTextKeys=new Set(RETIRED_GAME_TEXT_KEYS);
@@ -22,6 +23,33 @@ function definition(category, defaultText, description) {
 // Clasificados/Enciclopedia/Recompensas/lobby; Etapa 6 suma partida, combate, Stack/prioridad,
 // habilidades/costos y selecciones. Los discriminadores técnicos del motor siguen fuera del catálogo.
 export const GAME_TEXT_DEFINITIONS = Object.freeze({
+  // Every guided-match step is editable in Admin > Textos del juego.
+  ...Object.fromEntries(LESSON_STEPS.flatMap(step=>['title','body'].map(field=>[`guided.step.${step.id}.${field}`,definition('Tutorial de partida simple',step[field],`Paso ${step.id}: ${field==='title'?'título':'explicación'}.`)]))),
+  "guided.paused": definition("Tutorial de partida simple","Práctica pausada","Interfaz de la partida guiada."),
+  "guided.exitTitle": definition("Tutorial de partida simple","¿Salir de la práctica?","Interfaz de la partida guiada."),
+  "guided.exitBody": definition("Tutorial de partida simple","No perdés puntos. Podés volver a empezar desde el manual.","Interfaz de la partida guiada."),
+  "guided.fault": definition("Tutorial de partida simple","El motor no confirmó la jugada preparada. Diagnóstico: {reason}. Podés salir sin penalidad y reiniciar desde el manual.","Interfaz de la partida guiada."),
+  "guided.exit": definition("Tutorial de partida simple","Salir al menú","Interfaz de la partida guiada."),
+  "guided.continue": definition("Tutorial de partida simple","Seguir aprendiendo","Interfaz de la partida guiada."),
+  "guided.finish": definition("Tutorial de partida simple","Terminar práctica","Interfaz de la partida guiada."),
+  "guided.next": definition("Tutorial de partida simple","Siguiente","Interfaz de la partida guiada."),
+  "guided.leave": definition("Tutorial de partida simple","Salir del tutorial","Interfaz de la partida guiada."),
+  "guided.action": definition("Tutorial de partida simple","Hacé la acción resaltada en la mesa. El tutorial continúa cuando el motor confirma el resultado.","Interfaz de la partida guiada."),
+  "guided.progress": definition("Tutorial de partida simple","Paso {current}/{total} · Turno {turn} · {phase}","Interfaz de la partida guiada."),
+  "guided.rivalPriority": definition("Tutorial de partida simple"," · El Tano tiene prioridad","Interfaz de la partida guiada."),
+  "guided.waiting": definition("Tutorial de partida simple"," · Esperando el control del juego…","Interfaz de la partida guiada."),
+  "guided.choice.title": definition("Tutorial de partida simple","¿Primera vez que jugás?","Interfaz de la partida guiada."),
+  "guided.choice.body": definition("Tutorial de partida simple","Aprendé jugando una práctica corta y dirigida contra El Tano, con mazos preparados y sin premios ni penalidades.","Interfaz de la partida guiada."),
+  "guided.choice.learn": definition("Tutorial de partida simple","Quiero aprender rápido","Interfaz de la partida guiada."),
+  "guided.choice.skip": definition("Tutorial de partida simple","Ya sé jugar","Interfaz de la partida guiada."),
+  "guided.deckName": definition("Tutorial de partida simple","Práctica guiada con El Tano","Acceso a la práctica."),
+  "guided.pendingMatch": definition("Tutorial de partida simple","Primero cerrá o resolvé la partida pendiente. La práctica no reemplaza una partida guardada.","Acceso a la práctica."),
+  "guided.setupFailed": definition("Tutorial de partida simple","No se pudo preparar la práctica. No se modificó tu colección ni tus puntos.","Acceso a la práctica."),
+  "guided.replay": definition("Tutorial de partida simple","Practicar una partida contra El Tano","Acceso a la práctica."),
+  'guided.replayIntro': definition('Tutorial de partida simple','Si preferís, en vez de leer el manual, podés:','Introducción del acceso a la práctica desde el manual.'),
+  'guided.adminTitle': definition('Tutorial de partida simple','Partida Simple · práctica contra El Tano','Editor de la práctica dentro de Tutoriales.'),
+  'guided.adminHelp': definition('Tutorial de partida simple','Editá la pregunta inicial, las opciones, las explicaciones y los botones de la práctica. Estos textos también están en Textos del juego; ambos editores guardan la misma configuración.','Ayuda del editor.'),
+  'admin.audit.more': definition('Auditoría económica','Cargar 20 más','Carga la siguiente página cronológica.'),
   // Gestor editorial y Soporte actuales
   "support.subject": definition("Soporte","Asunto","Asunto del ticket."),
   "support.messagePlaceholder": definition("Soporte","Contanos qué pasó…","Ayuda del campo de mensaje."),

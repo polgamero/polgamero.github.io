@@ -5,7 +5,7 @@
 import {
   TEXT_LAYOUT_DEFAULT, TEXT_LAYOUT_LIMITS, normalizeCardTextLayout,
   getCardTextLayout, hasCustomCardTextLayout, ensureCardTextLayoutsLoaded,
-  applyCardTextLayoutToBox, saveCardTextLayout
+  applyCardTextLayoutToBox, saveCardTextLayout, inspectCardTextLayouts
 } from './textLayout.js';
 import { saveCardCatalogOverride, cleanCardFlavorText, CARD_FLAVOR_MAX_LENGTH } from './cardPublication.js';
 import { isDiscoveryCard } from './discoveryCards.js';
@@ -77,6 +77,7 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
         </div>
         <button type="button" class="text-layout-editor-close" aria-label="Cerrar">×</button>
       </div>
+      <button type="button" class="text-layout-action" id="text-layout-diagnose">Exportar diagnóstico de ajustes (sin modificar datos)</button>
       <div class="text-layout-editor-grid" hidden>
         <div class="text-layout-preview-wrap" id="text-layout-preview"></div>
         <div>
@@ -111,6 +112,16 @@ export async function openCardTextLayoutEditor({ card, renderCard, layoutId = nu
   overlay.querySelector('.text-layout-editor-close').addEventListener('click',close);
   overlay.querySelector('#text-layout-cancel').addEventListener('click',close);
   overlay.addEventListener('mousedown',e=>{ if(e.target===overlay) close(); });
+  overlay.querySelector('#text-layout-diagnose').addEventListener('click',async event=>{
+    const button=event.currentTarget;button.disabled=true;
+    try{
+      const report=await inspectCardTextLayouts();
+      const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download='ARG_TEXT_LAYOUT_DIAGNOSTIC.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      button.textContent=`Diagnóstico exportado: servidor ${report.remoteCustomCount??'no verificado'} · activos ${report.activeCustomCount}`;
+    }catch(error){button.textContent=`Error de diagnóstico: ${error?.message||error}`;}
+    finally{button.disabled=false;}
+  });
 
   try { await ensureCardTextLayoutsLoaded({force:true}); }
   catch(error){

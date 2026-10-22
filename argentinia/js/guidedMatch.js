@@ -1,4 +1,7 @@
-import { GUIDED_MATCH_VERSION, LESSON_STEPS, lessonGoal } from './guidedMatchModel.js';
+import { showGameChoice } from './gameDialogs.js';
+import { GUIDED_MATCH_VERSION, LESSON_STEPS, BOARD_TOUR, lessonGoal } from './guidedMatchModel.js';
+import { gameText } from './gameTexts.js';
+const copy=(key,vars)=>gameText('guided.'+key,vars);
 let session=null;
 export const guidedMatchActive=()=>!!session;
 export const guidedMatchPaused=()=>!!(session&&(session.fault||session.confirmExit||session.steps[session.index]?.kind==='info'));
@@ -46,6 +49,10 @@ function installStyles(){
   // changing the hit target while the user is moving between the two cards.
   // Lesson cards stay at their real footprints; the panel owns enlarged previews.
   style.textContent+=`
+    html.arg-guided-board-tour :is(#local-lands,#rival-lands,#local-combat,#rival-combat,#local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers){min-height:clamp(38px,9vh,96px)!important}
+    .guided-match-ghosts{position:fixed;display:flex;align-items:center;justify-content:center;gap:5px;pointer-events:none;opacity:.65;overflow:hidden}
+    .guided-match-ghosts[hidden]{display:none!important}
+    .guided-match-ghosts .card{flex:none!important;width:var(--ghost-width)!important;min-width:var(--ghost-width)!important;max-width:var(--ghost-width)!important;height:var(--ghost-height)!important;transform:none!important;pointer-events:none!important;filter:saturate(.65)}
     html.arg-guided-match-active :is(#local-hand,.field-row) .card{transform:none!important;transition:none!important}
     html.arg-guided-match-active .field-row .card:not(.tapped) .card-inner{transform:none!important}
     html.arg-guided-match-active .field-row .card.tapped .card-inner{transform:rotate(90deg)!important;transform-origin:center center!important}
@@ -62,7 +69,15 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
   const ring=document.createElement('div');ring.className='guided-match-ring';ring.setAttribute('aria-hidden','true');
   const panel=document.createElement('section');panel.className='guided-match-panel';panel.tabIndex=-1;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','guided-match-title');
   shell.append(ring,panel);document.body.append(shell);
-  let frame=0,closed=false,lastStep=null,allow=[],revealed='';
+  // Presentation-only catalogue examples. Never inserted into engine zones, hands,
+  // decks or inventories; their parent is inert and input remains locked by guard.
+  const examples=[];
+  for(const side of ['rival','local'])for(const [zone,ids] of Object.entries({lands:['tier_003','tier_005'],combat:['crea_010','crea_099'],support:['art_012','art_061'],planeswalkers:['pw_004','pw_004']})){
+    const holder=document.createElement('div');holder.className='guided-match-ghosts';holder.inert=true;holder.setAttribute('aria-hidden','true');holder.hidden=true;
+    for(const id of ids){const element=renderCard(id);if(element)holder.append(element);}
+    shell.prepend(holder);examples.push({holder,selector:`#${side}-${zone}`});
+  }
+  let frame=0,closed=false,lastStep=null,allow=[],revealed='',tourPlacement=null;
   const dock=document.getElementById('solo-priority-shortcuts');
   const collapsed=dock?.classList.contains('is-collapsed');
   const setDock=next=>{
@@ -71,9 +86,8 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
     if(toggle){toggle.textContent=next?'+':'−';toggle.setAttribute('aria-expanded',String(!next));}
   };
   const current={state,stack,valid,onInvalid,steps:LESSON_STEPS,index:0,progress:{mulligan:'initial'},trace:[],confirmExit:false,fault:null,repaint:()=>paint(),
-    cleanup:()=>{closed=true;cancelAnimationFrame(frame);for(const type of eventTypes)window.removeEventListener(type,guard,true);document.removeEventListener('visibilitychange',wake);window.removeEventListener('pageshow',wake);document.documentElement.classList.remove('arg-guided-match-active');setDock(!!collapsed);shell.remove();},
+    cleanup:()=>{closed=true;cancelAnimationFrame(frame);for(const type of eventTypes)window.removeEventListener(type,guard,true);document.removeEventListener('visibilitychange',wake);window.removeEventListener('pageshow',wake);document.documentElement.classList.remove('arg-guided-match-active','arg-guided-board-tour');setDock(!!collapsed);shell.remove();},
     advance:()=>{if(current.index>=current.steps.length-1)return;const s=state();current.trace.push({step:current.steps[current.index].id,turn:s.turnCount,phase:s.phase,priority:s.priorityPlayer,stackDepth:stack().length,localHP:s.localHP,rivalHP:s.rivalHP});current.index++;
-      if(current.steps[current.index].id==='depth2')current.progress.doubleHandBefore=s.rivalHand.length;
       if(current.steps[current.index].id==='sorcery-info')current.progress.sorceryHandBefore=s.rivalHand.length;
       paint();onResume();}
   };
@@ -81,25 +95,34 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
   const exit=completed=>{if(closed)return;stopGuidedMatch();onExit({completed,trace:current.trace});};
   function paint(){
     if(closed)return;
-    const step=current.steps[current.index];lastStep=step.id;panel.dataset.lessonStep=step.id;panel.replaceChildren();
+    const step=current.steps[current.index];lastStep=step.id;tourPlacement=null;panel.dataset.lessonStep=step.id;panel.replaceChildren();panel.scrollTop=0;
+    document.documentElement.classList.toggle('arg-guided-board-tour',BOARD_TOUR.some(row=>row.id===step.id));
     if(dock){dock.classList.remove('hidden');setDock(step.id==='smart'?false:!!collapsed);}
-    const title=document.createElement('h2');title.id='guided-match-title';title.textContent=current.fault?'Práctica pausada':current.confirmExit?'¿Salir de la práctica?':step.title;panel.append(title);
-    const body=document.createElement('p');body.textContent=current.fault?`El motor no confirmó la jugada preparada. No avanzamos con un resultado inventado. Diagnóstico: ${current.fault}. Podés salir sin penalidad y reiniciar desde el manual.`:current.confirmExit?'No perdés puntos. Podés volver a empezar desde el manual.':step.body;panel.append(body);
+    const title=document.createElement('h2');title.id='guided-match-title';title.textContent=current.fault?copy('paused'):current.confirmExit?copy('exitTitle'):copy(`step.${step.id}.title`);panel.append(title);
+    const body=document.createElement('p');body.textContent=current.fault?copy('fault',{reason:current.fault}):current.confirmExit?copy('exitBody'):copy(`step.${step.id}.body`);panel.append(body);
     if(!current.confirmExit&&step.preview){const holder=document.createElement('div');holder.className='guided-match-preview';holder.inert=true;const card=renderCard(step.preview);if(card)holder.append(card);panel.append(holder);}
     const status=document.createElement('small');status.dataset.guidedStatus='';status.setAttribute('role','status');panel.append(status);
     const footer=document.createElement('footer');
-    if(current.fault){footer.append(button('Salir al menú',()=>exit(false)));}
-    else if(current.confirmExit){footer.append(button('Seguir aprendiendo',()=>{current.confirmExit=false;paint();onResume();}),button('Salir al menú',()=>exit(false)));}
+    if(current.fault){footer.append(button(copy('exit'),()=>exit(false)));}
+    else if(current.confirmExit){footer.append(button(copy('continue'),()=>{current.confirmExit=false;paint();onResume();}),button(copy('exit'),()=>exit(false)));}
     else {
-      if(step.kind==='info'){const next=button(step.finish?'Terminar práctica':'Siguiente',()=>step.finish?exit(true):current.advance());next.dataset.guidedNext='';footer.append(next);}
-      else {const instruction=document.createElement('p');instruction.className='guided-match-action';instruction.textContent='Hacé la acción resaltada en la mesa. El tutorial continúa cuando el motor confirma el resultado.';panel.append(instruction);}
-      const leave=button('Salir del tutorial',()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';footer.append(leave);
+      if(step.kind==='info'){const next=button(step.finish?copy('finish'):copy('next'),()=>step.finish?exit(true):current.advance());next.dataset.guidedNext='';footer.append(next);}
+      else {const instruction=document.createElement('p');instruction.className='guided-match-action';instruction.textContent=copy('action');panel.append(instruction);}
+      const leave=button(copy('leave'),()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';footer.append(leave);
     }
     panel.append(footer);panel.focus({preventScroll:true});
   }
   function geometry(){
     if(closed)return;tickGuidedMatch();if(closed)return;
     const step=current.steps[current.index],s=state();if(lastStep!==step.id)paint();
+    for(const example of examples){
+      const zone=document.querySelector(example.selector),r=zone?.getBoundingClientRect();
+      const show=document.documentElement.classList.contains('arg-guided-board-tour')&&!!r&&r.width>0&&r.height>0;
+      example.holder.hidden=!show;if(!show)continue;
+      const height=Math.max(20,Math.min(r.height-6,(r.width-12)/(2*.714))),width=height*.714;
+      Object.assign(example.holder.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
+      example.holder.style.setProperty('--ghost-height',height+'px');example.holder.style.setProperty('--ghost-width',width+'px');
+    }
     allow=current.confirmExit||current.fault?[]:guidedAllowedSelectors(s,step).filter(Boolean);
     const revealKey=step.id+'|'+allow.join('|');
     if(revealKey!==revealed){
@@ -117,16 +140,27 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
     if(rects.length){target={left:Math.max(2,Math.min(...rects.map(r=>r.left))-4),top:Math.max(2,Math.min(...rects.map(r=>r.top))-4),right:Math.min(innerWidth-2,Math.max(...rects.map(r=>r.right))+4),bottom:Math.min(innerHeight-2,Math.max(...rects.map(r=>r.bottom))+4)};}
     ring.hidden=!target;shell.style.background=target?'transparent':'#0008';
     if(target)Object.assign(ring.style,{left:target.left+'px',top:target.top+'px',width:Math.max(0,target.right-target.left)+'px',height:Math.max(0,target.bottom-target.top)+'px'});
-    const width=panel.offsetWidth,height=panel.offsetHeight,margin=8;
-    const right=innerWidth-width-margin,bottom=innerHeight-height-margin,middleX=(innerWidth-width)/2,middleY=(innerHeight-height)/2;
-    const candidates=[[margin,margin],[right,margin],[margin,bottom],[right,bottom],[margin,middleY],[right,middleY],[middleX,margin],[middleX,bottom]];
-    // Score the actual controls, not the empty space between player target and
-    // mana sources. This leaves the panel free to sit between two distant zones.
-    const overlap=([left,top])=>rects.reduce((sum,r)=>sum+Math.max(0,Math.min(left+width,r.right)-Math.max(left,r.left))*Math.max(0,Math.min(top+height,r.bottom)-Math.max(top,r.top)),0);
-    candidates.sort((a,b)=>overlap(a)-overlap(b));const [left,top]=candidates[0];
-    panel.style.left=Math.max(margin,left)+'px';panel.style.top=Math.max(margin,top)+'px';
+    // One fixed dock above Smart Pass. Rival priority and transient animations
+    // only change the ring; they can no longer move the explanation side to side.
+    const margin=8,dockRect=dock?.getBoundingClientRect();
+    const dockTop=dockRect?.height?dockRect.top:innerHeight*.5;
+    panel.style.maxHeight=Math.max(90,Math.min(innerHeight-16,dockTop-16))+'px';
+    panel.style.left=Math.max(margin,Math.min(dockRect?.left||margin,innerWidth-panel.offsetWidth-margin))+'px';
+    panel.style.top=Math.max(margin,dockTop-panel.offsetHeight-margin)+'px';
+    // The zone tour may need to expose the library underneath that dock. Choose
+    // a clear place once per explanation, never in response to rival animations.
+    if(document.documentElement.classList.contains('arg-guided-board-tour')&&target){
+      const width=panel.offsetWidth,height=panel.offsetHeight,key=[step.id,innerWidth,innerHeight,width,height].join('|');
+      if(tourPlacement?.key!==key){
+        const preferred=[parseFloat(panel.style.left),parseFloat(panel.style.top)];
+        const candidates=[preferred,[margin,margin],[innerWidth-width-margin,margin],[margin,innerHeight-height-margin],[innerWidth-width-margin,innerHeight-height-margin]];
+        const overlap=([left,top])=>rects.reduce((sum,r)=>sum+Math.max(0,Math.min(left+width,r.right)-Math.max(left,r.left))*Math.max(0,Math.min(top+height,r.bottom)-Math.max(top,r.top)),0);
+        candidates.sort((a,b)=>overlap(a)-overlap(b));tourPlacement={key,left:candidates[0][0],top:candidates[0][1]};
+      }
+      panel.style.left=Math.max(margin,tourPlacement.left)+'px';panel.style.top=Math.max(margin,tourPlacement.top)+'px';
+    }
     const status=panel.querySelector('[data-guided-status]');
-    const text=`Paso ${current.index+1}/${current.steps.length} · Turno ${s.turnCount} · ${s.phase}${step.kind==='action'&&s.priorityPlayer==='rival'?' · El Tano tiene prioridad':''}${step.kind==='action'&&!selected.length?' · Esperando el control del juego…':''}`;
+    const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase})+(step.kind==='action'&&s.priorityPlayer==='rival'?copy('rivalPriority'):'')+(step.kind==='action'&&!selected.length?copy('waiting'):'');
     if(status.textContent!==text)status.textContent=text;
     frame=requestAnimationFrame(geometry);
   }
@@ -160,16 +194,8 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
 export function learningPreference(uid){try{return localStorage.getItem(`${GUIDED_MATCH_VERSION}:${uid||'guest'}`)||'';}catch{return '';}}
 export function rememberLearningPreference(uid,value){try{localStorage.setItem(`${GUIDED_MATCH_VERSION}:${uid||'guest'}`,value);}catch{}}
 export function showFirstGameChoice(){
-  installStyles();return new Promise(resolve=>{
-    const overlay=document.createElement('div');overlay.id='first-game-choice';overlay.className='guided-match';overlay.style.cssText+='pointer-events:auto;background:#000b;z-index:15000';
-    const panel=document.createElement('section');panel.className='guided-match-panel';panel.style.cssText='left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,calc(100vw - 24px))';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.tabIndex=-1;
-    const heading=document.createElement('h2');heading.id='first-game-title';heading.textContent='¿Primera vez que jugás?';panel.setAttribute('aria-labelledby',heading.id);
-    const copy=document.createElement('p');copy.textContent='Aprendé jugando una práctica corta y dirigida contra El Tano, con mazos preparados y sin premios ni penalidades.';
-    const finish=value=>{overlay.remove();window.removeEventListener('keydown',keys,true);resolve(value);};
-    const quick=button('Quiero aprender rápido',()=>finish('learn'));quick.id='first-game-learn';
-    const skip=button('Ya sé jugar',()=>finish('skip'));skip.id='first-game-skip';
-    const back=button('Volver',()=>finish('back'));
-    const keys=event=>{if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();finish('back');}else if(event.key==='Tab'){const nodes=[quick,skip,back],i=nodes.indexOf(document.activeElement);event.preventDefault();nodes[(i+(event.shiftKey?2:1)+3)%3].focus();}else event.stopPropagation();};
-    window.addEventListener('keydown',keys,true);panel.append(heading,copy,quick,skip,back);overlay.append(panel);document.body.append(overlay);quick.focus();
-  });
+  return showGameChoice({id:'first-game-choice',title:copy('choice.title'),message:copy('choice.body'),closeLabel:gameText('common.close'),cancelValue:'back',choices:[
+    {id:'first-game-learn',label:copy('choice.learn'),value:'learn',primary:true},
+    {id:'first-game-skip',label:copy('choice.skip'),value:'skip'}
+  ]});
 }

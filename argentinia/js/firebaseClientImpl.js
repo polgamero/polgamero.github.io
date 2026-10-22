@@ -16,6 +16,8 @@ import { settleSanctuaryClaimPresentation } from './sanctuaryClaimPresentation.j
 // 23.11.9: PIN intencional a 12.16.0. Firebase 12.17.0/12.17.1 (@firebase/auth 1.13.4)
 // tienen una regresión de IndexedDB + visibilitychange que rompe signInWithPopup con
 // "Database is closing/hidden". No subir esta versión sin un contrato/regresión explícito.
+import { readEconomyAuditPage } from './economyAuditPaging.js';
+import {presentationSpec,validatePresentationLayouts,samePresentation} from './presentationBackupModel.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
   getAuth,
@@ -24,7 +26,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, startAfter, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -1846,10 +1848,55 @@ function assertGameConfigDocumentId(documentId) {
 // 23.13.22 — infraestructura común para configuración pública/admin. Mantiene los docs
 // separados (settings, texts, futuro artLayouts, etc.) y evita construir paths arbitrarios.
 // La SEGURIDAD real sigue en Firestore Rules: lectura pública, escritura sólo isAdmin().
-export async function loadPublicGameConfigDocument(documentId) {
+export async function loadPublicGameConfigDocument(documentId, { server = false } = {}) {
   const id = assertGameConfigDocumentId(documentId);
-  const snap = await getDoc(doc(db, 'gameConfig', id));
+  const snap = await (server ? getDocFromServer : getDoc)(doc(db, 'gameConfig', id));
   return snap.exists() ? snap.data() : null;
+}
+
+// Card presentation writes merge one explicit patch inside a transaction. A save
+// can no longer replace unrelated edits from a second tab with an older full map.
+export async function saveAdminPresentationLayoutsPatch({kind,layouts,expected=null,allowCreate=false}){
+  if((auth.currentUser?.email||'').toLowerCase()!==ADMIN_EMAIL)throw Error('ADMIN_REQUIRED');
+  const spec=presentationSpec(kind),patch=validatePresentationLayouts(kind,layouts);
+  const ref=doc(db,'gameConfig',spec.documentId);
+  return runTransaction(db,async tx=>{
+    const snap=await tx.get(ref),current=snap.exists()?snap.data():null;
+    if(!current&&!allowCreate)throw Error('No existe la configuración del servidor. Usá una importación revisada para restaurarla.');
+    if(current&&(current.schemaVersion!=null&&current.schemaVersion!==spec.schemaVersion||!current.layouts||Array.isArray(current.layouts)))throw Error('La configuración del servidor tiene un formato incompatible. No se sobrescribió.');
+    const next=validatePresentationLayouts(kind,current?.layouts||{});
+    if(expected)for(const id of Object.keys(patch))if(!samePresentation(kind,next[id],expected[id]))throw Error('Otra edición cambió '+id+'. Volvé a revisar la importación.');
+    for(const [id,layout] of Object.entries(patch)){
+      if(samePresentation(kind,layout,spec.defaults))delete next[id];else next[id]=layout;
+    }
+    tx.set(ref,{...(current||{}),schemaVersion:spec.schemaVersion,layouts:next,updatedAt:serverTimestamp()});
+    return {schemaVersion:spec.schemaVersion,layouts:next};
+  });
+}
+
+export async function fetchAdminPresentationBackupState(kind,{includePrivate=false}={}){
+  if((auth.currentUser?.email||'').toLowerCase()!==ADMIN_EMAIL)throw Error('ADMIN_REQUIRED');
+  const owner=auth.currentUser.uid,spec=presentationSpec(kind);
+  const value=await loadPublicGameConfigDocument(spec.documentId,{server:true});
+  if(value&&(value.schemaVersion!=null&&value.schemaVersion!==spec.schemaVersion||!value.layouts||Array.isArray(value.layouts)))throw Error('Formato remoto incompatible: '+spec.documentId);
+  const publicLayouts=validatePresentationLayouts(kind,value?.layouts||{}),privateLayouts={};
+  if(includePrivate){
+    // Read through the existing authorized callable. No presentation migration,
+    // catalogue/card data or GTIN is included in the returned backup state.
+    const response=await getSanctuaryStatusServer({includeDiscoveryAssets:true});
+    if(response?.discoveryAccessScope!=='admin'||!Array.isArray(response.authorizedDiscoveryCards)||!response.authorizedDiscoveryCards.length)throw Error('No se pudo verificar el conjunto privado de ajustes.');
+    for(const card of response.authorizedDiscoveryCards)privateLayouts[card.id]=card.discoveryPresentation?.[spec.field]||{...spec.defaults};
+  }
+  if(auth.currentUser?.uid!==owner)throw Error('La cuenta cambió durante la lectura.');
+  return {publicLayouts,privateLayouts:validatePresentationLayouts(kind,privateLayouts,{privateScope:true}),publicExists:value!=null};
+}
+
+export async function saveAdminPrivatePresentationPatch(kind,cardId,layout){
+  if((auth.currentUser?.email||'').toLowerCase()!==ADMIN_EMAIL)throw Error('ADMIN_REQUIRED');
+  const spec=presentationSpec(kind),clean=validatePresentationLayouts(kind,{[cardId]:layout},{privateScope:true})[cardId];
+  // Existing server authority owns private presentation and preserves other fields.
+  await adminSaveDiscoveryPresentationServer(cardId,{[spec.field]:samePresentation(kind,clean,spec.defaults)?null:clean});
+  return true;
 }
 
 export async function saveAdminGameConfigDocument(documentId, config) {
@@ -2865,20 +2912,29 @@ export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {
 // 23.19.2 — Vista económica autoritativa para Caja Negra. A diferencia de Telemetría,
 // estos documentos prueban si la transacción de puntos realmente se confirmó: el receipt
 // económico y el salto de users.points nacen atómicamente.
-export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
+export async function fetchEconomyAuditForAdmin({ limitCount = 20, cursor = null, paginated = false } = {}) {
   if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
-  const safeLimit = Math.max(25, Math.min(500, Math.floor(Number(limitCount) || 250)));
+  const safeLimit = Math.max(1, Math.min(500, Math.floor(Number(limitCount) || 20)));
+  const normalize = (kind, snap) => snap.docs.map(d => ({...d.data(), id:d.id, auditKind:kind}));
+  let page=null,economyEvents,adminActions;
+  if(paginated){
+    page=await readEconomyAuditPage({cursor,pageSize:safeLimit,fetchBatch:async(name,after,count)=>{
+      const constraints=[orderBy('createdAt','desc')];
+      if(after)constraints.push(startAfter(after));
+      constraints.push(limit(count));
+      const snap=await getDocs(query(collection(db,name),...constraints));
+      return {rows:normalize(name==='economyEvents'?'economyEvent':'adminAction',snap),after:snap.docs.at(-1)||after};
+    }});
+    economyEvents=page.rows.filter(row=>row.auditKind==='economyEvent');
+    adminActions=page.rows.filter(row=>row.auditKind==='adminAction');
+  }else{
   const [eventsSnap, actionsSnap] = await Promise.all([
     getDocs(query(collection(db, 'economyEvents'), orderBy('createdAt', 'desc'), limit(safeLimit))),
     getDocs(query(collection(db, 'adminActions'), orderBy('createdAt', 'desc'), limit(safeLimit)))
   ]);
-  const normalize = (kind, snap) => snap.docs.map(d => ({
-    id: d.id,
-    auditKind: kind,
-    ...d.data()
-  }));
-  const economyEvents = normalize('economyEvent', eventsSnap);
-  const adminActions = normalize('adminAction', actionsSnap);
+  economyEvents = normalize('economyEvent', eventsSnap);
+  adminActions = normalize('adminAction', actionsSnap);
+  }
 
   // Admin works with usernames, not opaque UIDs. Resolve only the users referenced by the
   // currently loaded audit window (never the full users collection), in Firestore-safe
@@ -2912,7 +2968,7 @@ export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
   } catch (error) {
     console.warn('No se pudieron resolver todos los usernames de Auditoría Económica; se mostrarán UIDs como fallback:', error);
   }
-  return { economyEvents, adminActions, usernames, limitCount: safeLimit };
+  return { economyEvents, adminActions, usernames, limitCount: safeLimit, ...(page?{cursor:page.cursor,hasMore:page.hasMore}:{}) };
 }
 
 export async function fetchGameRewardAuditForAdmin() {

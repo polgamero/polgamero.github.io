@@ -1,3 +1,4 @@
+import {ensureGameDialogStyles} from './gameDialogs.js';
 // js/manualUI.js — Manual del jugador (frontend-only)
 import { gameText } from './gameTexts.js';
 // No Firebase, no economía, no gameplay mutations. Se monta sobre el menú principal y
@@ -149,6 +150,7 @@ function applyManualGameTexts(root) {
 }
 
 function ensureManualStyles() {
+  ensureGameDialogStyles();
   if (typeof document === 'undefined' || document.getElementById(MANUAL_STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = MANUAL_STYLE_ID;
@@ -234,6 +236,12 @@ function ensureManualStyles() {
       min-height:0;overflow:auto;scroll-behavior:smooth;padding:34px clamp(24px,4vw,58px) 70px;
       scrollbar-width:thin;scrollbar-color:#806517 transparent;scroll-padding-top:22px;
     }
+    .arg-manual-practice{margin:0 0 26px;padding:18px 20px;border:1px solid rgba(212,175,55,.36);border-radius:12px;background:linear-gradient(120deg,rgba(212,175,55,.09),rgba(6,17,11,.8))}
+    .arg-manual-practice p{margin:0 0 12px;color:#d4d0bd;font:14px/1.5 system-ui,sans-serif}
+    .arg-manual-practice-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;max-width:100%;min-height:48px;padding:12px 22px;font:700 clamp(15px,1.5vw,19px)/1.3 Georgia,serif;text-align:center;cursor:pointer;touch-action:manipulation;white-space:normal}
+    .arg-manual-practice-button::before{content:'⚔';font:24px/1 system-ui,sans-serif;color:#e6c869}
+    .arg-manual-practice-button:hover{filter:brightness(1.15)}
+    .arg-manual-practice-button:focus-visible{outline:3px solid #ffe7a2;outline-offset:4px}
     .arg-manual-hero{padding:8px 0 26px;border-bottom:1px solid rgba(212,175,55,.18);margin-bottom:8px}
     .arg-manual-hero h2{margin:0 0 12px;color:#fff4dc;font:800 clamp(31px,4.4vw,54px)/.98 Georgia,"Times New Roman",serif;letter-spacing:-.025em}
     .arg-manual-hero h2 span{color:#f0d56c}
@@ -666,9 +674,11 @@ export function showGameManual({ returnFocusTo = null } = {}) {
   };
   closeBtn?.addEventListener('click', close);
   if(document.getElementById('main-menu-overlay')){
-    const practice=document.createElement('button');practice.type='button';practice.id='manual-guided-match';practice.className='arg-manual-toc-btn';practice.textContent='Practicar una partida con El Tano';
+    const callout=document.createElement('section');callout.className='arg-manual-practice';
+    const intro=document.createElement('p');intro.textContent=gameText('guided.replayIntro');callout.append(intro);
+    const practice=document.createElement('button');practice.type='button';practice.id='manual-guided-match';practice.className='arg-game-button arg-manual-practice-button';practice.textContent=gameText('guided.replay');
     practice.addEventListener('click',()=>{close();window.dispatchEvent(new Event('argentinia:replay-guided-match'));});
-    overlay.querySelector('[data-manual-scroll]')?.prepend(practice);
+    callout.append(practice);overlay.querySelector('[data-manual-scroll]')?.prepend(callout);
   }
   window.addEventListener('keydown', onKeyDown, true);
 

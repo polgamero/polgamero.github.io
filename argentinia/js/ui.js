@@ -131,6 +131,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { mountAdminNotificationsPane } from './notificationsAdmin.js';
 import { mountAdminSanctuaryPane } from './sanctuaryAdmin.js';
 import { mountAppearanceAdminPane } from './appearanceAdmin.js';
+import { mountPresentationBackups } from './presentationBackups.js';
 import { mountAdminFlasheraPane } from './flasheraAdmin.js';
 import { applyCachedPublishedAppearance } from './appearance.js';
 import { scheduleCombatMapRender } from './combatMap.js';
@@ -11107,6 +11108,7 @@ export function showAdminPanel(onBack) {
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
+    { key: 'backups', label: 'RESPALDOS DE CARTAS' },
     { key: 'messages', label: 'MODERACIÓN Y USUARIOS' },
     { key: 'notifications', label: 'NOTIFICACIONES' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
@@ -11167,6 +11169,9 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="texts">
         <div id="admin-game-texts-root"></div>
+      </div>
+      <div class="admin-tab-pane hidden" data-admin-pane="backups">
+        <div id="admin-presentation-backups-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="messages">
@@ -11232,6 +11237,7 @@ export function showAdminPanel(onBack) {
             </div>
             <div id="admin-economy-audit-cards" class="admin-stats-grid"></div>
             <div class="admin-debug-table-wrap" id="admin-economy-audit-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.audit.empty')}</div></div>
+            <button class="admin-save-btn" id="admin-economy-audit-more" hidden>${gameTextHtml('admin.audit.more')}</button>
             <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.audit.note')}</div>
           </div>
           <div data-economy-subpane="movements" class="hidden">
@@ -12238,6 +12244,8 @@ Receipt: ${receiptId}
   let economyAuditLoaded = false;
   let economyAuditLoading = false;
   let economyAuditRows = [];
+  let economyAuditCursor = null;
+  let economyAuditHasMore = false;
   let economyAuditUsernames = {};
   let economySubtab = 'audit';
   let movementUsersLoaded = false;
@@ -12382,15 +12390,20 @@ Receipt: ${receiptId}
     overlay.querySelector('#admin-economy-audit-summary').textContent = gameText('admin.audit.summary',{count:economyAuditRows.length});
   }
 
-  async function reloadEconomyAudit() {
+  async function reloadEconomyAudit(append = false) {
     if (economyAuditLoading) return;
     economyAuditLoading = true;
     const btn=overlay.querySelector('#admin-economy-audit-refresh');
+    const more=overlay.querySelector('#admin-economy-audit-more');
+    if(more)more.disabled=true;
     if(btn){btn.disabled=true;btn.textContent=gameText('admin.audit.loading');}
     try {
-      const audit=await fetchEconomyAuditForAdmin({limitCount:250});
-      economyAuditUsernames={...(audit?.usernames||{})};
-      economyAuditRows=[...(audit?.economyEvents||[]),...(audit?.adminActions||[])].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
+      const audit=await fetchEconomyAuditForAdmin({limitCount:20,paginated:true,cursor:append?economyAuditCursor:null});
+      economyAuditUsernames={...(append?economyAuditUsernames:{}),...(audit?.usernames||{})};
+      const incoming=[...(audit?.economyEvents||[]),...(audit?.adminActions||[])];
+      economyAuditRows=[...new Map([...(append?economyAuditRows:[]),...incoming].map(row=>[row.auditKind+':'+row.id,row])).values()].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
+      economyAuditCursor=audit?.cursor||null;
+      economyAuditHasMore=!!audit?.hasMore;
       economyAuditLoaded=true;
       renderEconomyAudit();
       overlay.querySelector('#admin-economy-audit-export').disabled=false;
@@ -12399,6 +12412,7 @@ Receipt: ${receiptId}
       overlay.querySelector('#admin-economy-audit-summary').textContent=gameText('admin.audit.error',{message:err?.message||err});
     } finally {
       economyAuditLoading=false;
+      if(more){more.disabled=false;more.hidden=!economyAuditHasMore;}
       if(btn){btn.disabled=false;btn.textContent=gameText('admin.audit.refresh');}
     }
   }
@@ -12618,11 +12632,13 @@ Receipt: ${receiptId}
 
   let adminSanctuaryController=null;
   let adminAppearanceController=null;
+  let adminBackupController=null;
   let adminFlasheraController=null;
 
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
+    if(key==='backups'&&!adminBackupController)adminBackupController=mountPresentationBackups(overlay.querySelector('#admin-presentation-backups-root'),{uid:state.currentUser?.uid});
     if (key === 'texts' && !gameTextsAdminLoaded) {
       gameTextsAdminLoaded = true;
       void ensureGameTextsAdminPane().load();
@@ -12680,7 +12696,8 @@ Receipt: ${receiptId}
   overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
   overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
   overlay.querySelector('#admin-stats-export').addEventListener('click', exportAdminStatisticsCsv);
-  overlay.querySelector('#admin-economy-audit-refresh').addEventListener('click', reloadEconomyAudit);
+  overlay.querySelector('#admin-economy-audit-refresh').addEventListener('click',()=>reloadEconomyAudit(false));
+  overlay.querySelector('#admin-economy-audit-more').addEventListener('click',()=>reloadEconomyAudit(true));
   overlay.querySelector('#admin-economy-audit-kind').addEventListener('change', renderEconomyAudit);
   overlay.querySelector('#admin-economy-audit-search').addEventListener('input', renderEconomyAudit);
   overlay.querySelector('#admin-economy-audit-export').addEventListener('click', () => {

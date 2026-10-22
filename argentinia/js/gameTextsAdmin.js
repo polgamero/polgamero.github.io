@@ -9,7 +9,8 @@ import {
   getGameTextCatalog,
   getGameTextDefault,
   getGameTextOverridesSnapshot,
-  validateGameTextOverride
+  validateGameTextOverride,
+  normalizeGameTextOverrides
 } from './gameTexts.js';
 
 function escapeHtml(value) {
@@ -66,7 +67,7 @@ function injectStyles() {
   document.head.appendChild(style);
 }
 
-export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied } = {}) {
+export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied, keyPrefix='', title='Textos del juego', help=null } = {}) {
   injectStyles();
   const root = document.createElement('div');
   root.className = 'game-text-admin';
@@ -87,6 +88,9 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     </div>`;
 
   const search = root.querySelector('.game-text-search');
+  root.querySelector('.admin-section-title').textContent=title;
+  if(help)root.querySelector('.admin-section-title').nextElementSibling.textContent=help;
+  const paneCatalog=()=>getGameTextCatalog().filter(item=>!keyPrefix||item.key.startsWith(keyPrefix));
   const category = root.querySelector('.game-text-category');
   const list = root.querySelector('.game-text-list');
   const summary = root.querySelector('.game-text-summary');
@@ -118,7 +122,7 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
   }
 
   function render() {
-    const catalog = getGameTextCatalog();
+    const catalog = paneCatalog();
     const categories = [...new Set(catalog.map(item => item.category))];
     const previousCategory = category.value;
     category.innerHTML = `<option value="">Todas las categorías</option>${categories.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}`;
@@ -196,7 +200,12 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     saving = true;
     status.textContent = '';
     try {
-      const payload = buildGameTextOverridesDocument(nextOverrides);
+      // Two views can edit the same document (Tutorials and Game Texts). Preserve
+      // unrelated changes saved since this view was opened.
+      const changed=[...new Set([...Object.keys(overrides),...Object.keys(nextOverrides)])].filter(key=>overrides[key]!==nextOverrides[key]);
+      const latest=normalizeGameTextOverrides(await loadDocument());
+      for(const key of changed){if(Object.hasOwn(nextOverrides,key))latest[key]=nextOverrides[key];else delete latest[key];}
+      const payload = buildGameTextOverridesDocument(latest);
       await saveDocument(payload);
       overrides = { ...payload.overrides };
       applyGameTextOverrides(payload);
@@ -262,7 +271,7 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
   resetCategoryBtn.addEventListener('click', async () => {
     const selected = category.value;
     if (!selected || saving) return;
-    const catalog = getGameTextCatalog();
+    const catalog = paneCatalog();
     const affected = catalog.filter(item => item.category === selected && item.overrideText !== null);
     if (!affected.length) return;
     if (!await showGameDialog(`¿Restaurar ${affected.length} texto(s) de “${selected}” a su versión original?`,{confirm:true,acceptLabel:'Restaurar'})) return;

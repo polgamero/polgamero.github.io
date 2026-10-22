@@ -100,6 +100,7 @@
     "./js/discoveryCards.js",
     "./js/discoveryEncyclopedia.js",
     "./js/economyActionRecovery.js",
+    "./js/economyAuditPaging.js",
     "./js/economyClient.js",
     "./js/economyPending.js",
     "./js/economyRevealRecovery.js",
@@ -163,6 +164,8 @@
     "./js/phaseBanner.js",
     "./js/poolContract.js",
     "./js/prebuiltDecks.js",
+    "./js/presentationBackupModel.js",
+    "./js/presentationBackups.js",
     "./js/priorityDiagnostics.js",
     "./js/priorityIntelligence.js",
     "./js/priorityLegalActions.js",
@@ -224,7 +227,7 @@
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
   "hotfixCandidate": "HF7",
-  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE)",
+  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE); tutorial con contrahechizo, modales compartidos, auditoría paginada y respaldo de ajustes (PRE_RELEASE)",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -257,6 +260,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "e217f99013eb5292c08c",
+  "buildId": "160eefb4844008fd0ad8",
   "serviceUsageSchema": "arg-service-usage-v1"
 }
