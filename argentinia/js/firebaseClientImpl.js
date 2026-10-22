@@ -1586,7 +1586,7 @@ export async function sendMultiplayerCommunication(matchId, payload = {}) {
 
 export async function sendLobbyCommunication(text = '') {
   const response = await sendLobbyCommunicationServer(text);
-  return response?.event || null;
+  return response?.blocked ? response : response?.event || null;
 }
 
 export async function deleteLobbyCommunication(messageSeq) {

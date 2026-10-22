@@ -143,6 +143,7 @@
     "./js/landStax.js",
     "./js/legal.js",
     "./js/libraryEngine.js",
+    "./js/lobbyChatGuard.js",
     "./js/main.js",
     "./js/manaPool.js",
     "./js/manaSources.js",
@@ -227,7 +228,7 @@
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
   "hotfixCandidate": "HF7",
-  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE); tutorial con contrahechizo, modales compartidos, auditoría paginada y respaldo de ajustes (PRE_RELEASE)",
+  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE); tutorial con contrahechizo, modales compartidos, auditoría paginada y respaldo de ajustes (PRE_RELEASE); bloqueo preventivo de chat Lobby y rechazos esperados sin errores (PRE_RELEASE); controles separados del tutorial, cartas proporcionadas y avance con un toque (PRE_RELEASE); fondo móvil reemplazado por el dueño (PRE_RELEASE)",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -247,7 +248,7 @@
     "assets/images/ui/logo.png": "d24169b6d4596feb17963c31208987acde3196ca3f6ceb21d66ad0dc9f80bf6b",
     "assets/images/ui/moneda.png": "396b4e42db403a0f19f51683c2b8ed85f03e807a327be262d5b147e375339eb4",
     "assets/images/menu/city-distant.webp": "e433b0953c34c46517ad82e625adc4e0e795ae12ffe6c0901c5377069840a6f6",
-    "assets/images/menu/city-distant-mobile.webp": "e433b0953c34c46517ad82e625adc4e0e795ae12ffe6c0901c5377069840a6f6"
+    "assets/images/menu/city-distant-mobile.webp": "6f52ab9acc13861b1241097aac8b647f5534c1087d0174b542f977f5b955685c"
   },
   "pool": 1010,
   "publicPool": 910,
@@ -260,6 +261,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "160eefb4844008fd0ad8",
+  "buildId": "d39ee789f9b0f7b803cc",
   "serviceUsageSchema": "arg-service-usage-v1"
 }

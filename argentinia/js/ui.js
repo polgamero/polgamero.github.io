@@ -1,4 +1,6 @@
 import { guidedMatchActive, tickGuidedMatch } from './guidedMatch.js';
+import { lobbyChatGuard, lobbyChatBlock } from './lobbyChatGuard.js';
+import { recordServiceUsage } from './serviceUsage.js';
 import { countryStatistics, mountServiceUsage } from './adminServiceUsage.js';
 import { cancelPendingActionForDeadline } from './main.js';
 import { isEditorialVisible } from './editorialModel.js';
@@ -13656,6 +13658,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
   let playerQuery = '';
   let waitingCode = '';
   let sendingLobbyChat = false;
+  let lobbyChatTicker = null;
   let challengeActionPending = false;
   let acceptedChallengeCode = '';
   let toastTimer = null;
@@ -13665,6 +13668,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
   function stopRoomListener() { if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; } }
   function stopDirectoryListeners() {
+    if(lobbyChatTicker){clearInterval(lobbyChatTicker);lobbyChatTicker=null;}
     if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
     if (matchesUnsubscribe) { matchesUnsubscribe(); matchesUnsubscribe = null; }
     if (lobbyChatUnsubscribe) { lobbyChatUnsubscribe(); lobbyChatUnsubscribe = null; }
@@ -13991,6 +13995,17 @@ export function showMultiplayerLobby(onBack, onMatched) {
     if (code.includes('COMMUNITY_BANNED')) return 'Tu cuenta tiene una restricción activa. Podés contactar Moderación desde el menú principal.';
     return error?.message || gameText('multiplayer.lobby.chatSendError');
   }
+  function refreshLobbyChatSendState(){
+    const input=body.querySelector('#mp-lobby-chat-input'),send=body.querySelector('#mp-lobby-chat-send'),status=body.querySelector('#mp-lobby-chat-status');
+    if(!send)return;
+    const gate=lobbyChatGuard.state(state.currentUser?.uid,String(input?.value||''));
+    send.disabled=sendingLobbyChat||!gate.allowed;
+    send.textContent=sendingLobbyChat||gate.pending?gameText('multiplayer.lobby.chatSending'):gate.retryAfterMs>0?gameText('multiplayer.lobby.chatCountdown',{seconds:Math.ceil(gate.retryAfterMs/1000)}):gameText('multiplayer.lobby.chatSend');
+    if(status&&gate.retryAfterMs>0&&!status.classList.contains('error')){
+      status.dataset.chatWait='1';status.className='mp-chat-status';
+      status.textContent=gameText(gate.code==='LOBBY_CHAT_DUPLICATE'?'multiplayer.lobby.chatDuplicateWait':'multiplayer.lobby.chatWait',{seconds:Math.ceil(gate.retryAfterMs/1000)});
+    }else if(status?.dataset.chatWait==='1'&&gate.allowed){status.textContent=gameText('multiplayer.lobby.chatHint');delete status.dataset.chatWait;}
+  }
   async function sendLobbyChatMessage() {
     const input = body.querySelector('#mp-lobby-chat-input');
     const send = body.querySelector('#mp-lobby-chat-send');
@@ -13998,20 +14013,23 @@ export function showMultiplayerLobby(onBack, onMatched) {
     if (!input || sendingLobbyChat) return;
     const text = String(input.value || '').replace(/\s+/g,' ').trim();
     if (!text) return;
+    if(!lobbyChatGuard.state(state.currentUser?.uid,text).allowed){recordServiceUsage('Chat lobby','blockedLocally');refreshLobbyChatSendState();return;}
     if (text.length > 220) { if(status){status.textContent=gameText('multiplayer.social.maxChars',{count:220});status.className='mp-chat-status error';} return; }
     sendingLobbyChat = true;
     if (send) send.disabled = true;
     if (status) { status.textContent=''; status.className='mp-chat-status'; }
     try {
-      await sendLobbyCommunication(text);
-      input.value = '';
+      const result=await sendLobbyCommunication(text);
+      if(result?.blocked){if(status){status.className='mp-chat-status';status.textContent=lobbyChatErrorMessage(result.blocked);}return;}
+      if(String(input.value||'').replace(/\s+/g,' ').trim()===text)input.value = '';
       if (status) status.textContent = gameText('multiplayer.lobby.chatSent');
     } catch (error) {
-      console.warn('No se pudo enviar mensaje al chat del Lobby:', error);
-      if (status) { status.textContent = lobbyChatErrorMessage(error); status.className='mp-chat-status error'; }
+      const blocked=lobbyChatBlock(error);
+      if(!blocked)console.warn('No se pudo enviar mensaje al chat del Lobby:', error);
+      if (status) { status.textContent = lobbyChatErrorMessage(error); status.className=blocked?'mp-chat-status':'mp-chat-status error'; }
     } finally {
       sendingLobbyChat = false;
-      if (send?.isConnected) send.disabled = false;
+      refreshLobbyChatSendState();
       input?.focus?.();
     }
   }
@@ -14025,11 +14043,13 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const send = body.querySelector('#mp-lobby-chat-send');
     if (input) {
       input.maxLength = 220;
+      input.addEventListener('input',refreshLobbyChatSendState);
       input.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendLobbyChatMessage(); }
       });
     }
     if (send) send.addEventListener('click', () => void sendLobbyChatMessage());
+    refreshLobbyChatSendState();
   }
 
   function refreshHeaderControls() {
@@ -14121,6 +14141,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
   function startDirectoryListeners() {
     stopDirectoryListeners();
+    refreshLobbyChatSendState();lobbyChatTicker=setInterval(()=>{if(!overlay.isConnected){clearInterval(lobbyChatTicker);lobbyChatTicker=null;return;}refreshLobbyChatSendState();},250);
     // HF23.3: social activity is advanced opportunistically while somebody is actually using
     // the Lobby. The response carries no system-player metadata; presence arrives through the
     // exact same playerPresence listener as every other connected profile.

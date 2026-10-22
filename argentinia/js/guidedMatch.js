@@ -1,20 +1,20 @@
-import { showGameChoice } from './gameDialogs.js';
+import { showGameChoice, ensureGameDialogStyles } from './gameDialogs.js';
 import { GUIDED_MATCH_VERSION, LESSON_STEPS, BOARD_TOUR, lessonGoal } from './guidedMatchModel.js';
 import { gameText } from './gameTexts.js';
 const copy=(key,vars)=>gameText('guided.'+key,vars);
 let session=null;
 export const guidedMatchActive=()=>!!session;
-export const guidedMatchPaused=()=>!!(session&&(session.fault||session.confirmExit||session.steps[session.index]?.kind==='info'));
+export const guidedMatchPaused=()=>!!(session&&(session.fault||session.confirmExit||session.explanationPending||session.steps[session.index]?.kind==='info'));
 export const guidedMatchProgress=()=>session?.progress||null;
 export function guidedCanPass(player){return !session||(!guidedMatchPaused()&&(player==='rival'||session.steps[session.index]?.selector==='#btn-end-turn'));}
 export function notifyGuidedMulligan(stage){if(session)session.progress.mulligan=stage;tickGuidedMatch();}
-export function getGuidedMatchStatus(){return session?{version:GUIDED_MATCH_VERSION,step:session.steps[session.index]?.id,index:session.index,paused:guidedMatchPaused(),fault:session.fault,trace:session.trace.map(row=>({...row}))}:null;}
+export function getGuidedMatchStatus(){return session?{version:GUIDED_MATCH_VERSION,step:session.steps[session.index]?.id,index:session.index,paused:guidedMatchPaused(),fault:session.fault,autoAdvancing:session.autoAdvancing,explanationPending:session.explanationPending,explanationPage:session.explanationPage,explanationPages:session.explanationPages,trace:session.trace.map(row=>({...row}))}:null;}
 export function failGuidedMatch(reason){if(session){session.fault=/^GUIDED_[A-Z_]+$/.test(reason||'')?reason:'ENGINE_ACTION_FAILED';session.repaint();}}
 export function stopGuidedMatch(){const old=session;session=null;old?.cleanup();}
 const visible=node=>!!node?.isConnected&&!!node.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
 function handCard(id){return `#local-hand .card[data-card-id="${id}"]`;}
 export function guidedAllowedSelectors(s,step=session?.steps[session.index]){
-  if(!step||step.kind==='info')return [];
+  if(!step||step.kind==='info'||session?.explanationPending)return [];
   if(step.id==='bottom')return ['#mulligan-overlay .card[data-card-id="crea_098"]','#btn-confirm-bottom'];
   if(step.cast){
     const pending=!!s.pendingCastTransaction||s.pendingSpellIndex!==null||!!s.pendingTargetCard||!!s.pendingCost;
@@ -39,145 +39,185 @@ export function tickGuidedMatch(){
   }
   const s=current.state(),stack=current.stack(),step=current.steps[current.index];
   if(s.gameOver&&!current.fault){failGuidedMatch('GUIDED_UNEXPECTED_GAME_OVER');return;}
-  if(!current.fault&&!current.confirmExit&&step.kind==='action'&&lessonGoal(step.goal,s,stack,current.progress))current.advance();
+  if(!current.fault&&!current.confirmExit&&!current.explanationPending&&step.kind==='action'&&lessonGoal(step.goal,s,stack,current.progress))current.advance();
 }
 function installStyles(){
+  ensureGameDialogStyles();
   if(document.getElementById('guided-match-styles'))return;
   const style=document.createElement('style');style.id='guided-match-styles';
-  style.textContent=`.guided-match{position:fixed;inset:0;z-index:14000;pointer-events:none}.guided-match-ring{position:fixed;pointer-events:none;border:3px solid #ffe19c;border-radius:8px;box-shadow:0 0 0 9999px #0009;box-sizing:border-box}.guided-match-panel{position:fixed;pointer-events:auto;box-sizing:border-box;width:min(390px,calc(100vw - 20px));max-height:calc(100dvh - 16px);overflow:auto;border:2px solid #d4af37;border-radius:12px;background:#0c1811;color:#f4e8c7;padding:14px;box-shadow:0 8px 30px #000;font:15px/1.4 system-ui}.guided-match-panel h2{font-size:20px;color:#ffe19c;margin:0 0 8px}.guided-match-panel p{margin:8px 0}.guided-match-panel footer{display:flex;gap:8px;flex-wrap:wrap}.guided-match-panel button{min-height:44px;padding:8px 12px;border:1px solid #c4a756;border-radius:6px;background:#23301c;color:#fff0c7;font:700 14px system-ui;cursor:pointer}.guided-match-panel small{display:block;color:#d8c68e;margin:7px 0}.guided-match-preview{display:flex;justify-content:center;pointer-events:none;margin:10px 0}.guided-match-preview>.card{width:180px!important;height:252px!important;min-width:180px!important;max-width:180px!important;transform:none!important}.guided-match-action{border-left:3px solid #e5ba57;padding-left:8px}@media(max-height:500px){.guided-match-panel{width:min(290px,38vw);padding:10px;font-size:12px;line-height:1.3}.guided-match-panel h2{font-size:16px}.guided-match-panel button{font-size:12px;padding:5px 8px}.guided-match-preview>.card{width:125px!important;min-width:125px!important;max-width:125px!important;height:175px!important}}`;
-  // A battlefield hover can grow the selected blocker over the rival attacker,
-  // changing the hit target while the user is moving between the two cards.
-  // Lesson cards stay at their real footprints; the panel owns enlarged previews.
-  style.textContent+=`
-    html.arg-guided-board-tour :is(#local-lands,#rival-lands,#local-combat,#rival-combat,#local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers){min-height:clamp(38px,9vh,96px)!important}
-    .guided-match-ghosts{position:fixed;display:flex;align-items:center;justify-content:center;gap:5px;pointer-events:none;opacity:.65;overflow:hidden}
+  style.textContent=`
+    .guided-match{position:fixed;inset:0;z-index:14000;pointer-events:none;--guide-edge:max(8px,env(safe-area-inset-left))}
+    .guided-match-ring{position:fixed;pointer-events:none;border:3px solid #ffe19c;border-radius:8px;box-shadow:0 0 0 9999px #0009;box-sizing:border-box}
+    .guided-match-panel{position:fixed;pointer-events:auto;box-sizing:border-box;width:min(410px,44vw);height:auto;max-height:none;overflow:visible;border:2px solid #d4af37;border-radius:12px;background:#0c1811;color:#f4e8c7;padding:12px;box-shadow:0 8px 30px #000;font:15px/1.4 system-ui;overflow-wrap:anywhere}
+    .guided-match-panel h2{font-size:20px;line-height:1.2;color:#ffe19c;margin:0 0 8px}
+    .guided-match-panel p{margin:0;white-space:pre-wrap}
+    .guided-match-controls{position:fixed;left:var(--guide-edge);bottom:max(8px,env(safe-area-inset-bottom));pointer-events:auto;color:#ead9a1;font:13px/1.35 system-ui;max-width:calc(100vw - 16px)}
+    .guided-match-controls [data-guided-status]{display:block;width:fit-content;max-width:100%;padding:3px 7px;margin-bottom:5px;border-radius:5px;background:#08100ff2;text-shadow:0 1px 2px #000;overflow-wrap:anywhere}
+    .guided-match-controls footer{display:flex;gap:10px;align-items:center}
+    .guided-match-controls .arg-game-button{font-size:14px;padding:8px 14px;min-height:44px}
+    .guided-match-controls .guided-match-next:disabled{opacity:1;background:#23301c;color:#d7c899;border-color:#9c894a;cursor:default;box-shadow:none}
+    .guided-match-controls .guided-match-next:not(:disabled){background:#d4af37;color:#171d10;border-color:#ffe6a4;box-shadow:inset 0 0 0 1px #ffe8a780,inset 0 0 18px #fff1a94d,0 0 14px #e9b94470}
+    .guided-match-controls .guided-match-exit{background:#52211d;color:#ffe6df;border-color:#b95145;box-shadow:inset 0 0 12px #a4342429}
+    .guided-match-exit-confirm{position:absolute;bottom:calc(100% + 10px);left:0;box-sizing:border-box;width:min(360px,calc(100vw - 16px));border:2px solid #b95145;border-radius:12px;background:#1e100e;padding:12px;box-shadow:0 8px 30px #000;color:#ffe6df}
+    .guided-match-exit-confirm h2{font-size:17px;margin:0 0 8px}.guided-match-exit-confirm p{font-size:13px;margin:0 0 12px}.guided-match-exit-confirm footer{flex-wrap:wrap}
+    .guided-match-preview{position:fixed;pointer-events:none;overflow:visible}
+    .guided-match-card-slot{position:relative;flex:none;pointer-events:none}
+    #guided-match :is(.guided-match-card-slot)>.card{position:absolute;left:0;top:0;box-sizing:border-box;--card-w:180px;width:180px!important;min-width:180px!important;max-width:180px!important;height:252px!important;min-height:252px!important;max-height:252px!important;transform:scale(var(--guided-card-scale,1))!important;transform-origin:top left!important;pointer-events:none!important;transition:none!important}
+    #guided-match .guided-match-card-slot>.card>.card-inner{box-sizing:border-box;width:180px!important;min-width:180px!important;max-width:180px!important;height:252px!important;min-height:252px!important;max-height:252px!important;transform:none!important;container-type:size}
+    .guided-match-ghosts{position:fixed;display:flex;align-items:center;justify-content:center;gap:5px;pointer-events:none;opacity:.8;overflow:visible}
     .guided-match-ghosts[hidden]{display:none!important}
-    .guided-match-ghosts .card{flex:none!important;width:var(--ghost-width)!important;min-width:var(--ghost-width)!important;max-width:var(--ghost-width)!important;height:var(--ghost-height)!important;transform:none!important;pointer-events:none!important;filter:saturate(.65)}
+    html.arg-guided-board-tour :is(#local-lands,#rival-lands,#local-combat,#rival-combat,#local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers){min-height:clamp(38px,9vh,96px)!important}
     html.arg-guided-match-active :is(#local-hand,.field-row) .card{transform:none!important;transition:none!important}
     html.arg-guided-match-active .field-row .card:not(.tapped) .card-inner{transform:none!important}
     html.arg-guided-match-active .field-row .card.tapped .card-inner{transform:rotate(90deg)!important;transform-origin:center center!important}
     html.arg-guided-match-active .field-row .card-inner{transition:none!important}
     html.arg-guided-match-active :is(.desktop-battlefield-hover-preview,.zone-card-hover-preview,.mulligan-card-hover-preview,#arg-mobile-fullscreen-retry){display:none!important}
+    @media(max-height:500px){.guided-match-panel{width:min(360px,43vw);padding:9px;font-size:12px;line-height:1.35}.guided-match-panel h2{font-size:16px;margin-bottom:6px}.guided-match-controls{font-size:11px}.guided-match-controls .arg-game-button{font-size:12px;padding:7px 11px}}
   `;
   document.head.append(style);
 }
-const button=(label,fn)=>{const element=document.createElement('button');element.type='button';element.textContent=label;element.addEventListener('click',fn);return element;};
-export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,onInvalid=()=>{}}){
-  stopGuidedMatch();installStyles();
-  document.documentElement.classList.add('arg-guided-match-active');
+const button=(label,fn)=>{const el=document.createElement('button');el.type='button';el.className='arg-game-button';el.textContent=label;el.addEventListener('click',fn);return el;};
+export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvancePriority=async()=>{},onExit,onInvalid=()=>{}}){
+  stopGuidedMatch();installStyles();document.documentElement.classList.add('arg-guided-match-active');
   const shell=document.createElement('div');shell.className='guided-match';shell.id='guided-match';
   const ring=document.createElement('div');ring.className='guided-match-ring';ring.setAttribute('aria-hidden','true');
   const panel=document.createElement('section');panel.className='guided-match-panel';panel.tabIndex=-1;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','guided-match-title');
-  shell.append(ring,panel);document.body.append(shell);
-  // Presentation-only catalogue examples. Never inserted into engine zones, hands,
-  // decks or inventories; their parent is inert and input remains locked by guard.
+  const controls=document.createElement('nav');controls.className='guided-match-controls';controls.setAttribute('aria-label',copy('navigation'));
+  const status=document.createElement('small');status.dataset.guidedStatus='';status.setAttribute('role','status');
+  const footer=document.createElement('footer');controls.append(status,footer);
+  const preview=document.createElement('div');preview.className='guided-match-preview';preview.inert=true;
+  shell.append(ring,panel,preview,controls);document.body.append(shell);
+  function cardSlot(id,context={}){const slot=document.createElement('div');slot.className='guided-match-card-slot';const card=renderCard(id,context);if(card)slot.append(card);return slot;}
+  function sizeSlot(slot,height){slot.style.width=height*5/7+'px';slot.style.height=height+'px';slot.style.setProperty('--guided-card-scale',height/252);}
   const examples=[];
-  for(const side of ['rival','local'])for(const [zone,ids] of Object.entries({lands:['tier_003','tier_005'],combat:['crea_010','crea_099'],support:['art_012','art_061'],planeswalkers:['pw_004','pw_004']})){
+  for(const side of ['rival','local'])for(const [zone,ids] of Object.entries({lands:['tier_003','tier_005'],combat:['crea_010','crea_099'],support:['art_012','art_061'],planeswalkers:['pw_004']})){
     const holder=document.createElement('div');holder.className='guided-match-ghosts';holder.inert=true;holder.setAttribute('aria-hidden','true');holder.hidden=true;
-    for(const id of ids){const element=renderCard(id);if(element)holder.append(element);}
-    shell.prepend(holder);examples.push({holder,selector:`#${side}-${zone}`});
+    for(const id of ids)holder.append(cardSlot(id,{side,zone:zone==='lands'?'land':zone==='planeswalkers'?'planeswalker':zone}));
+    shell.prepend(holder);examples.push({holder,selector:`#${side}-${zone}`,count:ids.length});
   }
-  let frame=0,closed=false,lastStep=null,allow=[],revealed='',tourPlacement=null;
-  const dock=document.getElementById('solo-priority-shortcuts');
-  const collapsed=dock?.classList.contains('is-collapsed');
-  const setDock=next=>{
-    if(!dock)return;dock.classList.toggle('is-collapsed',next);
-    const toggle=dock.querySelector('#solo-priority-toggle');
-    if(toggle){toggle.textContent=next?'+':'−';toggle.setAttribute('aria-expanded',String(!next));}
-  };
-  const current={state,stack,valid,onInvalid,steps:LESSON_STEPS,index:0,progress:{mulligan:'initial'},trace:[],confirmExit:false,fault:null,repaint:()=>paint(),
-    cleanup:()=>{closed=true;cancelAnimationFrame(frame);for(const type of eventTypes)window.removeEventListener(type,guard,true);document.removeEventListener('visibilitychange',wake);window.removeEventListener('pageshow',wake);document.documentElement.classList.remove('arg-guided-match-active','arg-guided-board-tour');setDock(!!collapsed);shell.remove();},
-    advance:()=>{if(current.index>=current.steps.length-1)return;const s=state();current.trace.push({step:current.steps[current.index].id,turn:s.turnCount,phase:s.phase,priority:s.priorityPlayer,stackDepth:stack().length,localHP:s.localHP,rivalHP:s.rivalHP});current.index++;
+  let frame=0,closed=false,lastStep=null,allow=[],revealed='',layoutKey='',pages=[],pageIndex=0,autoTimer=0,autoBusy=false,autoPasses=0;
+  let heading=null,body=null,next=null;
+  const dock=document.getElementById('solo-priority-shortcuts'),collapsed=dock?.classList.contains('is-collapsed');
+  const setDock=value=>{if(!dock)return;dock.classList.toggle('is-collapsed',value);const toggle=dock.querySelector('#solo-priority-toggle');if(toggle){toggle.textContent=value?'+':'−';toggle.setAttribute('aria-expanded',String(!value));}};
+  const current={state,stack,valid,onInvalid,steps:LESSON_STEPS,index:0,progress:{mulligan:'initial'},trace:[],confirmExit:false,fault:null,autoAdvancing:false,explanationPending:false,repaint:()=>paint(),
+    cleanup:()=>{closed=true;cancelAnimationFrame(frame);clearTimeout(autoTimer);for(const type of eventTypes)window.removeEventListener(type,guard,true);document.removeEventListener('visibilitychange',wake);window.removeEventListener('pageshow',wake);document.documentElement.classList.remove('arg-guided-match-active','arg-guided-board-tour');setDock(!!collapsed);shell.remove();},
+    advance:()=>{if(current.index>=current.steps.length-1)return;const s=state();current.trace.push({step:current.steps[current.index].id,turn:s.turnCount,phase:s.phase,priority:s.priorityPlayer,stackDepth:stack().length,localHP:s.localHP,rivalHP:s.rivalHP,automaticPriorityPasses:autoPasses});clearTimeout(autoTimer);current.autoAdvancing=false;autoPasses=0;current.index++;
       if(current.steps[current.index].id==='sorcery-info')current.progress.sorceryHandBefore=s.rivalHand.length;
       paint();onResume();}
   };
   session=current;
   const exit=completed=>{if(closed)return;stopGuidedMatch();onExit({completed,trace:current.trace});};
+  function refreshNext(){
+    const step=current.steps[current.index];current.explanationPending=pageIndex<pages.length-1;
+    current.explanationPage=pageIndex+1;current.explanationPages=pages.length;
+    if(!next)return;
+    next.textContent=step.finish&&!current.explanationPending?copy('finish'):copy('next');
+    next.disabled=!!current.fault||current.confirmExit||(!current.explanationPending&&step.kind!=='info');
+  }
   function paint(){
     if(closed)return;
-    const step=current.steps[current.index];lastStep=step.id;tourPlacement=null;panel.dataset.lessonStep=step.id;panel.replaceChildren();panel.scrollTop=0;
+    const step=current.steps[current.index],changed=lastStep!==step.id;lastStep=step.id;
+    if(changed){pageIndex=0;layoutKey='';pages=[];}
+    panel.dataset.lessonStep=step.id;panel.replaceChildren();preview.replaceChildren();footer.replaceChildren();controls.querySelector('.guided-match-exit-confirm')?.remove();
     document.documentElement.classList.toggle('arg-guided-board-tour',BOARD_TOUR.some(row=>row.id===step.id));
     if(dock){dock.classList.remove('hidden');setDock(step.id==='smart'?false:!!collapsed);}
-    const title=document.createElement('h2');title.id='guided-match-title';title.textContent=current.fault?copy('paused'):current.confirmExit?copy('exitTitle'):copy(`step.${step.id}.title`);panel.append(title);
-    const body=document.createElement('p');body.textContent=current.fault?copy('fault',{reason:current.fault}):current.confirmExit?copy('exitBody'):copy(`step.${step.id}.body`);panel.append(body);
-    if(!current.confirmExit&&step.preview){const holder=document.createElement('div');holder.className='guided-match-preview';holder.inert=true;const card=renderCard(step.preview);if(card)holder.append(card);panel.append(holder);}
-    const status=document.createElement('small');status.dataset.guidedStatus='';status.setAttribute('role','status');panel.append(status);
-    const footer=document.createElement('footer');
-    if(current.fault){footer.append(button(copy('exit'),()=>exit(false)));}
-    else if(current.confirmExit){footer.append(button(copy('continue'),()=>{current.confirmExit=false;paint();onResume();}),button(copy('exit'),()=>exit(false)));}
-    else {
-      if(step.kind==='info'){const next=button(step.finish?copy('finish'):copy('next'),()=>step.finish?exit(true):current.advance());next.dataset.guidedNext='';footer.append(next);}
-      else {const instruction=document.createElement('p');instruction.className='guided-match-action';instruction.textContent=copy('action');panel.append(instruction);}
-      const leave=button(copy('leave'),()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';footer.append(leave);
+    heading=document.createElement('h2');heading.id='guided-match-title';heading.textContent=current.fault?copy('paused'):copy(`step.${step.id}.title`);
+    body=document.createElement('p');body.textContent=current.fault?copy('fault',{reason:current.fault}):pages[pageIndex]||copy(`step.${step.id}.body`);panel.append(heading,body);
+    if(step.preview&&!current.fault)preview.append(cardSlot(step.preview));
+    next=button(copy('next'),()=>{if(pageIndex<pages.length-1){pageIndex++;body.textContent=pages[pageIndex];refreshNext();onResume();scheduleAdvance();}else if(step.kind==='info'){step.finish?exit(true):current.advance();}});next.dataset.guidedNext='';next.classList.add('guided-match-next');
+    const leave=button(copy('leave'),()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';leave.classList.add('guided-match-exit');footer.append(next,leave);refreshNext();
+    if(current.confirmExit){
+      const confirmation=document.createElement('section');confirmation.className='guided-match-exit-confirm';confirmation.setAttribute('role','alertdialog');confirmation.setAttribute('aria-labelledby','guided-exit-title');
+      const title=document.createElement('h2');title.id='guided-exit-title';title.textContent=copy('exitTitle');const message=document.createElement('p');message.textContent=copy('exitBody');const actions=document.createElement('footer');
+      const resume=button(copy('continue'),()=>{current.confirmExit=false;paint();onResume();scheduleAdvance();});const accept=button(copy('exit'),()=>exit(false));accept.classList.add('guided-match-exit');
+      actions.append(resume,accept);confirmation.append(title,message,actions);controls.append(confirmation);resume.focus({preventScroll:true});
+    }else panel.focus({preventScroll:true});
+    if(changed)current.explanationPending=true;
+  }
+  function fitExplanation(height){
+    const step=current.steps[current.index],text=current.fault?copy('fault',{reason:current.fault}):copy(`step.${step.id}.body`);
+    const key=[step.id,current.fault||'',panel.offsetWidth,height,getComputedStyle(panel).fontSize,text].join('|');
+    if(key===layoutKey)return;
+    const previousPending=current.explanationPending;layoutKey=key;const chunks=[];let remaining=text;
+    // Measure real wrapped text. Pages, never a scroll box or clipped explanation.
+    while(remaining.length){
+      let lo=1,hi=remaining.length,best=1;
+      while(lo<=hi){const mid=(lo+hi)>>1;body.textContent=remaining.slice(0,mid);if(panel.offsetHeight<=height){best=mid;lo=mid+1;}else hi=mid-1;}
+      if(best<remaining.length){const space=remaining.lastIndexOf(' ',best);if(space>best*.6)best=space;}
+      chunks.push(remaining.slice(0,best).trim());remaining=remaining.slice(best).trim();
     }
-    panel.append(footer);panel.focus({preventScroll:true});
+    pages=chunks.length?chunks:[''];pageIndex=Math.min(pageIndex,pages.length-1);body.textContent=pages[pageIndex];refreshNext();
+    if(previousPending&&!current.explanationPending){onResume();scheduleAdvance();}
+  }
+  function scheduleAdvance(){
+    clearTimeout(autoTimer);if(closed||!current.autoAdvancing||guidedMatchPaused())return;
+    autoTimer=setTimeout(drivePriority,160);
+  }
+  async function drivePriority(){
+    if(closed||session!==current||!current.autoAdvancing||guidedMatchPaused()||autoBusy)return;
+    tickGuidedMatch();if(closed||!current.autoAdvancing)return;
+    const step=current.steps[current.index],s=state(),control=document.getElementById('btn-end-turn');
+    if(!step.autoAdvance||!valid()||!s.isGuidedLearningMatch||s.currentMatch||s.currentTournamentMatch){current.autoAdvancing=false;return;}
+    if(s.priorityPlayer==='local'&&control&&!control.disabled&&(s.consecutivePasses||0)<2){
+      if(++autoPasses>128){failGuidedMatch('GUIDED_ADVANCE_STALLED');return;}
+      autoBusy=true;try{await onAdvancePriority();}catch{failGuidedMatch('GUIDED_ADVANCE_FAILED');}finally{autoBusy=false;}
+    }else if(s.priorityPlayer==='rival')onResume();
+    if(!closed){tickGuidedMatch();scheduleAdvance();}
   }
   function geometry(){
     if(closed)return;tickGuidedMatch();if(closed)return;
     const step=current.steps[current.index],s=state();if(lastStep!==step.id)paint();
     for(const example of examples){
-      const zone=document.querySelector(example.selector),r=zone?.getBoundingClientRect();
-      const show=document.documentElement.classList.contains('arg-guided-board-tour')&&!!r&&r.width>0&&r.height>0;
+      const r=document.querySelector(example.selector)?.getBoundingClientRect();const show=document.documentElement.classList.contains('arg-guided-board-tour')&&!!r&&r.width>0&&r.height>0;
       example.holder.hidden=!show;if(!show)continue;
-      const height=Math.max(20,Math.min(r.height-6,(r.width-12)/(2*.714))),width=height*.714;
-      Object.assign(example.holder.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
-      example.holder.style.setProperty('--ghost-height',height+'px');example.holder.style.setProperty('--ghost-width',width+'px');
+      const height=Math.max(8,Math.min(r.height-6,((r.width-8-(example.count-1)*5)/example.count)*7/5));
+      Object.assign(example.holder.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});for(const slot of example.holder.children)sizeSlot(slot,height);
     }
-    allow=current.confirmExit||current.fault?[]:guidedAllowedSelectors(s,step).filter(Boolean);
+    allow=current.confirmExit||current.fault||current.explanationPending?[]:guidedAllowedSelectors(s,step).filter(Boolean);
     const revealKey=step.id+'|'+allow.join('|');
-    if(revealKey!==revealed){
-      // The London bottom card can be at the far end of a scrollable mobile row.
-      // Reveal it without accepting a drag on an unrelated card.
-      const anchor=document.querySelector(allow[0]||step.selector||'#board');
-      if(visible(anchor)){anchor.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});revealed=revealKey;}
-    }
-    const selected=allow.map(selector=>{try{return [...document.querySelectorAll(selector)].filter(visible);}catch{return [];}}).flat();
+    if(revealKey!==revealed){const anchor=document.querySelector(allow[0]||step.selector||'#board');if(visible(anchor)){anchor.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});revealed=revealKey;}}
+    const selected=allow.flatMap(selector=>{try{return [...document.querySelectorAll(selector)].filter(visible);}catch{return [];}});
     let targets=step.kind==='action'&&selected.length?selected:[...document.querySelectorAll(step.selector||'#board')].filter(visible);
     if(step.kind==='action'&&s.priorityPlayer==='rival'&&current.progress.botHighlight)targets=[...document.querySelectorAll(current.progress.botHighlight)].filter(visible);
     if(current.confirmExit)targets=[];
-    const rects=targets.map(element=>element.getBoundingClientRect());
-    let target=null;
-    if(rects.length){target={left:Math.max(2,Math.min(...rects.map(r=>r.left))-4),top:Math.max(2,Math.min(...rects.map(r=>r.top))-4),right:Math.min(innerWidth-2,Math.max(...rects.map(r=>r.right))+4),bottom:Math.min(innerHeight-2,Math.max(...rects.map(r=>r.bottom))+4)};}
-    ring.hidden=!target;shell.style.background=target?'transparent':'#0008';
-    if(target)Object.assign(ring.style,{left:target.left+'px',top:target.top+'px',width:Math.max(0,target.right-target.left)+'px',height:Math.max(0,target.bottom-target.top)+'px'});
-    // One fixed dock above Smart Pass. Rival priority and transient animations
-    // only change the ring; they can no longer move the explanation side to side.
-    const margin=8,dockRect=dock?.getBoundingClientRect();
-    const dockTop=dockRect?.height?dockRect.top:innerHeight*.5;
-    panel.style.maxHeight=Math.max(90,Math.min(innerHeight-16,dockTop-16))+'px';
-    panel.style.left=Math.max(margin,Math.min(dockRect?.left||margin,innerWidth-panel.offsetWidth-margin))+'px';
-    panel.style.top=Math.max(margin,dockTop-panel.offsetHeight-margin)+'px';
-    // The zone tour may need to expose the library underneath that dock. Choose
-    // a clear place once per explanation, never in response to rival animations.
-    if(document.documentElement.classList.contains('arg-guided-board-tour')&&target){
-      const width=panel.offsetWidth,height=panel.offsetHeight,key=[step.id,innerWidth,innerHeight,width,height].join('|');
-      if(tourPlacement?.key!==key){
-        const preferred=[parseFloat(panel.style.left),parseFloat(panel.style.top)];
-        const candidates=[preferred,[margin,margin],[innerWidth-width-margin,margin],[margin,innerHeight-height-margin],[innerWidth-width-margin,innerHeight-height-margin]];
-        const overlap=([left,top])=>rects.reduce((sum,r)=>sum+Math.max(0,Math.min(left+width,r.right)-Math.max(left,r.left))*Math.max(0,Math.min(top+height,r.bottom)-Math.max(top,r.top)),0);
-        candidates.sort((a,b)=>overlap(a)-overlap(b));tourPlacement={key,left:candidates[0][0],top:candidates[0][1]};
-      }
-      panel.style.left=Math.max(margin,tourPlacement.left)+'px';panel.style.top=Math.max(margin,tourPlacement.top)+'px';
-    }
-    const status=panel.querySelector('[data-guided-status]');
-    const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase})+(step.kind==='action'&&s.priorityPlayer==='rival'?copy('rivalPriority'):'')+(step.kind==='action'&&!selected.length?copy('waiting'):'');
+    const rects=targets.map(el=>el.getBoundingClientRect());let target=null;
+    if(rects.length)target={left:Math.max(2,Math.min(...rects.map(r=>r.left))-4),top:Math.max(2,Math.min(...rects.map(r=>r.top))-4),right:Math.min(innerWidth-2,Math.max(...rects.map(r=>r.right))+4),bottom:Math.min(innerHeight-2,Math.max(...rects.map(r=>r.bottom))+4)};
+    ring.hidden=!target;shell.style.background=target?'transparent':'#0008';if(target)Object.assign(ring.style,{left:target.left+'px',top:target.top+'px',width:Math.max(0,target.right-target.left)+'px',height:Math.max(0,target.bottom-target.top)+'px'});
+    const margin=8,dockRect=dock?.getBoundingClientRect(),left=Math.max(margin,dockRect?.left||margin);
+    let top=Math.max(margin,innerHeight<500?24:12);
+    const utility=document.getElementById('argentinia-telemetry-panel')?.getBoundingClientRect();
+    if(utility?.height&&utility.height<100)top=Math.max(top,utility.bottom+margin);
+    if(document.documentElement.classList.contains('arg-guided-board-tour')&&target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top<top+70&&target.bottom<innerHeight*.5&&controls.getBoundingClientRect().top-target.bottom>110)top=target.bottom+margin;
+    panel.style.left=left+'px';panel.style.top=top+'px';controls.style.left=left+'px';
+    let budget=Math.max(100,Math.min(innerHeight*.55,controls.getBoundingClientRect().top-top-margin));
+    if(target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top>top+70)budget=Math.min(budget,target.top-top-margin);
+    fitExplanation(Math.floor(budget));
+    const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase})+(pages.length>1?' · '+copy('page',{current:pageIndex+1,total:pages.length}):'');
     if(status.textContent!==text)status.textContent=text;
+    if(preview.firstElementChild){
+      const height=Math.min(252,innerHeight-2*margin,innerHeight<500?innerHeight*.5:252),width=height*5/7;sizeSlot(preview.firstElementChild,height);
+      const p=panel.getBoundingClientRect(),n=controls.getBoundingClientRect();
+      const candidates=[[p.right+margin,top],[innerWidth*.55-width/2,margin],[p.right+margin,innerHeight-height-margin]];
+      const overlap=([x,y])=>[...rects,p,n].reduce((sum,r)=>sum+Math.max(0,Math.min(x+width,r.right)-Math.max(x,r.left))*Math.max(0,Math.min(y+height,r.bottom)-Math.max(y,r.top)),0);
+      candidates.sort((a,b)=>overlap(a)-overlap(b));Object.assign(preview.style,{left:Math.max(margin,Math.min(innerWidth-width-margin,candidates[0][0]))+'px',top:Math.max(margin,candidates[0][1])+'px',width:width+'px',height:height+'px'});
+    }
     frame=requestAnimationFrame(geometry);
   }
   function guard(event){
-    if(!session||closed)return;
-    tickGuidedMatch();if(!session||closed){event.preventDefault();event.stopImmediatePropagation();return;}
-    // Recompute synchronously: a double-click can arrive before the next frame,
-    // after render() has already confirmed a goal and advanced the lesson.
-    allow=current.confirmExit||current.fault?[]:guidedAllowedSelectors(state(),current.steps[current.index]).filter(Boolean);
-    const target=event.target instanceof Element?event.target:null;
-    const inside=target?.closest('#guided-match .guided-match-panel');
-    const permitted=inside||(!current.confirmExit&&allow.some(selector=>{const element=target?.closest(selector);return element?.isConnected;}));
+    if(!session||closed)return;tickGuidedMatch();if(!session||closed){event.preventDefault();event.stopImmediatePropagation();return;}
+    const step=current.steps[current.index];allow=current.confirmExit||current.fault||current.explanationPending?[]:guidedAllowedSelectors(state(),step).filter(Boolean);
+    const target=event.target instanceof Element?event.target:null,inside=target?.closest('#guided-match .guided-match-panel,#guided-match .guided-match-controls');
+    const permitted=inside||(!current.confirmExit&&allow.some(selector=>target?.closest(selector)?.isConnected));
+    if(event.type==='click'&&permitted&&!current.confirmExit&&!current.fault&&target?.closest('#btn-end-turn')&&step.autoAdvance&&event.isTrusted){
+      if(current.autoAdvancing){event.preventDefault();event.stopImmediatePropagation();return;}
+      event.preventDefault();event.stopImmediatePropagation();current.autoAdvancing=true;autoPasses=0;autoBusy=true;
+      Promise.resolve().then(()=>{if(!closed&&session===current&&!guidedMatchPaused())return onAdvancePriority();}).catch(()=>{if(!closed)failGuidedMatch('GUIDED_ADVANCE_FAILED');}).finally(()=>{autoBusy=false;if(!closed){tickGuidedMatch();scheduleAdvance();}});
+      return;
+    }
     if(event.type==='keydown'){
-      if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();current.confirmExit=true;paint();return;}
+      if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();current.confirmExit=!current.confirmExit;paint();if(!current.confirmExit){onResume();scheduleAdvance();}return;}
       if(event.key==='Tab'){
-        const nodes=[...panel.querySelectorAll('button:not(:disabled)'),...allow.flatMap(selector=>[...document.querySelectorAll(selector)].filter(visible))];
-        const index=nodes.indexOf(document.activeElement);event.preventDefault();event.stopImmediatePropagation();const next=nodes[(index+(event.shiftKey?nodes.length-1:1)+nodes.length)%nodes.length];if(next){if(!next.matches('button'))next.tabIndex=0;next.focus({preventScroll:true});}return;
+        const nodes=[...controls.querySelectorAll('button:not(:disabled)'),...allow.flatMap(selector=>[...document.querySelectorAll(selector)].filter(visible))];const index=nodes.indexOf(document.activeElement);event.preventDefault();event.stopImmediatePropagation();const next=nodes[(index+(event.shiftKey?nodes.length-1:1)+nodes.length)%nodes.length];if(next){if(!next.matches('button'))next.tabIndex=0;next.focus({preventScroll:true});}return;
       }
       if(!permitted||!['Enter',' '].includes(event.key)||event.repeat){event.preventDefault();event.stopImmediatePropagation();return;}
       if(!inside&&target?.closest('.card')){event.preventDefault();event.stopImmediatePropagation();target.closest('.card').click();return;}
@@ -185,9 +225,8 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onExit,o
     if(!permitted||['contextmenu','dblclick','dragstart'].includes(event.type)){event.preventDefault();event.stopImmediatePropagation();}
   }
   const eventTypes=['pointerdown','pointerup','mousedown','mouseup','touchstart','touchend','click','dblclick','contextmenu','dragstart','keydown','keyup'];
-  const wake=()=>{if(!closed&&document.visibilityState!=='hidden'){tickGuidedMatch();if(!closed)onResume();}};
-  for(const type of eventTypes)window.addEventListener(type,guard,{capture:true,passive:false});
-  document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);
+  const wake=()=>{if(!closed&&document.visibilityState!=='hidden'){tickGuidedMatch();if(!closed){onResume();scheduleAdvance();}}};
+  for(const type of eventTypes)window.addEventListener(type,guard,{capture:true,passive:false});document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);
   paint();geometry();return current;
 }
 

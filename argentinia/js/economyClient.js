@@ -3,6 +3,7 @@
 // construye receipts ni escribe directamente economyOperations.
 
 import { recordServiceUsage } from './serviceUsage.js';
+import { lobbyChatBlock, lobbyChatGuard, reserveLobbyChat } from './lobbyChatGuard.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { ECONOMY_PROTOCOL_VERSION } from './version.js';
 
@@ -43,8 +44,17 @@ async function call(name, payload = {}) {
       ...payload,
       economyProtocolVersion: ECONOMY_PROTOCOL_VERSION
     });
-    return response?.data;
+    const result=response?.data;
+    const blocked=name==='multiplayerSendCommunication'&&payload.scope==='lobby'&&(!payload.action||payload.action==='send')?lobbyChatBlock(result):null;
+    if(name==='multiplayerSendCommunication'&&payload.scope==='lobby'&&(!payload.action||payload.action==='send')&&!blocked&&!result?.event)throw Error('LOBBY_CHAT_RESPONSE_INVALID');
+    if(blocked)recordServiceUsage(`Functions / ${name}`,blocked.code==='LOBBY_CHAT_DUPLICATE'?'duplicateBlocked':'rateLimited');
+    return result;
   } catch (error) {
+    const blocked=name==='multiplayerSendCommunication'&&payload.scope==='lobby'&&(!payload.action||payload.action==='send')?lobbyChatBlock(error):null;
+    if(blocked){
+      recordServiceUsage(`Functions / ${name}`,blocked.code==='LOBBY_CHAT_DUPLICATE'?'duplicateBlocked':'rateLimited');
+      return {ok:false,blocked};
+    }
     recordServiceUsage(`Functions / ${name}`, 'errors');
     throw normalizeCallableError(error);
   }
@@ -198,12 +208,22 @@ export function sendMultiplayerCommunicationServer(matchId, payload = {}) {
   });
 }
 
-export function sendLobbyCommunicationServer(text = '') {
-  return call('multiplayerSendCommunication', {
-    scope: 'lobby',
-    type: 'chat',
-    text: String(text || '')
-  });
+export async function sendLobbyCommunicationServer(text = '') {
+  requireConfigured();
+  const uid=authRef.currentUser.uid;
+  const ticket=await reserveLobbyChat(uid,text);
+  if(!ticket.ok){recordServiceUsage('Chat lobby','blockedLocally');return ticket;}
+  try {
+    if(authRef.currentUser?.uid!==uid)throw Error('AUTH_CHANGED_DURING_CHAT_SEND');
+    const response=await call('multiplayerSendCommunication', {
+      scope: 'lobby',
+      action: 'send',
+      type: 'chat',
+      text: String(text || '')
+    });
+    lobbyChatGuard.finish(ticket,{accepted:!!response?.event,blocked:lobbyChatBlock(response),nextAllowedInMs:response?.nextAllowedInMs});
+    return response;
+  } catch(error){lobbyChatGuard.finish(ticket);throw error;}
 }
 
 export function deleteLobbyCommunicationServer(messageSeq) {

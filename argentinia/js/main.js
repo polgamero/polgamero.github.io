@@ -1676,7 +1676,8 @@ async function initGame(deckSource, options = {}) {
           void returnToMainMenuAfterAbandon();
         }
       },
-      renderCard:id=>{const card=cardDb.allCards.find(card=>card.id===id);return card?createCardElement(card,false,true,null,'preview'):null;},
+      renderCard:(id,{side='local',zone='preview'}={})=>{const card=cardDb.allCards.find(card=>card.id===id);return card?createCardElement({card,loyalty:card.loyalty,tapped:false,summoningSickness:false,counters:{}},false,side==='local',null,zone):null;},
+      onAdvancePriority:()=>{const control=document.getElementById('btn-end-turn');if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch&&state.priorityPlayer==='local'&&control&&!control.disabled&&typeof control.onclick==='function')return control.onclick();},
       onResume:()=>{if(!guidedMatchPaused()&&state.priorityPlayer==='rival')ensureSoloBotPriorityScheduled(150);},
       onExit:async({completed,trace})=>{
         state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();cancelActionDecisions();clearTerminalInteractions();
