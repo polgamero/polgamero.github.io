@@ -51,6 +51,8 @@ function installStyles(){
     .guided-match-panel{position:fixed;pointer-events:auto;box-sizing:border-box;width:min(410px,44vw);height:auto;max-height:none;overflow:visible;border:2px solid #d4af37;border-radius:12px;background:#0c1811;color:#f4e8c7;padding:12px;box-shadow:0 8px 30px #000;font:15px/1.4 system-ui;overflow-wrap:anywhere}
     .guided-match-panel h2{font-size:20px;line-height:1.2;color:#ffe19c;margin:0 0 8px}
     .guided-match-panel p{margin:0;white-space:pre-wrap}
+    .guided-match-copy p+p{margin-top:.35em}
+    .guided-match-copy strong{color:#ffe19c;font-weight:700}
     .guided-match-controls{position:fixed;left:var(--guide-edge);bottom:max(8px,env(safe-area-inset-bottom));pointer-events:auto;color:#ead9a1;font:13px/1.35 system-ui;max-width:calc(100vw - 16px)}
     .guided-match-controls [data-guided-status]{display:block;width:fit-content;max-width:100%;padding:3px 7px;margin-bottom:5px;border-radius:5px;background:#08100ff2;text-shadow:0 1px 2px #000;overflow-wrap:anywhere}
     .guided-match-controls footer{display:flex;gap:10px;align-items:center}
@@ -107,6 +109,16 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
   };
   session=current;
   const exit=completed=>{if(closed)return;stopGuidedMatch();onExit({completed,trace:current.trace});};
+  function renderExplanation(text){
+    body.replaceChildren();
+    // Editable plain text, with paragraph breaks and labels. Never interpret HTML.
+    for(const line of text.split(/\n+/)){
+      const paragraph=document.createElement('p'),label=line.match(/^([^:]{1,40}:)\s*/);
+      if(label){const strong=document.createElement('strong');strong.textContent=label[1];paragraph.append(strong,document.createTextNode(' '+line.slice(label[0].length)));}
+      else paragraph.textContent=line;
+      body.append(paragraph);
+    }
+  }
   function refreshNext(){
     const step=current.steps[current.index];current.explanationPending=pageIndex<pages.length-1;
     current.explanationPage=pageIndex+1;current.explanationPages=pages.length;
@@ -122,9 +134,9 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     document.documentElement.classList.toggle('arg-guided-board-tour',BOARD_TOUR.some(row=>row.id===step.id));
     if(dock){dock.classList.remove('hidden');setDock(step.id==='smart'?false:!!collapsed);}
     heading=document.createElement('h2');heading.id='guided-match-title';heading.textContent=current.fault?copy('paused'):copy(`step.${step.id}.title`);
-    body=document.createElement('p');body.textContent=current.fault?copy('fault',{reason:current.fault}):pages[pageIndex]||copy(`step.${step.id}.body`);panel.append(heading,body);
+    body=document.createElement('div');body.className='guided-match-copy';renderExplanation(current.fault?copy('fault',{reason:current.fault}):pages[pageIndex]||copy(`step.${step.id}.body`));panel.append(heading,body);
     if(step.preview&&!current.fault)preview.append(cardSlot(step.preview));
-    next=button(copy('next'),()=>{if(pageIndex<pages.length-1){pageIndex++;body.textContent=pages[pageIndex];refreshNext();onResume();scheduleAdvance();}else if(step.kind==='info'){step.finish?exit(true):current.advance();}});next.dataset.guidedNext='';next.classList.add('guided-match-next');
+    next=button(copy('next'),()=>{if(pageIndex<pages.length-1){pageIndex++;renderExplanation(pages[pageIndex]);refreshNext();onResume();scheduleAdvance();}else if(step.kind==='info'){step.finish?exit(true):current.advance();}});next.dataset.guidedNext='';next.classList.add('guided-match-next');
     const leave=button(copy('leave'),()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';leave.classList.add('guided-match-exit');footer.append(next,leave);refreshNext();
     if(current.confirmExit){
       const confirmation=document.createElement('section');confirmation.className='guided-match-exit-confirm';confirmation.setAttribute('role','alertdialog');confirmation.setAttribute('aria-labelledby','guided-exit-title');
@@ -139,14 +151,20 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     const key=[step.id,current.fault||'',panel.offsetWidth,height,getComputedStyle(panel).fontSize,text].join('|');
     if(key===layoutKey)return;
     const previousPending=current.explanationPending;layoutKey=key;const chunks=[];let remaining=text;
-    // Measure real wrapped text. Pages, never a scroll box or clipped explanation.
+    // Spend the whole available area before paginating. Keep sentences/paragraphs
+    // together whenever possible; a word boundary is only a last resort.
     while(remaining.length){
       let lo=1,hi=remaining.length,best=1;
-      while(lo<=hi){const mid=(lo+hi)>>1;body.textContent=remaining.slice(0,mid);if(panel.offsetHeight<=height){best=mid;lo=mid+1;}else hi=mid-1;}
-      if(best<remaining.length){const space=remaining.lastIndexOf(' ',best);if(space>best*.6)best=space;}
+      while(lo<=hi){const mid=(lo+hi)>>1;renderExplanation(remaining.slice(0,mid));if(panel.offsetHeight<=height){best=mid;lo=mid+1;}else hi=mid-1;}
+      if(best<remaining.length){
+        const boundaries=[...remaining.slice(0,best+1).matchAll(/\n|[.!?;]\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/gu)];
+        const end=boundaries.at(-1);
+        if(end&&end.index>0)best=end.index+(end[0][0]==='\n'?0:1);
+        else{const space=remaining.lastIndexOf(' ',best);if(space>0)best=space;}
+      }
       chunks.push(remaining.slice(0,best).trim());remaining=remaining.slice(best).trim();
     }
-    pages=chunks.length?chunks:[''];pageIndex=Math.min(pageIndex,pages.length-1);body.textContent=pages[pageIndex];refreshNext();
+    pages=chunks.length?chunks:[''];pageIndex=Math.min(pageIndex,pages.length-1);renderExplanation(pages[pageIndex]);refreshNext();
     if(previousPending&&!current.explanationPending){onResume();scheduleAdvance();}
   }
   function scheduleAdvance(){
@@ -184,13 +202,17 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     if(rects.length)target={left:Math.max(2,Math.min(...rects.map(r=>r.left))-4),top:Math.max(2,Math.min(...rects.map(r=>r.top))-4),right:Math.min(innerWidth-2,Math.max(...rects.map(r=>r.right))+4),bottom:Math.min(innerHeight-2,Math.max(...rects.map(r=>r.bottom))+4)};
     ring.hidden=!target;shell.style.background=target?'transparent':'#0008';if(target)Object.assign(ring.style,{left:target.left+'px',top:target.top+'px',width:Math.max(0,target.right-target.left)+'px',height:Math.max(0,target.bottom-target.top)+'px'});
     const margin=8,dockRect=dock?.getBoundingClientRect(),left=Math.max(margin,dockRect?.left||margin);
-    let top=Math.max(margin,innerHeight<500?24:12);
+    // Step 27 is the first land, after the complete board tour. From there on,
+    // reserve the same middle-left area over Smart Pass, regardless of targets.
+    const anchored=current.index>=LESSON_STEPS.findIndex(row=>row.id==='land1');
+    panel.dataset.placement=anchored?'smart-pass':'board-tour';
+    let top=anchored?Math.round(innerHeight*.30):Math.max(margin,innerHeight<500?24:12);
     const utility=document.getElementById('argentinia-telemetry-panel')?.getBoundingClientRect();
     if(utility?.height&&utility.height<100)top=Math.max(top,utility.bottom+margin);
     if(document.documentElement.classList.contains('arg-guided-board-tour')&&target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top<top+70&&target.bottom<innerHeight*.5&&controls.getBoundingClientRect().top-target.bottom>110)top=target.bottom+margin;
     panel.style.left=left+'px';panel.style.top=top+'px';controls.style.left=left+'px';
-    let budget=Math.max(100,Math.min(innerHeight*.55,controls.getBoundingClientRect().top-top-margin));
-    if(target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top>top+70)budget=Math.min(budget,target.top-top-margin);
+    let budget=Math.max(100,controls.getBoundingClientRect().top-top-margin);
+    if(!anchored&&target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top>top+70)budget=Math.min(budget,target.top-top-margin);
     fitExplanation(Math.floor(budget));
     const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase})+(pages.length>1?' · '+copy('page',{current:pageIndex+1,total:pages.length}):'');
     if(status.textContent!==text)status.textContent=text;
