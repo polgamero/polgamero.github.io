@@ -1,3 +1,5 @@
+import { guidedMatchActive, tickGuidedMatch } from './guidedMatch.js';
+import { countryStatistics, mountServiceUsage } from './adminServiceUsage.js';
 import { cancelPendingActionForDeadline } from './main.js';
 import { isEditorialVisible } from './editorialModel.js';
 import { installMenuTutorials, requestMenuGuideReplay } from './tutorials.js';
@@ -63,7 +65,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots, getSanctuaryStatus, resolveSanctuaryBarcode, claimSanctuaryBarcode, resolveSanctuaryResonance, claimSanctuaryResonance, loadAuthorizedDiscoveryCards, adminUploadDiscoveryArt, adminSaveDiscoveryPresentation } from './firebaseClient.js';
+import { fetchAdminServiceUsage, signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots, getSanctuaryStatus, resolveSanctuaryBarcode, claimSanctuaryBarcode, resolveSanctuaryResonance, claimSanctuaryResonance, loadAuthorizedDiscoveryCards, adminUploadDiscoveryArt, adminSaveDiscoveryPresentation } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -11193,6 +11195,7 @@ export function showAdminPanel(onBack) {
               <button class="admin-save-btn" id="admin-stats-refresh">${gameTextHtml('admin.stats.refresh')}</button>
             </div>
           </div>
+          <div id="admin-stats-countries"></div>
           <div id="admin-stats-cards"></div>
           <div id="admin-stats-charts" class="admin-chart-grid"></div>
           <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:18px;"></div>
@@ -11202,6 +11205,8 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="economyAudit">
         <div class="admin-section">
+          <nav style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px" aria-label="Secciones de auditoría"><a href="#admin-economic-section">Auditoría económica</a><a href="#admin-service-usage">Auditoría Firebase / Firestore</a></nav>
+          <h2 class="admin-section-title" id="admin-economic-section">AUDITORÍA ECONÓMICA</h2>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="admin-save-btn active" data-economy-subtab="audit">${gameTextHtml('admin.movements.tab.audit')}</button>
             <button class="admin-save-btn" data-economy-subtab="movements">${gameTextHtml('admin.movements.tab.movements')}</button>
@@ -11243,6 +11248,7 @@ export function showAdminPanel(onBack) {
             <div class="admin-debug-table-wrap" id="admin-movements-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.movements.empty')}</div></div>
             <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.movements.note')}</div>
           </div>
+          <section id="admin-service-usage" style="margin-top:28px;border-top:1px solid #a98a44;padding-top:20px"></section>
         </div>
       </div>
 
@@ -12005,6 +12011,7 @@ Receipt: ${receiptId}
   }
 
   function renderAdminStatistics(profiles, sessions, publicRows, market = null) {
+    overlay.querySelector('#admin-stats-countries').innerHTML = countryStatistics(profiles);
     const snap = buildAdminStatisticsSnapshot(profiles, sessions, publicRows, market);
     const { profileStats, games, tracked, marketNow } = snap;
     const flashCommunity=flasheraCommunitySnapshot(profiles);
@@ -12227,6 +12234,7 @@ Receipt: ${receiptId}
     }
   }
 
+  let serviceUsagePanel = null;
   let economyAuditLoaded = false;
   let economyAuditLoading = false;
   let economyAuditRows = [];
@@ -12647,7 +12655,10 @@ Receipt: ${receiptId}
     }
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
-    if (key === 'economyAudit') activateEconomySubtab(economySubtab);
+    if (key === 'economyAudit') {
+      activateEconomySubtab(economySubtab);
+      serviceUsagePanel ||= mountServiceUsage(overlay.querySelector('#admin-service-usage'), {loadGlobal:fetchAdminServiceUsage,download:downloadAdminJson});
+    }
     if (key === 'animations') ensureAdminAnimationLab();
     if (key === 'emotes') void ensureAdminEmotesPane()?.load();
     if (key === 'debug') {
@@ -16789,6 +16800,7 @@ soloPriorityB = createSoloPriorityController({
   getActivity: s => getEffectivePriorityActivity(s),
   trace: recordPriorityDiagnostic,
   isVisible: () => {
+    if(!state.currentMatch&&!state.currentTournamentMatch&&guidedMatchActive())return false;
     const visibility = readPriorityVisibility();
     recordPriorityDiagnostic('visibility', { available:visibility.visible, blocker:visibility.blocker,
       loadingHidden:document.getElementById('match-loading-overlay')?.hidden });
@@ -16811,7 +16823,7 @@ soloPriorityB = createSoloPriorityController({
     if (!tools) return;
     const indicator = document.getElementById('phase-indicator-container');
     indicator?.classList.toggle('priority-stops-available', available);
-    tools.classList.toggle('hidden', !available);
+    tools.classList.toggle('hidden', !available && !guidedMatchActive());
     tools.querySelectorAll('[data-priority-b-mode]').forEach(button => {
       const active = button.dataset.priorityBMode === mode;
       button.classList.toggle('active', active);
@@ -17209,7 +17221,8 @@ export function render() {
   // El módulo ignora multiplayer/gameOver/elecciones transitorias y no toca reglas.
   soloPriorityB.onRender();
   renderPriorityStops();
-  checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
+  if(!state.isGuidedLearningMatch)checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
+  tickGuidedMatch();
 
   // FASE 4, ETAPA 2: publica mi mitad del estado en Firestore después de CUALQUIER cambio
   // real al tablero — no se espera (render() es síncrona), y si no hay una partida

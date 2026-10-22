@@ -2,6 +2,7 @@
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
+import { recordServiceUsage } from './serviceUsage.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { ECONOMY_PROTOCOL_VERSION } from './version.js';
 
@@ -36,6 +37,7 @@ function normalizeCallableError(error) {
 async function call(name, payload = {}) {
   requireConfigured();
   const callable = httpsCallable(functions, name);
+  recordServiceUsage(`Functions / ${name}`, 'calls');
   try {
     const response = await callable({
       ...payload,
@@ -43,6 +45,7 @@ async function call(name, payload = {}) {
     });
     return response?.data;
   } catch (error) {
+    recordServiceUsage(`Functions / ${name}`, 'errors');
     throw normalizeCallableError(error);
   }
 }

@@ -241,6 +241,12 @@ export function buildCardTextLayout(card, { effectiveKeywords = null, rulesTextO
       .map(textValue => ({ kind: 'rule', ...parseAbilityWord(textValue) }));
   }
 
+  // A keyword-only sentence may occur after another ability in legacy catalog text.
+  // Reuse the exact alias matcher and only remove a whole, unconditional rule sentence.
+  // Quoted grants, conditional rules, ability words, reminders and modal options survive.
+  paragraphs = paragraphs.filter(entry => entry.kind !== 'rule' || entry.abilityWord
+    || stripDuplicatedLeadingKeywords(`${entry.text.replace(/[.,;\s]+$/, '')}.`, keywords) !== '');
+
   paragraphs = paragraphs.map(entry => ({
     ...entry,
     reminder: entry.kind === 'rule' ? reminderForRulesText(entry.text) : ''

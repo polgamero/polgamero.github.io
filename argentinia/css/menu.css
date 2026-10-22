@@ -92,7 +92,7 @@
 .arg-menu-extra-places{display:contents}
 #menu-more-places,#menu-close-places{display:none}
 .arg-menu-close{background:#0c1b13;border:1px solid #d5aa59;color:#ffdf8d;font-size:30px!important;min-width:44px;min-height:44px;border-radius:5px}
-#menu-how-to-play{align-self:flex-end;flex-direction:row;min-width:180px;min-height:44px;padding:8px 15px;border:1px solid #cda44f;background:#07130ff2;gap:10px}
+#menu-how-to-play{flex:0 0 auto;width:max-content;max-width:100%;font-size:17px;align-self:flex-end;flex-direction:row;min-width:180px;min-height:44px;padding:8px 15px;border:1px solid #cda44f;background:#07130ff2;gap:10px}
 #menu-how-to-play .arg-menu-icon{display:none}
 #menu-how-to-play::before{content:'?';border-radius:50%;background:#dfba64;color:#152014;width:25px;height:25px;font-weight:700;font-size:22px}
 .arg-menu-icon{display:block;width:48px;height:48px;flex-shrink:0;background-image:url('../assets/images/menu/icons.webp');background-size:400% 800%;background-position:var(--icon-x) var(--icon-y);background-repeat:no-repeat;pointer-events:none}
@@ -134,7 +134,7 @@ html[data-arg-appearance-main-menu="1"] .arg-menu-v2 .arg-menu-mode [data-menu-l
   .arg-menu-events{max-height:45px;overflow:auto;flex-shrink:0}.arg-menu-events .campaign-active-event-strip{font-size:12px!important;padding:4px 7px!important}
   .arg-menu-aside{width:clamp(176px,24vw,245px);gap:10px;padding:5px;margin:-5px;min-height:0}.arg-menu-panel{padding:0 4px}.arg-menu-panel-toggle{min-height:46px;font:700 15px/1.12 ArgAlegreya,sans-serif!important;padding:3px 4px;gap:5px}.arg-menu-panel-toggle .arg-menu-icon{width:28px;height:28px}.arg-menu-chevron{font-size:19px}.arg-menu-news-symbol{font-size:24px}
   #arg-menu-today-actions>.arg-menu-button{min-height:50px;gap:6px;padding:3px 2px}#arg-menu-today-content .arg-menu-icon{width:34px;height:34px}.arg-menu-action-copy>[data-menu-label]{font-size:15px}.arg-menu-action-status{font-size:11px}.arg-menu-news-list{font-size:14px;padding:5px;max-height:160px}
-  #menu-how-to-play{width:100%;min-width:0;min-height:44px;font-size:15px;padding:5px 8px;gap:6px;align-self:stretch}
+  #menu-how-to-play{width:max-content;max-width:100%;min-width:0;min-height:44px;font-size:15px;padding:5px 8px;gap:6px;align-self:flex-end}
   .arg-menu-dock{grid-template-columns:repeat(5,minmax(0,1fr));padding:3px 5px}.arg-menu-dock .arg-menu-icon{width:36px;height:36px}.arg-menu-dock [data-menu-label]{font-size:14px}.arg-menu-dock>.arg-menu-button,.arg-menu-place-slot{border-right:1px solid #cba14944}.arg-menu-dock .arg-menu-button{padding:2px;gap:1px}
   #menu-more-places{display:flex}.arg-menu-extra-places{display:none;position:absolute;bottom:calc(100% + 12px);right:0;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 90px);overflow:auto;grid-template-columns:repeat(3,minmax(0,1fr)) 44px;gap:8px;padding:12px;border:2px solid #d8ad57;border-radius:8px;background:#07130ffa;box-shadow:0 4px 24px #000}
   .places-open .arg-menu-dock{z-index:40}.places-open .arg-menu-extra-places{display:grid}.arg-menu-extra-places>.arg-menu-button{min-height:78px;border:1px solid #b5904444}.arg-menu-extra-places .arg-menu-icon{width:40px;height:40px}#menu-close-places{display:flex;position:static;align-self:center;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;max-height:44px;padding:0;aspect-ratio:1}

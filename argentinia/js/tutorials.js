@@ -2,6 +2,8 @@ import { fetchTutorialAnnouncements,isAnnouncementDismissed,dismissAnnouncement,
 import { showAnnouncementCarousel } from './campaignsUI.js';
 import { showMenuGuide } from './menuGuide.js';
 import { MENU_GUIDE_ID,MENU_GUIDE_STEPS,TUTORIAL_ZONE_SCREENS,zoneTutorialKey,defaultZoneTutorial,defaultStepTutorial,selectZoneTutorial } from './tutorialContent.js';
+import { learningPreference, rememberLearningPreference } from './guidedMatch.js';
+import { GUIDED_MATCH_VERSION } from './guidedMatchModel.js';
 
 const visible=node=>!!node?.getClientRects().length&&getComputedStyle(node).visibility!=='hidden';
 const screenSelector='#chest-overlay,#daily-rewards-overlay,#encyclopedia-overlay,#store-overlay,#sanctuary-overlay,#workshop-overlay,#deckbuilder-overlay,#mydecks-overlay,#moderation-center-overlay,#achievements-overlay,#admin-panel-overlay,#multiplayer-overlay,#tournament-overlay,#trade-market-overlay,#global-ranking-overlay,#options-menu-overlay,#deck-select-overlay,#public-profile-overlay,#starter-deck-select-overlay,#argentinia-game-manual';
@@ -10,7 +12,7 @@ const considered=new Set(),pendingPreferences=new Map();
 const flushTasks=new Map();
 function destination(){const screens=[...document.querySelectorAll(screenSelector)].filter(visible);screens.sort((a,b)=>(Number(getComputedStyle(a).zIndex)||0)-(Number(getComputedStyle(b).zIndex)||0));return screens.at(-1)?.id||(visible(document.getElementById('main-menu-overlay'))?'main':'');}
 function zoneFor(id){return document.getElementById(id)?.dataset.tutorialZone||Object.entries(TUTORIAL_ZONE_SCREENS).find(([,screen])=>screen===id)?.[0]||null;}
-function blockers({ignoreCampaign=false}={}){return [...document.querySelectorAll('[aria-modal="true"],.gy-modal-overlay,.mulligan-overlay,#mulligan-overlay,#daily-login-reward-modal,#solo-recovery-overlay,#reconnect-overlay,#global-challenge-layer,#boot-loading-overlay,#match-loading-overlay,.campaign-popup-shell')].some(n=>visible(n)&&!n.matches(screenSelector)&&!n.closest('.arg-menu-guide')&&!n.closest('#main-menu-overlay')&&!(ignoreCampaign&&n.closest('.campaign-popup-shell')));}
+function blockers({ignoreCampaign=false}={}){return [...document.querySelectorAll('#guided-match,#first-game-choice,[aria-modal="true"],.gy-modal-overlay,.mulligan-overlay,#mulligan-overlay,#daily-login-reward-modal,#solo-recovery-overlay,#reconnect-overlay,#global-challenge-layer,#boot-loading-overlay,#match-loading-overlay,.campaign-popup-shell')].some(n=>visible(n)&&!n.matches(screenSelector)&&!n.closest('.arg-menu-guide')&&!n.closest('#main-menu-overlay')&&!(ignoreCampaign&&n.closest('.campaign-popup-shell')));}
 function key(uid){return `argentinia:tutorial-preferences:${uid}`;}
 function pending(uid){if(!pendingPreferences.has(uid)){try{pendingPreferences.set(uid,new Set(JSON.parse(localStorage.getItem(key(uid))||'[]').filter(id=>typeof id==='string'&&/^[a-z0-9-]{1,100}$/.test(id)).slice(0,100)));}catch{pendingPreferences.set(uid,new Set());}}return pendingPreferences.get(uid);}
 function remember(uid,id){pending(uid).add(id);try{localStorage.setItem(key(uid),JSON.stringify([...pending(uid)].slice(-100)));}catch{}}
@@ -66,3 +68,31 @@ export function installMenuTutorials(getContext){
 }
 export function requestMenuGuideReplay(){manual=true;retryAfter=0;considered.delete(context().user?.uid);void pump();}
 export function getTutorialRuntimeStatus(){return {busy,route,entry,manual,guideVersion:MENU_GUIDE_ID,steps:MENU_GUIDE_STEPS.length};}
+
+// Explicitly await the existing editable Partida Simple banner BEFORE any deck picker.
+export async function presentPlayIntroduction(user,isCurrent=()=>true){
+  if(busy)return false;
+  busy=true;const uid=user?.uid||null,id=zoneTutorialKey('play'),guestKey='argentinia:play-intro:guest';
+  try{
+    if(uid){try{if(pending(uid).has(id)||await isAnnouncementDismissed(uid,id))return true;}catch{/* Offline default introduction remains available. */}}
+    if(!uid){try{if(localStorage.getItem(guestKey))return true;}catch{}}
+    let rows=[];try{rows=destinationContents('play',await contents('main'));}catch{}
+    if(!isCurrent())return false;
+    const selected=rows[0]||defaultStepTutorial('play');
+    await showAnnouncementCarousel([{...selected,id,dismissible:true}],{currentUser:user,isCurrent,onDismissSelected:()=>{}});
+    if(!isCurrent())return false;
+    if(uid){remember(uid,id);void flush(uid);}else{try{localStorage.setItem(guestKey,'1');}catch{}}
+    return true;
+  }finally{busy=false;}
+}
+export async function learningOfferHandled(uid){
+  if(['skip','completed'].includes(learningPreference(uid)))return true;
+  if(!uid)return false;
+  const id=`${GUIDED_MATCH_VERSION}-dismissed`;
+  try{if(pending(uid).has(id)||await isAnnouncementDismissed(uid,id)){rememberLearningPreference(uid,'skip');return true;}}catch{}
+  return false;
+}
+export function rememberLearningOutcome(uid,outcome){
+  rememberLearningPreference(uid,outcome);
+  if(uid&&['skip','completed'].includes(outcome)){remember(uid,`${GUIDED_MATCH_VERSION}-dismissed`);void flush(uid);}
+}

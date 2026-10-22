@@ -75,6 +75,8 @@ import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from 
 import { getCounterCount } from './counterEngine.js';
 import { previewReplacementEvent } from './replacementEngine.js';
 import { isLegendaryPermanentCard } from './rulesKernel.js';
+import { guidedMatchActive, guidedMatchPaused, guidedMatchProgress, getGuidedMatchStatus, failGuidedMatch } from './guidedMatch.js';
+import { ensureSoloBotPriorityScheduled } from './turnManager.js';
 
 
 const botThinkDelay = (ms) => globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true ? Promise.resolve() : sleep(ms);
@@ -994,6 +996,8 @@ async function tryBotPostBlockTrick() {
 }
 
 export async function checkRivalCounterOrResponse() {
+  // The teaching opponent only responds after the human explicitly passes priority.
+  if (guidedMatchActive()) return false;
   // FASE 4, ETAPA 4: durante una partida multiplayer real (state.currentMatch existe), el
   // "rival" es una persona de verdad con su propio cliente — nunca este código decide por
   // ella. Se blinda ACÁ, en la entrada, en vez de en cada uno de los 6 lugares de main.js
@@ -2248,6 +2252,7 @@ function botRuntimeIsHidden() {
 
 function hasBotRuntimeBlocker() {
   return !!(
+    guidedMatchPaused() ||
     state.soloRuntimeSuspended ||
     botRuntimeIsHidden() ||
     state.pendingLegendChoice ||
@@ -2255,6 +2260,59 @@ function hasBotRuntimeBlocker() {
     state.sbaKernelRunning ||
     hasBotInteractiveResolutionPending()
   );
+}
+
+async function playBotLandFromHand(landIndex) {
+  const landCard = state.rivalHand.splice(landIndex, 1)[0];
+  const entersTapped = landEntersTappedForBattlefield(landCard, false);
+  const landItem = { card: landCard, tapped: entersTapped, enteredThisTurn: true, permanentTypes: ['land'] };
+  state.rivalLands.push(landItem);
+  state.rivalLandPlayedThisTurn = true;
+  logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name }));
+  await triggerLandEtb(false, landCard, landItem, 'hand');
+  render();
+  await botThinkDelay(800);
+}
+
+// This opponent expresses a scripted intention, then uses the normal payment, stack,
+// triggers and combat engine. It never casts a human card or chooses a human target.
+async function takeGuidedBotAction() {
+  const progress=guidedMatchProgress();if(!progress)return false;
+  if(guidedMatchPaused())return true;
+  const step=getGuidedMatchStatus()?.step;
+  progress.botCastKeys ||= new Set();
+  let id=null,key=null;
+  if(spellStack.length){
+    if(state.turnCount===7&&step==='response'&&spellStack.length===1&&spellStack[0].card?.id==='inst_023') {id='inst_009';key='response';}
+    else {await passPriority('rival');return true;}
+  }else if(state.activePlayer==='rival'&&state.phase==='main1'){
+    if(!state.rivalLandPlayedThisTurn){
+      const desired=state.turnCount===2?'tier_003':state.turnCount===4?'tier_005':state.turnCount===6?'tier_003':'tier_005';
+      const index=state.rivalHand.findIndex(card=>card.id===desired);
+      if(index<0)throw Error('GUIDED_BOT_LAND_MISSING');
+      progress.botHighlight='#rival-lands';await playBotLandFromHand(index);
+      if(guidedMatchProgress()===progress&&!guidedMatchPaused())ensureSoloBotPriorityScheduled(150);
+      return true;
+    }
+    if(state.turnCount===2){id='inst_009';key='first-instant';}
+    if(state.turnCount===4){id='crea_099';key='haste-creature';}
+    if(state.turnCount===8){id='conj_002';key='sorcery';}
+    if(!id||progress.botCastKeys.has(key)){await passPriority('rival');return true;}
+  }else if(['combat_attackers','combat_blockers'].includes(state.phase))return false;
+  else {await passPriority('rival');return true;}
+  if(progress.botCastKeys.has(key)){await passPriority('rival');return true;}
+  const index=state.rivalHand.findIndex(card=>card.id===id),card=state.rivalHand[index];
+  if(!card||card.requiresTarget)throw Error('GUIDED_BOT_SPELL_MISSING');
+  const route=chooseBotCastRoute(card,{excludeCard:card});
+  if(route===null)throw Error('GUIDED_BOT_CANNOT_PAY');
+  if(!canBotBuildMainPhaseCastProposal(card))throw Error('GUIDED_BOT_ILLEGAL_PROPOSAL');
+  await payBotCastRoute(card,route,{excludeCard:card});
+  if(guidedMatchProgress()!==progress||state.currentMatch||state.gameOver)return true;
+  state.rivalHand.splice(state.rivalHand.indexOf(card),1);
+  progress.botCastKeys.add(key);progress.botHighlight='#stack-container';
+  const stackItem={card,isLocal:false,targetObj:null,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
+  addToStack(stackItem);flushDeferredLandManaTriggers();await triggerSpellCast(false,card,stackItem);
+  state.priorityPlayer='local';state.consecutivePasses=0;render();return true;
 }
 
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
@@ -2266,6 +2324,14 @@ export async function takeBotPriorityAction() {
   // startListeningToMatch, Etapa 3), nunca lo simula.
   if (state.currentMatch) return;
   if (state.gameOver || state.priorityPlayer !== 'rival' || hasBotRuntimeBlocker()) return;
+  const learningAction=guidedMatchProgress();
+  if(learningAction?.botActionRunning)return;
+  if(learningAction)learningAction.botActionRunning=true;
+  try {
+  if (guidedMatchActive()) {
+    try { if(await takeGuidedBotAction())return; }
+    catch(error){failGuidedMatch(error?.message);return;}
+  }
 
   // Stage C HF2: sin criaturas rivales, declarar CERO atacantes es determinístico.
   // No cancelar la fase ni saltar prioridades humanas: se usa el pase canónico,
@@ -2323,16 +2389,7 @@ export async function takeBotPriorityAction() {
     // Intentar bajar tierra
     const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
     if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
-      const landCard = state.rivalHand.splice(landIndex, 1)[0];
-      const entersTapped = landEntersTappedForBattlefield(landCard, false);
-      const landItem = { card: landCard, tapped: entersTapped, enteredThisTurn: true, permanentTypes: ['land'] };
-      state.rivalLands.push(landItem); 
-      state.rivalLandPlayedThisTurn = true;
-      logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name })); 
-      // PUNTO 2: el Tano dispara el mismo evento Arraigo que el jugador humano.
-      await triggerLandEtb(false, landCard, landItem, 'hand');
-      render(); 
-      await botThinkDelay(800);
+      await playBotLandFromHand(landIndex);
     }
 
     // LAND 4: si un permanente tipo Crucible/Ramunap le permite jugar Tierras desde su
@@ -2888,7 +2945,7 @@ export async function takeBotPriorityAction() {
     // 23.7.1: si ya declaró atacantes y recupera prioridad en este mismo paso después de
     // resolver un trigger, no vuelve a declarar ni a disparar anyCreatureAttacks.
     if ((state.rivalAttackersDeclaredThisTurn || 0) > 0) {
-      passPriority('rival');
+      if(learningAction)await passPriority('rival');else passPriority('rival');
       return;
     }
 
@@ -2951,7 +3008,7 @@ export async function takeBotPriorityAction() {
       }
 
       if (!unit.tapped && (!unit.summoningSickness || hasKeyword(unit,'haste'))) {
-        const shouldAttack = hardAttackIndexes ? hardAttackIndexes.has(unitIndex) : shouldRivalAttackWith(unit);
+        const shouldAttack = guidedMatchActive() ? eligibleAttackers.some(entry=>entry.unit===unit) : hardAttackIndexes ? hardAttackIndexes.has(unitIndex) : shouldRivalAttackWith(unit);
         if (shouldAttack) {
           unit.isAttacking = true;
           // Si Combat 2.0 encontró lethal esperado, no desvía daño a un Planeswalker.
@@ -3027,11 +3084,22 @@ export async function takeBotPriorityAction() {
     // ventana, después de que el atacante haya podido responder a la declaración.
     if (state.priorityPlayer === 'rival') {
       if (await tryBotPostBlockTrick()) return;
-      passPriority('rival');
+      if(learningAction)await passPriority('rival');else passPriority('rival');
     }
     return;
   }
 
   // 5. Si no hizo nada de lo anterior, pasa prioridad
-  passPriority('rival');
+  if(learningAction)await passPriority('rival');else passPriority('rival');
+  } catch(error) {
+    if(!learningAction)throw error;
+    console.warn('Guided lesson combat action failed:',error);failGuidedMatch(error?.message);
+  } finally {
+    if(learningAction){
+      learningAction.botActionRunning=false;
+      // A mobile wake may arrive while a real bot action is still awaiting. That
+      // action owns the continuation; never run two teaching actions concurrently.
+      if(guidedMatchProgress()===learningAction&&!guidedMatchPaused()&&!state.currentMatch&&!state.gameOver&&state.priorityPlayer==='rival')ensureSoloBotPriorityScheduled(180);
+    }
+  }
 }

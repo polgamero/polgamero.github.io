@@ -2465,7 +2465,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.stats.col.achievementClaims': definition('Estadísticas', 'Logros', 'Columna de hitos reclamados por jugador.'),
 
   // Auditoría económica Admin — 23.19.5.6: evidencia server-owned visible y exportable.
-  'admin.tab.economyAudit': definition('Auditoría económica', 'ECONOMÍA / AUDITORÍA', 'Nombre de la solapa de operaciones económicas del Panel Admin.'),
+  'admin.tab.economyAudit': definition('Auditoría económica', 'Auditoría', 'Nombre de la solapa de operaciones económicas del Panel Admin.'),
   'admin.audit.title': definition('Auditoría económica', '🧾 Operaciones económicas auditadas', 'Título del visor de economíaEvents y adminActions.'),
   'admin.audit.initial': definition('Auditoría económica', 'Entrá a esta solapa para leer la evidencia económica inmutable del servidor.', 'Estado inicial del visor.'),
   'admin.audit.refresh': definition('Auditoría económica', '↻ Actualizar', 'Botón para recargar evidencia económica.'),

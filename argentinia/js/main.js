@@ -1,3 +1,8 @@
+import { startGuidedMatch, stopGuidedMatch, guidedMatchActive, guidedMatchPaused, guidedMatchProgress, notifyGuidedMulligan, showFirstGameChoice } from './guidedMatch.js';
+import { buildLessonDecks, orderLibrary, REDRAW_HAND } from './guidedMatchModel.js';
+import { presentPlayIntroduction, learningOfferHandled, rememberLearningOutcome } from './tutorials.js';
+import { observeResourceUsage } from './serviceUsage.js';
+observeResourceUsage();
 import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decisionClock.js';
 import { refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { showGameDialog, closeGameDialog } from './gameDialogs.js';
@@ -5,7 +10,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
+import { createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
@@ -142,7 +147,7 @@ function injectGlobalChallengeStyles() {
   `; document.head.appendChild(style);
 }
 const GLOBAL_CHALLENGE_SAFE_SURFACES = '#main-menu-overlay,#options-menu-overlay,#multiplayer-overlay,#encyclopedia-overlay,#ranking-overlay,#game-manual-overlay';
-const GLOBAL_CHALLENGE_UNSAFE_SURFACES = '#mydecks-overlay,#deckbuilder-overlay,#deck-select-overlay,#starter-deck-select-overlay,#pack-opening-overlay,#chest-overlay,#daily-rewards-overlay,#reward-reveal-modal,#daily-login-reward-modal,#store-overlay,#trade-market-overlay,#tournament-overlay,#mulligan-overlay,#multiplayer-ready-barrier,#multiplayer-sync-barrier';
+const GLOBAL_CHALLENGE_UNSAFE_SURFACES = '#guided-match,#first-game-choice,#mydecks-overlay,#deckbuilder-overlay,#deck-select-overlay,#starter-deck-select-overlay,#pack-opening-overlay,#chest-overlay,#daily-rewards-overlay,#reward-reveal-modal,#daily-login-reward-modal,#store-overlay,#trade-market-overlay,#tournament-overlay,#mulligan-overlay,#multiplayer-ready-barrier,#multiplayer-sync-barrier';
 let globalChallengeSurfaceObserver = null;
 let globalChallengeSurfaceSafe = false;
 let globalChallengeSurfaceSyncQueued = false;
@@ -760,6 +765,7 @@ export const state = {
   // 'main2', 'end_step', 'cleanup'
   phase: 'main1', 
   gameOver: false,
+  isGuidedLearningMatch: false,
 
   // Dificultad del Tano (Grupo C, Etapa 4): 'hard' (default) usa todo lo construido en las
   // Etapas 1-3 (reacciona en velocidad instantánea, evalúa trades al Pelear, prioriza
@@ -1104,6 +1110,8 @@ export function clearTerminalInteractions() {
 }
 
 function resetGameplayStateForNewMatch() {
+  stopGuidedMatch();
+  invalidateSoloBotPrioritySchedule();
   resetSoloPriorityShortcuts();
   const preserved = Object.fromEntries([...GAMEPLAY_STATE_PERSIST_KEYS].map(key => [key,state[key]]));
   Object.entries(INITIAL_GAMEPLAY_STATE).forEach(([key,value]) => {
@@ -1295,6 +1303,7 @@ function hookGameplayButtons() {
     queueMicrotask(syncExitImage);
   }
   els.btnRestart.addEventListener('click', async () => {
+    if(state.isGuidedLearningMatch){stopGuidedMatch();invalidateSoloBotPrioritySchedule();await returnToMainMenuAfterAbandon();return;}
     const returnToTournament = !!state.currentTournamentMatch;
     try { endTelemetrySession(returnToTournament ? 'tournament_match_complete' : 'game_complete_return_menu'); } catch (error) {
       console.warn('No se pudo cerrar Telemetría al volver desde Fin de Partida:', error);
@@ -1320,6 +1329,7 @@ function hookGameplayButtons() {
   // eso el botón pide confirmación (showAbandonConfirmModal) antes de aplicar nada.
   if (els.btnAbandonGame) {
     els.btnAbandonGame.addEventListener('click', () => {
+      if(state.isGuidedLearningMatch)return;
       if (state.gameOver) return; // ya terminó de una forma normal, "abandonar" no tiene sentido
       showAbandonConfirmModal(
         async () => {
@@ -1513,8 +1523,10 @@ async function initGame(deckSource, options = {}) {
   stopMultiplayerSocialSession();
   soloGameplayReady = false;
   const tournamentMatch = options?.tournamentMatch || null;
+  const lesson = deckSource.type === 'guided';
   resetGameplayStateForNewMatch();
   state.currentTournamentMatch = tournamentMatch;
+  state.isGuidedLearningMatch = lesson;
   beginGameRngSession({ seed: gameSeedFromLocation(), label: tournamentMatch ? `tournament:${tournamentMatch.tournamentId}:${tournamentMatch.matchId}` : 'solo' });
   logMsg(gameText('game.loadingDeck'));
 
@@ -1526,7 +1538,9 @@ async function initGame(deckSource, options = {}) {
   await mobileSoloYield('board_layout_ready');
 
   let deckLabel;
-  if (deckSource.type === 'saved') {
+  const lessonDecks = lesson ? buildLessonDecks(cardDb.allCards) : null;
+  if (lesson) { state.localDeck = lessonDecks.local; deckLabel = 'Práctica guiada con El Tano'; }
+  else if (deckSource.type === 'saved') {
     state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
     deckLabel = deckSource.deck.name;
   } else {
@@ -1536,14 +1550,14 @@ async function initGame(deckSource, options = {}) {
   }
   await mobileSoloYield('local_deck_ready', { count: state.localDeck.length });
   state.botDifficulty = normalizeBotDifficulty(tournamentMatch?.difficulty || state.botDifficulty);
-  setPlayerPresenceActivity(tournamentMatch ? 'tournament' : 'solo', {
+  if (!lesson) setPlayerPresenceActivity(tournamentMatch ? 'tournament' : 'solo', {
     availability:'busy',
     difficulty:state.botDifficulty,
     tournamentRoundKey:tournamentMatch?.roundKey || ''
   });
   const botQuality = tournamentMatch?.deckQuality || botDeckQuality(state.botDifficulty);
   const botIdentity = Array.isArray(tournamentMatch?.opponent?.colors) && tournamentMatch.opponent.colors.length ? tournamentMatch.opponent.colors : undefined;
-  state.rivalDeck = buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined });
+  state.rivalDeck = lesson ? lessonDecks.rival : buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined });
   // 23.19 — no persistir ni exponer el arquetipo generado del Tano en diagnósticos de runtime.
   // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
   state.rivalDeckBuildReport = null;
@@ -1552,7 +1566,7 @@ async function initGame(deckSource, options = {}) {
   // 23.13.52 — ya no existe el supuesto histórico "el humano siempre empieza".
   // El resultado se fija una sola vez antes del mulligan para que esa información pueda
   // influir en la decisión de quedarse o cambiar la mano, igual que en un TCG real.
-  const soloStartingSide = chooseSoloStartingSide();
+  const soloStartingSide = lesson ? 'local' : chooseSoloStartingSide();
   state.activePlayer = soloStartingSide;
   state.priorityPlayer = soloStartingSide;
   state.consecutivePasses = 0;
@@ -1567,6 +1581,7 @@ async function initGame(deckSource, options = {}) {
   // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
   // completo de las dos bibliotecas sin intervenir en ningún RNG ni regla.
   const soloGameId = createSoloGameId();
+  if (!lesson) {
   startTelemetrySession({
     mode: tournamentMatch ? 'tournament' : 'solo',
     difficulty: state.botDifficulty,
@@ -1585,6 +1600,7 @@ async function initGame(deckSource, options = {}) {
     winner: soloStartingSide === 'local' ? getLocalPlayerName() : getRivalName()
   });
   recordTelemetryInitialDecks({ revealRival: true });
+  }
   await mobileSoloYield('telemetry_ready');
 
   // FASE 1: red de contención para cuando el perfil todavía no existe — el camino normal
@@ -1613,14 +1629,14 @@ async function initGame(deckSource, options = {}) {
   }
 
   // El Tano resuelve su propio mulligan solo, sin UI (ver resolveBotMulligan).
-  resolveBotMulligan();
+  if (!lesson) resolveBotMulligan();
   await mobileSoloYield('opening_hands_ready', { local: state.localHand.length, rival: state.rivalHand.length });
 
   // El jugador humano decide el suyo de forma interactiva. La partida arranca de
   // verdad recién cuando termina de resolver su mano (finishSetup).
   const finishSetup = () => {
     soloGameplayReady = true;
-    if (!tournamentMatch) beginSoloRecoverySession({
+    if (!tournamentMatch && !lesson) beginSoloRecoverySession({
       soloGameId,
       state,
       stack: spellStack,
@@ -1643,12 +1659,35 @@ async function initGame(deckSource, options = {}) {
     }
   };
 
-  await showStartingCoinToss({
+  if (!lesson) await showStartingCoinToss({
     localName: getLocalPlayerName(),
     rivalName: getRivalName(),
     winnerSide: soloStartingSide
   });
   await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length, startingSide: soloStartingSide });
+  if (lesson) {
+    hideMatchInitializationOverlay();
+    const owner = options.lessonOwner ?? null;
+    startGuidedMatch({state:()=>state,stack:()=>spellStack,
+      valid:()=>state.isGuidedLearningMatch && !state.currentMatch && !state.currentTournamentMatch && (state.currentUser?.uid||null)===owner,
+      onInvalid:()=>{
+        if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch){
+          state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();cancelActionDecisions();clearTerminalInteractions();
+          void returnToMainMenuAfterAbandon();
+        }
+      },
+      renderCard:id=>{const card=cardDb.allCards.find(card=>card.id===id);return card?createCardElement(card,false,true,null,'preview'):null;},
+      onResume:()=>{if(!guidedMatchPaused()&&state.priorityPlayer==='rival')ensureSoloBotPriorityScheduled(150);},
+      onExit:async({completed,trace})=>{
+        state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();cancelActionDecisions();clearTerminalInteractions();
+        if(completed)rememberLearningOutcome(owner,'completed');
+        // Only public tutorial transitions; no hands, deck contents, rewards or network receipt.
+        globalThis.__ARGENTINIA_GUIDED_LESSON_RESULT__={completed,trace};
+        await returnToMainMenuAfterAbandon();
+      }
+    });
+    if(!guidedMatchActive())return false;
+  }
   startLocalMulliganFlow(finishSetup);
   await mobileSoloYield('mulligan_ui_open');
 }
@@ -1816,6 +1855,7 @@ function startLocalMulliganFlow(onDone) {
     const canMulliganMore = mulliganCount < MAX_MULLIGANS;
     showMulliganModal(state.localHand, mulliganCount, canMulliganMore, {
       onMulligan: () => {
+        if (guidedMatchActive() && guidedMatchProgress()?.mulligan !== 'initial') return;
         if (!canMulliganMore) return; // seguridad extra, no debería poder llegar acá
         recordTelemetryEvent('mulligan_requested', {
           mulliganNumber: mulliganCount + 1,
@@ -1824,11 +1864,14 @@ function startLocalMulliganFlow(onDone) {
         state.localDeck.push(...state.localHand);
         state.localHand = [];
         state.localDeck = shuffle(state.localDeck);
+        if(guidedMatchActive())state.localDeck=orderLibrary(state.localDeck,[...REDRAW_HAND,'tier_005','tier_005','tier_005','tier_005']);
         for (let i = 0; i < 7; i++) state.localHand.push(state.localDeck.pop());
         mulliganCount++;
+        notifyGuidedMulligan('redrawn');
         askPlayer();
       },
       onKeep: () => {
+        if(guidedMatchActive() && mulliganCount!==1)return;
         if (mulliganCount === 0) {
           logMsg(gameText('game.mulligan.keep'));
           onDone();
@@ -1850,7 +1893,9 @@ function startLocalMulliganFlow(onDone) {
           onDone();
           return;
         }
+        notifyGuidedMulligan('bottom');
         showBottomCardsModal(state.localHand, countToBottom, (chosenCards) => {
+          if(guidedMatchActive() && (chosenCards.length!==1 || chosenCards[0]?.id!=='crea_098'))throw Error('GUIDED_BOTTOM_CHOICE_INVALID');
           chosenCards.forEach(c => {
             const idx = state.localHand.indexOf(c);
             if (idx !== -1) {
@@ -1858,6 +1903,7 @@ function startLocalMulliganFlow(onDone) {
               state.localDeck.unshift(c);
             }
           });
+          notifyGuidedMulligan('done');
           logMsg(gameText('game.mulligan.bottom', { bottom: countToBottom, hand: state.localHand.length }));
           onDone();
         });
@@ -2411,6 +2457,19 @@ async function startPlayFlow() {
     showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
     return;
   }
+  const owner=state.currentUser?.uid||null;
+  if(!await presentPlayIntroduction(state.currentUser,()=> (state.currentUser?.uid||null)===owner)){
+    showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;
+  }
+  const learningHandled=await learningOfferHandled(owner);
+  if((state.currentUser?.uid||null)!==owner){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+  if(!learningHandled){
+    const choice=await showFirstGameChoice();
+    if(choice==='back'){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+    if((state.currentUser?.uid||null)!==owner){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+    if(choice==='learn'){if(!await startLearningMatch())showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+    rememberLearningOutcome(owner,'skip');
+  }
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
   // 23.13.52 — FAIL CLOSED: si Auth dice que sos usuario real, jamás caemos al camino
   // random de invitado por falta/transición de perfil. Esa era exactamente la carrera F5.
@@ -2437,6 +2496,22 @@ async function startPlayFlow() {
   );
 }
 
+
+export async function startLearningMatch(){
+  try{await ensureMenuIdentityReady();}catch(error){console.warn('Guided lesson identity:',error);return false;}
+  if(state.currentMatch||state.currentTournamentMatch||loadSoloRecoveryCandidate()){
+    await showGameDialog('Primero cerrá o resolvé la partida pendiente. La práctica no reemplaza una partida guardada.');return false;
+  }
+  const owner=state.currentUser?.uid||null;
+  try{await cardDb.loadAll();if((state.currentUser?.uid||null)!==owner)return false;
+    await endTelemetrySession('learning_practice_start');if((state.currentUser?.uid||null)!==owner)return false;
+    const ready=await initGame({type:'guided'},{lessonOwner:owner});return ready!==false;}
+  catch(error){stopGuidedMatch();state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();hideMatchInitializationOverlay();
+    await returnToMainMenuAfterAbandon();await showGameDialog('No se pudo preparar la práctica. No se modificó tu colección ni tus puntos.');console.error('Guided lesson setup:',error);return false;}
+}
+if(typeof window!=='undefined')window.addEventListener('argentinia:replay-guided-match',()=>{
+  if(document.getElementById('main-menu-overlay'))void startLearningMatch().then(started=>{if(started)document.getElementById('main-menu-overlay')?.remove();});
+});
 
 // 23.20.0 — Torneo: el fixture se puede pausar entre partidos. El servidor marca la
 // ronda como activa RECIÉN después de elegir un mazo; desde ese momento F5/abandono = eliminación.

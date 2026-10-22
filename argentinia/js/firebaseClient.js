@@ -413,4 +413,6 @@ export const fetchPublicPlayerProfile = asyncProxy('fetchPublicPlayerProfile');
 export const setPublicProfileFavoriteCard = asyncProxy('setPublicProfileFavoriteCard');
 export const adminSyncPublicPlayerStats = asyncProxy('adminSyncPublicPlayerStats');
 
+export const fetchAdminServiceUsage = asyncProxy('fetchAdminServiceUsage');
+
 export const attestMultiplayerDeck = asyncProxy('attestMultiplayerDeck');

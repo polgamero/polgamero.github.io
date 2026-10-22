@@ -1,3 +1,4 @@
+import { createFirestoreUsageAdapter } from './firestoreUsageAdapter.js';
 import { uploadDiscoveryArt } from './discoveryArtUpload.js';
 import { settleSanctuaryClaimPresentation } from './sanctuaryClaimPresentation.js';
 // js/firebaseClient.js
@@ -23,7 +24,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, getDocsFromServer, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -45,6 +46,9 @@ import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayloa
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
 import { privateRevisionField, validateReconnectRevisionPair, normalizeSyncRevision, MULTIPLAYER_CLIENT_SESSION_ID, roleSessionField, validateRoleSession, classifyReconnectSafety } from './multiplayerReliability.js';
+
+
+const { getDoc, getDocFromServer, getDocs, getDocsFromServer, setDoc, updateDoc, deleteDoc, runTransaction, onSnapshot, writeBatch, collection, query } = createFirestoreUsageAdapter({ getDoc: sdkGetDoc, getDocFromServer: sdkGetDocFromServer, getDocs: sdkGetDocs, getDocsFromServer: sdkGetDocsFromServer, setDoc: sdkSetDoc, updateDoc: sdkUpdateDoc, deleteDoc: sdkDeleteDoc, runTransaction: sdkRunTransaction, onSnapshot: sdkOnSnapshot, writeBatch: sdkWriteBatch, collection: sdkCollection, query: sdkQuery });
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -3314,4 +3318,9 @@ export async function uploadTelemetrySession({ uid, playerName, checkpoint, reas
 
 export function attestMultiplayerDeck(matchId,deckId='',mode='saved') {
   return attestMatchDeckServer({matchId,deckId,mode,sessionId:MULTIPLAYER_CLIENT_SESSION_ID});
+}
+
+export async function fetchAdminServiceUsage() {
+  const result = await communityActionServer('admin_service_usage');
+  return result?.serviceUsage;
 }

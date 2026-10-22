@@ -191,6 +191,9 @@ function ensureManualStyles() {
       backdrop-filter:blur(9px);
     }
     #${MANUAL_OVERLAY_ID}[hidden]{display:none!important}
+    /* The fullscreen retry has a system-level z-index and otherwise covers ×
+       on a short landscape viewport. Restore it automatically when manual closes. */
+    html.argentinia-mobile:has(#${MANUAL_OVERLAY_ID}:not([hidden])) #arg-mobile-fullscreen-retry{display:none!important}
     .arg-manual-shell{
       width:min(1220px,96vw); height:min(900px,94dvh); overflow:hidden;
       display:grid; grid-template-rows:auto 1fr;
@@ -662,6 +665,11 @@ export function showGameManual({ returnFocusTo = null } = {}) {
     if (event.key === 'Escape') { event.preventDefault(); close(); }
   };
   closeBtn?.addEventListener('click', close);
+  if(document.getElementById('main-menu-overlay')){
+    const practice=document.createElement('button');practice.type='button';practice.id='manual-guided-match';practice.className='arg-manual-toc-btn';practice.textContent='Practicar una partida con El Tano';
+    practice.addEventListener('click',()=>{close();window.dispatchEvent(new Event('argentinia:replay-guided-match'));});
+    overlay.querySelector('[data-manual-scroll]')?.prepend(practice);
+  }
   window.addEventListener('keydown', onKeyDown, true);
 
   tocButtons.forEach(btn => btn.addEventListener('click', () => {

@@ -1,3 +1,4 @@
+import { guidedMatchPaused, guidedCanPass } from './guidedMatch.js';
 import { consumePriorityBudget } from './decisionClock.js';
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
 import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
@@ -137,6 +138,7 @@ function pvpRewardNotice(result) {
 }
 
 function awardMatchEndPoints(won) {
+  if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch)return;
   // 23.20.0 — Torneo has its own exactly-once authority. Never let the generic Solo
   // receipt path award a second reward for the same game.
   if (state.currentTournamentMatch) {
@@ -715,6 +717,7 @@ function soloRuntimeIsHidden() {
 
 function hasSoloBotSchedulingBlocker() {
   return !!(
+    guidedMatchPaused() ||
     state.soloRuntimeSuspended ||
     soloRuntimeIsHidden() ||
     state.pendingLegendChoice ||
@@ -766,6 +769,7 @@ export function beginActivePlayerPriorityWindow() {
 }
 
 export async function passPriority(player) {
+  if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch&&!guidedCanPass(player))return;
   if (state.gameOver || isMultiplayerInteractionBlocked()) return;
 
   // 23.15.1 — las State-Based Actions y sus decisiones reglamentarias ocurren antes de

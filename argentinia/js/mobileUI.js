@@ -651,6 +651,10 @@ function interceptMobileGameplayTap(event) {
   if (!isMobileGameplayActive()) return;
   const target = event.target;
   if (!(target instanceof Element)) return;
+  // The lesson's window capture guard already admits only the current original
+  // control. Route that explicit tap directly; a second mobile preview/confirmation
+  // would sit outside the lesson's allowed controls and block the required action.
+  if (document.documentElement.classList.contains('arg-guided-match-active')) return;
   if (target.closest('#arg-mobile-card-preview,#arg-mobile-utility-dock,#arg-mobile-layer-scrim')) return;
 
   const stackItem = target.closest('.stack-item-card');
