@@ -97,7 +97,7 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     for(const id of ids)holder.append(cardSlot(id,{side,zone:zone==='lands'?'land':zone==='planeswalkers'?'planeswalker':zone}));
     shell.prepend(holder);examples.push({holder,selector:`#${side}-${zone}`,count:ids.length});
   }
-  let frame=0,closed=false,lastStep=null,allow=[],revealed='',layoutKey='',pages=[],pageIndex=0,autoTimer=0,autoBusy=false,autoPasses=0;
+  let frame=0,closed=false,lastStep=null,allow=[],revealed='',layoutKey='',layoutChoice=null,autoTimer=0,autoBusy=false,autoPasses=0;
   let heading=null,body=null,next=null;
   const dock=document.getElementById('solo-priority-shortcuts'),collapsed=dock?.classList.contains('is-collapsed');
   const setDock=value=>{if(!dock)return;dock.classList.toggle('is-collapsed',value);const toggle=dock.querySelector('#solo-priority-toggle');if(toggle){toggle.textContent=value?'+':'−';toggle.setAttribute('aria-expanded',String(!value));}};
@@ -120,23 +120,23 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     }
   }
   function refreshNext(){
-    const step=current.steps[current.index];current.explanationPending=pageIndex<pages.length-1;
-    current.explanationPage=pageIndex+1;current.explanationPages=pages.length;
+    const step=current.steps[current.index];
+    current.explanationPage=1;current.explanationPages=1;
     if(!next)return;
-    next.textContent=step.finish&&!current.explanationPending?copy('finish'):copy('next');
-    next.disabled=!!current.fault||current.confirmExit||(!current.explanationPending&&step.kind!=='info');
+    next.textContent=step.finish?copy('finish'):copy('next');
+    next.disabled=!!current.fault||current.confirmExit||step.kind!=='info';
   }
   function paint(){
     if(closed)return;
     const step=current.steps[current.index],changed=lastStep!==step.id;lastStep=step.id;
-    if(changed){pageIndex=0;layoutKey='';pages=[];}
+    layoutKey='';layoutChoice=null;
     panel.dataset.lessonStep=step.id;panel.replaceChildren();preview.replaceChildren();footer.replaceChildren();controls.querySelector('.guided-match-exit-confirm')?.remove();
     document.documentElement.classList.toggle('arg-guided-board-tour',BOARD_TOUR.some(row=>row.id===step.id));
     if(dock){dock.classList.remove('hidden');setDock(step.id==='smart'?false:!!collapsed);}
     heading=document.createElement('h2');heading.id='guided-match-title';heading.textContent=current.fault?copy('paused'):copy(`step.${step.id}.title`);
-    body=document.createElement('div');body.className='guided-match-copy';renderExplanation(current.fault?copy('fault',{reason:current.fault}):pages[pageIndex]||copy(`step.${step.id}.body`));panel.append(heading,body);
+    body=document.createElement('div');body.className='guided-match-copy';renderExplanation(current.fault?copy('fault',{reason:current.fault}):copy(`step.${step.id}.body`));panel.append(heading,body);
     if(step.preview&&!current.fault)preview.append(cardSlot(step.preview));
-    next=button(copy('next'),()=>{if(pageIndex<pages.length-1){pageIndex++;renderExplanation(pages[pageIndex]);refreshNext();onResume();scheduleAdvance();}else if(step.kind==='info'){step.finish?exit(true):current.advance();}});next.dataset.guidedNext='';next.classList.add('guided-match-next');
+    next=button(copy('next'),()=>{if(step.kind==='info'){step.finish?exit(true):current.advance();}});next.dataset.guidedNext='';next.classList.add('guided-match-next');
     const leave=button(copy('leave'),()=>{current.confirmExit=true;paint();});leave.dataset.guidedExit='';leave.classList.add('guided-match-exit');footer.append(next,leave);refreshNext();
     if(current.confirmExit){
       const confirmation=document.createElement('section');confirmation.className='guided-match-exit-confirm';confirmation.setAttribute('role','alertdialog');confirmation.setAttribute('aria-labelledby','guided-exit-title');
@@ -146,26 +146,64 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     }else panel.focus({preventScroll:true});
     if(changed)current.explanationPending=true;
   }
-  function fitExplanation(height){
-    const step=current.steps[current.index],text=current.fault?copy('fault',{reason:current.fault}):copy(`step.${step.id}.body`);
-    const key=[step.id,current.fault||'',panel.offsetWidth,height,getComputedStyle(panel).fontSize,text].join('|');
-    if(key===layoutKey)return;
-    const previousPending=current.explanationPending;layoutKey=key;const chunks=[];let remaining=text;
-    // Spend the whole available area before paginating. Keep sentences/paragraphs
-    // together whenever possible; a word boundary is only a last resort.
-    while(remaining.length){
-      let lo=1,hi=remaining.length,best=1;
-      while(lo<=hi){const mid=(lo+hi)>>1;renderExplanation(remaining.slice(0,mid));if(panel.offsetHeight<=height){best=mid;lo=mid+1;}else hi=mid-1;}
-      if(best<remaining.length){
-        const boundaries=[...remaining.slice(0,best+1).matchAll(/\n|[.!?;]\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/gu)];
-        const end=boundaries.at(-1);
-        if(end&&end.index>0)best=end.index+(end[0][0]==='\n'?0:1);
-        else{const space=remaining.lastIndexOf(' ',best);if(space>0)best=space;}
+  function layoutExplanation(step,targets,anchored,left,margin,utility){
+    // One complete explanation per lesson. Fit the box around real rendered
+    // cards, rather than slicing text to fit an arbitrary highlight boundary.
+    const obstacles=[];
+    const add=node=>{if(visible(node)){const r=node.getBoundingClientRect();if(r.width&&r.height)obstacles.push(r);}};
+    if(anchored){
+      for(const node of document.querySelectorAll('#local-lands .card,#rival-lands .card,#local-combat .card,#rival-combat .card,#local-support .card,#rival-support .card,#local-planeswalkers .card,#rival-planeswalkers .card')){
+        add(node);add(node.querySelector('.card-inner'));
       }
-      chunks.push(remaining.slice(0,best).trim());remaining=remaining.slice(best).trim();
     }
-    pages=chunks.length?chunks:[''];pageIndex=Math.min(pageIndex,pages.length-1);renderExplanation(pages[pageIndex]);refreshNext();
-    if(previousPending&&!current.explanationPending){onResume();scheduleAdvance();}
+    for(const node of targets){
+      if(node.id==='board'||node.classList.contains('field-row'))continue;
+      add(node);
+    }
+    for(const example of examples)if(example.selector===step.selector&&!example.holder.hidden)for(const slot of example.holder.children)add(slot);
+    add(document.querySelector('#stack-container:not(.hidden)'));
+    if(utility?.width&&utility.height<100)obstacles.push(utility);
+    const nav=controls.getBoundingClientRect();obstacles.push(nav);
+    const key=[step.id,innerWidth,innerHeight,current.fault,current.confirmExit,...obstacles.flatMap(r=>[r.left,r.top,r.right,r.bottom].map(Math.round))].join('|');
+    if(key===layoutKey)return obstacles;
+    layoutKey=key;
+    const compact=innerHeight<500,baseFont=compact?12:15,minFont=compact?11:12;
+    const defaultWidth=Math.min(compact?360:410,innerWidth*(compact?.43:.44)),minWidth=Math.min(180,defaultWidth);
+    const preferredTop=anchored?Math.round(innerHeight*.30):Math.max(margin,compact?24:12,utility?.height<100?utility.bottom+margin:0);
+    const widths=new Set([defaultWidth,defaultWidth*.85,defaultWidth*.7]);
+    for(const r of obstacles)if(r.left-left-margin>=minWidth)widths.add(Math.min(defaultWidth,r.left-left-margin));
+    const overlap=(a,b)=>Math.max(0,Math.min(a.right,b.right+margin)-Math.max(a.left,b.left-margin))*Math.max(0,Math.min(a.bottom,b.bottom+margin)-Math.max(a.top,b.top-margin));
+    // Animation/render notifications must not shuffle an already clear panel.
+    const existing=panel.getBoundingClientRect();
+    if(layoutChoice?.viewport===innerWidth+'x'+innerHeight&&existing.left>=margin&&existing.top>=margin&&existing.right<=innerWidth-margin&&existing.bottom<=innerHeight-margin&&obstacles.every(r=>overlap(existing,r)===0))return obstacles;
+    let best=null;
+    for(let font=baseFont;font>=minFont;font--){
+      panel.style.fontSize=font+'px';heading.style.fontSize=font*4/3+'px';
+      for(const raw of widths){
+        const width=Math.max(minWidth,Math.floor(raw));panel.style.width=width+'px';
+        const height=panel.getBoundingClientRect().height;
+        for(const side of step.id==='smart'?['right']:['left','right']){
+          const x=side==='left'?left:innerWidth-margin-width;
+          const ys=new Set([preferredTop,margin,nav.top-height-margin,innerHeight-height-margin]);
+          for(const r of obstacles){ys.add(r.top-height-margin);ys.add(r.bottom+margin);}
+          for(const rawY of ys){
+            const y=Math.max(margin,Math.min(innerHeight-height-margin,rawY));
+            const rect={left:x,top:y,right:x+width,bottom:y+height};
+            const outside=Math.max(0,rect.bottom-innerHeight+margin)+Math.max(0,-rect.left)+Math.max(0,rect.right-innerWidth);
+            const collision=obstacles.reduce((sum,r)=>sum+overlap(rect,r),0);
+            const score=outside*1e8+collision*1e5+(baseFont-font)*250+(side==='right'&&step.id!=='smart'?1000:0)+Math.abs(y-preferredTop)+(defaultWidth-width)*.15;
+            if(!best||score<best.score)best={x,y,width,font,side,score,collision,outside};
+          }
+        }
+      }
+    }
+    Object.assign(panel.style,{left:best.x+'px',top:best.y+'px',width:best.width+'px',fontSize:best.font+'px'});heading.style.fontSize=best.font*4/3+'px';
+    layoutChoice={viewport:innerWidth+'x'+innerHeight};
+    panel.dataset.placement=best.side==='right'?'right':anchored?'smart-pass':'board-tour';
+    panel.dataset.layoutClear=String(best.collision===0&&best.outside===0);
+    const pending=current.explanationPending;current.explanationPending=false;refreshNext();
+    if(pending){onResume();scheduleAdvance();}
+    return obstacles;
   }
   function scheduleAdvance(){
     clearTimeout(autoTimer);if(closed||!current.autoAdvancing||guidedMatchPaused())return;
@@ -202,25 +240,19 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     if(rects.length)target={left:Math.max(2,Math.min(...rects.map(r=>r.left))-4),top:Math.max(2,Math.min(...rects.map(r=>r.top))-4),right:Math.min(innerWidth-2,Math.max(...rects.map(r=>r.right))+4),bottom:Math.min(innerHeight-2,Math.max(...rects.map(r=>r.bottom))+4)};
     ring.hidden=!target;shell.style.background=target?'transparent':'#0008';if(target)Object.assign(ring.style,{left:target.left+'px',top:target.top+'px',width:Math.max(0,target.right-target.left)+'px',height:Math.max(0,target.bottom-target.top)+'px'});
     const margin=8,dockRect=dock?.getBoundingClientRect(),left=Math.max(margin,dockRect?.left||margin);
-    // Step 27 is the first land, after the complete board tour. From there on,
-    // reserve the same middle-left area over Smart Pass, regardless of targets.
+    // Keep the middle-left preference after the board tour, but narrow/move the
+    // complete explanation when a real card would be obscured.
     const anchored=current.index>=LESSON_STEPS.findIndex(row=>row.id==='land1');
-    panel.dataset.placement=anchored?'smart-pass':'board-tour';
-    let top=anchored?Math.round(innerHeight*.30):Math.max(margin,innerHeight<500?24:12);
     const utility=document.getElementById('argentinia-telemetry-panel')?.getBoundingClientRect();
-    if(utility?.height&&utility.height<100)top=Math.max(top,utility.bottom+margin);
-    if(document.documentElement.classList.contains('arg-guided-board-tour')&&target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top<top+70&&target.bottom<innerHeight*.5&&controls.getBoundingClientRect().top-target.bottom>110)top=target.bottom+margin;
-    panel.style.left=left+'px';panel.style.top=top+'px';controls.style.left=left+'px';
-    let budget=Math.max(100,controls.getBoundingClientRect().top-top-margin);
-    if(!anchored&&target&&target.left<left+panel.offsetWidth&&target.right>left&&target.top>top+70)budget=Math.min(budget,target.top-top-margin);
-    fitExplanation(Math.floor(budget));
-    const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase})+(pages.length>1?' · '+copy('page',{current:pageIndex+1,total:pages.length}):'');
+    controls.style.left=left+'px';
+    const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase});
     if(status.textContent!==text)status.textContent=text;
+    const protectedRects=layoutExplanation(step,targets,anchored,left,margin,utility);
     if(preview.firstElementChild){
       const height=Math.min(252,innerHeight-2*margin,innerHeight<500?innerHeight*.5:252),width=height*5/7;sizeSlot(preview.firstElementChild,height);
       const p=panel.getBoundingClientRect(),n=controls.getBoundingClientRect();
-      const candidates=[[p.right+margin,top],[innerWidth*.55-width/2,margin],[p.right+margin,innerHeight-height-margin]];
-      const overlap=([x,y])=>[...rects,p,n].reduce((sum,r)=>sum+Math.max(0,Math.min(x+width,r.right)-Math.max(x,r.left))*Math.max(0,Math.min(y+height,r.bottom)-Math.max(y,r.top)),0);
+      const candidates=[[p.right+margin,p.top],[innerWidth*.55-width/2,margin],[innerWidth-width-margin,margin],[p.right+margin,innerHeight-height-margin]];
+      const overlap=([x,y])=>[...protectedRects,p,n].reduce((sum,r)=>sum+Math.max(0,Math.min(x+width,r.right)-Math.max(x,r.left))*Math.max(0,Math.min(y+height,r.bottom)-Math.max(y,r.top)),0);
       candidates.sort((a,b)=>overlap(a)-overlap(b));Object.assign(preview.style,{left:Math.max(margin,Math.min(innerWidth-width-margin,candidates[0][0]))+'px',top:Math.max(margin,candidates[0][1])+'px',width:width+'px',height:height+'px'});
     }
     frame=requestAnimationFrame(geometry);
