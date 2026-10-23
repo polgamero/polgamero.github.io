@@ -63,6 +63,10 @@ function installStyles(){
     .guided-match-exit-confirm{position:absolute;bottom:calc(100% + 10px);left:0;box-sizing:border-box;width:min(360px,calc(100vw - 16px));border:2px solid #b95145;border-radius:12px;background:#1e100e;padding:12px;box-shadow:0 8px 30px #000;color:#ffe6df}
     .guided-match-exit-confirm h2{font-size:17px;margin:0 0 8px}.guided-match-exit-confirm p{font-size:13px;margin:0 0 12px}.guided-match-exit-confirm footer{flex-wrap:wrap}
     .guided-match-preview{position:fixed;pointer-events:none;overflow:visible}
+    .guided-match-lesson{display:contents}
+    .guided-match-lesson.is-card-lesson{position:fixed;display:flex;align-items:center;overflow:visible}
+    .guided-match-lesson.is-card-lesson>.guided-match-panel{position:static;flex:none}
+    .guided-match-lesson.is-card-lesson>.guided-match-preview{position:relative;left:auto!important;top:auto!important;flex:none}
     .guided-match-card-slot{position:relative;flex:none;pointer-events:none}
     #guided-match :is(.guided-match-card-slot)>.card{position:absolute;left:0;top:0;box-sizing:border-box;--card-w:180px;width:180px!important;min-width:180px!important;max-width:180px!important;height:252px!important;min-height:252px!important;max-height:252px!important;transform:scale(var(--guided-card-scale,1))!important;transform-origin:top left!important;pointer-events:none!important;transition:none!important}
     #guided-match .guided-match-card-slot>.card>.card-inner{box-sizing:border-box;width:180px!important;min-width:180px!important;max-width:180px!important;height:252px!important;min-height:252px!important;max-height:252px!important;transform:none!important;container-type:size}
@@ -88,7 +92,8 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
   const status=document.createElement('small');status.dataset.guidedStatus='';status.setAttribute('role','status');
   const footer=document.createElement('footer');controls.append(status,footer);
   const preview=document.createElement('div');preview.className='guided-match-preview';preview.inert=true;
-  shell.append(ring,panel,preview,controls);document.body.append(shell);
+  const lesson=document.createElement('div');lesson.className='guided-match-lesson';lesson.append(panel,preview);
+  shell.append(ring,lesson,controls);document.body.append(shell);
   function cardSlot(id,context={}){const slot=document.createElement('div');slot.className='guided-match-card-slot';const card=renderCard(id,context);if(card)slot.append(card);return slot;}
   function sizeSlot(slot,height){slot.style.width=height*5/7+'px';slot.style.height=height+'px';slot.style.setProperty('--guided-card-scale',height/252);}
   const examples=[];
@@ -98,7 +103,7 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     shell.prepend(holder);examples.push({holder,selector:`#${side}-${zone}`,count:ids.length});
   }
   let frame=0,closed=false,lastStep=null,allow=[],revealed='',layoutKey='',layoutChoice=null,autoTimer=0,autoBusy=false,autoPasses=0;
-  let heading=null,body=null,next=null;
+  let heading=null,body=null,next=null,focusLesson=false;
   const dock=document.getElementById('solo-priority-shortcuts'),collapsed=dock?.classList.contains('is-collapsed');
   const setDock=value=>{if(!dock)return;dock.classList.toggle('is-collapsed',value);const toggle=dock.querySelector('#solo-priority-toggle');if(toggle){toggle.textContent=value?'+':'−';toggle.setAttribute('aria-expanded',String(!value));}};
   const current={state,stack,valid,onInvalid,steps:LESSON_STEPS,index:0,progress:{mulligan:'initial'},trace:[],confirmExit:false,fault:null,autoAdvancing:false,explanationPending:false,repaint:()=>paint(),
@@ -130,7 +135,7 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     if(closed)return;
     const step=current.steps[current.index],changed=lastStep!==step.id;lastStep=step.id;
     layoutKey='';layoutChoice=null;
-    panel.dataset.lessonStep=step.id;panel.replaceChildren();preview.replaceChildren();footer.replaceChildren();controls.querySelector('.guided-match-exit-confirm')?.remove();
+    lesson.style.visibility='hidden';panel.dataset.lessonStep=step.id;panel.replaceChildren();preview.replaceChildren();footer.replaceChildren();controls.querySelector('.guided-match-exit-confirm')?.remove();
     document.documentElement.classList.toggle('arg-guided-board-tour',BOARD_TOUR.some(row=>row.id===step.id));
     if(dock){dock.classList.remove('hidden');setDock(step.id==='smart'?false:!!collapsed);}
     heading=document.createElement('h2');heading.id='guided-match-title';heading.textContent=current.fault?copy('paused'):copy(`step.${step.id}.title`);
@@ -143,7 +148,7 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
       const title=document.createElement('h2');title.id='guided-exit-title';title.textContent=copy('exitTitle');const message=document.createElement('p');message.textContent=copy('exitBody');const actions=document.createElement('footer');
       const resume=button(copy('continue'),()=>{current.confirmExit=false;paint();onResume();scheduleAdvance();});const accept=button(copy('exit'),()=>exit(false));accept.classList.add('guided-match-exit');
       actions.append(resume,accept);confirmation.append(title,message,actions);controls.append(confirmation);resume.focus({preventScroll:true});
-    }else panel.focus({preventScroll:true});
+    }else focusLesson=true;
     if(changed)current.explanationPending=true;
   }
   function layoutExplanation(step,targets,anchored,left,margin,utility){
@@ -201,9 +206,47 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     layoutChoice={viewport:innerWidth+'x'+innerHeight};
     panel.dataset.placement=best.side==='right'?'right':anchored?'smart-pass':'board-tour';
     panel.dataset.layoutClear=String(best.collision===0&&best.outside===0);
+    finishExplanationLayout();
+    return obstacles;
+  }
+  function finishExplanationLayout(){
     const pending=current.explanationPending;current.explanationPending=false;refreshNext();
     if(pending){onResume();scheduleAdvance();}
-    return obstacles;
+  }
+  function layoutCardLesson(step,margin){
+    // Anatomy lessons are one centered pair, not two independently clamped boxes.
+    // The real card renderer keeps its aspect ratio; the full copy has no pages.
+    const nav=controls.getBoundingClientRect(),compact=innerHeight<500;
+    const key=['card-lesson',step.id,innerWidth,innerHeight,nav.left,nav.top,nav.right,current.confirmExit].join('|');
+    if(key===layoutKey)return;
+    layoutKey=key;
+    const gap=compact?12:20,baseFont=compact?12:15,minFont=compact?11:12;
+    const preferredWidth=compact?460:480,maxHeight=Math.max(80,innerHeight-2*margin);
+    const preferredCardHeight=Math.min(compact?252:360,maxHeight);
+    const heights=new Set([preferredCardHeight,Math.min(preferredCardHeight,Math.max(80,nav.top-2*margin))]);
+    let best=null;
+    for(const cardHeight of heights){
+      const cardWidth=cardHeight*5/7,maxWidth=innerWidth-2*margin-gap-cardWidth;
+      const widths=new Set([Math.min(preferredWidth,maxWidth),maxWidth]);
+      for(let font=baseFont;font>=minFont;font--)for(const width of widths){
+        panel.style.width=width+'px';panel.style.fontSize=font+'px';heading.style.fontSize=font*4/3+'px';
+        const panelHeight=panel.getBoundingClientRect().height,height=Math.max(panelHeight,cardHeight),groupWidth=width+gap+cardWidth;
+        const x=(innerWidth-groupWidth)/2,centerY=(innerHeight-height)/2;
+        let y=centerY;
+        if(x<nav.right+margin&&x+groupWidth>nav.left-margin&&y+height>nav.top-margin)y=Math.min(y,nav.top-margin-height);
+        y=Math.max(margin,y);
+        const outside=Math.max(0,height-maxHeight)+Math.max(0,-width);
+        const collision=Math.max(0,Math.min(x+groupWidth,nav.right+margin)-Math.max(x,nav.left-margin))*Math.max(0,Math.min(y+height,nav.bottom+margin)-Math.max(y,nav.top-margin));
+        const score=outside*1e8+collision*1e5+(baseFont-font)*1000+Math.abs(y-centerY)*2+Math.abs(width-preferredWidth)*.15+(preferredCardHeight-cardHeight)*.5;
+        if(!best||score<best.score)best={x,y,width,font,cardHeight,cardWidth,groupWidth,height,score,outside,collision};
+      }
+    }
+    Object.assign(panel.style,{width:best.width+'px',fontSize:best.font+'px'});heading.style.fontSize=best.font*4/3+'px';
+    Object.assign(lesson.style,{left:best.x+'px',top:best.y+'px',width:best.groupWidth+'px',gap:gap+'px'});
+    sizeSlot(preview.firstElementChild,best.cardHeight);
+    Object.assign(preview.style,{width:best.cardWidth+'px',height:best.cardHeight+'px'});
+    panel.dataset.placement='centered-card';panel.dataset.layoutClear=String(best.outside===0&&best.collision===0);
+    finishExplanationLayout();
   }
   function scheduleAdvance(){
     clearTimeout(autoTimer);if(closed||!current.autoAdvancing||guidedMatchPaused())return;
@@ -247,14 +290,11 @@ export function startGuidedMatch({state,stack,valid,renderCard,onResume,onAdvanc
     controls.style.left=left+'px';
     const text=copy('progress',{current:current.index+1,total:current.steps.length,turn:s.turnCount,phase:s.phase});
     if(status.textContent!==text)status.textContent=text;
-    const protectedRects=layoutExplanation(step,targets,anchored,left,margin,utility);
-    if(preview.firstElementChild){
-      const height=Math.min(252,innerHeight-2*margin,innerHeight<500?innerHeight*.5:252),width=height*5/7;sizeSlot(preview.firstElementChild,height);
-      const p=panel.getBoundingClientRect(),n=controls.getBoundingClientRect();
-      const candidates=[[p.right+margin,p.top],[innerWidth*.55-width/2,margin],[innerWidth-width-margin,margin],[p.right+margin,innerHeight-height-margin]];
-      const overlap=([x,y])=>[...protectedRects,p,n].reduce((sum,r)=>sum+Math.max(0,Math.min(x+width,r.right)-Math.max(x,r.left))*Math.max(0,Math.min(y+height,r.bottom)-Math.max(y,r.top)),0);
-      candidates.sort((a,b)=>overlap(a)-overlap(b));Object.assign(preview.style,{left:Math.max(margin,Math.min(innerWidth-width-margin,candidates[0][0]))+'px',top:Math.max(margin,candidates[0][1])+'px',width:width+'px',height:height+'px'});
-    }
+    lesson.classList.toggle('is-card-lesson',!!preview.firstElementChild);
+    if(preview.firstElementChild)layoutCardLesson(step,margin);
+    else layoutExplanation(step,targets,anchored,left,margin,utility);
+    lesson.style.visibility='';
+    if(focusLesson){focusLesson=false;panel.focus({preventScroll:true});}
     frame=requestAnimationFrame(geometry);
   }
   function guard(event){

@@ -1,4 +1,5 @@
 import { startGuidedMatch, stopGuidedMatch, guidedMatchActive, guidedMatchPaused, guidedMatchProgress, notifyGuidedMulligan, showFirstGameChoice } from './guidedMatch.js';
+import { installSessionInput, sessionActionsReady, captureSessionAction, sessionActionCurrent } from './sessionInput.js';
 import { buildLessonDecks, orderLibrary, REDRAW_HAND } from './guidedMatchModel.js';
 import { presentPlayIntroduction, learningOfferHandled, rememberLearningOutcome } from './tutorials.js';
 import { observeResourceUsage } from './serviceUsage.js';
@@ -80,8 +81,9 @@ function identityGateError(code, message = code) {
 }
 
 export async function ensureMenuIdentityReady() {
-  await waitForInitialAuthState();
-  if (state.currentUser) await userProfileLoadPromise;
+  // User actions attempted while verification is pending are rejected now, not
+  // suspended on an Auth/profile promise and replayed when it eventually resolves.
+  if (!sessionActionsReady(state)) throw identityGateError('AUTH_SESSION_CHECKING');
   if (state.currentUser && !state.userProfile) {
     throw identityGateError('AUTH_PROFILE_NOT_READY');
   }
@@ -2068,6 +2070,7 @@ async function boot() {
   globalThis.__ARGENTINIA_BOOT_STARTED__ = true;
   globalThis.__ARGENTINIA_BOOT_VERSION__ = ENGINE_VERSION;
   globalThis.__ARGENTINIA_BOOT_MODULE_URL__ = import.meta.url;
+  installSessionInput(()=>state);
   markEngineBootState('loading', { engineVersion: ENGINE_VERSION });
 
   // ENTREGA 22: instala listeners de errores/interacciones y el pequeño panel de exportación.
@@ -2451,24 +2454,29 @@ async function boot() {
 // guardado todavía (no debería pasar en la práctica, pero por las dudas), el comportamiento
 // es EXACTAMENTE el de siempre: selector de identidad, mazo random.
 async function startPlayFlow() {
+  if(!sessionActionsReady(state))return;
+  const action=captureSessionAction();
   try {
     await ensureMenuIdentityReady();
   } catch (err) {
+    if(err?.code==='AUTH_SESSION_CHECKING'||!sessionActionCurrent(action))return;
     console.error('No se pudo iniciar Jugar sin una identidad resuelta:', err);
     showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
     return;
   }
+  if(!sessionActionCurrent(action))return;
   const owner=state.currentUser?.uid||null;
-  if(!await presentPlayIntroduction(state.currentUser,()=> (state.currentUser?.uid||null)===owner)){
-    showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;
+  const valid=()=>sessionActionCurrent(action)&&(state.currentUser?.uid||null)===owner;
+  if(!await presentPlayIntroduction(state.currentUser,valid)){
+    if(valid())showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;
   }
   const learningHandled=await learningOfferHandled(owner);
-  if((state.currentUser?.uid||null)!==owner){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+  if(!valid())return;
   if(!learningHandled){
     const choice=await showFirstGameChoice();
+    if(!valid())return;
     if(choice==='back'){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
-    if((state.currentUser?.uid||null)!==owner){showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
-    if(choice==='learn'){if(!await startLearningMatch())showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
+    if(choice==='learn'){if(!await startLearningMatch()&&valid())showMainMenu(startPlayFlow,startMultiplayerFlow,startTournamentFlow);return;}
     rememberLearningOutcome(owner,'skip');
   }
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
@@ -2499,26 +2507,33 @@ async function startPlayFlow() {
 
 
 export async function startLearningMatch(){
-  try{await ensureMenuIdentityReady();}catch(error){console.warn('Guided lesson identity:',error);return false;}
+  if(!sessionActionsReady(state))return false;
+  const action=captureSessionAction();
+  try{await ensureMenuIdentityReady();}catch(error){if(error?.code!=='AUTH_SESSION_CHECKING'&&sessionActionCurrent(action))console.warn('Guided lesson identity:',error);return false;}
+  if(!sessionActionCurrent(action))return false;
   if(state.currentMatch||state.currentTournamentMatch||loadSoloRecoveryCandidate()){
     await showGameDialog(gameText('guided.pendingMatch'));return false;
   }
   const owner=state.currentUser?.uid||null;
-  try{await cardDb.loadAll();if((state.currentUser?.uid||null)!==owner)return false;
-    await endTelemetrySession('learning_practice_start');if((state.currentUser?.uid||null)!==owner)return false;
+  try{await cardDb.loadAll();if(!sessionActionCurrent(action)||(state.currentUser?.uid||null)!==owner)return false;
+    await endTelemetrySession('learning_practice_start');if(!sessionActionCurrent(action)||(state.currentUser?.uid||null)!==owner)return false;
     const ready=await initGame({type:'guided'},{lessonOwner:owner});return ready!==false;}
   catch(error){stopGuidedMatch();state.gameOver=true;soloGameplayReady=false;invalidateSoloBotPrioritySchedule();hideMatchInitializationOverlay();
     await returnToMainMenuAfterAbandon();await showGameDialog(gameText('guided.setupFailed'));console.error('Guided lesson setup:',error);return false;}
 }
 if(typeof window!=='undefined')window.addEventListener('argentinia:replay-guided-match',()=>{
+  if(!sessionActionsReady(state))return;
   if(document.getElementById('main-menu-overlay'))void startLearningMatch().then(started=>{if(started)document.getElementById('main-menu-overlay')?.remove();});
 });
 
 // 23.20.0 — Torneo: el fixture se puede pausar entre partidos. El servidor marca la
 // ronda como activa RECIÉN después de elegir un mazo; desde ese momento F5/abandono = eliminación.
 async function startTournamentFlow() {
+  if(!sessionActionsReady(state))return;
+  const action=captureSessionAction();
   try {
     await ensureMenuIdentityReady();
+    if(!sessionActionCurrent(action))return;
     if (!state.currentUser || !state.userProfile) {
       showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
       return;

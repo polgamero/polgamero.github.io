@@ -1,4 +1,5 @@
 import { guidedMatchActive, tickGuidedMatch } from './guidedMatch.js';
+import { installSessionInput, syncSessionInput, sessionActionsReady, captureSessionAction, sessionActionCurrent } from './sessionInput.js';
 import { lobbyChatGuard, lobbyChatBlock } from './lobbyChatGuard.js';
 import { recordServiceUsage } from './serviceUsage.js';
 import { countryStatistics, mountServiceUsage } from './adminServiceUsage.js';
@@ -10400,6 +10401,7 @@ function updateMainMenuLoginGatedButtons(overlay) {
   const setGate = (id, enabled, tooltip) => {
     const btn = overlay.querySelector(`#${id}`);
     if (!btn) return;
+    btn.disabled = !enabled;
     if (overlay.classList.contains('arg-menu-v2')) btn.setAttribute('data-menu-custom-hint','1');
     if (enabled) {
       btn.classList.remove('main-menu-btn-disabled');
@@ -10428,6 +10430,8 @@ function updateMainMenuLoginGatedButtons(overlay) {
   ['menu-tournament', 'menu-trade-market', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store', 'menu-chest', 'menu-workshop', 'menu-daily-rewards', 'menu-sanctuary', 'menu-achievements'].forEach(id => {
     setGate(id, loggedInReady, privateTooltip);
   });
+  ['menu-ranking','menu-options','menu-how-to-play'].forEach(id=>setGate(id,identityReady,authTooltip));
+  syncSessionInput();
 }
 
 
@@ -10511,6 +10515,7 @@ function updateRivalAccountUI() {
 }
 
 export function updateAccountUI(user) {
+  syncSessionInput();
   // RC5.2g: prime the per-account acquisition tracker as soon as the authenticated
   // profile is visible to UI. This establishes the veteran baseline before the player
   // opens another pack/trade/classified, so only genuinely later acquisitions get NUEVA.
@@ -14944,6 +14949,7 @@ export function showTradeMarketScreen(onBack) {
 }
 
 export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
+  installSessionInput(()=>state);
   clearAnimationLayer('main_menu');
   // Appearance V1 sólo entra en vigor en transiciones seguras al menú.
   applyCachedPublishedAppearance();
@@ -14991,14 +14997,17 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
 
   let menuIdentityActionPending = false;
   async function awaitMenuIdentityOrStay() {
-    if (menuIdentityActionPending) return false;
+    if (menuIdentityActionPending||!sessionActionsReady(state)||!overlay.isConnected||overlay.style.display==='none') return false;
+    const action=captureSessionAction();
     menuIdentityActionPending = true;
     try {
       await ensureMenuIdentityReady();
+      if(!sessionActionCurrent(action)||!overlay.isConnected||overlay.style.display==='none'){menuIdentityActionPending=false;return false;}
       updateMainMenuLoginGatedButtons(overlay);
       return true;
     } catch (err) {
       menuIdentityActionPending = false;
+      if(err?.code==='AUTH_SESSION_CHECKING')return false;
       console.error('No se pudo resolver la identidad antes de abrir el menú solicitado:', err);
       if (err?.code !== 'AUTH_STARTER_DECK_REQUIRED') {
         window.alert(gameText('menu.profileUnavailable'));

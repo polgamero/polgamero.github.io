@@ -1,4 +1,5 @@
 import {ensureGameDialogStyles} from './gameDialogs.js';
+import {sessionInputBlocked} from './sessionInput.js';
 // js/manualUI.js — Manual del jugador (frontend-only)
 import { gameText } from './gameTexts.js';
 // No Firebase, no economía, no gameplay mutations. Se monta sobre el menú principal y
@@ -641,6 +642,7 @@ function bindManualMedia(root) {
 
 export function showGameManual({ returnFocusTo = null } = {}) {
   if (typeof document === 'undefined') return null;
+  if (sessionInputBlocked()) return null;
   ensureManualStyles();
   document.getElementById(MANUAL_OVERLAY_ID)?.remove();
 

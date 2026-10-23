@@ -99,6 +99,7 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
   const isSetup = mode === 'setup';
   const overlay = document.createElement('div');
   overlay.className = 'username-overlay';
+  if(isSetup)overlay.dataset.sessionVerificationControl='';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
   const title = isSetup ? gameText('username.setup.title') : gameText('username.rename.title');

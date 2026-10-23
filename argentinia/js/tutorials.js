@@ -1,4 +1,5 @@
 import { fetchTutorialAnnouncements,isAnnouncementDismissed,dismissAnnouncement,claimTutorialPresentation } from './firebaseClient.js';
+import {sessionInputBlocked} from './sessionInput.js';
 import { showAnnouncementCarousel } from './campaignsUI.js';
 import { showMenuGuide } from './menuGuide.js';
 import { MENU_GUIDE_ID,MENU_GUIDE_STEPS,TUTORIAL_ZONE_SCREENS,zoneTutorialKey,defaultZoneTutorial,defaultStepTutorial,selectZoneTutorial } from './tutorialContent.js';
@@ -66,7 +67,7 @@ export function installMenuTutorials(getContext){
   // Auth/profile hydration can finish without a route change. No game tick/write.
   setInterval(()=>void pump(),750);void pump();
 }
-export function requestMenuGuideReplay(){manual=true;retryAfter=0;considered.delete(context().user?.uid);void pump();}
+export function requestMenuGuideReplay(){if(sessionInputBlocked())return;manual=true;retryAfter=0;considered.delete(context().user?.uid);void pump();}
 export function getTutorialRuntimeStatus(){return {busy,route,entry,manual,guideVersion:MENU_GUIDE_ID,steps:MENU_GUIDE_STEPS.length};}
 
 // Explicitly await the existing editable Partida Simple banner BEFORE any deck picker.
