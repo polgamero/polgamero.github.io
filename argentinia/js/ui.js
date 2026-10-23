@@ -6341,6 +6341,7 @@ export function showStoreScreen(onBack, options = {}) {
     const ownedUnique = [...new Set(state.userProfile.collection || [])];
     const eligibleCards = ownedUnique
       .filter(id => !enhancements[id])
+      .filter(id => physicalCardVariants(state.userProfile,id).some(row=>row.state==='base'&&row.count>0))
       .map(id => cardDb.getById(id))
       .filter(card => isEnhancementEligibleCard(card))
       .sort((a, b) => (Number(a?.cmc) || 0) - (Number(b?.cmc) || 0) || String(a?.name || '').localeCompare(String(b?.name || ''), 'es'));

@@ -229,7 +229,7 @@
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
   "hotfixCandidate": "HF7",
-  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE); tutorial con contrahechizo, modales compartidos, auditoría paginada y respaldo de ajustes (PRE_RELEASE); bloqueo preventivo de chat Lobby y rechazos esperados sin errores (PRE_RELEASE); controles separados del tutorial, cartas proporcionadas y avance con un toque (PRE_RELEASE); fondo móvil reemplazado por el dueño (PRE_RELEASE); tutorial con panel fijo desde paso 27 y anatomía de carta legible (PRE_RELEASE); una explicación por paso y panel que deja visibles las cartas (PRE_RELEASE); entrada bloqueada durante verificación y lecciones de cartas centradas (PRE_RELEASE)",
+  "hotfixLabel": "Acumulativo: tutoriales, agregado puntual de cartas y ajustes de Apariencia/editor · candidato Auditoría, menú y fondos; práctica guiada contra El Tano (PRE_RELEASE); corrección de hover/tutorial, manual móvil y harness QA (PRE_RELEASE); tutorial con contrahechizo, modales compartidos, auditoría paginada y respaldo de ajustes (PRE_RELEASE); bloqueo preventivo de chat Lobby y rechazos esperados sin errores (PRE_RELEASE); controles separados del tutorial, cartas proporcionadas y avance con un toque (PRE_RELEASE); fondo móvil reemplazado por el dueño (PRE_RELEASE); tutorial con panel fijo desde paso 27 y anatomía de carta legible (PRE_RELEASE); una explicación por paso y panel que deja visibles las cartas (PRE_RELEASE); entrada bloqueada durante verificación y lecciones de cartas centradas (PRE_RELEASE); nombres y orígenes del perfil público, máquina 1 sólo copias base (PRE_RELEASE)",
   "releaseStatus": "PRE_RELEASE",
   "menuAssetSha256": {
     "assets/fonts/menu/AlegreyaSans-Bold.ttf": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e",
@@ -262,6 +262,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "1372291642e1f4e63734",
+  "buildId": "6fb66eaf2ba56e33d8b9",
   "serviceUsageSchema": "arg-service-usage-v1"
 }
