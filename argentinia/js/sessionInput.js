@@ -18,9 +18,9 @@ export function syncSessionInput(){
   if(menu===appliedMenu&&blocked===appliedBlocked)return;
   appliedMenu=menu;appliedBlocked=blocked;
   document.documentElement.classList.toggle('arg-session-checking',blocked);
-  if(menu){menu.inert=blocked;menu.setAttribute('aria-busy',String(blocked));
-    if(blocked&&menu.contains(document.activeElement))document.activeElement?.blur?.();
-  }
+  // Busy describes the wait without removing hover, focus or gate hints.
+  // Activation is discarded by guard(), never by making the menu inert.
+  if(menu)menu.setAttribute('aria-busy',String(blocked));
 }
 // Only controls required by the existing serialized identity/startup flow can
 // work while it is pending. Navigation, gameplay and tutorial replay cannot.
@@ -31,6 +31,8 @@ function guard(event){
   syncSessionInput();
   if(blocked&&target?.closest(bootControls))return;
   if(event.type==='keydown'){
+    // Browsing focus and its tooltip remains available during verification.
+    if(event.key==='Tab')return;
     // Reload remains a browser recovery action, rather than an in-game command.
     if(event.key==='F5'||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'))return;
     const key=event.code||event.key;
@@ -43,15 +45,18 @@ function guard(event){
     // Compatibility mousedown/touchstart belongs to the same pointer gesture.
     // It must not revive a press begun before verification finished.
     else if(event.type==='pointerdown'||typeof PointerEvent==='undefined'){discardPointerClick=false;discardKeyboardClick=false;}
+    // Existing pointer handlers provide hover/touch feedback, not navigation.
+    // Only the ensuing activation is rejected, including a press spanning ready.
+    return;
   }
   if(event.type==='click'&&(discardPointerClick||(event.detail===0&&discardKeyboardClick))){discardPointerClick=false;suppress(event);return;}
-  if(blocked||(discardPointerClick&&['pointermove','mousemove','touchmove','pointerup','mouseup','touchend','dragstart','drop'].includes(event.type)))suppress(event);
+  if(blocked)suppress(event);
 }
 export function installSessionInput(getState){
   readState=getState;
   if(!installed){
     installed=true;
-    for(const type of ['pointerdown','pointerup','pointermove','mousedown','mouseup','mousemove','touchstart','touchend','touchmove','click','dblclick','auxclick','contextmenu','wheel','keydown','keyup','beforeinput','input','change','submit','dragstart','drop'])window.addEventListener(type,guard,{capture:true,passive:false});
+    for(const type of ['pointerdown','mousedown','touchstart','click','dblclick','auxclick','contextmenu','keydown','keyup','submit','dragstart','drop'])window.addEventListener(type,guard,{capture:true,passive:false});
     window.addEventListener('blur',()=>heldKeys.clear());
   }
   syncSessionInput();

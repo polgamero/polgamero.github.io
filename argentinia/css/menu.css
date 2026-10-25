@@ -103,6 +103,8 @@
 .arg-menu-login-note{font-size:16px;padding:10px;color:#f1dfb8;margin:0}
 .arg-menu-places-backdrop{position:absolute;inset:0;background:#000a;border:0;z-index:30}
 @media(hover:hover){.arg-menu-v2 button:not(.main-menu-btn-disabled):hover{filter:brightness(1.16)}.arg-menu-dock .arg-menu-button:not(.main-menu-btn-disabled):hover{background:#dca84a20}}
+.arg-menu-v2 button[data-session-checking]{cursor:progress}
+@media(hover:hover){.arg-menu-v2 button.main-menu-btn-disabled[data-session-checking]:hover{filter:brightness(1.16)}.arg-menu-dock .arg-menu-button.main-menu-btn-disabled[data-session-checking]:hover{background:#dca84a20}}
 
 /* Published Appearance keeps its palette and readable, bounded typography. Old absolute coordinates do not govern the new grid. */
 html[data-arg-appearance-main-menu="1"] #main-menu-overlay.arg-menu-v2{--menu-gold:var(--arg-menu-border,#d9ac4d);--menu-ink:var(--arg-menu-text,#fff0ce);--menu-dark:var(--arg-menu-bg-bottom,#07130f)}

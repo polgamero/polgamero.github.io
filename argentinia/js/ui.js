@@ -10402,7 +10402,11 @@ function updateMainMenuLoginGatedButtons(overlay) {
   const setGate = (id, enabled, tooltip) => {
     const btn = overlay.querySelector(`#${id}`);
     if (!btn) return;
-    btn.disabled = !enabled;
+    // Session capture rejects activation immediately. Native disabled would
+    // swallow the existing hover/touch "Verificando tu sesión…" feedback.
+    btn.disabled = !enabled && identityReady;
+    if (!identityReady) btn.setAttribute('data-session-checking','');
+    else btn.removeAttribute('data-session-checking');
     if (overlay.classList.contains('arg-menu-v2')) btn.setAttribute('data-menu-custom-hint','1');
     if (enabled) {
       btn.classList.remove('main-menu-btn-disabled');
