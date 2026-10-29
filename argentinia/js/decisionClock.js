@@ -14,9 +14,29 @@ export function randomLegalSubset(entries, count = 1) {
 // Returns the same callback with an exactly-once, identity-fenced deadline.
 export function timedDecision(overlay, state, callback, fallbackArgs, {
   action = false, abortArgs = () => [[]], notice = 'Al vencer el tiempo se elegirá al azar entre las opciones legales.',
-  blocked = () => false, record = () => {}, durationMs = DECISION_DURATION_MS, remove = true, onActionExpire = null, isCurrent = () => true
+  blocked = () => false, record = () => {}, durationMs = DECISION_DURATION_MS, remove = true, onActionExpire = null, isCurrent = () => true, clockHost = null
 } = {}) {
-  if (!state.currentMatch || state.gameOver) return callback;
+  // Solo/Tournament do not have a PvP match or its deadline. They still need
+  // the same modal lifetime: close BEFORE the engine callback, exactly once.
+  // Returning callback directly left source/color selectors above a live payment.
+  if (!state.currentMatch) {
+    let settled = false;
+    const stop = () => actionDecisions.delete(abort);
+    const finish = (...args) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      if (remove) overlay.remove();
+      return callback?.(...args);
+    };
+    const abort = () => {
+      if (!overlay.isConnected) { settled=true;stop();return; }
+      finish(...abortArgs());
+    };
+    if (action) actionDecisions.add(abort);
+    return finish;
+  }
+  if (state.gameOver) return callback;
   const match = state.currentMatch, uid = state.currentUser?.uid, serial=state.priorityClockSerial, deadline = Date.now() + durationMs;
   let settled = false, lastSeconds = null;
   const banner = document.createElement('div'); banner.className = 'arg-decision-clock';
@@ -26,7 +46,7 @@ export function timedDecision(overlay, state, callback, fallbackArgs, {
   const copy = document.createElement('span'); copy.textContent = notice;
   const fuse=document.createElement('div');fuse.style.cssText='height:4px;margin-top:8px;background:#edb94b;width:100%;border-radius:3px';
   banner.append(counter,copy,fuse);
-  (overlay.querySelector('.mulligan-panel,.gy-modal-content,#damage-modal-content') || overlay).append(banner);
+  (clockHost || overlay.querySelector('.mulligan-panel,.gy-modal-content,#damage-modal-content') || overlay).append(banner);
   const valid = () => state.currentMatch === match && state.currentUser?.uid === uid && !state.gameOver && isCurrent() && (!action || state.priorityClockSerial===serial);
   const fence = event => { if(!valid()){event.preventDefault();event.stopImmediatePropagation();if(remove)overlay.remove();} };
   overlay.addEventListener('click',fence,true);

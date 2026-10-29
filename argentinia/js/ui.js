@@ -6,8 +6,9 @@ import { countryStatistics, mountServiceUsage } from './adminServiceUsage.js';
 import { cancelPendingActionForDeadline } from './main.js';
 import { isEditorialVisible } from './editorialModel.js';
 import { installMenuTutorials, requestMenuGuideReplay } from './tutorials.js';
-import { timedDecision, randomLegalSubset } from './decisionClock.js';
+import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decisionClock.js';
 import { recordTelemetryEvent } from './telemetry.js';
+import { showGameDialog } from './gameDialogs.js';
 import {
   state,
   getLocalPlayerName,
@@ -473,19 +474,17 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
-  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
-  modalOverlay.__cancelDeadline=cancelDeadline;
+  const finish=timedModalChoice(modalOverlay,(confirmed,index)=>confirmed?onConfirm?.(index):onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=()=>finish();
 
   modalOverlay.querySelectorAll('.loyalty-ability-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx, 10);
-      modalOverlay.remove();
-      onConfirm(idx);
+      finish(true,idx);
     });
   });
   modalOverlay.querySelector('#modal-cancel').addEventListener('click', () => {
-    modalOverlay.remove();
-    onCancel();
+    finish();
   });
 }
 
@@ -521,8 +520,8 @@ export function showXValueModal(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
-  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
-  modalOverlay.__cancelDeadline=cancelDeadline;
+  const finish=timedModalChoice(modalOverlay,(confirmed,value)=>confirmed?onConfirm?.(value):onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=()=>finish();
 
   let xValue = 0;
   const display = modalOverlay.querySelector('#x-value-display');
@@ -535,12 +534,10 @@ export function showXValueModal(card, onConfirm, onCancel) {
     display.textContent = xValue;
   });
   modalOverlay.querySelector('#x-confirm').addEventListener('click', () => {
-    modalOverlay.remove();
-    onConfirm(xValue);
+    finish(true,xValue);
   });
   modalOverlay.querySelector('#x-cancel').addEventListener('click', () => {
-    modalOverlay.remove();
-    onCancel();
+    finish();
   });
 }
 
@@ -636,7 +633,7 @@ export function showLandSearchModal(options, onConfirm) {
     </div>`;
 
   const hint = () => overlay.querySelector('#land-search-hint');
-  const confirm = () => overlay.querySelector('#btn-confirm-land-search');
+  const confirmButton = () => overlay.querySelector('#btn-confirm-land-search');
   const row = document.createElement('div');
   row.className = 'mulligan-hand-row';
   candidates.forEach(entry => {
@@ -655,8 +652,8 @@ export function showLandSearchModal(options, onConfirm) {
         destination: options?.destinationLabel || gameText('land.search.destination.battlefield'),
         selected: chosen.size
       });
-      confirm().disabled = !allowFewer && chosen.size !== maxCount;
-      confirm().textContent = chosen.size === 0 ? gameText('land.search.failToFind') : gameText('land.search.confirm');
+      confirmButton().disabled = !allowFewer && chosen.size !== maxCount;
+      confirmButton().textContent = chosen.size === 0 ? gameText('land.search.failToFind') : gameText('land.search.confirm');
     };
     cardEl = createCardElement({ card: entry.card }, false, true, null, 'mulligan-pick', toggle);
     cardEl.classList.add('mulligan-card-slot', 'selectable');
@@ -665,9 +662,9 @@ export function showLandSearchModal(options, onConfirm) {
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
   onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates,maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se buscará ninguna carta.':undefined});
-  confirm().disabled = !allowFewer && maxCount > 0;
-  confirm().textContent = gameText('land.search.failToFind');
-  confirm().addEventListener('click', () => {
+  confirmButton().disabled = !allowFewer && maxCount > 0;
+  confirmButton().textContent = gameText('land.search.failToFind');
+  confirmButton().addEventListener('click', () => {
     if (!allowFewer && chosen.size !== maxCount) return;
     overlay.remove();
     onConfirm([...chosen]);
@@ -702,7 +699,7 @@ export function showLibrarySearchModal(options, onConfirm) {
       </div>
     </div>`;
   const hint=()=>overlay.querySelector('#library-search-hint');
-  const confirm=()=>overlay.querySelector('#btn-confirm-library-search');
+  const confirmButton=()=>overlay.querySelector('#btn-confirm-library-search');
   const row=document.createElement('div'); row.className='mulligan-hand-row';
   candidates.forEach(entry=>{
     let cardEl;
@@ -712,8 +709,8 @@ export function showLibrarySearchModal(options, onConfirm) {
       if(chosen.has(entry.index)){ chosen.delete(entry.index); cardEl.classList.remove('chosen'); }
       else if(chosen.size<maxCount){ chosen.add(entry.index); cardEl.classList.add('chosen'); }
       hint().textContent=gameText('library.search.subtitle',{count:maxCount,filter:options?.filterLabel||gameText('library.filter.any'),destination:options?.destinationLabel||gameText('library.destination.hand'),selected:chosen.size});
-      confirm().disabled=!allowFewer && chosen.size!==maxCount;
-      confirm().textContent=chosen.size===0 && allowFewer ? gameText('library.search.chooseNone') : gameText('library.search.confirm');
+      confirmButton().disabled=!allowFewer && chosen.size!==maxCount;
+      confirmButton().textContent=chosen.size===0 && allowFewer ? gameText('library.search.chooseNone') : gameText('library.search.confirm');
     };
     cardEl=createCardElement({card:entry.card},false,true,null,'mulligan-pick',toggle);
     cardEl.classList.add('mulligan-card-slot');
@@ -724,9 +721,9 @@ export function showLibrarySearchModal(options, onConfirm) {
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
   onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates.filter(e=>e.selectable!==false),maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se elegirá ninguna carta.':undefined});
-  confirm().disabled=!allowFewer && maxCount>0;
-  confirm().textContent=allowFewer?gameText('library.search.chooseNone'):gameText('library.search.confirm');
-  confirm().addEventListener('click',()=>{
+  confirmButton().disabled=!allowFewer && maxCount>0;
+  confirmButton().textContent=allowFewer?gameText('library.search.chooseNone'):gameText('library.search.confirm');
+  confirmButton().addEventListener('click',()=>{
     if(!allowFewer && chosen.size!==maxCount) return;
     overlay.remove(); onConfirm([...chosen]);
   });
@@ -805,20 +802,17 @@ export function showKickerModal(card, onConfirm, onCancel) {
     </div>
   `;
   document.body.appendChild(modalOverlay);
-  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
-  modalOverlay.__cancelDeadline=cancelDeadline;
+  const finish=timedModalChoice(modalOverlay,(confirmed,kicked)=>confirmed?onConfirm?.(kicked):onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=()=>finish();
 
   modalOverlay.querySelector('#kicker-yes').addEventListener('click', () => {
-    modalOverlay.remove();
-    onConfirm(true);
+    finish(true,true);
   });
   modalOverlay.querySelector('#kicker-no').addEventListener('click', () => {
-    modalOverlay.remove();
-    onConfirm(false);
+    finish(true,false);
   });
   modalOverlay.querySelector('#modal-cancel').addEventListener('click', () => {
-    modalOverlay.remove();
-    onCancel();
+    finish();
   });
 }
 
@@ -841,11 +835,11 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
       </div>
     </div>`;
   document.body.appendChild(modalOverlay);
-  const cancelDeadline=timedModalChoice(modalOverlay,()=>onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
-  modalOverlay.__cancelDeadline=cancelDeadline;
-  modalOverlay.querySelector('#cast-normal').addEventListener('click', () => { modalOverlay.remove(); onConfirm(false); });
-  modalOverlay.querySelector('#cast-alt').addEventListener('click', () => { modalOverlay.remove(); onConfirm(true); });
-  modalOverlay.querySelector('#cast-route-cancel').addEventListener('click', () => { modalOverlay.remove(); onCancel(); });
+  const finish=timedModalChoice(modalOverlay,(confirmed,alternative)=>confirmed?onConfirm?.(alternative):onCancel?.(),()=>[],{action:true,abortArgs:()=>[]});
+  modalOverlay.__cancelDeadline=()=>finish();
+  modalOverlay.querySelector('#cast-normal').addEventListener('click', () => finish(true,false));
+  modalOverlay.querySelector('#cast-alt').addEventListener('click', () => finish(true,true));
+  modalOverlay.querySelector('#cast-route-cancel').addEventListener('click', () => finish());
 }
 
 // ENTREGA 23.10 — selector universal de una OFERTA privada saneada. En opaque_slots la UI
@@ -874,13 +868,13 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
     </div>`;
 
   const hint = () => overlay.querySelector('#private-zone-hint');
-  const confirm = () => overlay.querySelector('#private-zone-confirm');
+  const confirmButton = () => overlay.querySelector('#private-zone-confirm');
   const row = document.createElement('div');
   row.className = 'mulligan-hand-row private-zone-card-row';
 
   const update = () => {
     hint().textContent = gameText('selection.chooseCount', { total: amount, selected: chosen.size });
-    confirm().disabled = chosen.size !== amount;
+    confirmButton().disabled = chosen.size !== amount;
   };
 
   (offer?.candidates || []).forEach((entry, idx) => {
@@ -949,7 +943,7 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   onConfirm=timedModalChoice(overlay,tokens=>tokens===null?onCancel?.():confirmPrivate(tokens),()=>[onCancel?null:randomLegalSubset((offer?.candidates||[]).filter(e=>e.selectable!==false),amount).map(e=>e.token)],{action:false,notice:onCancel?'Al vencer se cancela la selección opcional.':undefined});
   update();
 
-  confirm().addEventListener('click', () => {
+  confirmButton().addEventListener('click', () => {
     if (chosen.size !== amount) return;
     const tokens = [...chosen];
     clearMulliganHoverPreview();
@@ -958,8 +952,8 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   });
   if (onCancel) overlay.querySelector('#private-zone-cancel').addEventListener('click', () => {
     clearMulliganHoverPreview();
-    overlay.remove();
-    onCancel();
+    // Share the same cleanup/once/fence as Confirm and the decision deadline.
+    onConfirm(null);
   });
 }
 
@@ -1067,8 +1061,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     });
   });
   const cancel = () => {
-    modalOverlay.remove();
-    if (onCancel) onCancel();
+    onChoose();
   };
   modalOverlay.querySelector('.gy-close-btn').onclick = cancel;
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) cancel(); };
@@ -1107,18 +1100,17 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
   `;
 
   document.body.appendChild(modalOverlay);
-  timedModalChoice(modalOverlay,()=>{},()=>[],{action:true,abortArgs:()=>[],notice:'Al vencer se cierra sin activar ninguna habilidad.'});
+  const finish=timedModalChoice(modalOverlay,index=>{if(Number.isInteger(index))activateLoyaltyAbility(pwItem,index,isLocal);},()=>[],{action:true,abortArgs:()=>[],notice:'Al vencer se cierra sin activar ninguna habilidad.'});
 
   modalOverlay.querySelectorAll('.loyalty-ability-btn:not(.disabled)').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx, 10);
-      modalOverlay.remove();
-      activateLoyaltyAbility(pwItem, idx, isLocal);
+      finish(idx);
     });
   });
 
-  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
-  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => finish();
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) finish(); };
 }
 
 export function openGraveyardModal(isLocal) {
@@ -4533,7 +4525,7 @@ export function showEncyclopedia(onBack) {
         });
       } catch (error) {
         console.error('No se pudo abrir el editor de texto:', error);
-        window.alert(`No se pudo abrir el editor de texto: ${error?.message || error}`);
+        void showGameDialog(`No se pudo abrir el editor de texto: ${error?.message || error}`);
       } finally { if (editTextBtn.isConnected) editTextBtn.disabled = false; }
     });
     textBox.appendChild(editTextBtn);
@@ -4589,7 +4581,7 @@ export function showEncyclopedia(onBack) {
       }
     };
     save.addEventListener('click',()=>void persist());
-    reset.addEventListener('click',()=>{if(window.confirm('¿Restaurar la pista original de esta carta? La nota interna se conserva.'))void persist({restore:true});});
+    reset.addEventListener('click',async()=>{if(await showGameDialog('¿Restaurar la pista original de esta carta? La nota interna se conserva.',{confirm:true,valid:()=>reset.isConnected}))void persist({restore:true});});
     setTimeout(()=>clue.focus(),0);
   }
 
@@ -4762,7 +4754,7 @@ export function showEncyclopedia(onBack) {
           try {
             await openArtLayoutEditor({ card:displayCard, layoutId: artLayoutId, renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null), onSaved: (_layout, meta) => { editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom); editArtBtn.title = meta?.custom ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte'; } });
           } catch (error) {
-            console.error('No se pudo abrir el editor de arte:', error); window.alert(`No se pudo abrir el editor de arte: ${error?.message || error}`);
+            console.error('No se pudo abrir el editor de arte:', error); void showGameDialog(`No se pudo abrir el editor de arte: ${error?.message || error}`);
           } finally { if (editArtBtn.isConnected) editArtBtn.disabled = false; }
         });
         slot.addEventListener('encyclopedia-stage-change', syncArtEditor);
@@ -4838,7 +4830,7 @@ export function showEncyclopedia(onBack) {
             if (unpublishedOnly) refreshGrid();
           } catch (error) {
             checkbox.checked = !desired;
-            window.alert(`No se pudo ${desired?'habilitar':'suspender'} la carta: ${error?.message || error}`);
+            void showGameDialog(`No se pudo ${desired?'habilitar':'suspender'} la carta: ${error?.message || error}`);
           } finally { checkbox.disabled = false; }
         });
         slot.appendChild(publication);
@@ -9910,22 +9902,25 @@ function showModerationComposer({ title = gameText('support.contact'), subject =
   return layer;
 }
 
-async function renderModerationThreadDetail(container,caseId,{admin=false,onChanged}={}){
+async function renderModerationThreadDetail(container,caseId,{admin=false,onChanged,onRead}={}){
   if(!container||!caseId)return;
   container.innerHTML='<div class="admin-debug-summary">Cargando conversación…</div>';
   try{
     const thread=await getModerationCaseThread(caseId); const item=thread?.case||{}; const messages=Array.isArray(thread?.messages)?thread.messages:[];
-    await markModerationCaseRead(caseId).catch(()=>null);
+    // An Admin can also be the recipient. A moderation read does not acknowledge
+    // that account's personal notice; use the existing owner-checked ack route.
+    const acknowledgement=await (admin&&isOwnInformationCase(item)?acknowledgeModerationCase(caseId):markModerationCaseRead(caseId)).catch(()=>null);
+    if(acknowledgement)onRead?.(caseId,acknowledgement);
     const evidence=item.messageSnapshot?.text?`<div style="margin-top:8px;padding:8px;border:1px solid rgba(255,255,255,.12);border-radius:7px;"><b>Mensaje reportado:</b> “${escapeHtml(item.messageSnapshot.text)}”</div>`:'';
     const trade=item.tradeSnapshot?`<div style="margin-top:8px;font-size:12px;color:#aab5ad;">Disputa vinculada al intercambio ${escapeHtml(item.tradeId||'')}</div>`:'';
-    const caseOpen=item.status==='open';
+    const caseOpen=item.status==='open'&&!item.readOnly;
     const canReply=caseOpen&&item.pendingRole===(admin?'admin':'user');
     const waitingTurn=caseOpen&&!canReply?`<div class="admin-debug-summary" style="margin-top:12px;">${admin?'Esperando la respuesta del jugador.':'Esperando la respuesta de Moderación.'}</div>`:'';
     container.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;"><div><h3 style="margin:0;color:#f0e0b0;">${escapeHtml(item.subject||'Caso de Moderación')}</h3><div style="margin-top:4px;font-size:12px;color:#aab5ad;">${escapeHtml(moderationCaseStatusText(item,admin))} · Caso ${escapeHtml(item.caseId||'')}</div>${admin?`<div style="margin-top:3px;font-size:12px;color:#aab5ad;">${escapeHtml(item.reporterUsername||'Jugador')} · ${escapeHtml(item.reporterEmailSnapshot||item.reporterUid||'')}</div>`:''}</div></div>
-      ${evidence}${trade}<div style="display:grid;gap:8px;margin-top:12px;max-height:44vh;overflow:auto;padding-right:3px;">${messages.map(row=>moderationMessageHtml(row,admin)).join('')||'<div class="admin-debug-empty">Sin mensajes.</div>'}</div>
+      ${item.readOnly?'<div class="admin-debug-summary" style="margin-top:10px;">Información · Ticket cerrado, sin respuestas.</div>':''}${evidence}${trade}<div style="display:grid;gap:8px;margin-top:12px;max-height:44vh;overflow:auto;padding-right:3px;">${messages.map(row=>moderationMessageHtml(row,admin)).join('')||'<div class="admin-debug-empty">Sin mensajes.</div>'}</div>
       ${canReply?`<div style="margin-top:12px;"><textarea id="moderation-thread-reply" maxlength="1000" rows="4" placeholder="${admin?'Responder al jugador…':'Responder a Moderación…'}" style="width:100%;box-sizing:border-box;background:#111a14;color:#efe4bc;border:1px solid rgba(212,175,55,.45);border-radius:8px;padding:10px;resize:vertical;"></textarea></div>`:waitingTurn}
       <div id="moderation-thread-action-status" style="min-height:18px;margin-top:7px;color:#e5c978;font-size:12px;"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px;">${canReply?`<button class="admin-save-btn" id="moderation-thread-reply-send" style="width:auto;margin:0;">ENVIAR RESPUESTA</button>`:''}${!admin&&caseOpen?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-close">CERRAR MI CASO</button>':''}${admin&&caseOpen?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-resolve">RESOLVER CASO</button>':''}${admin&&item.status==='resolved'?'<button class="admin-save-btn" id="moderation-thread-reopen" style="width:auto;margin:0;">REABRIR CASO</button>':''}</div>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px;">${canReply?`<button class="admin-save-btn" id="moderation-thread-reply-send" style="width:auto;margin:0;">ENVIAR RESPUESTA</button>`:''}${!admin&&caseOpen?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-close">CERRAR MI CASO</button>':''}${admin&&caseOpen?'<button class="mulligan-btn mulligan-btn-mull" id="moderation-thread-resolve">RESOLVER CASO</button>':''}${admin&&item.status==='resolved'&&!item.readOnly?'<button class="admin-save-btn" id="moderation-thread-reopen" style="width:auto;margin:0;">REABRIR CASO</button>':''}</div>`;
     const actionStatus=container.querySelector('#moderation-thread-action-status');
     container.querySelector('#moderation-thread-reply-send')?.addEventListener('click',async e=>{const body=container.querySelector('#moderation-thread-reply')?.value?.trim()||'';if(!body){actionStatus.textContent='Escribí una respuesta.';return;}e.currentTarget.disabled=true;actionStatus.textContent='Enviando…';try{if(admin)await adminReplyModerationCase(caseId,body);else await replyModerationCase(caseId,body);await onChanged?.(caseId);}catch(err){actionStatus.textContent=err?.message||'No se pudo responder.';e.currentTarget.disabled=false;}});
     container.querySelector('#moderation-thread-close')?.addEventListener('click',async e=>{const button=e.currentTarget;if(!await showGameDialog(gameText('support.closeConfirm'),{confirm:true}))return;if(!button.isConnected)return;button.disabled=true;try{await closeModerationCase(caseId);await onChanged?.(caseId);}catch(err){actionStatus.textContent=err?.message||'No se pudo cerrar el caso.';button.disabled=false;}});
@@ -9955,10 +9950,18 @@ export async function showModerationCenter(onBack = null) {
 
 export async function showAdminModerationInbox(onBack=null){
   injectMulliganStyles();injectAdminPanelStyles();injectEncyclopediaStyles();ensureModerationInboxStyles();document.getElementById('moderation-center-overlay')?.remove();const overlay=document.createElement('div');overlay.id='moderation-center-overlay';overlay.style.cssText='position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
-  overlay.innerHTML=`<div style="max-width:1180px;margin:0 auto;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><div><h2 style="margin:0;color:#f0e0b0;">🛡️ ${gameTextHtml('support.adminTitle')}</h2><div style="font-size:12px;color:#aab5ad;margin-top:3px;">Casos de jugadores y conversaciones pendientes</div></div></div><div class="admin-section"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><select id="admin-inbox-state" class="admin-field-input"><option value="pending">Pendientes</option><option value="open">Abiertos</option><option value="resolved">Resueltos</option><option value="all">Todos</option></select><select id="admin-inbox-kind" class="admin-field-input"><option value="all">Todos los tipos</option><option value="contact">Consulta</option><option value="report_user">Reporte de usuario</option><option value="report_lobby_message">Reporte de mensaje</option><option value="dispute">Disputa de Mercado</option></select><input id="admin-inbox-search" class="admin-field-input" placeholder="Buscar username, email, UID, asunto o caso" style="text-align:left;min-width:280px;flex:1;"><button class="admin-save-btn" id="admin-inbox-refresh" style="width:auto;margin:0;">↻ Actualizar</button></div><div id="admin-inbox-summary" class="admin-debug-summary">Cargando…</div><div class="moderation-admin-grid" style="display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.5fr);gap:12px;margin-top:12px;"><div id="admin-inbox-list"></div><div id="admin-inbox-detail" style="border:1px solid rgba(212,175,55,.18);border-radius:10px;padding:12px;min-height:220px;"><div class="admin-debug-empty">Elegí un caso para abrir el hilo.</div></div></div></div></div>`;document.body.appendChild(overlay);overlay.querySelector('#moderation-center-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
-  const list=overlay.querySelector('#admin-inbox-list'),detail=overlay.querySelector('#admin-inbox-detail'),summary=overlay.querySelector('#admin-inbox-summary'),stateFilter=overlay.querySelector('#admin-inbox-state'),kindFilter=overlay.querySelector('#admin-inbox-kind'),search=overlay.querySelector('#admin-inbox-search');let cases=[],selected='';
-  const apply=()=>{const q=String(search?.value||'').trim().toLowerCase(),sf=stateFilter?.value||'pending',kf=kindFilter?.value||'all';const filtered=cases.filter(item=>{if(sf==='pending'&&!(item.status==='open'&&item.pendingRole==='admin'))return false;if(sf==='open'&&item.status!=='open')return false;if(sf==='resolved'&&item.status!=='resolved')return false;if(kf!=='all'&&item.kind!==kf)return false;if(q){const hay=[item.caseId,item.subject,item.reporterUsername,item.reporterEmailSnapshot,item.reporterUid].join(' ').toLowerCase();if(!hay.includes(q))return false;}return true;});renderAdminModerationCaseList(list,filtered,id=>{selected=id;void renderModerationThreadDetail(detail,id,{admin:true,onChanged:load});});};
-  const load=async(preselect='')=>{summary.textContent='Cargando bandeja…';try{cases=await adminGetModerationCases();const pending=cases.filter(x=>x.status==='open'&&x.pendingRole==='admin').length;mainMenuPendingState.moderationCount=pending;setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',pending);summary.innerHTML=`<b>${pending}</b> pendientes · <b>${cases.filter(x=>x.status==='open').length}</b> abiertos · <b>${cases.filter(x=>x.status==='resolved').length}</b> resueltos`;apply();const wanted=preselect||selected;if(wanted&&cases.some(x=>x.caseId===wanted)){selected=wanted;await renderModerationThreadDetail(detail,wanted,{admin:true,onChanged:load});}}catch(err){summary.textContent=err?.message||'No se pudo cargar la bandeja.';}};
+  overlay.innerHTML=`<div style="max-width:1180px;margin:0 auto;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><div><h2 style="margin:0;color:#f0e0b0;">🛡️ ${gameTextHtml('support.adminTitle')}</h2><div style="font-size:12px;color:#aab5ad;margin-top:3px;">Casos de jugadores y conversaciones pendientes</div></div></div><div class="admin-section"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><select id="admin-inbox-state" class="admin-field-input"><option value="pending">Pendientes y avisos</option><option value="open">Abiertos</option><option value="resolved">Resueltos</option><option value="all">Todos</option></select><select id="admin-inbox-kind" class="admin-field-input"><option value="all">Todos los tipos</option><option value="contact">Consulta</option><option value="report_user">Reporte de usuario</option><option value="report_lobby_message">Reporte de mensaje</option><option value="dispute">Disputa de Mercado</option><option value="information">Información</option></select><input id="admin-inbox-search" class="admin-field-input" placeholder="Buscar username, email, UID, asunto o caso" style="text-align:left;min-width:280px;flex:1;"><button class="admin-save-btn" id="admin-inbox-refresh" style="width:auto;margin:0;">↻ Actualizar</button></div><div id="admin-inbox-summary" class="admin-debug-summary">Cargando…</div><div class="moderation-admin-grid" style="display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.5fr);gap:12px;margin-top:12px;"><div id="admin-inbox-list"></div><div id="admin-inbox-detail" style="border:1px solid rgba(212,175,55,.18);border-radius:10px;padding:12px;min-height:220px;"><div class="admin-debug-empty">Elegí un caso para abrir el hilo.</div></div></div></div></div>`;document.body.appendChild(overlay);overlay.querySelector('#moderation-center-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
+  const list=overlay.querySelector('#admin-inbox-list'),detail=overlay.querySelector('#admin-inbox-detail'),summary=overlay.querySelector('#admin-inbox-summary'),stateFilter=overlay.querySelector('#admin-inbox-state'),kindFilter=overlay.querySelector('#admin-inbox-kind'),search=overlay.querySelector('#admin-inbox-search');let cases=[],personalCases=[],selected='';
+  const apply=()=>{const q=String(search?.value||'').trim().toLowerCase(),sf=stateFilter?.value||'pending',kf=kindFilter?.value||'all';const filtered=cases.filter(item=>{if(sf==='pending'&&!(item.status==='open'&&item.pendingRole==='admin')&&!(isOwnInformationCase(item)&&unreadModerationCases([item]).length))return false;if(sf==='open'&&item.status!=='open')return false;if(sf==='resolved'&&item.status!=='resolved')return false;if(kf!=='all'&&item.kind!==kf)return false;if(q){const hay=[item.caseId,item.subject,item.reporterUsername,item.reporterEmailSnapshot,item.reporterUid].join(' ').toLowerCase();if(!hay.includes(q))return false;}return true;});renderAdminModerationCaseList(list,filtered,id=>{selected=id;void renderModerationThreadDetail(detail,id,{admin:true,onChanged:load,onRead});});};
+  const onRead=(caseId,acknowledgement)=>{
+    if(acknowledgement?.acknowledgedAtMs==null||!personalCases.some(item=>item.caseId===caseId))return;
+    for(const item of [...cases,...personalCases])if(item.caseId===caseId){item.hasUserUnread=false;item.userReadSeq=acknowledgement.readSeq;item.acknowledgedAtMs=acknowledgement.acknowledgedAtMs;}
+    setCachedModerationPending(personalCases);const ownCount=summary.querySelector('[data-admin-own-notice-count]');if(ownCount)ownCount.textContent=String(unreadModerationCases(personalCases).length);apply();
+  };
+  const load=async(preselect='')=>{summary.textContent='Cargando bandeja…';try{const uid=state.currentUser?.uid;const [moderationCases,mine]=await Promise.all([adminGetModerationCases(),getMyModerationCases()]);if(!overlay.isConnected||state.currentUser?.uid!==uid)return;
+    personalCases=mine.filter(item=>item.readOnly===true&&item.kind==='information').map(item=>({...item,reporterUid:uid}));
+    const byId=new Map(moderationCases.map(item=>[item.caseId,item]));for(const item of personalCases)byId.set(item.caseId,{...byId.get(item.caseId),...item});cases=[...byId.values()];
+    const pending=moderationCases.filter(x=>x.status==='open'&&x.pendingRole==='admin').length;setCachedModerationPending(personalCases,{workCount:pending});summary.innerHTML=`<b>${pending}</b> pendientes de Moderación · <b data-admin-own-notice-count>${unreadModerationCases(personalCases).length}</b> avisos tuyos sin leer · <b>${cases.filter(x=>x.status==='open').length}</b> abiertos · <b>${cases.filter(x=>x.status==='resolved').length}</b> resueltos`;apply();const wanted=preselect||selected;if(wanted&&cases.some(x=>x.caseId===wanted)){selected=wanted;await renderModerationThreadDetail(detail,wanted,{admin:true,onChanged:load,onRead});}}catch(err){summary.textContent=err?.message||'No se pudo cargar la bandeja.';}};
   [stateFilter,kindFilter].forEach(el=>el?.addEventListener('change',apply));search?.addEventListener('input',apply);overlay.querySelector('#admin-inbox-refresh')?.addEventListener('click',()=>void load(selected));await load();
 }
 
@@ -9993,8 +9996,8 @@ export async function showCommunityStatusAtBoot(status = null) {
     await showCommunityNotice({ title, bodyHtml });
     try {
       await acknowledgeModerationCase(item.caseId);
-      mainMenuPendingState.moderationCount=Math.max(0,unread.length-1);
-      setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',mainMenuPendingState.moderationCount);
+      item.hasUserUnread=false;item.userReadSeq=item.lastMessageSeq;item.acknowledgedAtMs=Date.now();
+      setCachedModerationPending(cases);
     } catch (error) { console.warn('No se pudo confirmar lectura del caso:', error); }
   }
 }
@@ -10080,7 +10083,7 @@ async function loadAchievementRuntime({includeCampaign=false}={}){
 }
 
 const MAIN_MENU_PENDING_REFRESH_MS=5000;
-const mainMenuPendingState={uid:'',achievementCount:null,moderationCount:null,refreshedAt:0,promise:null};
+const mainMenuPendingState={uid:'',achievementCount:null,moderationCount:null,moderationWorkCount:0,moderationPersonalCount:0,refreshedAt:0,promise:null};
 function pendingAchievementIds(runtime){
   if(!runtime?.config?.enabled||!state.userProfile) return [];
   const claimed=normalizeAchievementProfile(state.userProfile?.achievements).claimed;
@@ -10092,6 +10095,7 @@ function pendingAchievementIds(runtime){
   return ids;
 }
 function unreadModerationCases(cases=[]){return (Array.isArray(cases)?cases:[]).filter(item=>item?.hasUserUnread===true||(item?.hasUserUnread==null&&item?.status==='resolved'&&!item?.acknowledgedAtMs));}
+function isOwnInformationCase(item,user=state.currentUser){return !!user?.uid&&item?.readOnly===true&&item?.kind==='information'&&item?.reporterUid===user.uid;}
 function mainMenuBadgeText(count){const n=Math.max(0,Math.floor(Number(count)||0));return n>99?'99+':String(n);}
 function setMainMenuActionBadge(container,buttonId,count){
   const scope=container?.closest?.('#main-menu-overlay') || container;
@@ -10100,23 +10104,32 @@ function setMainMenuActionBadge(container,buttonId,count){
   const n=Math.max(0,Math.floor(Number(count)||0)); if(!n)return;
   const badge=document.createElement('span');badge.className='main-menu-reward-badge';badge.dataset.accountPending='true';badge.textContent=mainMenuBadgeText(n);btn.appendChild(badge);
 }
-function setCachedModerationPending(cases){
+function setCachedModerationPending(cases,{workCount}={}){
   if(!state.currentUser?.uid)return;
-  mainMenuPendingState.uid=state.currentUser.uid;mainMenuPendingState.moderationCount=unreadModerationCases(cases).length;
+  if(mainMenuPendingState.uid!==state.currentUser.uid){mainMenuPendingState.moderationWorkCount=0;mainMenuPendingState.moderationPersonalCount=0;mainMenuPendingState.refreshedAt=0;}
+  mainMenuPendingState.uid=state.currentUser.uid;
+  if(workCount!==undefined)mainMenuPendingState.moderationWorkCount=Math.max(0,Number(workCount)||0);
+  const admin=isAdminUser(state.currentUser);
+  const personal=cases===null?mainMenuPendingState.moderationPersonalCount:unreadModerationCases(cases).filter(item=>!admin||(item.readOnly===true&&item.kind==='information')).length;
+  mainMenuPendingState.moderationPersonalCount=personal;
+  mainMenuPendingState.moderationCount=personal+(admin?mainMenuPendingState.moderationWorkCount:0);
   setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-moderation',mainMenuPendingState.moderationCount);
 }
 function invalidateMainMenuPendingAchievements(){mainMenuPendingState.achievementCount=null;mainMenuPendingState.refreshedAt=0;}
 async function refreshMainMenuPendingActions(container,user,{force=false}={}){
   const uid=String(user?.uid||''); if(!uid||uid!==String(state.currentUser?.uid||''))return;
-  if(mainMenuPendingState.uid!==uid){mainMenuPendingState.uid=uid;mainMenuPendingState.achievementCount=null;mainMenuPendingState.moderationCount=null;mainMenuPendingState.refreshedAt=0;mainMenuPendingState.promise=null;}
+  if(mainMenuPendingState.uid!==uid){mainMenuPendingState.uid=uid;mainMenuPendingState.achievementCount=null;mainMenuPendingState.moderationCount=null;mainMenuPendingState.moderationWorkCount=0;mainMenuPendingState.moderationPersonalCount=0;mainMenuPendingState.refreshedAt=0;mainMenuPendingState.promise=null;}
   const fresh=!force&&mainMenuPendingState.refreshedAt&&(Date.now()-mainMenuPendingState.refreshedAt)<MAIN_MENU_PENDING_REFRESH_MS;
   if(fresh){setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);return;}
   if(mainMenuPendingState.promise)return mainMenuPendingState.promise;
-  const moderationPendingPromise=isAdminUser(user)?adminGetModerationPendingCount():getMyModerationCases();
+  const moderationPendingPromise=isAdminUser(user)?Promise.allSettled([adminGetModerationPendingCount(),getMyModerationCases()]):getMyModerationCases();
   const promise=Promise.allSettled([loadAchievementRuntime(),moderationPendingPromise]).then(results=>{
     if(uid!==String(state.currentUser?.uid||''))return;
     if(results[0].status==='fulfilled')mainMenuPendingState.achievementCount=pendingAchievementIds(results[0].value).length;
-    if(results[1].status==='fulfilled')mainMenuPendingState.moderationCount=isAdminUser(user)?Math.max(0,Number(results[1].value)||0):unreadModerationCases(results[1].value).length;
+    if(results[1].status==='fulfilled'){
+      if(isAdminUser(user)){const [work,mine]=results[1].value;setCachedModerationPending(mine.status==='fulfilled'?mine.value:null,{workCount:work.status==='fulfilled'?work.value:undefined});}
+      else setCachedModerationPending(results[1].value);
+    }
     mainMenuPendingState.refreshedAt=Date.now();
     setMainMenuActionBadge(container,'menu-achievements',mainMenuPendingState.achievementCount);
     setMainMenuActionBadge(container,'menu-moderation',mainMenuPendingState.moderationCount);
@@ -10988,8 +11001,8 @@ export function showAdminPanel(onBack) {
         </div>
       </div>
       <div class="admin-field-row">
-        <span class="admin-field-label">Motivo (opcional)</span>
-        <input type="text" class="admin-field-input" id="grant-reason" placeholder="ej: compensación por bug" style="text-align:left; width:220px;">
+        <span class="admin-field-label">Motivo (lo recibe el usuario)</span>
+        <input type="text" maxlength="240" required class="admin-field-input" id="grant-reason" placeholder="ej: compensación por bug" style="text-align:left; width:220px;">
       </div>
       <button class="admin-save-btn" id="admin-grant-send">📤 Enviar</button>
       <div class="store-error-msg" id="admin-grant-error" style="text-align:center;"></div>
@@ -11850,7 +11863,7 @@ export function showAdminPanel(onBack) {
         } catch (err) {
           console.error('No se pudo reconstruir el log de Firestore:', err);
           btn.textContent = gameText('admin.stats.error', { message: '' }).replace(/:\s*$/, '');
-          window.alert(`No se pudo descargar este log: ${err?.message || err}`);
+          void showGameDialog(`No se pudo descargar este log: ${err?.message || err}`);
           setTimeout(() => { if (btn.isConnected) btn.textContent = oldText; }, 1800);
         } finally {
           btn.disabled = false;
@@ -11869,7 +11882,7 @@ export function showAdminPanel(onBack) {
         const meta = parseAdminJson(session?.metaJson, {});
         const player = session?.playerName || meta.localPlayerName || 'Jugador';
         const difficulty = botDifficultyLabel(session?.difficulty || meta?.difficulty || 'medium');
-        const ok = window.confirm(
+        const ok = await showGameDialog(
           `¿Acreditar manualmente +${expected} puntos a ${player}?
 
 ` +
@@ -11877,7 +11890,8 @@ export function showAdminPanel(onBack) {
 Receipt: ${receiptId}
 
 ` +
-          'Se volverá a verificar en Firestore que la sesión esté completa, exista el resultado registrado y que NO exista ya un receipt económico. La operación es idempotente, queda auditada y acredita el premio base actual (sin reconstruir multiplicadores históricos de eventos).'
+          'Se volverá a verificar en Firestore que la sesión esté completa, exista el resultado registrado y que NO exista ya un receipt económico. La operación es idempotente, queda auditada y acredita el premio base actual (sin reconstruir multiplicadores históricos de eventos).',
+          {confirm:true,valid:()=>btn.isConnected}
         );
         if (!ok) return;
         const oldText = btn.textContent;
@@ -11891,14 +11905,14 @@ Receipt: ${receiptId}
             reason: 'Caja Negra: liquidación faltante confirmada por Admin'
           });
           if (result?.duplicate) {
-            window.alert(`No se acreditó nada: el receipt económico ya existía. Total actual: ${Number(result.total || 0).toLocaleString('es-AR')} puntos.`);
+            void showGameDialog(`No se acreditó nada: el receipt económico ya existía. Total actual: ${Number(result.total || 0).toLocaleString('es-AR')} puntos.`);
           } else {
-            window.alert(`✅ Reparación confirmada. Se acreditaron +${Number(result.appliedDelta || 0).toLocaleString('es-AR')} puntos a ${player}. Total: ${Number(result.total || 0).toLocaleString('es-AR')}.`);
+            void showGameDialog(`✅ Reparación confirmada. Se acreditaron +${Number(result.appliedDelta || 0).toLocaleString('es-AR')} puntos a ${player}. Total: ${Number(result.total || 0).toLocaleString('es-AR')}.`);
           }
           await reloadTelemetryHistory();
         } catch (err) {
           console.error('No se pudo reparar la recompensa desde Caja Negra:', err);
-          window.alert(`No se acreditaron puntos. Firestore rechazó o no pudo verificar la reparación: ${err?.message || err}`);
+          void showGameDialog(`No se acreditaron puntos. Firestore rechazó o no pudo verificar la reparación: ${err?.message || err}`);
           btn.disabled = false;
           btn.textContent = oldText;
         }
@@ -12718,16 +12732,16 @@ Receipt: ${receiptId}
   });
   overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
   overlay.querySelector('#admin-debug-cleanup').addEventListener('click', async () => {
-    if (!window.confirm(gameText('admin.debug.cleanupConfirm'))) return;
+    if (!await showGameDialog(gameText('admin.debug.cleanupConfirm'),{confirm:true,valid:()=>overlay.isConnected})) return;
     const btn = overlay.querySelector('#admin-debug-cleanup');
     btn.disabled = true;
     try {
       const result = await adminCloseStaleTelemetrySessions(120000);
-      window.alert(gameText('admin.debug.cleanupDone', { count: result?.count || 0 }));
+      void showGameDialog(gameText('admin.debug.cleanupDone', { count: result?.count || 0 }));
       await reloadTelemetryHistory();
     } catch (err) {
       console.error('No se pudieron cerrar sesiones huérfanas:', err);
-      window.alert(err?.message || String(err));
+      void showGameDialog(err?.message || String(err));
     } finally { btn.disabled = false; }
   });
   overlay.querySelector('#admin-image-refresh').addEventListener('click', () => reloadImageAudit(true));
@@ -13009,7 +13023,7 @@ Receipt: ${receiptId}
       const label = btn.dataset.communityUnbanLabel || targetUid;
       const status = overlay.querySelector('#admin-community-ban-status');
       if (!targetUid) return;
-      if (!window.confirm(`¿Levantar el ban activo de ${label}?`)) return;
+      if (!await showGameDialog(`¿Levantar el ban activo de ${label}?`,{confirm:true,valid:()=>btn.isConnected})) return;
       const reason = overlay.querySelector('#admin-community-ban-reason')?.value?.trim() || '';
       btn.disabled = true;
       if (status) status.textContent = `Quitando ban de ${label}…`;
@@ -13116,7 +13130,9 @@ Receipt: ${receiptId}
   });
   overlay.querySelector('#admin-community-open-inbox')?.addEventListener('click',()=>void showAdminModerationInbox());
 
+  let grantActionPending=false;
   overlay.querySelector('#admin-grant-send').addEventListener('click', async () => {
+    if(grantActionPending)return;
     const grantErrorBox = overlay.querySelector('#admin-grant-error');
     const grantSuccessBox = overlay.querySelector('#admin-grant-success');
     grantErrorBox.textContent = '';
@@ -13140,12 +13156,17 @@ Receipt: ${receiptId}
       grantErrorBox.textContent = 'Elegí a quién regalarle.';
       return;
     }
+    if (!reason || reason.length > 240) {
+      grantErrorBox.textContent = 'Escribí un motivo de hasta 240 caracteres. El usuario lo recibirá en un ticket informativo.';
+      return;
+    }
 
     const recipientLabel = recipient === 'ALL' ? 'TODOS los usuarios' : (grantUserSearch?.selectedLabel() || recipient);
-    if (!window.confirm(`¿Confirmás dar ${amount} ${currencyLabel} a ${recipientLabel}?`)) return;
-
     const sendBtn = overlay.querySelector('#admin-grant-send');
+    const adminUid=state.currentUser?.uid;
+    grantActionPending=true;
     try {
+      if (!await showGameDialog(`¿Confirmás dar ${amount} ${currencyLabel} a ${recipientLabel}?\n\nMotivo: ${reason}\n\nSe enviará un ticket informativo cerrado.`,{title:'Confirmar otorgamiento',confirm:true,acceptLabel:'Otorgar',valid:()=>overlay.isConnected&&state.currentUser?.uid===adminUid})) return;
       if (recipient === 'ALL') {
         const result = await withEconomyButtonPending(sendBtn, () => currencyField === 'standardPacks'
           ? adminGrantPacksToAll(amount, reason)
@@ -13160,7 +13181,7 @@ Receipt: ${receiptId}
     } catch (err) {
       console.error('No se pudo aplicar el regalo:', err);
       grantErrorBox.textContent = err.message || 'No se pudo aplicar. Probá de nuevo.';
-    }
+    } finally { grantActionPending=false; }
   });
 
   // 23.19.5 RC2 — Campañas lazy: mountAdminCampaignsPane() ejecuta su reload inicial,
@@ -14418,7 +14439,7 @@ export function showTournamentScreen(onBack, onPlayMatch) {
 
   const resolveInterruptedManually=async tournament=>{
     if(busy||!tournament?.activeMatch)return;
-    if(!window.confirm(gameText('tournament.recovery.resolveConfirm')))return;
+    if(!await showGameDialog(gameText('tournament.recovery.resolveConfirm'),{confirm:true,valid:()=>overlay.isConnected}))return;
     setBusy(true);
     try{
       const resolved=await getTournamentState({resolveInterrupted:true});
@@ -14853,7 +14874,7 @@ export function showTradeMarketScreen(onBack) {
     applyPublishFilters();
   }
   function bindMine(){
-    root.querySelectorAll('[data-cancel-listing]').forEach(btn=>btn.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(btn.dataset.cancelListing));}));
+    root.querySelectorAll('[data-cancel-listing]').forEach(btn=>btn.addEventListener('click',async()=>{const listingId=btn.dataset.cancelListing;if(await showGameDialog(gameText('trade.confirm.cancelListing'),{confirm:true,valid:()=>btn.isConnected}))void mutate(()=>cancelTradeListing(listingId));}));
     root.querySelectorAll('[data-reject-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>rejectTradeOffer(btn.dataset.rejectOffer))));
     root.querySelectorAll('[data-accept-offer]').forEach(btn=>btn.addEventListener('click',()=>{const offer=(market.receivedOffers||[]).find(o=>o.offerId===btn.dataset.acceptOffer);if(offer)openTradeAcceptModal(offer);}));
     root.querySelectorAll('[data-trade-publish-card]').forEach(node=>{const select=()=>{publishSelectedCardId=node.dataset.tradePublishCard;publishSelectedFinish=node.dataset.tradePublishFinish;root.querySelectorAll('[data-trade-publish-card]').forEach(x=>x.classList.toggle('is-selected',x.dataset.tradePublishCard===publishSelectedCardId&&x.dataset.tradePublishFinish===publishSelectedFinish));const name=root.querySelector('#trade-publish-selected-name');if(name)name.textContent=tradeVariantLabel(publishSelectedCardId,publishSelectedFinish);};node.addEventListener('click',e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select();});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}});});
@@ -15015,7 +15036,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
       if(err?.code==='AUTH_SESSION_CHECKING')return false;
       console.error('No se pudo resolver la identidad antes de abrir el menú solicitado:', err);
       if (err?.code !== 'AUTH_STARTER_DECK_REQUIRED') {
-        window.alert(gameText('menu.profileUnavailable'));
+        void showGameDialog(gameText('menu.profileUnavailable'));
       }
       updateMainMenuLoginGatedButtons(overlay);
       return false;
@@ -17282,7 +17303,16 @@ export function render() {
   publishMatchState();
 }
 
-els.btnCancelSpell.addEventListener('click', cancelPayment);
+function cancelPaymentFromUI({fromKeyboard=false} = {}) {
+  // Keep the existing Escape scope: it must not newly decline a post-cast Ward
+  // or counter-tax prompt. Their explicit payment controls retain that choice.
+  const announcement=state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew;
+  if (!fromKeyboard || announcement) cancelPayment();
+  // A refused cancellation after irreversible costs must keep its live choice.
+  // Once the engine cancels, settle/remove preparatory modals as cancellation.
+  if (!(state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay)) cancelActionDecisions();
+}
+els.btnCancelSpell.addEventListener('click', cancelPaymentFromUI);
 els.btnAltCost.addEventListener('click', payWithAlternativeCost);
 els.btnPayWard.addEventListener('click', payWard);
 els.btnPayCounterTax.addEventListener('click', payCounterTax);
@@ -17291,8 +17321,8 @@ els.btnConfirmCrew.addEventListener('click', confirmCrew);
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
   // Cancelar pagos pendientes
-  if (e.key === 'Escape' && (state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew)) {
-    cancelPayment(); 
+  if (e.key === 'Escape') {
+    cancelPaymentFromUI({fromKeyboard:true});
   }
 
   // BUGFIX: la barra espaciadora es el atajo de "Pasar Turno", pero antes se activaba
@@ -17373,11 +17403,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   const initialButtons = document.getElementById('damage-modal-initial-buttons');
 
   const originalAuto=onAuto,originalManual=onConfirmManual;
-  const finishDamage=timedModalChoice(overlay,(distribution=null,overflow=0)=>{
-    overlay.classList.add('hidden');state.damageModalOpen=false;
-    if(distribution===null)originalAuto?.();else originalManual?.(distribution,overflow);
-  },()=>[null],{action:false,remove:false,notice:'Al vencer se aplica la distribución automática legal de daño.'});
-  onAuto=()=>finishDamage(null);onConfirmManual=(distribution,overflow)=>finishDamage(distribution,overflow);
   const attacker = attackerItem.card;
   const canTrample = hasKeyword(attackerItem, 'trample');
   const attackerHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
@@ -17410,6 +17435,12 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   if (btnManual) btnManual.textContent = gameText('damage.modal.manual');
   overlay.classList.remove('hidden');
   state.damageModalOpen = true; 
+  // Install after rendering content: innerHTML must not erase the live clock.
+  const finishDamage=timedModalChoice(overlay,(distribution=null,overflow=0)=>{
+    overlay.classList.add('hidden');state.damageModalOpen=false;
+    if(distribution===null)originalAuto?.();else originalManual?.(distribution,overflow);
+  },()=>[null],{action:false,remove:false,clockHost:content.parentElement,notice:'Al vencer se aplica la distribución automática legal de daño.'});
+  onAuto=()=>finishDamage(null);onConfirmManual=(distribution,overflow)=>finishDamage(distribution,overflow);
 
   btnAuto.onclick = () => {
     overlay.classList.add('hidden');

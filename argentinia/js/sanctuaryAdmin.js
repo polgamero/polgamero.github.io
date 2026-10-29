@@ -1,3 +1,4 @@
+import { showGameDialog } from './gameDialogs.js';
 import { gameText } from './gameTexts.js';
 import { getSanctuaryStatus, loadAuthorizedDiscoveryCards, adminPreviewSanctuary, adminGetSanctuaryHistory, adminSetSanctuaryConfig, adminSetSanctuaryBarcodeBuckets, adminSetSanctuaryResonanceBuckets, adminSetSanctuaryBarcodeEasterEggs, adminSetSanctuaryFoodBuckets } from './firebaseClient.js';
 import { withEconomyButtonPending } from './economyPending.js';
@@ -713,10 +714,10 @@ export function mountAdminSanctuaryPane(root) {
     const count=await ensureAdminDiscoveryCatalog();
     const cards=authorizedDiscoveryCards();
     if(count!==100||cards.length!==100){ if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.discoveryPickerIncomplete'); return; }
-    if(!window.confirm(gameText('sanctuary.admin.bucketAutofillConfirm'))) return;
+    if(!await showGameDialog(gameText('sanctuary.admin.bucketAutofillConfirm'),{confirm:true,valid:()=>bucketAutofill.isConnected})) return;
     setMappingInputs(bucketInputs,cards.map(card=>card.id)); refreshBucketDiagnostics(); if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.bucketAutofillLocal');
   });
-  bucketClear?.addEventListener('click',()=>{ if(!window.confirm(gameText('sanctuary.admin.bucketClearConfirm')))return; setMappingInputs(bucketInputs,Array(100).fill('')); refreshBucketDiagnostics(); if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
+  bucketClear?.addEventListener('click',async()=>{ if(!await showGameDialog(gameText('sanctuary.admin.bucketClearConfirm'),{confirm:true,valid:()=>bucketClear.isConnected}))return; setMappingInputs(bucketInputs,Array(100).fill('')); refreshBucketDiagnostics(); if(bucketMessage)bucketMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
   resonanceAutofill?.addEventListener('click',async()=>{
     const count=await ensureAdminDiscoveryCatalog();
     const cards=authorizedDiscoveryCards();
@@ -727,10 +728,10 @@ export function mountAdminSanctuaryPane(root) {
       if(groupCards.length!==20){ if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.resonanceAutofillInvalidPool'); return; }
       values.push(...groupCards.map(card=>card.id));
     }
-    if(!window.confirm(gameText('sanctuary.admin.resonanceAutofillConfirm'))) return;
+    if(!await showGameDialog(gameText('sanctuary.admin.resonanceAutofillConfirm'),{confirm:true,valid:()=>resonanceAutofill.isConnected})) return;
     setMappingInputs(resonanceInputs,values); refreshResonanceDiagnostics(); if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.resonanceAutofillLocal');
   });
-  resonanceClear?.addEventListener('click',()=>{ if(!window.confirm(gameText('sanctuary.admin.bucketClearConfirm')))return; setMappingInputs(resonanceInputs,Array(100).fill('')); refreshResonanceDiagnostics(); if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
+  resonanceClear?.addEventListener('click',async()=>{ if(!await showGameDialog(gameText('sanctuary.admin.bucketClearConfirm'),{confirm:true,valid:()=>resonanceClear.isConnected}))return; setMappingInputs(resonanceInputs,Array(100).fill('')); refreshResonanceDiagnostics(); if(resonanceMessage)resonanceMessage.textContent=gameText('sanctuary.admin.bucketClearLocal'); });
 
   bucketInputs.forEach(input=>input.addEventListener('input',()=>{ if(bucketMessage) bucketMessage.textContent=''; refreshBucketDiagnostics(); }));
   resonanceInputs.forEach(input=>input.addEventListener('input',()=>{ if(resonanceMessage) resonanceMessage.textContent=''; refreshResonanceDiagnostics(); }));

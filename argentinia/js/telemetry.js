@@ -19,6 +19,7 @@
 import { ENGINE_VERSION, ENGINE_BASELINE, RELEASE_DISPLAY_VERSION } from './version.js';
 import { getAudioRuntimeStatus, setQuickMusicLevel, setQuickSfxLevel } from './audioManager.js';
 import { gameText } from './gameTexts.js';
+import { showGamePrompt } from './gameDialogs.js';
 import { getGameRngSnapshot } from './gameRng.js';
 import { REPLAY_FORMAT_VERSION, REPLAY_HASH_ALGORITHM, replayHash, buildReplayActionJournal } from './replayKernel.js';
 
@@ -1482,7 +1483,17 @@ function installInteractionCapture() {
   document.addEventListener('click', event => {
     if (!currentSession) return;
     if (panel && panel.contains && panel.contains(event.target)) return;
-    recordTelemetryEvent('ui_click', summarizeTarget(event.target));
+    // A forwarded .click() is an activation, not another physical player click.
+    // Keep it observable without adding it to the browser-origin click count.
+    const trusted = event.isTrusted === true;
+    recordTelemetryEvent(event.isTrusted === false ? 'ui_programmatic_click' : 'ui_click', {
+      ...summarizeTarget(event.target),
+      isTrusted: typeof event.isTrusted === 'boolean' ? event.isTrusted : null,
+      inputSource: trusted ? (event.detail > 0 ? 'browser_pointer' : 'browser_nonpointer') : (event.isTrusted === false ? 'programmatic' : 'unknown'),
+      clickDetail: Number.isFinite(event.detail) ? event.detail : null,
+      eventTimeStamp: Number.isFinite(event.timeStamp) ? event.timeStamp : null,
+      pointerType: typeof event.pointerType === 'string' ? event.pointerType : null
+    });
   }, true);
 
   document.addEventListener('keydown', event => {
@@ -1574,6 +1585,7 @@ function humanSummary(session) {
     `Modo: ${session.meta.mode || '?'}`,
     session.meta.matchId ? `Match: ${session.meta.matchId} (${session.meta.myRole || '?'})` : null,
     `Eventos: ${session.events.length} | errores: ${errors} | warnings: ${warnings}`,
+    `Activaciones UI: navegador=${session.events.filter(ev => ev.type === 'ui_click' && ev.data?.isTrusted === true).length}, programáticas=${typeCounts.ui_programmatic_click || 0}, origen sin instrumentar=${session.events.filter(ev => ev.type === 'ui_click' && typeof ev.data?.isTrusted !== 'boolean').length}. No equivalen a un conteo de clics físicos.`,
     `Candidatos de bug: ${session.bugCandidates.length} (manuales: ${manual}, automáticos: ${auto})`,
     `Tipos de evento: ${Object.entries(typeCounts).map(([k, v]) => `${k}=${v}`).join(', ')}`
   ].filter(Boolean).join('\n');
@@ -1696,9 +1708,11 @@ export function markTelemetryBug(note = null) {
   if (!currentSession) return false;
   captureTelemetryState('manual_bug_marker');
   let finalNote = note;
-  if (finalNote == null && typeof window !== 'undefined' && typeof window.prompt === 'function') {
-    finalNote = window.prompt('¿Qué viste raro? (podés dejarlo vacío y aceptar)');
-    if (finalNote === null) return false;
+  if (finalNote == null && typeof document !== 'undefined') {
+    const session=currentSession;
+    return showGamePrompt('¿Qué viste raro? (podés dejarlo vacío y aceptar)',{
+      title:'Reportar bug',acceptLabel:'Marcar bug',valid:()=>currentSession===session
+    }).then(value=>value===null||currentSession!==session?false:markTelemetryBug(value));
   }
   const event = recordTelemetryEvent('manual_bug_marker', {
     note: String(finalNote || '').trim() || '(sin descripción)',
