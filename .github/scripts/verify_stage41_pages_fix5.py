@@ -14,17 +14,19 @@ for rel in ('css/landing.css','css/legal.css','js/landing.js','img/logo.png','im
     if not (root/rel).exists():fail('missing shared asset '+rel)
 for rel in ('functions','firebase.json','firestore.rules','08_Private_Internal','argentinia/tools'):
     if (root/rel).exists():fail('private path included '+rel)
-for rel in ('argentinia/index.html','argentinia/js/main.js','argentinia/build-manifest.json','argentinia/assets/manifest.webmanifest','argentinia/cartas/index.html','argentinia/assets/images/cards/cards-image-manifest.json'):
+for rel in ('argentinia/index.html','argentinia/js/main.js','argentinia/js/sharedAssets.js','argentinia/build-manifest.json','argentinia/assets/manifest.webmanifest','argentinia/cartas/index.html','argentinia/assets/images/cards/cards-image-manifest.json'):
     if not (root/rel).is_file():fail('missing public runtime '+rel)
 try:
-    manifest=json.loads((app/'build-manifest.json').read_text())
+    manifest=json.loads((app/'build-manifest.json').read_text(encoding='utf-8-sig'))
     if manifest.get('engineProtocolVersion')!='mp-23.19.2-fl40':fail('stale multiplayer protocol in public manifest')
     if not re.fullmatch(r'[a-f0-9]{20}',str(manifest.get('buildId',''))):fail('missing runtime buildId')
-    for rel in ('./js/main.js','./assets/images/cards/cards-image-manifest.json','./js/flasheraGameplay.js'):
+    for rel in ('./js/main.js','./js/sharedAssets.js','./assets/images/cards/cards-image-manifest.json','./js/flasheraGameplay.js'):
         if rel not in manifest.get('refreshAssets',[]):fail('refreshAssets lacks '+rel)
+    document=(app/'index.html').read_text(encoding='utf-8-sig')
+    if document.count('<base href="/">')!=1 or document.count('data-shared-asset-revision=""')!=1:fail('game lost its single shared asset base/revision marker')
 except Exception as ex:fail('build-manifest invalid: '+str(ex))
 try:
-    images=json.loads((app/'assets/images/cards/cards-image-manifest.json').read_text())
+    images=json.loads((app/'assets/images/cards/cards-image-manifest.json').read_text(encoding='utf-8-sig'))
     stats=images.get('images') or {}
     existing=int(stats.get('existingFileCount') or 0)
     missing=int(stats.get('missingCardCount') or 0)
@@ -36,10 +38,28 @@ try:
 except Exception as ex:fail('PNG manifest invalid: '+str(ex))
 try:
     if sum(x.is_dir() for x in (app/'cartas').iterdir())!=180:fail('public galleries count !=180')
-    if (root/'sitemap.xml').read_text().count('<loc>')!=6:fail('sitemap !=6')
+    # Source sitemap is retained for rollback. The new artifact sitemap is checked
+    # against its concrete routes by verify_portal_pages.py after projection.
+    import xml.etree.ElementTree as ET
+    ET.fromstring((root/'sitemap.xml').read_text(encoding='utf-8-sig'))
 except Exception as ex:fail('gallery/sitemap invalid: '+str(ex))
 for name in ('flasheraGameplay.js','flasheraRenderer.js','cardVariant.js'):
     if not (app/'js'/name).is_file():fail('flashera frontend missing '+name)
+for rel in ('portal/portal.css','portal/stage2.css','portal/portal-config.json','portal/content/bootstrap.json','portal/runtime/editor.js','portal/runtime/articleModel.js','portal/runtime/articleRenderer.js','.github/portal-publisher.json','.github/scripts/build_public_pages.py','.github/scripts/editorial_layout.py','.github/scripts/editorial_feed.py','.github/scripts/render_editorial.mjs','.github/scripts/verify_portal_pages.py'):
+    if not (root/rel).is_file():fail('missing editorial source '+rel)
+for path in (root/'portal').rglob('*'):
+    if path.name in ('backend','trusted','node_modules','tests','OWNER','TRANSFER'):
+        fail('private editorial source path '+str(path.relative_to(root)))
+    if path.is_file() and path.suffix in ('.zip','.log','.pyc','.patch','.md'):
+        fail('private editorial source file '+str(path.relative_to(root)))
+try:
+    config=json.loads((root/'portal/portal-config.json').read_text(encoding='utf-8-sig'))
+    if config.get('emulators') is not None:fail('emulator config in public source')
+    publisher=json.loads((root/'.github/portal-publisher.json').read_text(encoding='utf-8-sig'))
+    if publisher.get('assetLayout')!='shared-root-v1':fail('publisher does not share the original game resources')
+    for name in ('editorialModel.js','editorialFrames.js','editorialShapes.js','gameDialogs.js'):
+        if (root/'portal/runtime/vendor'/name).read_text(encoding='utf-8-sig')!="export * from '../../../argentinia/js/"+name+"';\n":fail('portal duplicates original component '+name)
+except Exception as ex:fail('portal config invalid: '+str(ex))
 if errors:
     print('\n'.join('::error::FIX5_PAGES '+x for x in errors),file=sys.stderr)
     sys.exit(1)

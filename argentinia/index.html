@@ -1,19 +1,20 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-shared-asset-revision="">
 <head>
   <meta charset="UTF-8">
+  <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b130e">
   <meta name="description" content="Argentinia es un juego de cartas coleccionables argentino para navegador, con más de 900 cartas originales, partidas contra IA, multijugador, torneos, colección, mazos, ranking y mercado de pases.">
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
   <meta name="google-adsense-account" content="ca-pub-6181395403710642">
-  <link rel="canonical" href="https://magiayleyenda.com.ar/">
+  <link rel="canonical" href="https://magiayleyenda.com.ar/jugar/">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_AR">
   <meta property="og:site_name" content="Argentinia — Magia y Leyenda">
   <meta property="og:title" content="ARGENTINIA — Juego de cartas coleccionables argentino">
   <meta property="og:description" content="Más de 900 cartas originales, IA, multijugador, torneos, colección, mazos, ranking y mercado de pases.">
-  <meta property="og:url" content="https://magiayleyenda.com.ar/">
+  <meta property="og:url" content="https://magiayleyenda.com.ar/jugar/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="ARGENTINIA — Juego de cartas coleccionables argentino">
   <meta name="twitter:description" content="Juego de estrategia con más de 900 cartas originales, IA, multijugador y torneos.">
@@ -22,7 +23,7 @@
     "@context": "https://schema.org",
     "@type": "VideoGame",
     "name": "Argentinia",
-    "url": "https://magiayleyenda.com.ar/",
+    "url": "https://magiayleyenda.com.ar/jugar/",
     "inLanguage": "es-AR",
     "gamePlatform": "Web browser",
     "genre": ["Juego de cartas coleccionables", "Estrategia por turnos"],
@@ -34,13 +35,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Argentinia">
   <link rel="manifest" href="./assets/manifest.webmanifest">
-  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/png" href="./assets/images/ui/logo.png">
   <title>ARGENTINIA — Juego de cartas coleccionables argentino</title>
   <script>
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'df1154ac37f4a31d8eb6';
+      const BUILD_ID = '73f7eb08c5b5e83b3d6e';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
       async function fetchFreshManifest() {
@@ -110,7 +111,7 @@
           const refreshAssets = Array.isArray(manifest?.refreshAssets) ? manifest.refreshAssets.filter(x => typeof x === 'string' && x.startsWith('./')) : [];
           await reloadInBatches(refreshAssets.length ? refreshAssets : ['./index.html','./js/main.js','./js/version.js','./css/style.css','./css/mobile.css']);
           // Revalidate the document last so the next navigation sees the same build as its module graph.
-          await reloadCanonicalAsset('./index.html');
+          await reloadCanonicalAsset('/jugar/index.html');
           location.reload();
           return await new Promise(() => {});
         } catch (error) {
@@ -395,9 +396,9 @@
         <p class="arg-portrait-public-intro"><strong>Argentinia — Magia y Leyenda</strong> es un juego de cartas coleccionables argentino para navegador, con más de 900 cartas originales, partidas contra IA, multijugador, torneos, colección y construcción de mazos.</p>
         <p class="arg-portrait-public-hint">Podés girar el celular en cualquier momento para entrar al juego. Si preferís conocerlo primero:</p>
         <nav class="arg-portrait-public-links" aria-label="Información pública de Argentinia">
-          <a href="/aboutUs.html">¿Qué es Argentinia?</a>
-          <a href="/manual.html">¿Cómo se juega?</a>
-          <a href="/leyendas.html">Mitos y leyendas que inspiraron Argentinia</a>
+          <a href="/sobre-el-proyecto/">¿Qué es Argentinia?</a>
+          <a href="/manual/">¿Cómo se juega?</a>
+          <a href="/leyendas/">Mitos y leyendas que inspiraron Argentinia</a>
           <a href="/terminos/">Términos y condiciones</a>
           <a href="/privacidad/">Privacidad</a>
         </nav>

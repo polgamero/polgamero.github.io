@@ -1,3 +1,4 @@
+import {sharedAssetURL} from './sharedAssets.js';
 import { renderEditorialShape, EDITORIAL_SHAPES } from './editorialShapes.js';
 import { normalizeEditorial } from './editorialModel.js';
 import { editorialFrame,editorialViewport } from './editorialFrames.js';
@@ -24,13 +25,13 @@ export function renderEditorialPage(container,presentation,{pageIndex=0,viewport
   const surface=doc.createElement('div');surface.className='ed-surface'+(editable?' ed-editor':'');surface.dataset.viewport=viewport;
   if(fill)Object.assign(surface.style,{height:'100%',minHeight:'0',aspectRatio:'auto'});
   surface.style.backgroundColor=page.background.color;surface.setAttribute('aria-label',page.name);
-  if(page.background.image){const img=doc.createElement('img');img.className='ed-background';img.alt='';img.src=page.background.image;img.addEventListener('error',()=>img.remove(),{once:true});surface.append(img);}
+  if(page.background.image){const img=doc.createElement('img');img.className='ed-background';img.alt='';img.src=sharedAssetURL(page.background.image);img.addEventListener('error',()=>img.remove(),{once:true});surface.append(img);}
   const shade=doc.createElement('div');shade.className='ed-shade';shade.style.background=`rgba(0,0,0,${page.background.shade})`;surface.append(shade);
   for(const block of page.blocks){
     const node=doc.createElement('div');node.className='ed-block';node.dataset.blockId=block.id;node.dataset.blockType=block.type;applyEditorialRect(node,block,viewport);node.style.opacity=block.opacity;
     if(editable){node.tabIndex=0;node.setAttribute('aria-selected',String(block.id===selectedId));node.setAttribute('aria-label',block.type==='image'?block.alt:(block.runs.map(r=>r.text).join('').slice(0,80)||EDITORIAL_SHAPES[block.shape]||'Texto'));}
     if(block.type==='image'){
-      const img=doc.createElement('img');img.className='ed-image';img.draggable=false;img.alt=block.alt;img.src=block.src||'';img.style.objectFit=block.fit;
+      const img=doc.createElement('img');img.className='ed-image';img.draggable=false;img.alt=block.alt;img.src=sharedAssetURL(block.src||'');img.style.objectFit=block.fit;
       if(block.src)node.append(img);else if(editable)node.textContent='Elegí una imagen';
     }else{
       node.style.fontSize=`${block.fontSize/(viewport==='mobile'?6.4:9.6)}cqw`;node.style.color=block.color;node.style.textAlign=block.align;

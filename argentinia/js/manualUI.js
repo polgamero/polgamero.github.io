@@ -1,3 +1,4 @@
+import {sharedAssetURL} from './sharedAssets.js';
 import {ensureGameDialogStyles} from './gameDialogs.js';
 import {sessionInputBlocked} from './sessionInput.js';
 // js/manualUI.js — Manual del jugador (frontend-only)
@@ -625,7 +626,7 @@ function bindManualMedia(root) {
     const base = img.dataset.manualBase;
     void (async () => {
       for (const ext of ['webp','gif']) {
-        const candidate = `${base}.${ext}`;
+        const candidate = sharedAssetURL(`${base}.${ext}`);
         if (!await assetExists(candidate)) continue;
         const preload = new Image();
         preload.onload = () => {

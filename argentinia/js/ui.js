@@ -1,3 +1,4 @@
+import {sharedAssetURL} from './sharedAssets.js';
 import { guidedMatchActive, tickGuidedMatch } from './guidedMatch.js';
 import { installSessionInput, syncSessionInput, sessionActionsReady, captureSessionAction, sessionActionCurrent } from './sessionInput.js';
 import { lobbyChatGuard, lobbyChatBlock } from './lobbyChatGuard.js';
@@ -2239,14 +2240,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const cardImageRoot = card.imageRoot === 'evolutions' ? 'evolutions' : 'cards';
   const trustedRuntimeImageUrl = isDiscoveryCard(card) && /^https:\/\//i.test(String(card.runtimeImageUrl || ''))
     ? String(card.runtimeImageUrl) : '';
-  const cardImageSrc = isDiscoveryCard(card) ? trustedRuntimeImageUrl : (card.image ? `./assets/images/${cardImageRoot}/${card.image}` : '');
+  const cardImageSrc = isDiscoveryCard(card) ? trustedRuntimeImageUrl : (card.image ? sharedAssetURL(`./assets/images/${cardImageRoot}/${card.image}`) : '');
 
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" data-auto-name-cqw="${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div class="card-art-fallback" aria-hidden="true">${icon}</div>
-        ${cardImageSrc ? `<img class="card-art-image" src="${cardImageSrc}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${cardImageSrc ? `<img class="card-art-image" src="${cardImageSrc}" alt="${card.name}"${browserImageAttrs}${cardImageSrc.startsWith('https://raw.githubusercontent.com/')?' crossorigin="anonymous"':''} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
         ${counterBadgeHTML}
         ${sagaChapterHTML}
         ${dfcBadgeHTML}
@@ -11235,7 +11236,7 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="economyAudit">
         <div class="admin-section">
-          <nav style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px" aria-label="Secciones de auditoría"><a href="#admin-economic-section">Auditoría económica</a><a href="#admin-service-usage">Auditoría Firebase / Firestore</a></nav>
+          <nav style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px" aria-label="Secciones de auditoría"><a href="${escapeHtml(location.pathname+location.search)}#admin-economic-section">Auditoría económica</a><a href="${escapeHtml(location.pathname+location.search)}#admin-service-usage">Auditoría Firebase / Firestore</a></nav>
           <h2 class="admin-section-title" id="admin-economic-section">AUDITORÍA ECONÓMICA</h2>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="admin-save-btn active" data-economy-subtab="audit">${gameTextHtml('admin.movements.tab.audit')}</button>

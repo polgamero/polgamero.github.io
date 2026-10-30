@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "mode": "portal",
+  "source": "bootstrap",
+  "feedUrl": "https://southamerica-east1-argentinia-tcg.cloudfunctions.net/editorialFeed",
+  "origin": "https://magiayleyenda.com.ar",
+  "retainedSites": [
+    "band",
+    "botonera",
+    "clima",
+    "curso_js",
+    "curso_react",
+    "cv",
+    "top5",
+    "trivia",
+    "privacidad",
+    "terminos"
+  ],
+  "assetLayout": "shared-root-v1"
+}

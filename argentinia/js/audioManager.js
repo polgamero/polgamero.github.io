@@ -1,3 +1,4 @@
+import {sharedAssetURL} from './sharedAssets.js';
 // js/audioManager.js — Entrega 23.19.4.8 Mass Event Cinematics + High-Impact Feedback.
 // Un único dueño del audio de Argentinia: música por escena (menú / Tano / multiplayer)
 // con Opus primero y MP3 fallback, más SFX separados. Todo es local al navegador.
@@ -395,7 +396,7 @@ function ensureMusicElement(trackId = 'menu') {
 
   for (const sourceDef of track.sources || []) {
     const source = document.createElement('source');
-    source.src = sourceDef.src;
+    source.src = sharedAssetURL(sourceDef.src);
     source.type = sourceDef.type || '';
     audio.appendChild(source);
   }
@@ -641,7 +642,7 @@ export function playSfx(id, options = {}) {
   audio.setAttribute('playsinline', '');
   for (const sourceDef of def.sources || []) {
     const source = document.createElement('source');
-    source.src = sourceDef.src;
+    source.src = sharedAssetURL(sourceDef.src);
     source.type = sourceDef.type || '';
     audio.appendChild(source);
   }

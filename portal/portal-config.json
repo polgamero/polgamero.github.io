@@ -1,0 +1,15 @@
+{
+  "firebase": {
+    "apiKey": "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
+    "authDomain": "argentinia-tcg.firebaseapp.com",
+    "projectId": "argentinia-tcg",
+    "messagingSenderId": "624830573266",
+    "appId": "1:624830573266:web:55ff4c56665f33a5821b0b"
+  },
+  "sdkVersion": "12.16.0",
+  "adminUid": "yXZUclCVm9RCO1CWlqIse0iVtEo2",
+  "region": "southamerica-east1",
+  "backendEnabled": false,
+  "emulators": null,
+  "publicationStatusPath": "/editorial/release.json"
+}

@@ -224,7 +224,8 @@
     "./js/version.js",
     "./js/workshop.js",
     "./js/zoneOwnership.js",
-    "./js/sessionInput.js"
+    "./js/sessionInput.js",
+    "./js/sharedAssets.js"
   ],
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
@@ -262,6 +263,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "df1154ac37f4a31d8eb6",
+  "buildId": "73f7eb08c5b5e83b3d6e",
   "serviceUsageSchema": "arg-service-usage-v1"
 }
