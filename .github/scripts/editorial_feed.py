@@ -9,6 +9,9 @@ FEED='https://southamerica-east1-argentinia-tcg.cloudfunctions.net/editorialFeed
 ID=re.compile(r'^[a-z0-9][a-z0-9-]{0,79}$')
 HASH=re.compile(r'^[a-f0-9]{64}$')
 
+class NoApprovedRelease(ValueError):
+    """The deployed service explicitly reports that no first release exists."""
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):
@@ -30,6 +33,10 @@ def read_release(feed=FEED,owner_emulator=False):
         return data
 
     release=json.loads(download({},200000))
+    # This is the service's exact empty initial state, before any publication.
+    # HTTP failures, invalid manifests and missing releases remain fatal.
+    if release=={'version':1,'releaseId':None,'articles':[],'media':[]}:
+        raise NoApprovedRelease('No first approved release')
     rid=release.get('releaseId')
     if release.get('version')!=1 or not isinstance(rid,str) or not ID.fullmatch(rid):
         raise ValueError('No approved editorial release; do not fall back to bootstrap')

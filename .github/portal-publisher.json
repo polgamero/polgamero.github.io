@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "mode": "portal",
-  "source": "bootstrap",
+  "source": "auto",
   "feedUrl": "https://southamerica-east1-argentinia-tcg.cloudfunctions.net/editorialFeed",
   "origin": "https://magiayleyenda.com.ar",
   "retainedSites": [

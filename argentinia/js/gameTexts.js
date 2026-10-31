@@ -1697,6 +1697,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'ability.effect.scry': definition('Habilidades y costos', 'Anticipar', 'Etiqueta de efecto en selector de habilidades.'),
   'ability.effect.surveil': definition('Habilidades y costos', 'Chusmear', 'Etiqueta de efecto en selector de habilidades.'),
   'ability.effect.proliferate': definition('Habilidades y costos', 'Amplificar', 'Etiqueta de efecto en selector de habilidades.'),
+  'ability.effect.transform': definition('Habilidades y costos', 'Transformar', 'Etiqueta del efecto de transformación en selector de habilidades.'),
   'ability.effect.generic': definition('Habilidades y costos', 'Habilidad', 'Etiqueta de efecto en selector de habilidades.'),
   'ability.cost.crew': definition('Habilidades y costos', 'Tripular {cost}', 'Etiqueta de costo de Tripular.'),
   'ability.cost.sacSelf': definition('Habilidades y costos', 'Sacrificar esta carta', 'Etiqueta de costo de sacrificar la propia carta.'),

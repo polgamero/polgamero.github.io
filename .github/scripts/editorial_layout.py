@@ -44,7 +44,7 @@ def link(route, target, label, cls=""):
 
 
 def chrome(route, title, description, content, config, active="", extra_class="", structured=None):
-    nav = [("/leyendas/", "Leyendas"), ("/ranking/", "Ranking"), ("/manual/", "Cómo jugar"), ("/sobre-el-proyecto/", "El proyecto")]
+    nav = [("/matito/", "Matito"), ("/leyendas/", "Leyendas"), ("/ranking/", "Ranking"), ("/manual/", "Cómo jugar"), ("/sobre-el-proyecto/", "El proyecto")]
     nav_html = "".join(f'<a href="{relative(route, path)}"' + (' aria-current="page"' if active == path else '') + f'>{label}</a>' for path, label in nav)
     footer = "".join(link(route, path, label) for path, label in [("/leyendas/", "Leyendas"), ("/criterios-editoriales/", "Criterios editoriales"), ("/sobre-el-proyecto/", "El proyecto"), ("/contacto/", "Contacto"), ("/privacidad/", "Privacidad"), ("/terminos/", "Términos")])
     data = ''
@@ -59,7 +59,7 @@ def chrome(route, title, description, content, config, active="", extra_class=""
 <meta name="theme-color" content="#07130f"><meta name="color-scheme" content="dark">
 <meta name="robots" content="{esc(config.get('robots', 'index,follow'))}"><title>{esc(page_title)}</title>
 <meta name="description" content="{esc(description)}">
-<link rel="icon" href="{relative(route, '/assets/images/ui/logo.png')}" type="image/png">
+<link rel="icon" href="{relative(route, '/favicon.png')}" type="image/png">
 <link rel="stylesheet" href="{relative(route, '/portal.css')}">
 {data}</head>
 <body class="{esc(extra_class)}"><a class="skip-link" href="#contenido">Ir al contenido</a>
@@ -67,7 +67,7 @@ def chrome(route, title, description, content, config, active="", extra_class=""
 <nav aria-label="Principal">{nav_html}</nav>
 <a class="play-link" href="{esc(play_url(config['playUrl']))}">JUGAR <span aria-hidden="true">↗</span></a></header>
 <main id="contenido">{content}</main>
-<footer class="site-footer"><div class="page-shell footer-grid"><div><a class="footer-brand" href="{relative(route, '/')}">{logo(route)}</a><p>Historias para leer.<br>Un mundo para jugar.</p></div><nav aria-label="Información y contacto">{footer}</nav><p class="footer-note">{BRAND}<br>Tradiciones, fuentes y ficción: cada una con su lugar.</p></div></footer>
+<footer class="site-footer"><div class="page-shell footer-grid"><div><strong>ARGENTINIA — Magia y Leyenda</strong><p>Historias para leer.<br>Un mundo para jugar.</p></div><nav aria-label="Información y contacto">{footer}</nav><p class="footer-note">{BRAND}<br>Tradiciones, fuentes y ficción: cada una con su lugar.</p></div></footer>
 </body></html>
 '''
 
@@ -81,19 +81,8 @@ def reading_minutes(article):
     return max(1, math.ceil(len(body.split()) / 200))
 
 
-def cards(route, articles):
-    return '<div class="story-grid">' + ''.join(f'''<article class="story-card"><p class="eyebrow">{esc(a['region'])}</p><h3>{link(route, article_path(a), a['title'])}</h3><p>{esc(a['excerpt'])}</p><a class="text-link" href="{relative(route, article_path(a))}">Leer el artículo <span aria-hidden="true">→</span><span class="sr-only">: {esc(a['title'])}</span></a><span class="reading-time">{reading_minutes(a)} min de lectura</span></article>''' for a in articles) + '</div>'
-
-
 def intro(title, lead, eyebrow="ARGENTINIA", breadcrumb=True):
     return f'<header class="page-intro page-shell">' + ('<p class="eyebrow">' + esc(eyebrow) + '</p>' if breadcrumb else '') + f'<h1>{esc(title)}</h1><p class="lead">{esc(lead)}</p></header>'
-
-
-def home(articles):
-    return f'''<section class="hero page-shell" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title">{logo('/', 'hero-logo', True)}</h1><p class="hero-subtitle">Mitos y leyendas de Argentina</p><p class="lead">Del silbido en el monte a una luz en la noche. Historias que cambian de voz, viajan con quienes las cuentan y encuentran nuevas formas de seguir vivas.</p><a class="text-link" href="leyendas/index.html">Explorar las leyendas <span aria-hidden="true">↓</span></a></div><div class="hero-aside"><p class="eyebrow">EL TERRITORIO DE LOS RELATOS</p><p>Un lugar para leer sobre las tradiciones que inspiran nuestro universo. Con contexto regional, fuentes para seguir investigando y espacio para las diferencias.</p><a href="criterios-editoriales/index.html">Cómo leemos y contamos estas historias</a></div></section>
-<section class="page-shell section-space" aria-labelledby="stories-title"><div class="section-heading"><div><p class="eyebrow">PARA EMPEZAR A EXPLORAR</p><h2 id="stories-title">Historias para seguir explorando</h2></div><a class="text-link" href="leyendas/index.html">Ver todos los artículos →</a></div>{cards('/', articles)}</section>
-<section class="page-shell project-band" aria-labelledby="project-title"><div><p class="eyebrow">DE LOS RELATOS A LA MESA</p><h2 id="project-title">Historias para leer.<br>Un mundo para jugar.</h2></div><div><p>ARGENTINIA — Magia y Leyenda es un juego de cartas para navegador. Paisajes, costumbres y relatos argentinos inspiran un universo fantástico donde cada partida se decide con estrategia.</p><p>La tradición cultural y su adaptación tienen recorridos propios. Acá podés conocer las fuentes; en el juego, descubrir cómo se transforman en cartas.</p><div class="link-row"><a class="text-link" href="sobre-el-proyecto/index.html">Conocer el proyecto →</a><a class="text-link" href="manual/index.html">Leer cómo se juega →</a></div></div></section>
-<section class="page-shell section-space reading-invitation"><p class="eyebrow">UNA HISTORIA PUEDE TENER MUCHAS VOCES</p><h2>¿Conocés otra versión?</h2><p>El lugar, la persona que la cuenta y los detalles que cambian también forman parte de una historia. Podés acercarnos una referencia o señalar una corrección.</p><a class="text-link" href="contacto/index.html">Escribir al proyecto →</a></section>'''
 
 
 class TrustedPageBody(HTMLParser):

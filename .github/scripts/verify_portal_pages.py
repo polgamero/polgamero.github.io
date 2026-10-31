@@ -27,7 +27,7 @@ def verify(repo,artifact,report):
     cfg=json.loads(read(repo/'.github/portal-publisher.json'))
     receipt=json.loads(read(artifact/'editorial/release.json'))
     route_data=json.loads(read(artifact/'editorial/routes.json'))
-    expected=set(INDEXED)|{'/leyendas/'+a['slug']+'/' for a in receipt['articles']}
+    expected=set(INDEXED)|{a.get('route','/leyendas/'+a['slug']+'/') for a in receipt['articles']}
     if report['mode']=='game-compat':expected.discard('/')
     check(not report['missingRetainedSources'],'incomplete retained sources; not publishable')
     check(set(route_data['indexedRoutes'])==expected,'route manifest differs from explicit editorial/game routes')
@@ -115,7 +115,19 @@ def verify(repo,artifact,report):
             local=(artifact/url.path.lstrip('/')) if url.path.startswith('/') else file.parent/unquote(url.path)
             if local.is_dir():local=local/'index.html'
             check(local.resolve().is_relative_to(artifact) and local.is_file(),'broken editorial local link '+route+' -> '+value)
-        if route!='/404.html':check('class="play-link" href="/jugar/"' in text,'JUGAR destination incorrect '+route)
+        if route not in ('/404.html','/editor/'):check('class="play-link" href="/jugar/"' in text,'JUGAR destination incorrect '+route)
+    check((artifact/'favicon.png').read_bytes()==(repo/'argentinia/favicon.png').read_bytes(),'original favicon differs')
+    home=Page(read(artifact/'index.html')).tags
+    if report['mode']=='portal':
+        check(sum(t=='img' and '/images/ui/logo.png' in a.get('src','') for t,a in home)==1,'home must have only the navbar logo')
+        check(any(t=='img' and '/images/matito/' in a.get('src','') for t,a in home),'home lacks original Matito art')
+        check(any(t=='img' and '/images/cards/' in a.get('src','') for t,a in home),'home lacks real game card art')
+    manual=read(artifact/'manual/index.html')
+    check(manual.count('data-manual-base=')==10,'public manual must retain every original figure')
+    check('/runtime/manual.js' in manual or '../runtime/manual.js' in manual,'public manual loader missing')
+    for name in ('siteEditorialAdmin.js','rankingTable.js','triggerLabels.js'):
+        check((artifact/'js'/name).is_file(),'missing shared game component '+name)
+    check((artifact/'editorial-admin.html').is_file(),'embedded Admin template missing')
     if errors:raise ValueError('\n'.join(errors))
     return {'status':'PASS','indexedRoutes':len(expected),'retainedSites':10,'gameBuildId':game['buildId'],'protocol':'mp-23.19.2-fl40','publishedBytes':total_bytes,'externalOriginals':len(shared['externalOriginals']),'deployExecuted':False}
 

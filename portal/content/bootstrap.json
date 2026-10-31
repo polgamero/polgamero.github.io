@@ -8,36 +8,144 @@
     "author": "ARGENTINIA — Magia y Leyenda",
     "preparedOn": "2026-10-29",
     "region": "Litoral y Nordeste argentino",
-    "tags": ["Tradición oral", "Pombero", "Litoral"],
+    "tags": [
+      "Tradición oral",
+      "Pombero",
+      "Litoral",
+      "carta:crea_020"
+    ],
     "sources": [
-      {"id": "unne", "title": "Hugo Roberto Wingeyer y Jimena Verónica Gusberti, Una mirada sobre el centro de interés mitos populares en estudios de disponibilidad léxica de Resistencia y Corrientes, Cuadernos de Literatura 13 (2013), pp. 95–102", "url": "https://revistas.unne.edu.ar/index.php/clt/article/view/3068", "accessedOn": "2026-10-29", "note": "Estudio regional; los pasajes sobre Pombero están en las páginas 98–99 de la edición impresa."},
-      {"id": "bn", "title": "Biblioteca Nacional, Bestiario nacional (2023)", "url": "https://www.bn.gov.ar/agenda-cultural/bestiario-nacional-criaturas-del-imaginario-argentino-1", "accessedOn": "2026-10-29", "note": "Organización regional de la exposición. Las fechas de visita corresponden a 2023."},
-      {"id": "educar", "title": "Educ.ar, La leyenda del Pombero, serie El taller de historias, autoría Ronda", "url": "https://www.educ.ar/recursos/100539/la-leyenda-del-pombero", "accessedOn": "2026-10-29", "note": "Ficha del recurso audiovisual. Se consulta su presentación educativa; no se reproduce el video ni se lo usa como prueba de una versión oral original."},
-      {"id": "uns", "title": "Universidad Nacional del Sur, Escuela de Ciclo Básico Común, evaluación de Lengua del ingreso 2017: El cuidador de pájaros (adaptación)", "url": "https://repositoriodigital.uns.edu.ar/bitstream/handle/123456789/6792/Examen%20Lengua%20Ingreso%202017.pdf?isAllowed=y&sequence=2", "accessedOn": "2026-10-29", "note": "Adaptación literaria empleada en una evaluación fechada el 29 de octubre de 2016; no es una transcripción de campo."}
+      {
+        "id": "unne",
+        "title": "Hugo Roberto Wingeyer y Jimena Verónica Gusberti, Una mirada sobre el centro de interés mitos populares en estudios de disponibilidad léxica de Resistencia y Corrientes, Cuadernos de Literatura 13 (2013), pp. 95–102",
+        "url": "https://revistas.unne.edu.ar/index.php/clt/article/view/3068",
+        "accessedOn": "2026-10-29",
+        "note": "Estudio regional; los pasajes sobre Pombero están en las páginas 98–99 de la edición impresa."
+      },
+      {
+        "id": "bn",
+        "title": "Biblioteca Nacional, Bestiario nacional (2023)",
+        "url": "https://www.bn.gov.ar/agenda-cultural/bestiario-nacional-criaturas-del-imaginario-argentino-1",
+        "accessedOn": "2026-10-29",
+        "note": "Organización regional de la exposición. Las fechas de visita corresponden a 2023."
+      },
+      {
+        "id": "educar",
+        "title": "Educ.ar, La leyenda del Pombero, serie El taller de historias, autoría Ronda",
+        "url": "https://www.educ.ar/recursos/100539/la-leyenda-del-pombero",
+        "accessedOn": "2026-10-29",
+        "note": "Ficha del recurso audiovisual. Se consulta su presentación educativa; no se reproduce el video ni se lo usa como prueba de una versión oral original."
+      },
+      {
+        "id": "uns",
+        "title": "Universidad Nacional del Sur, Escuela de Ciclo Básico Común, evaluación de Lengua del ingreso 2017: El cuidador de pájaros (adaptación)",
+        "url": "https://repositoriodigital.uns.edu.ar/bitstream/handle/123456789/6792/Examen%20Lengua%20Ingreso%202017.pdf?isAllowed=y&sequence=2",
+        "accessedOn": "2026-10-29",
+        "note": "Adaptación literaria empleada en una evaluación fechada el 29 de octubre de 2016; no es una transcripción de campo."
+      }
     ],
     "sections": [
-      {"id": "quien-es", "title": "¿Quién es el Pombero?", "blocks": [
-        {"type": "paragraph", "text": "El Pombero es una figura de tradición guaraní. Un estudio de la Universidad Nacional del Nordeste lo encuentra entre las menciones frecuentes sobre mitos populares en Resistencia y Corrientes. El resultado describe ese relevamiento, no las creencias de toda la población.", "sources": ["unne"]},
-        {"type": "paragraph", "text": "La Biblioteca Nacional lo incluyó junto al Lobizón y al Yasí Yateré en el recorrido del Litoral de su exposición Bestiario nacional, de 2023. Ese mapa sirve como puerta de entrada a una región de relatos. No conviene leerlo como una frontera que impida a las historias viajar con las personas que las cuentan.", "sources": ["bn"]}
-      ]},
-      {"id": "monte-y-siesta", "title": "Del cuidado de las aves a las historias de la siesta", "blocks": [
-        {"type": "paragraph", "text": "Wingeyer y Gusberti recogen su papel de protector de las aves y perseguidor de quienes las molestan durante la siesta. También registran relatos urbanos empleados para que los chicos permanezcan en sus casas a esa hora.", "sources": ["unne"]},
-        {"type": "paragraph", "text": "El cuidador de pájaros, una adaptación incluida en una evaluación de Lengua de la Universidad Nacional del Sur, convierte ese vínculo en una historia protagonizada por un chico que lastima aves. La presentación reúne descripciones contradictorias del Pombero antes de empezar la acción. Es un recurso literario útil: en vez de resolver todas las diferencias, deja que el lector entre en un mundo donde los relatos no coinciden en cada detalle.", "sources": ["uns"]},
-        {"type": "paragraph", "text": "Al comparar esas dos fuentes hay una distinción importante. Un estudio que analiza referencias de hablantes y una adaptación escolar pueden dialogar, pero hacen trabajos distintos. La segunda tiene una trama elegida por quien adapta; no debemos atribuir cada episodio de esa trama a todas las familias del Litoral."}
-      ]},
-      {"id": "senales", "title": "El silbido y la presencia que no se ve", "blocks": [
-        {"type": "paragraph", "text": "El estudio recoge alusiones de pescadores al silbido, a la imitación de aves y a ofrendas de tabaco y miel. Señala cruces de rasgos con el Yasí Yateré. Eso invita a desconfiar de una lista definitiva de atributos: distintas versiones pueden mezclar o destacar cosas diferentes.", "sources": ["unne"]},
-        {"type": "paragraph", "text": "Nuestra lectura es que una presencia anunciada por un sonido produce una clase particular de tensión. El narrador puede hacer sentir que algo está cerca sin mostrarlo. Al escuchar una historia, vale preguntarse qué oyó realmente el personaje y qué interpretación agregó después. Esa pregunta permite disfrutar el relato y, al mismo tiempo, prestar atención a cómo está contado."}
-      ]},
-      {"id": "nuevas-versiones", "title": "Cuando el relato llega a una pantalla", "blocks": [
-        {"type": "paragraph", "text": "Educ.ar ofrece La leyenda del Pombero dentro de El taller de historias. Su ficha presenta a un abuelo que comparte relatos con sus nietos y sitúa el recurso en un contexto educativo. La existencia de esa adaptación muestra otra forma de circulación: una narración que se consulta en una pantalla, con una selección de voces, imágenes y tiempos propia del audiovisual.", "sources": ["educar"]},
-        {"type": "paragraph", "text": "Leer, escuchar y jugar abren recorridos diferentes. En ARGENTINIA — Magia y Leyenda, la inspiración cultural entra en un universo de fantasía y reglas. Una habilidad de una carta pertenece a esa adaptación: no documenta por sí misma una creencia ni reemplaza una fuente sobre el Pombero."}
-      ]},
-      {"id": "escuchar", "title": "Una forma de escuchar sin borrar las diferencias", "blocks": [
-        {"type": "paragraph", "text": "Si conocés una versión familiar, podés compararla con estas lecturas sin buscar un ganador. Anotá quién la contó, en qué lugar la escuchaste y qué parte cambió al volver a contarla. No hace falta publicar nombres ni detalles privados para conservar ese contexto. La comparación gana mucho cuando registra las diferencias en lugar de corregirlas hasta que todas las historias se parezcan."},
-        {"type": "list", "items": ["¿La aparición ocurre de día, durante la siesta o de noche?", "¿El personaje protege, advierte, engaña o castiga?", "¿Se lo ve o sólo se reconoce una señal?", "¿La versión viene de una conversación, un libro, la escuela o una adaptación audiovisual?"]},
-        {"type": "paragraph", "text": "Estas preguntas son una propuesta de lectura, no una encuesta que pruebe la existencia del personaje. El interés está en conocer qué conserva cada narración y qué relación establece con el lugar desde el que se cuenta."}
-      ]}
+      {
+        "id": "quien-es",
+        "title": "¿Quién es el Pombero?",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Pombero es una figura de tradición guaraní. Un estudio de la Universidad Nacional del Nordeste lo encuentra entre las menciones frecuentes sobre mitos populares en Resistencia y Corrientes. El resultado describe ese relevamiento, no las creencias de toda la población.",
+            "sources": [
+              "unne"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La Biblioteca Nacional lo incluyó junto al Lobizón y al Yasí Yateré en el recorrido del Litoral de su exposición Bestiario nacional, de 2023. Ese mapa sirve como puerta de entrada a una región de relatos. No conviene leerlo como una frontera que impida a las historias viajar con las personas que las cuentan.",
+            "sources": [
+              "bn"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "monte-y-siesta",
+        "title": "Del cuidado de las aves a las historias de la siesta",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Wingeyer y Gusberti recogen su papel de protector de las aves y perseguidor de quienes las molestan durante la siesta. También registran relatos urbanos empleados para que los chicos permanezcan en sus casas a esa hora.",
+            "sources": [
+              "unne"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "El cuidador de pájaros, una adaptación incluida en una evaluación de Lengua de la Universidad Nacional del Sur, convierte ese vínculo en una historia protagonizada por un chico que lastima aves. La presentación reúne descripciones contradictorias del Pombero antes de empezar la acción. Es un recurso literario útil: en vez de resolver todas las diferencias, deja que el lector entre en un mundo donde los relatos no coinciden en cada detalle.",
+            "sources": [
+              "uns"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Al comparar esas dos fuentes hay una distinción importante. Un estudio que analiza referencias de hablantes y una adaptación escolar pueden dialogar, pero hacen trabajos distintos. La segunda tiene una trama elegida por quien adapta; no debemos atribuir cada episodio de esa trama a todas las familias del Litoral."
+          }
+        ]
+      },
+      {
+        "id": "senales",
+        "title": "El silbido y la presencia que no se ve",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El estudio recoge alusiones de pescadores al silbido, a la imitación de aves y a ofrendas de tabaco y miel. Señala cruces de rasgos con el Yasí Yateré. Eso invita a desconfiar de una lista definitiva de atributos: distintas versiones pueden mezclar o destacar cosas diferentes.",
+            "sources": [
+              "unne"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura es que una presencia anunciada por un sonido produce una clase particular de tensión. El narrador puede hacer sentir que algo está cerca sin mostrarlo. Al escuchar una historia, vale preguntarse qué oyó realmente el personaje y qué interpretación agregó después. Esa pregunta permite disfrutar el relato y, al mismo tiempo, prestar atención a cómo está contado."
+          }
+        ]
+      },
+      {
+        "id": "nuevas-versiones",
+        "title": "Cuando el relato llega a una pantalla",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Educ.ar ofrece La leyenda del Pombero dentro de El taller de historias. Su ficha presenta a un abuelo que comparte relatos con sus nietos y sitúa el recurso en un contexto educativo. La existencia de esa adaptación muestra otra forma de circulación: una narración que se consulta en una pantalla, con una selección de voces, imágenes y tiempos propia del audiovisual.",
+            "sources": [
+              "educar"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Leer, escuchar y jugar abren recorridos diferentes. En ARGENTINIA — Magia y Leyenda, la inspiración cultural entra en un universo de fantasía y reglas. Una habilidad de una carta pertenece a esa adaptación: no documenta por sí misma una creencia ni reemplaza una fuente sobre el Pombero."
+          }
+        ]
+      },
+      {
+        "id": "escuchar",
+        "title": "Una forma de escuchar sin borrar las diferencias",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Si conocés una versión familiar, podés compararla con estas lecturas sin buscar un ganador. Anotá quién la contó, en qué lugar la escuchaste y qué parte cambió al volver a contarla. No hace falta publicar nombres ni detalles privados para conservar ese contexto. La comparación gana mucho cuando registra las diferencias en lugar de corregirlas hasta que todas las historias se parezcan."
+          },
+          {
+            "type": "list",
+            "items": [
+              "¿La aparición ocurre de día, durante la siesta o de noche?",
+              "¿El personaje protege, advierte, engaña o castiga?",
+              "¿Se lo ve o sólo se reconoce una señal?",
+              "¿La versión viene de una conversación, un libro, la escuela o una adaptación audiovisual?"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Estas preguntas son una propuesta de lectura, no una encuesta que pruebe la existencia del personaje. El interés está en conocer qué conserva cada narración y qué relación establece con el lugar desde el que se cuenta."
+          }
+        ]
+      }
     ]
   },
   {
@@ -49,36 +157,667 @@
     "author": "ARGENTINIA — Magia y Leyenda",
     "preparedOn": "2026-10-29",
     "region": "Pampa y Noroeste argentino",
-    "tags": ["Tradición oral", "Luz Mala", "Paisaje rural"],
+    "tags": [
+      "Tradición oral",
+      "Luz Mala",
+      "Paisaje rural",
+      "carta:crea_018"
+    ],
     "sources": [
-      {"id": "bn", "title": "Biblioteca Nacional, Bestiario nacional (2023)", "url": "https://www.bn.gov.ar/agenda-cultural/bestiario-nacional-criaturas-del-imaginario-argentino-1", "accessedOn": "2026-10-29", "note": "El recorrido pampeano de la exposición no indica una distribución exclusiva."},
-      {"id": "inapl", "title": "INAPL, Audios Homenaje a los 100 años de la Colección de Folklore de 1921", "url": "https://inapl.cultura.gob.ar/noticia/audios-homenaje-a-los-100-anos-de-la-coleccion-de-folklore-de-1921/", "accessedOn": "2026-10-29", "note": "Índice institucional recuperado en el buscador: ENF_010, La Pampa, incluye Relato de luz mala de Jacinto Aráuz. No se ha transcrito ni resumido el audio."},
-      {"id": "moreno", "title": "Judith de los Ángeles Moreno, Muertos, aparecidos y diablos en la narrativa de Joselín Cerda Rodríguez, escritor tinogasteño, Cuadernos, Universidad Nacional de Jujuy", "url": "https://revistas.fhycs.unju.edu.ar/revistacuadernos/index.php/cuadernos/article/download/152/282?inline=1", "accessedOn": "2026-10-29", "note": "Análisis de la obra literaria de Cerda Rodríguez, en particular Don Pánfilo y la Luz Mala; no es un registro de observaciones físicas."},
-      {"id": "dubin", "title": "Mariano Dubin, Enseñanza de la literatura, formación de lectores y discursos educacionales: el problema de las culturas populares en el cotidiano escolar, tesis doctoral, UNLP (2019), p. 224", "url": "https://sedici.unlp.edu.ar/bitstream/handle/10915/82835/Documento_completo.1756%20Sin%20portadaOpt.pdf-PDFA.pdf?isAllowed=y&sequence=1", "accessedOn": "2026-10-29", "note": "Escena de lectura del canto VII de Martín Fierro y discusión de alumnos acerca de la Luz Mala. Las explicaciones de los participantes se tratan como parte de esa escena."}
+      {
+        "id": "bn",
+        "title": "Biblioteca Nacional, Bestiario nacional (2023)",
+        "url": "https://www.bn.gov.ar/agenda-cultural/bestiario-nacional-criaturas-del-imaginario-argentino-1",
+        "accessedOn": "2026-10-29",
+        "note": "El recorrido pampeano de la exposición no indica una distribución exclusiva."
+      },
+      {
+        "id": "inapl",
+        "title": "INAPL, Audios Homenaje a los 100 años de la Colección de Folklore de 1921",
+        "url": "https://inapl.cultura.gob.ar/noticia/audios-homenaje-a-los-100-anos-de-la-coleccion-de-folklore-de-1921/",
+        "accessedOn": "2026-10-29",
+        "note": "Índice institucional recuperado en el buscador: ENF_010, La Pampa, incluye Relato de luz mala de Jacinto Aráuz. No se ha transcrito ni resumido el audio."
+      },
+      {
+        "id": "moreno",
+        "title": "Judith de los Ángeles Moreno, Muertos, aparecidos y diablos en la narrativa de Joselín Cerda Rodríguez, escritor tinogasteño, Cuadernos, Universidad Nacional de Jujuy",
+        "url": "https://revistas.fhycs.unju.edu.ar/revistacuadernos/index.php/cuadernos/article/download/152/282?inline=1",
+        "accessedOn": "2026-10-29",
+        "note": "Análisis de la obra literaria de Cerda Rodríguez, en particular Don Pánfilo y la Luz Mala; no es un registro de observaciones físicas."
+      },
+      {
+        "id": "dubin",
+        "title": "Mariano Dubin, Enseñanza de la literatura, formación de lectores y discursos educacionales: el problema de las culturas populares en el cotidiano escolar, tesis doctoral, UNLP (2019), p. 224",
+        "url": "https://sedici.unlp.edu.ar/bitstream/handle/10915/82835/Documento_completo.1756%20Sin%20portadaOpt.pdf-PDFA.pdf?isAllowed=y&sequence=1",
+        "accessedOn": "2026-10-29",
+        "note": "Escena de lectura del canto VII de Martín Fierro y discusión de alumnos acerca de la Luz Mala. Las explicaciones de los participantes se tratan como parte de esa escena."
+      }
     ],
     "sections": [
-      {"id": "aparicion", "title": "Una aparición que se reconoce por su luz", "blocks": [
-        {"type": "paragraph", "text": "La Luz Mala ocupa un lugar singular entre los relatos argentinos: el nombre anuncia una presencia luminosa, antes que el cuerpo de una criatura. La Biblioteca Nacional la incluyó en la región pampeana de Bestiario nacional, su exposición de 2023. Otras lecturas la encuentran en escenarios del Noroeste. Conviene empezar por esa diversidad y no por una ficha que fije de una vez qué aspecto tiene o dónde puede aparecer.", "sources": ["bn", "moreno"]},
-        {"type": "paragraph", "text": "En este recorrido nos interesan las explicaciones que las narraciones construyen alrededor de la luz. Una aparición contada como señal de un alma y una luz interpretada a partir del paisaje pueden compartir un mismo relato. Describir esas interpretaciones no equivale a confirmar una causa sobrenatural ni a identificar un fenómeno observado."}
-      ]},
-      {"id": "registro", "title": "Una pista en el archivo de 1921", "blocks": [
-        {"type": "paragraph", "text": "El INAPL publicó un índice de audios para homenajear el centenario de la Colección de Folklore de 1921. En la entrada correspondiente a La Pampa aparece un Relato de luz mala de la localidad de Jacinto Aráuz, vinculado a la Escuela Elemental número 33. El índice permite ubicar una procedencia; no nos autoriza a inventar el contenido de ese testimonio ni a suponer que representa todas las versiones pampeanas.", "sources": ["inapl"]},
-        {"type": "paragraph", "text": "Para quien quiere seguir investigando, esa referencia aporta algo que una enumeración de sustos no ofrece: una localidad, una institución y una colección consultable. Nuestra propuesta es conservar esos datos junto al nombre de la leyenda. Así se puede volver a la fuente y distinguir lo que informa el archivo de lo que agrega cada lectura posterior."}
-      ]},
-      {"id": "tinogasta", "title": "En Tinogasta, una relación con los muertos", "blocks": [
-        {"type": "paragraph", "text": "La investigadora Judith de los Ángeles Moreno estudia relatos de Joselín Cerda Rodríguez, escritor de Tinogasta, Catamarca. Entre ellos se encuentra Don Pánfilo y la Luz Mala, incluido en Tinogasta en la leyenda. En su análisis, el personaje interpreta la aparición como un alma que necesita compañía u oración. El gesto de santiguarse pertenece a esa escena literaria y a la lectura cultural que la investigadora realiza de ella.", "sources": ["moreno"]},
-        {"type": "paragraph", "text": "Nuestra lectura de ese ejemplo desplaza una pregunta habitual. Además de preguntar qué le hace la luz a quien la ve, podemos preguntar qué cree deberle esa persona a la aparición. El miedo deja espacio a una relación: recordar, acompañar o responder. No todas las narraciones tienen que organizar el encuentro como una persecución para producir inquietud."},
-        {"type": "paragraph", "text": "El caso también recuerda por qué importan los lugares. Una adaptación situada en Tinogasta no debería rebautizarse como una supuesta versión universal de la llanura. Conservar la procedencia permite comparar relatos sin quitarles su contexto."}
-      ]},
-      {"id": "lecturas", "title": "Lo que ocurre cuando una leyenda se discute en clase", "blocks": [
-        {"type": "paragraph", "text": "En su tesis doctoral de 2019, Mariano Dubin describe una clase que lee el canto VII de Martín Fierro. El pasaje relaciona la muerte de un personaje y su entierro sin rezos con la mención posterior de una luz mala. Durante la conversación, un alumno propone una explicación asociada con huesos que brillan y la enlaza con presencias fantasmales. Dubin analiza cómo esas explicaciones pueden convivir en el intercambio.", "sources": ["dubin"]},
-        {"type": "paragraph", "text": "Esa escena es valiosa precisamente si respetamos sus límites: documenta una lectura y una conversación, no demuestra que los huesos produzcan una luz particular ni que un resplandor sea un alma. Si se quisiera explicar un avistamiento concreto, harían falta observaciones y evidencia de otro tipo. Un estudio de prácticas de lectura responde otras preguntas."}
-      ]},
-      {"id": "comparar", "title": "Cómo comparar versiones sin convertirlas en una sola", "blocks": [
-        {"type": "paragraph", "text": "Podés seguir este recorrido desde tres puntos de partida: el archivo, que conserva una referencia localizada; la literatura, que construye una escena; y la conversación, que vuelve a interpretar lo leído. Ninguno tiene que suplantar a los otros. Al reunirlos, la leyenda se vuelve más interesante que una explicación rápida elegida de antemano."},
-        {"type": "list", "items": ["Identificá el lugar y la fuente de la versión que estás leyendo.", "Separá lo que el personaje observa de lo que supone que significa.", "Preguntá qué cambia cuando la narración pasa a un libro, una clase o un juego.", "Mantené abiertas las diferencias: una semejanza entre dos relatos no prueba que tengan el mismo origen."]},
-        {"type": "paragraph", "text": "En ARGENTINIA — Magia y Leyenda, esa capacidad de una aparición para transformar un paisaje puede inspirar ficción. Las reglas y las imágenes del juego pertenecen a esa creación. Este artículo propone otro recorrido: acercarse a las fuentes y descubrir qué preguntas conserva cada manera de contar la Luz Mala."}
-      ]}
+      {
+        "id": "aparicion",
+        "title": "Una aparición que se reconoce por su luz",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La Luz Mala ocupa un lugar singular entre los relatos argentinos: el nombre anuncia una presencia luminosa, antes que el cuerpo de una criatura. La Biblioteca Nacional la incluyó en la región pampeana de Bestiario nacional, su exposición de 2023. Otras lecturas la encuentran en escenarios del Noroeste. Conviene empezar por esa diversidad y no por una ficha que fije de una vez qué aspecto tiene o dónde puede aparecer.",
+            "sources": [
+              "bn",
+              "moreno"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "En este recorrido nos interesan las explicaciones que las narraciones construyen alrededor de la luz. Una aparición contada como señal de un alma y una luz interpretada a partir del paisaje pueden compartir un mismo relato. Describir esas interpretaciones no equivale a confirmar una causa sobrenatural ni a identificar un fenómeno observado."
+          }
+        ]
+      },
+      {
+        "id": "registro",
+        "title": "Una pista en el archivo de 1921",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El INAPL publicó un índice de audios para homenajear el centenario de la Colección de Folklore de 1921. En la entrada correspondiente a La Pampa aparece un Relato de luz mala de la localidad de Jacinto Aráuz, vinculado a la Escuela Elemental número 33. El índice permite ubicar una procedencia; no nos autoriza a inventar el contenido de ese testimonio ni a suponer que representa todas las versiones pampeanas.",
+            "sources": [
+              "inapl"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Para quien quiere seguir investigando, esa referencia aporta algo que una enumeración de sustos no ofrece: una localidad, una institución y una colección consultable. Nuestra propuesta es conservar esos datos junto al nombre de la leyenda. Así se puede volver a la fuente y distinguir lo que informa el archivo de lo que agrega cada lectura posterior."
+          }
+        ]
+      },
+      {
+        "id": "tinogasta",
+        "title": "En Tinogasta, una relación con los muertos",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La investigadora Judith de los Ángeles Moreno estudia relatos de Joselín Cerda Rodríguez, escritor de Tinogasta, Catamarca. Entre ellos se encuentra Don Pánfilo y la Luz Mala, incluido en Tinogasta en la leyenda. En su análisis, el personaje interpreta la aparición como un alma que necesita compañía u oración. El gesto de santiguarse pertenece a esa escena literaria y a la lectura cultural que la investigadora realiza de ella.",
+            "sources": [
+              "moreno"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura de ese ejemplo desplaza una pregunta habitual. Además de preguntar qué le hace la luz a quien la ve, podemos preguntar qué cree deberle esa persona a la aparición. El miedo deja espacio a una relación: recordar, acompañar o responder. No todas las narraciones tienen que organizar el encuentro como una persecución para producir inquietud."
+          },
+          {
+            "type": "paragraph",
+            "text": "El caso también recuerda por qué importan los lugares. Una adaptación situada en Tinogasta no debería rebautizarse como una supuesta versión universal de la llanura. Conservar la procedencia permite comparar relatos sin quitarles su contexto."
+          }
+        ]
+      },
+      {
+        "id": "lecturas",
+        "title": "Lo que ocurre cuando una leyenda se discute en clase",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "En su tesis doctoral de 2019, Mariano Dubin describe una clase que lee el canto VII de Martín Fierro. El pasaje relaciona la muerte de un personaje y su entierro sin rezos con la mención posterior de una luz mala. Durante la conversación, un alumno propone una explicación asociada con huesos que brillan y la enlaza con presencias fantasmales. Dubin analiza cómo esas explicaciones pueden convivir en el intercambio.",
+            "sources": [
+              "dubin"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Esa escena es valiosa precisamente si respetamos sus límites: documenta una lectura y una conversación, no demuestra que los huesos produzcan una luz particular ni que un resplandor sea un alma. Si se quisiera explicar un avistamiento concreto, harían falta observaciones y evidencia de otro tipo. Un estudio de prácticas de lectura responde otras preguntas."
+          }
+        ]
+      },
+      {
+        "id": "comparar",
+        "title": "Cómo comparar versiones sin convertirlas en una sola",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Podés seguir este recorrido desde tres puntos de partida: el archivo, que conserva una referencia localizada; la literatura, que construye una escena; y la conversación, que vuelve a interpretar lo leído. Ninguno tiene que suplantar a los otros. Al reunirlos, la leyenda se vuelve más interesante que una explicación rápida elegida de antemano."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Identificá el lugar y la fuente de la versión que estás leyendo.",
+              "Separá lo que el personaje observa de lo que supone que significa.",
+              "Preguntá qué cambia cuando la narración pasa a un libro, una clase o un juego.",
+              "Mantené abiertas las diferencias: una semejanza entre dos relatos no prueba que tengan el mismo origen."
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "En ARGENTINIA — Magia y Leyenda, esa capacidad de una aparición para transformar un paisaje puede inspirar ficción. Las reglas y las imágenes del juego pertenecen a esa creación. Este artículo propone otro recorrido: acercarse a las fuentes y descubrir qué preguntas conserva cada manera de contar la Luz Mala."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "el-familiar-ingenios-y-pactos",
+    "slug": "el-familiar-ingenios-y-pactos",
+    "title": "El Familiar: el precio de la riqueza en los ingenios",
+    "excerpt": "Un perro negro, una serpiente y un pacto desigual. La leyenda del Familiar permite leer el miedo al poder y su transformación en una criatura de ARGENTINIA.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "Noroeste argentino",
+    "tags": [
+      "carta:crea_185"
+    ],
+    "sources": [
+      {
+        "id": "gentile",
+        "title": "Margarita E. Gentile, El Familiar: etnohistoria de esta creencia en el Noroeste argentino. Revista de Folklore 477 (2021)",
+        "url": "https://www.funjdiaz.net/folklore/07ficha.php?ID=4775&NUM=477",
+        "accessedOn": "2026-10-30",
+        "note": "Investigación y comparación documental. Los párrafos sin referencia desarrollan una lectura editorial o describen la carta del juego."
+      }
+    ],
+    "sections": [
+      {
+        "id": "relato",
+        "title": "El ser que sostiene un pacto",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "En las versiones reunidas por la investigadora Margarita E. Gentile, el Familiar aparece ligado a los ingenios azucareros del Noroeste. Puede tomar forma de perro negro o de gran serpiente. La riqueza del dueño depende de alimentarlo con la vida de un trabajador: el beneficio y su costo recaen en personas distintas. Es un relato tradicional, no una explicación comprobada de una muerte concreta.",
+            "sources": [
+              "gentile"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La imagen resulta inquietante por esa desigualdad. El monstruo puede estar escondido, pero el trato que lo sostiene organiza toda la historia. Nuestra lectura pone el foco ahí: el miedo no viene solamente de unos colmillos, sino de descubrir que alguien decidió cuánto vale la vida de otro. Esa pregunta mantiene su fuerza incluso cuando el lector no conoce un ingenio.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "versiones",
+        "title": "Una criatura con más de una forma",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El estudio etnohistórico compara testimonios y documentos de distintas épocas; también advierte contra presentar materiales antiguos como descripciones actuales sin explicar su fecha. Su comparación identifica componentes prehispánicos y europeos en la formación de la creencia. Por eso conviene acompañar cada versión con un lugar y una fuente, en vez de reducirla a una única definición.",
+            "sources": [
+              "gentile"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Para leer estas historias proponemos prestar atención a quién habla. ¿El narrador describe algo que vio, repite una advertencia o transmite lo que le contaron? Esas posiciones construyen efectos diferentes. Una advertencia puede revelar aquello que una comunidad considera peligroso aunque no permita establecer que el episodio ocurrió. La distinción ayuda a escuchar el relato sin convertir a sus protagonistas reales en sospechosos.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "carta",
+        "title": "Del pacto a la mesa de juego",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "En ARGENTINIA, El Familiar del Ingenio es una criatura legendaria. Tiene Intimidante y Letal; al comienzo de tu mantenimiento, el rival pierde un Punto de Vida y vos ganás uno. También tiene Zafar. La ilustración que acompaña esta entrada pertenece al juego; es nuestra interpretación fantástica de la leyenda, no una imagen documental.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La conexión que proponemos está en el beneficio que alguien obtiene a costa de otro: el drenaje de vida convierte esa desigualdad en un efecto de la partida. Conviene reconocer también el límite de la comparación. La carta no exige sacrificar un trabajador para mantener el pacto del relato. El juego elige algunos motivos y los transforma en reglas propias; describir esas reglas con precisión permite distinguir nuestra adaptación de la tradición que la inspira.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "lectura",
+        "title": "Cómo seguir investigando",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La referencia enlazada permite distinguir la recopilación, el análisis y los documentos citados. Al comparar otra versión, anotá qué forma adopta el ser, quién conoce el pacto y quién consigue enfrentarlo. Esas diferencias cambian el centro del relato: puede dominar el terror de la aparición, la astucia de un personaje o el cuestionamiento de un poder que parece intocable. Conservarlas hace a la leyenda más interesante que buscar una sola versión correcta.",
+            "sources": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lobizon-septimo-hijo-y-transformacion",
+    "slug": "lobizon-septimo-hijo-y-transformacion",
+    "title": "Lobizón: el vecino que la noche vuelve extraño",
+    "excerpt": "La transformación del séptimo hijo reúne tradiciones que viajaron y cambiaron. Una lectura del Lobizón y de las dos caras de una carta de ARGENTINIA.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "Litoral y tradiciones del Cono Sur",
+    "tags": [
+      "carta:crea_146"
+    ],
+    "sources": [
+      {
+        "id": "chavez",
+        "title": "Fabiola Yvonne Chavez Hualpa, Lupu mannaru, panaro y lobizón: el hombre-lobo, un inmigrante transoceánico",
+        "url": "https://www.cervantesvirtual.com/obra-visor/lupu-mannaru-panaro-y-lobizon-el-hombre-lobo-un-inmigrante-transoceanico-783907/html/",
+        "accessedOn": "2026-10-30",
+        "note": "Estudio comparativo de tradiciones y transformaciones culturales. La relación con ARGENTINIA es una interpretación de este sitio."
+      }
+    ],
+    "sections": [
+      {
+        "id": "identidad",
+        "title": "El miedo tiene una cara conocida",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Lobizón inquieta porque la criatura y la persona pertenecen a la misma historia. Fabiola Yvonne Chavez Hualpa estudia el motivo del hombre lobo y sus desplazamientos entre Europa y América, atendiendo a cruces con tradiciones locales. Ese enfoque permite pensar el relato como una elaboración histórica: no todo parecido demuestra un origen único ni todas las versiones necesitan coincidir.",
+            "sources": [
+              "chavez"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura comienza por el reconocimiento. Una amenaza completamente desconocida permite imaginar una frontera sencilla entre el pueblo y el afuera. Una persona que cambia de forma vuelve esa frontera inestable. El lector se pregunta qué sigue siendo humano, qué recuerda quien regresa y cómo lo mirarán sus vecinos. La transformación pone en juego una identidad, además de producir una escena de terror.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "viajes",
+        "title": "Historias que cruzan el agua",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La comparación de Chavez Hualpa vincula variantes del hombre lobo con migraciones, procesos de sincretismo y otros relatos de transformación humana en animal. Su artículo incluye testimonios italianos y referencias argentinas; no los presenta como una misma comunidad ni como una tradición inmóvil. Leer juntos esos materiales muestra la utilidad de preguntar quién transmite una historia y en qué contexto.",
+            "sources": [
+              "chavez"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La figura del séptimo hijo y las circunstancias de la metamorfosis aparecen con variaciones en las narraciones del Lobizón. En lugar de armar una lista de reglas supuestamente universales, conviene comparar una versión concreta con otra. Este artículo no identifica a personas reales con la criatura ni presenta una superstición como diagnóstico. El interés está en cómo una historia construye el destino de un personaje.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "dos-caras",
+        "title": "Dos maneras de entrar al juego",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "ARGENTINIA tiene una criatura legendaria llamada El Lobizón de la Séptima Noche, cuya ilustración acompaña esta entrada. También hay una carta de dos caras: Séptimo Hijo del Barrio puede transformarse al atacar en Lobizón de Medianoche. Son cartas distintas. La primera representa una presencia ya monstruosa; la segunda permite que el cambio suceda durante la partida.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La carta de dos caras ofrece una conexión especialmente clara con nuestra lectura del relato: el jugador conoce la posibilidad del cambio antes de verlo ocurrir. Declarar el ataque crea una expectativa y la transformación modifica la situación de la mesa. Para aprender sus interacciones hay que leer ambas caras y observar la pila. La presentación fantástica toma un motivo narrativo y lo vuelve una secuencia visible de decisiones y efectos.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "preguntas",
+        "title": "Qué mirar al escuchar otra versión",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Preguntá cómo empieza la sospecha, quién presencia el cambio y si el regreso a la forma humana permite recuperar la vida anterior. También importa desde qué mirada se cuenta: alguien que teme a la criatura puede describirla de un modo muy distinto a quien imagina su sufrimiento. Son preguntas de lectura, no un intento de verificar una metamorfosis. Nos permiten reconocer que el mismo personaje puede servir para producir espanto, compasión o una reflexión sobre la exclusión.",
+            "sources": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "salamanca-musica-y-precio-del-talento",
+    "slug": "salamanca-musica-y-precio-del-talento",
+    "title": "La Salamanca: aprender lo imposible tiene un precio",
+    "excerpt": "Una cueva oculta, música nocturna y pruebas difíciles. La Salamanca convierte el deseo de sobresalir en una historia sobre talento, miedo y pactos.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "Santiago del Estero y Noroeste argentino",
+    "tags": [
+      "carta:crea_150"
+    ],
+    "sources": [
+      {
+        "id": "municipio",
+        "title": "Municipalidad de Santiago del Estero, La Salamanca — El Folklore de Santiago del Estero",
+        "url": "https://www.santiagociudad.gov.ar/cultura/salamanca",
+        "accessedOn": "2026-10-30",
+        "note": "Presentación institucional de una versión del relato. El análisis narrativo y la relación con las cartas son aportes de ARGENTINIA."
+      }
+    ],
+    "sections": [
+      {
+        "id": "escuela",
+        "title": "Una escuela escondida en el monte",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La presentación del folklore santiagueño publicada por la Municipalidad describe la Salamanca como un lugar oculto al que se llega para aprender destrezas extraordinarias. Allí aparece el Supay y se reúnen personajes que buscan habilidades para la música, el baile, la doma u otras actividades. Es una formulación de la leyenda: no un registro de una escuela real ni una invitación a buscar sus supuestas entradas.",
+            "sources": [
+              "municipio"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "En nuestra lectura, la potencia del relato está en elegir una escuela como escenario del peligro. Aprender suele prometer crecimiento; aquí también exige preguntarse por el precio. El deseo de convertirse en alguien excepcional vuelve comprensible al personaje antes de enfrentarlo con una decisión inquietante. El oyente puede reconocer ese deseo sin aceptar las condiciones del pacto.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "sonidos",
+        "title": "La música que atrae y se esconde",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La versión municipal incluye una entrada de difícil acceso, pruebas de valor y animales que deben soportarse sin mostrar miedo. También describe música con instrumentos como bombo, violín, guitarra y arpa; el sonido deja de oírse cuando alguien se aproxima. Estos detalles pertenecen a esa versión y no deben tomarse como una enumeración obligatoria para todos los relatos de Salamanca.",
+            "sources": [
+              "municipio"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "El recurso sonoro permite una escena poderosa: algo se anuncia antes de mostrarse y desaparece cuando parece estar cerca. Quien escucha debe decidir si avanza, se queda quieto o vuelve. Esa distancia entre oír y ver sostiene la intriga sin necesidad de describir al monstruo. Al leer la historia, vale la pena detenerse en qué información recibe el protagonista y cuál permanece fuera de su alcance.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "pacto",
+        "title": "El talento y la decisión",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La pregunta que proponemos para conversar sobre esta leyenda es qué diferencia hay entre desear una habilidad y aceptar cualquier condición para obtenerla. No es necesario concluir que el talento sea sospechoso. El conflicto puede ubicarse en el atajo, en el pacto o en una promesa que oculta su consecuencia. Elegir una de esas lecturas cambia también la forma de imaginar al personaje que regresa de la cueva.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "En ARGENTINIA, Diablo de la Salamanca es una criatura legendaria con Intimidante, Arrolla y una habilidad de daño al atacar. Su diseño elige la fuerza amenazante del personaje para llevarla al combate. El Pacto de la Salamanca, otra carta del catálogo, pone el nombre del acuerdo en primer plano. El universo del juego reúne esas interpretaciones sin pretender reemplazar la diversidad de la tradición.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seguir",
+        "title": "Una invitación a comparar",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La fuente enlazada es un punto de partida para contrastar con relatos familiares o interpretaciones artísticas. Podés observar si domina la música, el miedo, la búsqueda de una destreza o el precio de volver cambiado. Al compartir otra versión, conservar su procedencia y aclarar qué parte recordás ayuda más que corregirla para que coincida con una ficha. Una leyenda sigue viva también en esas diferencias; nuestra adaptación en cartas agrega otra mirada, claramente situada en la ficción.",
+            "sources": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nahuelito-lago-imaginacion-y-evidencia",
+    "slug": "nahuelito-lago-imaginacion-y-evidencia",
+    "title": "Nahuelito: lo que creemos ver en el lago",
+    "excerpt": "Entre relatos, noticias y animales prehistóricos, Nahuelito invita a separar la fascinación por un misterio de las pruebas necesarias para explicarlo.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "Nahuel Huapi y Patagonia",
+    "tags": [
+      "carta:crea_142"
+    ],
+    "sources": [
+      {
+        "id": "conicet",
+        "title": "CONICET La Plata, Nahuelito: la fake news de Florentino Ameghino que habría dado origen al mito (20 de diciembre de 2024)",
+        "url": "https://laplata.conicet.gov.ar/nahuelito-la-fake-news-de-florentino-ameghino-que-habria-dado-origen-al-mito/",
+        "accessedOn": "2026-10-30",
+        "note": "Divulgación de una investigación documental del Museo de La Plata. No es una confirmación zoológica del personaje."
+      }
+    ],
+    "sections": [
+      {
+        "id": "mirada",
+        "title": "Una sombra alcanza para empezar una historia",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Nahuelito es una figura del imaginario asociado al lago Nahuel Huapi. Un artículo del CONICET La Plata presenta una investigación histórica sobre el papel de las afirmaciones de Florentino Ameghino acerca de un mamífero prehistórico supuestamente vivo en Patagonia. La reconstrucción examina documentos y circulación de noticias: estudiar el nacimiento de una creencia no equivale a confirmar la existencia del animal.",
+            "sources": [
+              "conicet"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "El misterio del lago permite una experiencia que muchos lectores reconocen: ver algo a la distancia y completar lo que falta con una imagen conocida. Nuestra interpretación no necesita ridiculizar esa experiencia. La pregunta fértil aparece un instante después: qué se vio efectivamente, qué se dedujo y qué agregó el relato al circular. Separar esas capas conserva la curiosidad y permite examinarla.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "archivo",
+        "title": "El pasado también cambia de forma al contarse",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La nota del CONICET explica que un fragmento de cuero de milodonte hallado en una cueva impulsó, a fines del siglo XIX, afirmaciones sobre la supervivencia del animal. Describe además la repercusión internacional y las expediciones alentadas por esa posibilidad. El episodio corresponde a una controversia paleontológica patagónica; no debe trasladarse sin más al lago ni confundirse con una prueba de un reptil acuático.",
+            "sources": [
+              "conicet"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Para leer una noticia sobre criaturas extraordinarias proponemos tres preguntas sencillas. ¿La pieza observada está disponible para que otros la estudien? ¿La explicación distingue los datos de las conjeturas? ¿El titular promete más de lo que el documento permite afirmar? No son condiciones para disfrutar una leyenda; son una forma de evitar que el placer del misterio termine convertido en una certeza sin fundamento.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "juego",
+        "title": "Cuando la sombra se vuelve carta",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "En ARGENTINIA, Nahuelito, Sombra del Lago lleva esa presencia sugerida al terreno de la fantasía. La ilustración original que mostramos pertenece a la carta del juego: no es una fotografía de un avistamiento. Su nombre propone un punto de vista, el de algo que todavía no termina de verse. El arte puede resolver visualmente lo que el relato deja incierto sin pedirle al público que lo tome como evidencia.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Una criatura legendaria invita además a imaginar una partida alrededor de una presencia singular. Coleccionar la carta, conocer su texto y buscarle un lugar en un mazo son maneras de participar de ese universo. Esa participación es distinta de afirmar que un animal habita un lago real. Mantener clara la diferencia deja espacio para la investigación, la creación artística y el juego, cada uno con sus propias preguntas.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "lectura",
+        "title": "Volver al agua con mejores preguntas",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La referencia enlazada permite seguir el recorrido hacia los documentos y la investigación citada. Al comparar otro relato de Nahuelito, fijate si se trata de un testimonio, una noticia, una recreación literaria o una imagen promocional. Cada formato cuenta algo sobre el interés por el personaje, pero no todos sostienen la misma clase de afirmación. El lago puede seguir siendo un escenario fascinante sin que tengamos que resolver su misterio con una respuesta inventada.",
+            "sources": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "portada-argentinia",
+    "slug": "portada-argentinia",
+    "title": "Armá tu mazo. Jugá tu leyenda.",
+    "excerpt": "Un juego de cartas coleccionables bien argentino. Enfrentá al Tano, desafiá a otros jugadores y llevá tu estrategia hasta la final del torneo.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "El universo de ARGENTINIA",
+    "tags": [
+      "sitio:portada",
+      "destacada:crea_020",
+      "destacada:crea_018",
+      "destacada:crea_142",
+      "destacada:crea_146",
+      "destacada:crea_150",
+      "destacada:crea_185"
+    ],
+    "sources": [
+      {
+        "id": "juego",
+        "title": "ARGENTINIA — Cartas y manual del juego",
+        "url": "https://magiayleyenda.com.ar/manual/",
+        "accessedOn": "2026-10-30",
+        "note": "Fuente del universo de ficción y de las mecánicas descriptas. Las imágenes son los assets originales del juego."
+      }
+    ],
+    "sections": [
+      {
+        "id": "bienvenida",
+        "title": "Una mesa para tus leyendas",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "ARGENTINIA — Magia y Leyenda reúne cartas originales, estrategia y fantasía argentina. Elegí tus colores, combiná criaturas y hechizos y encontrá el plan que querés llevar a la mesa. Podés aprender las reglas con el manual integrado, probar tus decisiones contra la IA, disputar el torneo y desafiar a otros jugadores. Matito te recibe en este universo de personajes, lugares e historias.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "modo-solo",
+        "title": "Una partida con el Tano",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Conocé tus cartas, probá combinaciones y encontrá tu manera de jugar contra la IA.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "modo-torneo",
+        "title": "Camino a la copa",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Cada cruce te acerca a la final. Adaptá tu plan, conocé a tus rivales y disputá el torneo.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "modo-mazos",
+        "title": "Un mazo que sea tuyo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Combiná colores, armá tu colección y desafiá a otros jugadores en PvP.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "flasheras",
+        "title": "Cartas que brillan por lo que son",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Conocé las Flasheras: acabados visuales que le dan otra presencia a tus cartas. Mové el puntero sobre estas muestras y miralas de cerca.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "invitacion",
+        "title": "Hay lugar para uno más.",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Conocé a sus jugadores, encontrá tu mazo y sumate a la próxima partida.",
+            "sources": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "matito-la-ronda-y-sus-evoluciones",
+    "slug": "matito-la-ronda-y-sus-evoluciones",
+    "title": "Matito: siempre hay lugar para uno más",
+    "excerpt": "El compañero de ARGENTINIA empieza con una ronda de mate y puede convertirse en Mator y Materex. Conocé sus formas y la idea que las une.",
+    "status": "review",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-10-30",
+    "region": "Personajes de ARGENTINIA",
+    "tags": [
+      "sitio:matito",
+      "carta:crea_368"
+    ],
+    "sources": [
+      {
+        "id": "juego",
+        "title": "ARGENTINIA — Cartas y manual del juego",
+        "url": "https://magiayleyenda.com.ar/manual/",
+        "accessedOn": "2026-10-30",
+        "note": "Fuente del universo de ficción y de las mecánicas descriptas. Las imágenes son los assets originales del juego."
+      }
+    ],
+    "sections": [
+      {
+        "id": "ronda",
+        "title": "Un pequeño compañero, una gran invitación",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Matito es el personaje que te recibe en ARGENTINIA. Su mate y su bombilla convierten una costumbre compartida en un compañero de aventuras. En la carta original, su frase es «Siempre alcanza para convidar a uno más». Esa invitación es el centro de nuestra presentación del personaje: antes que una demostración de poder, aparece el gesto de hacer lugar.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Lo vas a reconocer saludando, guiñando un ojo, señalando y festejando. Esas poses pertenecen al mismo personaje y acompañan distintas situaciones del juego. Aquí lo presentamos con sus imágenes originales: una forma de encontrar, desde la primera visita, al compañero que después vuelve a aparecer en la mesa y en los menús.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "mator",
+        "title": "Mator · Caballero feroz",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El primer salto de escala es Mator, Caballero feroz. La ronda adquiere una figura capaz de defenderla. Su texto de ambientación dice: «La ronda sigue. El que la interrumpe conoce el filo». La invitación del pequeño Matito sigue siendo reconocible, pero ahora aparece otra pregunta: hasta dónde puede llegar ese compañero cuando la reunión que cuida está amenazada.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Esta lectura del personaje une las imágenes sin inventar un origen histórico para ellas. Matito y sus evoluciones pertenecen a la ficción de ARGENTINIA. No son personajes extraídos de una leyenda tradicional ni representaciones de una creencia comunitaria. Su lugar está en el universo que construye el juego junto con sus cartas y sus jugadores.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "materex",
+        "title": "Materex · El destructor",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Materex, El destructor, lleva la evolución a una presencia mucho más imponente. Su frase de ambientación propone: «Cuando la ronda se levanta, hasta el asfalto se corre». La escala cambia, pero la ronda vuelve a funcionar como hilo conductor. El contraste entre el pequeño compañero que saluda y esta figura enorme forma parte del carácter fantástico del personaje.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Las tres ilustraciones permiten observar ese recorrido: Matito, Mator y Materex. Para conocer la disponibilidad y las condiciones de evolución de tus cartas, revisá su información dentro del juego. Esta presentación muestra el personaje y sus formas; las reglas y el estado de tu colección son los que determinan qué acciones podés realizar en cada caso.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "mesa",
+        "title": "De la bienvenida a tu próxima partida",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Conocer a Matito es también una invitación a recorrer ARGENTINIA. El manual explica la mesa y sus decisiones; las cartas permiten descubrir personajes y combinaciones; el ranking muestra a quienes ya forman parte de la comunidad. Podés empezar por donde te despierte más curiosidad. Cuando decidas jugar, Matito ya está del otro lado del botón, haciendo lugar para alguien más.",
+            "sources": []
+          }
+        ]
+      }
     ]
   }
 ]

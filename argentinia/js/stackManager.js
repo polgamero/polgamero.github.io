@@ -1,3 +1,4 @@
+import {formatTriggerLabel} from './triggerLabels.js';
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, isNonbasicLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { normalizeTokenSpec, buildTokenCard, buildTokenPermanentItem, tokenBattlefieldKind } from './tokenEngine.js';
@@ -374,7 +375,7 @@ export function addToStack(item) {
     stackDepth: spellStack.length
   });
   if (item.abilityKind === 'triggered') {
-    const label = item.triggerLabel ? ` — ${item.triggerLabel}` : '';
+    const label = item.triggerLabel ? ` — ${formatTriggerLabel(item.triggerLabel,item.triggerType)}` : '';
     const provenance = triggerProvenance ? ` · ${triggerProvenance}` : '';
     logMsg(gameText('stack.add.trigger', { card: item.card.name, label, provenance, id: item.id }));
   } else if (item.abilityKind === 'loyalty') {
@@ -2806,7 +2807,7 @@ function getStackTargetDisplayName(stackId) {
   const target = spellStack.find(item => Number(item?.id) === numericId);
   if (!target) return '';
   if (target.type === 'ability' && target.abilityKind === 'triggered') {
-    return `${target.card?.name || 'Habilidad'} — ${target.triggerLabel || 'Habilidad disparada'}`;
+    return `${target.card?.name || 'Habilidad'} — ${formatTriggerLabel(target.triggerLabel,target.triggerType)}`;
   }
   if (target.type === 'ability' && target.abilityKind === 'loyalty') {
     return `${target.card?.name || 'Semidiós'} — ${target.ability?.name || 'Habilidad de Creencia'}`;
@@ -2874,7 +2875,7 @@ export function renderStack() {
     const isTriggeredAbility = item.type === 'ability' && item.abilityKind === 'triggered';
     const isLoyaltyAbility = item.type === 'ability' && item.abilityKind === 'loyalty';
     const itemTitle = isTriggeredAbility
-      ? `${item.card.name} — ${item.triggerLabel || 'Habilidad disparada'}`
+      ? `${item.card.name} — ${formatTriggerLabel(item.triggerLabel,item.triggerType)}`
       : isLoyaltyAbility
         ? `${item.card.name} — ${item.ability?.name || 'Habilidad de Creencia'}`
         : item.card.name;

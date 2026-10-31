@@ -1,3 +1,5 @@
+import {formatTriggerLabel} from './triggerLabels.js';
+import {mountSiteEditorialAdmin} from './siteEditorialAdmin.js';
 import {sharedAssetURL} from './sharedAssets.js';
 import { guidedMatchActive, tickGuidedMatch } from './guidedMatch.js';
 import { installSessionInput, syncSessionInput, sessionActionsReady, captureSessionAction, sessionActionCurrent } from './sessionInput.js';
@@ -1002,7 +1004,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     if (ability.crewCost !== undefined) return gameText('ability.cost.crew', { cost: ability.crewCost });
     const effect = ability.effect || {};
     const labelKeys = {
-      draw: 'ability.effect.draw', heal: 'ability.effect.heal', damage: 'ability.effect.damage', drain: 'ability.effect.drain',
+      transform: 'ability.effect.transform', draw: 'ability.effect.draw', heal: 'ability.effect.heal', damage: 'ability.effect.damage', drain: 'ability.effect.drain',
       fight: 'ability.effect.fight', attach_equipment: 'ability.effect.attach_equipment', exile_creature: 'ability.effect.exile_creature',
       exile_and_return: 'ability.effect.exile_and_return', ramp: 'ability.effect.ramp', create_tokens: 'ability.effect.create_tokens',
       grant_keyword_temp: 'ability.effect.grant_keyword_temp', draw_and_lose_life: 'ability.effect.draw_and_lose_life',
@@ -2309,7 +2311,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     suspendBtn.title=`En espera ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
     suspendBtn.setAttribute('aria-label', `Poner ${card.name} en espera por ${spec?.time || 0} Tiempo pagando ${spec?.cost || '{0}'}`);
     suspendBtn.classList.add('card-bottom-fab', 'suspend-action-fab');
-    suspendBtn.disabled=!canSuspendCardFromHand(card);
+    suspendBtn.disabled=!canSuspendCardFromHand(itemObj.card || itemObj);
     suspendBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();suspendCardFromHand(index);});
     el.classList.add('card-with-bottom-fab');
     el.appendChild(suspendBtn);
@@ -2327,7 +2329,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 // se puede jugar siempre que tengas prioridad), así que la consultamos directo en vez de
 // duplicar la lógica acá.
 // Agregamos state.isDiscarding para que las cartas respondan al clic en la fase de limpieza
-    if (zone === 'hand' && isLocal && (canPlayCard(card) || state.isDiscarding) && !state.gameOver) {
+    if (zone === 'hand' && isLocal && (canPlayCard(itemObj.card || itemObj) || state.isDiscarding) && !state.gameOver) {
       el.addEventListener('click', async () => {
         if (state.isDiscarding) await handleDiscardClick(index);
         else playCard(index);
@@ -10502,7 +10504,7 @@ function setAvatarImageOrFallback(container, src, fallbackText, className='') {
   if (!container) return;
   container.textContent = '';
   const img = document.createElement('img');
-  img.src = src;
+  img.src = sharedAssetURL(src);
   img.alt = '';
   if (className) img.className = className;
   img.addEventListener('error', () => {
@@ -11134,6 +11136,7 @@ export function showAdminPanel(onBack) {
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
+    { key: 'siteEditorial', label: 'SITIO EDITORIAL' },
     { key: 'backups', label: 'RESPALDOS DE CARTAS' },
     { key: 'messages', label: 'MODERACIÓN Y USUARIOS' },
     { key: 'notifications', label: 'NOTIFICACIONES' },
@@ -11154,6 +11157,7 @@ export function showAdminPanel(onBack) {
     <div class="admin-body">
       <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>
 
+      <div class="admin-tab-pane hidden" data-admin-pane="siteEditorial"><div id="admin-site-editorial-root"></div></div>
       <div class="admin-tab-pane" data-admin-pane="game">
         <div class="admin-pane-narrow">
           ${sectionsHTML}
@@ -12657,12 +12661,17 @@ Receipt: ${receiptId}
     });
   }
 
+  let adminSiteEditorialController=null;
+  let activeAdminTab='game';
   let adminSanctuaryController=null;
   let adminAppearanceController=null;
   let adminBackupController=null;
   let adminFlasheraController=null;
 
-  function activateAdminTab(key) {
+  async function activateAdminTab(key) {
+    if(activeAdminTab==='siteEditorial'&&key!==activeAdminTab&&adminSiteEditorialController&&!await adminSiteEditorialController.canLeave())return;
+    activeAdminTab=key;
+    if(key==='siteEditorial'&&!adminSiteEditorialController)adminSiteEditorialController=mountSiteEditorialAdmin(overlay.querySelector('#admin-site-editorial-root'));
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
     if(key==='backups'&&!adminBackupController)adminBackupController=mountPresentationBackups(overlay.querySelector('#admin-presentation-backups-root'),{uid:state.currentUser?.uid});
@@ -13196,7 +13205,9 @@ Receipt: ${receiptId}
     mountAdminCampaignsPane(root, { currentUser: state.currentUser });
   }
 
-  overlay.querySelector('#admin-back').addEventListener('click', () => {
+  overlay.querySelector('#admin-back').addEventListener('click', async () => {
+    if(adminSiteEditorialController&&!await adminSiteEditorialController.canLeave())return;
+    adminSiteEditorialController?.destroy();
     window.removeEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
     try { animationLabCleanup?.(); } catch {}
     overlay.remove();
@@ -14307,7 +14318,7 @@ function tournamentEntrantName(tournament,id){
 function tournamentEntrantAvatar(tournament,id){
   if(!id)return '';
   if(id==='player') return String(state.currentUser?.photoURL || state.userProfile?.photoURL || '');
-  return String(tournament?.entrants?.[id]?.avatar || '');
+  return sharedAssetURL(String(tournament?.entrants?.[id]?.avatar || ''));
 }
 function tournamentMatchSideHTML(tournament,id,match){
   const winner=match?.winnerEntrantId; const lost=winner&&id&&winner!==id; const won=winner&&winner===id;
@@ -16652,7 +16663,7 @@ function getStackTopDisplayName() {
   const top = spellStack.length ? spellStack[spellStack.length - 1] : null;
   if (!top) return '';
   if (top.type === 'ability' && top.abilityKind === 'triggered') {
-    return `${top.card?.name || 'habilidad'} (${top.triggerLabel || 'habilidad disparada'})`;
+    return `${top.card?.name || 'habilidad'} (${formatTriggerLabel(top.triggerLabel,top.triggerType)})`;
   }
   return top.card?.name || 'la cima de la pila';
 }
@@ -17624,19 +17635,7 @@ export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente l
 }
 
 // UI expresa orden de RESOLUCIÓN (arriba resuelve primero); triggerOrdering.js lo convierte a LIFO.
-const TRIGGER_ORDER_LABELS = Object.freeze({
-  etb:'entrada al campo', creature_etb:'entrada de criatura', land_etb:'Arraigo', spell_cast:'hechizo lanzado',
-  dies:'al morir', any_creature_dies:'muerte de criatura', opponent_death:'muerte rival', attack:'al atacar',
-  any_creature_attacks:'ataque', block:'al bloquear', combat_damage:'daño de combate', upkeep:'mantenimiento',
-  end_step:'paso final', permanent_entered:'entrada de permanente', creature_entered:'entrada de criatura',
-  land_entered:'entrada de Tierra', creature_died:'muerte de criatura', spell_cast_generic:'hechizo lanzado',
-  attack_declared:'ataque declarado', block_declared:'bloqueo declarado', combat_damage_dealt:'daño de combate',
-  card_drawn:'robo de carta', card_discarded:'descarte', permanent_sacrificed:'sacrificio', life_gained:'vida ganada',
-  life_lost:'vida perdida', counter_added:'contador agregado', counter_removed:'contador removido', token_created:'ficha creada',
-  permanent_tapped:'permanente girado', spell_countered:'hechizo contrarrestado', spell_copied:'hechizo copiado',
-  ability_copied:'habilidad copiada', permanent_became_copy:'permanente copiado', permanent_transformed:'transformación',
-  saga_chapter:'capítulo de Crónica', suspend_tick:'En espera — Tiempo', suspend_cast:'En espera — último Tiempo'
-});
+
 
 function triggerOrderEffectSummary(effect = {}) {
   const labels = {
@@ -17654,6 +17653,7 @@ function triggerOrderDescription(entry = {}) {
   if (text) {
     const pieces = text.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(Boolean);
     const matcher = {
+      permanent_transformed: /cuando[^.]*transform|siempre que[^.]*transform/i,
       any_creature_dies: /muera una criatura|criatura[^.]*muera/i,
       dies: /cuando[^.]*muera|al morir/i,
       attack: /siempre que[^.]*ataque|cuando[^.]*ataque/i,
@@ -17667,7 +17667,7 @@ function triggerOrderDescription(entry = {}) {
     const chosen = matched || pieces[0] || text;
     return chosen.length > 220 ? `${chosen.slice(0,217)}…` : chosen;
   }
-  const label = TRIGGER_ORDER_LABELS[entry.triggerType] || String(entry.triggerType || 'habilidad').replaceAll('_',' ');
+  const label = formatTriggerLabel(entry.triggerLabel,entry.triggerType);
   return `${label} — ${triggerOrderEffectSummary(entry.effect)}`;
 }
 

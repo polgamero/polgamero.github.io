@@ -45,7 +45,7 @@ try:
 except Exception as ex:fail('gallery/sitemap invalid: '+str(ex))
 for name in ('flasheraGameplay.js','flasheraRenderer.js','cardVariant.js'):
     if not (app/'js'/name).is_file():fail('flashera frontend missing '+name)
-for rel in ('portal/portal.css','portal/stage2.css','portal/portal-config.json','portal/content/bootstrap.json','portal/runtime/editor.js','portal/runtime/articleModel.js','portal/runtime/articleRenderer.js','.github/portal-publisher.json','.github/scripts/build_public_pages.py','.github/scripts/editorial_layout.py','.github/scripts/editorial_feed.py','.github/scripts/render_editorial.mjs','.github/scripts/verify_portal_pages.py'):
+for rel in ('portal/portal.css','portal/stage2.css','portal/portal-config.json','portal/content/bootstrap.json','portal/runtime/editor.js','portal/runtime/articleModel.js','portal/runtime/articleRenderer.js','.github/portal-publisher.json','.github/scripts/build_public_pages.py','.github/scripts/editorial_layout.py','.github/scripts/editorial_game.py','.github/scripts/editorial_feed.py','.github/scripts/render_editorial.mjs','.github/scripts/verify_portal_pages.py'):
     if not (root/rel).is_file():fail('missing editorial source '+rel)
 for path in (root/'portal').rglob('*'):
     if path.name in ('backend','trusted','node_modules','tests','OWNER','TRANSFER'):

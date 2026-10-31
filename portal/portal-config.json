@@ -9,7 +9,7 @@
   "sdkVersion": "12.16.0",
   "adminUid": "yXZUclCVm9RCO1CWlqIse0iVtEo2",
   "region": "southamerica-east1",
-  "backendEnabled": false,
+  "backendEnabled": true,
   "emulators": null,
   "publicationStatusPath": "/editorial/release.json"
 }

@@ -59,6 +59,7 @@
     "./css/mobile.css",
     "./css/public-info.css",
     "./css/style.css",
+    "./favicon.png",
     "./index.html",
     "./js/achievements.js",
     "./js/actionReexecutor.js",
@@ -177,6 +178,7 @@
     "./js/publicTerminology.js",
     "./js/publishedCardBaseline.js",
     "./js/pvpRewards.js",
+    "./js/rankingTable.js",
     "./js/rankingUI.js",
     "./js/replacementEngine.js",
     "./js/replayKernel.js",
@@ -194,6 +196,9 @@
     "./js/sanctuaryResonance.js",
     "./js/sanctuaryRitual.js",
     "./js/serviceUsage.js",
+    "./js/sessionInput.js",
+    "./js/sharedAssets.js",
+    "./js/siteEditorialAdmin.js",
     "./js/socialAssets.js",
     "./js/soloPriorityShortcuts.js",
     "./js/soloRecovery.js",
@@ -212,6 +217,7 @@
     "./js/tournamentConfig.js",
     "./js/tournamentRecovery.js",
     "./js/transformEngine.js",
+    "./js/triggerLabels.js",
     "./js/triggerOrdering.js",
     "./js/turnManager.js",
     "./js/tutorialContent.js",
@@ -223,9 +229,7 @@
     "./js/utils.js",
     "./js/version.js",
     "./js/workshop.js",
-    "./js/zoneOwnership.js",
-    "./js/sessionInput.js",
-    "./js/sharedAssets.js"
+    "./js/zoneOwnership.js"
   ],
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
@@ -263,6 +267,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "73f7eb08c5b5e83b3d6e",
+  "buildId": "4a02218017a17f01f493",
   "serviceUsageSchema": "arg-service-usage-v1"
 }

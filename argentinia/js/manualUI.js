@@ -389,7 +389,7 @@ function keyword(name, text) {
   return `<div class="arg-manual-keyword"><b>${name}</b><span>${text}</span></div>`;
 }
 
-function manualHTML() {
+export function gameManualHTML() {
   const toc = [
     ['inicio','Empezar'],['objetivo','Objetivo y mesa'],['simple','Partida simple'],['turno','Turno y maná'],
     ['combate','Combate'],['pila','Pila y prioridad'],['habilidades','Habilidades'],['torneo','Torneo'],
@@ -652,7 +652,7 @@ export function showGameManual({ returnFocusTo = null } = {}) {
   overlay.setAttribute('role','dialog');
   overlay.setAttribute('aria-modal','true');
   overlay.setAttribute('aria-labelledby','arg-manual-title');
-  overlay.innerHTML = manualHTML();
+  overlay.innerHTML = gameManualHTML();
   applyManualGameTexts(overlay);
   document.body.appendChild(overlay);
 
@@ -713,4 +713,18 @@ export function showGameManual({ returnFocusTo = null } = {}) {
   syncActiveToc();
   setTimeout(() => closeBtn?.focus({ preventScroll:true }), 0);
   return overlay;
+}
+
+// Same manual content, text overrides and original media loader on the public page.
+export function publicGameManualHTML(){
+  return gameManualHTML().replaceAll('src="./assets/','src="/assets/').replaceAll('data-manual-base="./assets/','data-manual-base="/assets/')
+    .replace(/<img class="arg-manual-logo"[^>]*>/,'').replace(/<button[^>]*data-manual-close[^>]*>[\s\S]*?<\/button>/,'')
+    .replace('<main class="arg-manual-content"','<div class="arg-manual-content"').replace('</main>','</div>');
+}
+export function hydratePublicGameManual(root){
+  ensureManualStyles();applyManualGameTexts(root);bindManualMedia(root);
+  root.querySelectorAll('[data-manual-target]').forEach(button=>button.addEventListener('click',()=>{
+    const target=[...root.querySelectorAll('[data-manual-section]')].find(node=>node.dataset.manualSection===button.dataset.manualTarget);
+    target?.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
 }

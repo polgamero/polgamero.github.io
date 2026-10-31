@@ -15,11 +15,12 @@ from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
 sys.dont_write_bytecode=True
-from editorial_layout import chrome,intro,cards,home,link,extract_body,esc,relative
-from editorial_feed import read_release,latest_release
+from editorial_layout import chrome,intro,link,extract_body,esc,relative
+from editorial_game import home,cards,evolutions
+from editorial_feed import read_release,latest_release,NoApprovedRelease
 
 SIBLINGS=('band','botonera','clima','curso_js','curso_react','cv','top5','trivia','privacidad','terminos')
-INDEXED=('/', '/leyendas/','/ranking/','/manual/','/sobre-el-proyecto/','/criterios-editoriales/','/contacto/','/privacidad/','/terminos/','/jugar/')
+INDEXED=('/', '/leyendas/','/ranking/','/manual/','/matito/','/sobre-el-proyecto/','/criterios-editoriales/','/contacto/','/privacidad/','/terminos/','/jugar/')
 ALIASES={'/aboutUs.html':'/sobre-el-proyecto/','/manual.html':'/manual/','/leyendas.html':'/leyendas/','/argentinia/':'/jugar/','/jugar/aboutUs.html':'/sobre-el-proyecto/','/jugar/manual.html':'/manual/','/jugar/leyendas.html':'/leyendas/'}
 MAX_PUBLISHED_BYTES=1_000_000_000
 
@@ -68,6 +69,7 @@ def write_route(output,route,text):
 def portal_page(route,title,description,body,settings,script=None,classes='',jsonld=None):
     config={**settings,'robots':'noindex,follow' if route in ('/editor/','/404.html') else 'index,follow,max-image-preview:large'}
     result=chrome(route,title,description,body,config,active=route,extra_class=classes)
+    result=result.replace('<html lang="es-AR">','<html lang="es-AR" data-shared-asset-revision="'+settings['sharedRevision']+'">',1)
     canonical=settings['origin']+route
     head=f'<link rel="canonical" href="{esc(canonical)}"><meta property="og:site_name" content="ARGENTINIA — Magia y Leyenda"><meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(description)}"><meta property="og:url" content="{esc(canonical)}"><link rel="stylesheet" href="{relative(route,"/stage2.css")}"><meta name="google-adsense-account" content="ca-pub-6181395403710642">'
     if route=='/':head+='<link rel="manifest" href="/assets/manifest.webmanifest">'
@@ -87,7 +89,7 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     if allow_incomplete and os.environ.get('GITHUB_ACTIONS')=='true':
         raise ValueError('Incomplete preview is forbidden in GitHub Actions')
     cfg=json.loads((repo/'.github/portal-publisher.json').read_text(encoding='utf-8-sig'))
-    if cfg.get('schemaVersion')!=1 or cfg.get('assetLayout')!='shared-root-v1' or tuple(cfg.get('retainedSites',[]))!=SIBLINGS or cfg.get('source') not in ('bootstrap','feed'):
+    if cfg.get('schemaVersion')!=1 or cfg.get('assetLayout')!='shared-root-v1' or tuple(cfg.get('retainedSites',[]))!=SIBLINGS or cfg.get('source') not in ('bootstrap','feed','auto'):
         raise ValueError('Invalid publisher configuration')
     mode=mode_override or cfg['mode']
     if mode not in ('portal','game-compat') or cfg.get('origin')!='https://magiayleyenda.com.ar':
@@ -112,12 +114,18 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     public_config=json.loads((owner_config or portal/'portal-config.json').read_text(encoding='utf-8-sig'))
     if not owner_config and public_config.get('emulators') is not None:
         raise ValueError('Emulator configuration cannot enter a production artifact')
+    actual_source=cfg['source']
+    snapshot=None
     if owner_snapshot:
         if os.environ.get('GITHUB_ACTIONS')=='true':raise ValueError('Owner snapshot override is not a production input')
         snapshot=json.loads(owner_snapshot.read_text(encoding='utf-8-sig'));media_files={p.stem:p.read_bytes() for p in (owner_snapshot.parent/'media').glob('*.webp')}
-    elif cfg['source']=='feed':
-        snapshot,media_files=read_release(cfg['feedUrl'])
-    else:
+    elif cfg['source'] in ('feed','auto'):
+        try:
+            snapshot,media_files=read_release(cfg['feedUrl']);actual_source='feed'
+        except NoApprovedRelease:
+            if cfg['source']!='auto':raise
+            actual_source='bootstrap'
+    if snapshot is None:
         initial=json.loads((portal/'content/bootstrap.json').read_text(encoding='utf-8-sig'))
         snapshot={'releaseId':None,'articles':[{'article':a,'publication':None} for a in initial]};media_files={}
     command=['node','--experimental-default-type=module',str(repo/'.github/scripts/render_editorial.mjs')]
@@ -134,7 +142,7 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         if path.is_file() and remote_asset(path.relative_to(app/'assets'),policy):
             rel=path.relative_to(app/'assets').as_posix()
             external.append({'path':rel,'bytes':path.stat().st_size,'sha256':sha(path),'url':'https://raw.githubusercontent.com/'+policy['repository']+'/'+revision+'/argentinia/assets/'+quote(rel,safe='/')})
-    if cfg['source']=='bootstrap' and not owner_snapshot:
+    if actual_source=='bootstrap' and not owner_snapshot:
         snapshot['releaseId']='bootstrap-'+hashlib.sha256(json.dumps(rendered,sort_keys=True,ensure_ascii=False).encode()).hexdigest()[:20]
     output.mkdir(parents=True)
     # Preserve the released /js, /css and /assets URLs. Both the portal and the
@@ -145,6 +153,7 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         relative=Path(parent).relative_to(app/'assets')
         return [name for name in names if remote_asset(relative/name,policy)]
     copy_tree(app/'assets',output/'assets',ignore=ignore_media)
+    shutil.copyfile(app/'favicon.png',output/'favicon.png')
     write_route(output,'/jugar/',game_document(app/'index.html',revision))
     published_manifest={**game_manifest,'refreshAssets':['./jugar/index.html' if name=='./index.html' else name for name in game_manifest['refreshAssets']]}
     (output/'build-manifest.json').write_text(json.dumps(published_manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
@@ -174,30 +183,42 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     (output/'portal-config.json').write_text(json.dumps(public_config,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     # The original logo, backgrounds, frame and licensed fonts already exist
     # exactly once in /assets/. Portal CSS/HTML refer to those same URLs.
-    settings={'origin':cfg['origin'],'playUrl':'/jugar/','contactEmail':'magiayleyenda@gmail.com'}
-    listing=[r['article'] for r in rendered]
-    write_route(output,'/',portal_page('/','ARGENTINIA — Magia y Leyenda','Mitos y leyendas de Argentina y el universo de ARGENTINIA.',home(listing[:6]),settings))
+    settings={'origin':cfg['origin'],'playUrl':'/jugar/','contactEmail':'magiayleyenda@gmail.com','sharedRevision':revision}
+    site_pages={};listing=[]
+    for item in rendered:
+        article=item['article'];kinds=[t[6:] for t in article['tags'] if t.startswith('sitio:')]
+        if kinds:
+            if len(kinds)!=1 or kinds[0] not in ('portada','matito') or kinds[0] in site_pages:raise ValueError('Duplicate or unknown site content page')
+            site_pages[kinds[0]]=item
+        else:listing.append({**article,'gameCard':item.get('gameCard')})
+    write_route(output,'/',portal_page('/','ARGENTINIA — Magia y Leyenda','Cartas coleccionables, estrategia y fantasía argentina. Conocé a Matito, las leyendas, el ranking y jugá ARGENTINIA.',home(listing[:6],payload['gameCards'],payload['gameMedia'],site_pages.get('portada',{}).get('article'),site_pages.get('matito',{}).get('article'),'<section class="page-shell home-editorial-copy">'+site_pages.get('portada',{}).get('bodyHTML','')+'</section>'),settings,script='home.js'))
     write_route(output,'/leyendas/',portal_page('/leyendas/','Mitos y leyendas de Argentina','Relatos argentinos, variantes y fuentes para seguir leyendo.',intro('Un territorio de relatos','Relatos, lugares y fuentes para recorrer el imaginario argentino.','MITOS Y LEYENDAS DE ARGENTINA')+'<section class="page-shell section-space">'+(cards('/leyendas/',listing) if listing else '<p>No hay artículos en esta edición.</p>')+'</section>',settings))
-    for name,title,description in [('sobre-el-proyecto','El proyecto','El universo de ARGENTINIA y sus inspiraciones.'),('criterios-editoriales','Cómo contamos estas historias','Fuentes, variantes, autoría y correcciones.'),('contacto','Hablemos de una historia','Contacto público del proyecto ARGENTINIA.'),('ranking','Ranking del juego','La clasificación real de los jugadores de ARGENTINIA.'),('editor','Editor de artículos','Acceso administrativo a los artículos de ARGENTINIA.')]:
+    for name,title,description in [('sobre-el-proyecto','El proyecto','El universo de ARGENTINIA y sus inspiraciones.'),('criterios-editoriales','Cómo contamos estas historias','Fuentes, variantes, autoría y correcciones.'),('contacto','Hablemos de una historia','Contacto público del proyecto ARGENTINIA.'),('ranking','Ranking del juego','La clasificación real de los jugadores de ARGENTINIA.')]:
         route='/'+name+'/'
         body=(portal/'templates'/(name+'.html')).read_text(encoding='utf-8')
         write_route(output,route,portal_page(route,title,description,body,settings,script='ranking.js' if name=='ranking' else 'editor.js' if name=='editor' else None))
-    manual=extract_body(app/'manual.html','manual','/manual/',settings)
-    write_route(output,'/manual/',portal_page('/manual/','Cómo se juega ARGENTINIA','Turnos, maná, combate, pila y modos de juego.',intro('Conocé la mesa. Elegí tu estrategia.','El manual público del juego para consultar antes de empezar.','CÓMO JUGAR')+'<div class="page-shell manual-body">'+manual+'</div>',settings,classes='manual-page'))
+    write_route(output,'/editor/',redirect('/jugar/'))
+    (output/'editorial-admin.html').write_text('<!doctype html><meta name="robots" content="noindex,nofollow">'+(portal/'templates/editor.html').read_text(encoding='utf-8'),encoding='utf-8')
+    manual=payload['manualHTML']
+    write_route(output,'/manual/',portal_page('/manual/','Cómo se juega ARGENTINIA','Turnos, maná, combate, pila y modos de juego.','<div class="page-shell manual-body" data-game-manual>'+manual+'</div>',settings,script='manual.js',classes='manual-page'))
     for name,title in [('privacidad','Política de Privacidad'),('terminos','Términos y Condiciones')]:
         source=repo/name/'index.html'
         if source.is_file():
             route='/'+name+'/';body=extract_body(source,'legal',route,settings)
             write_route(output,route,portal_page(route,title,title+' de ARGENTINIA.','<div class="page-shell legal-body">'+body+'</div>',settings))
+    matito=site_pages.get('matito')
+    matito_body=(matito['html'] if matito else intro('Matito te invita a la ronda','Conocé a Matito y sus evoluciones.'))+evolutions(payload['gameMedia'])
+    write_route(output,'/matito/',portal_page('/matito/','Matito y sus evoluciones','El compañero de ARGENTINIA: Matito, Mator y Materex.','<div class="page-shell article-shell">'+matito_body+'</div>',settings))
     article_routes=[]
     for item in rendered:
-        article=item['article'];route='/leyendas/'+article['slug']+'/'
+        article=item['article'];is_site=any(t.startswith('sitio:') for t in article['tags']);route='/leyendas/'+article['slug']+'/'
+        if is_site:continue
         body='<div class="page-shell article-shell"><nav class="breadcrumbs" aria-label="Ubicación">'+link(route,'/','Inicio')+' / '+link(route,'/leyendas/','Leyendas')+'</nav>'+item['html']+'<div class="section-space">'+link(route,'/leyendas/','Volver al índice','text-link')+'</div></div>'
         write_route(output,route,portal_page(route,article['title'],article['excerpt'],body,settings,jsonld=item['jsonld']));article_routes.append(route)
-        for mid in item['media']:
-            data=media_files.get(mid)
-            if data is None or hashlib.sha256(data).hexdigest()!=mid:raise ValueError('Missing approved editorial media')
-            target=output/'media'/(mid+'.webp');target.parent.mkdir(exist_ok=True);target.write_bytes(data)
+    for mid in sorted({mid for item in rendered for mid in item['media']}):
+        data=media_files.get(mid)
+        if data is None or hashlib.sha256(data).hexdigest()!=mid:raise ValueError('Missing approved editorial media')
+        target=output/'media'/(mid+'.webp');target.parent.mkdir(exist_ok=True);target.write_bytes(data)
     write_route(output,'/404.html',portal_page('/404.html','Página no encontrada','Volvé al índice de ARGENTINIA.',intro('Este camino no llega a una página','Podés volver al inicio o elegir otra historia desde el índice.','PÁGINA NO ENCONTRADA')+'<div class="page-shell section-space">'+link('/404.html','/','Volver al inicio','text-link')+'</div>',settings))
     for route,target in ALIASES.items():write_route(output,route,redirect(target))
     if mode=='game-compat':write_route(output,'/',redirect('/jugar/',manifest=True))
@@ -208,8 +229,9 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         if (repo/name).is_file():shutil.copyfile(repo/name,output/name)
     (output/'.nojekyll').touch()
     (output/'editorial').mkdir(exist_ok=True)
-    receipt={'schemaVersion':1,'releaseId':snapshot['releaseId'],'source':'owner-snapshot' if owner_snapshot else cfg['source'],'gameBuildId':game_manifest['buildId'],'articles':[{'id':r['article']['id'],'slug':r['article']['slug'],'revision':r['revision'],'contentHash':r['contentHash']} for r in rendered]}
+    receipt={'schemaVersion':1,'releaseId':snapshot['releaseId'],'source':'owner-snapshot' if owner_snapshot else actual_source,'gameBuildId':game_manifest['buildId'],'articles':[{'id':r['article']['id'],'slug':r['article']['slug'],'route':'/' if 'sitio:portada' in r['article']['tags'] else '/matito/' if 'sitio:matito' in r['article']['tags'] else '/leyendas/'+r['article']['slug']+'/','revision':r['revision'],'contentHash':r['contentHash']} for r in rendered]}
     (output/'editorial/release.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    (output/'editorial/game-cards.json').write_text(json.dumps(payload['gameCards'],ensure_ascii=False,separators=(',',':')),encoding='utf-8')
     (output/'editorial/routes.json').write_text(json.dumps({'schemaVersion':1,'indexedRoutes':routes,'mode':mode},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     (output/'editorial/shared-assets.json').write_text(json.dumps({'schemaVersion':1,'layout':'shared-root-v1','revision':revision,'policy':policy,'externalOriginals':external},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     total_bytes=sum(path.stat().st_size for path in output.rglob('*') if path.is_file())
@@ -221,7 +243,7 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--repo',type=Path,default=Path.cwd());parser.add_argument('--output',type=Path,default=Path('.pages-root'));parser.add_argument('--report',type=Path);parser.add_argument('--mode',choices=['portal','game-compat']);parser.add_argument('--allow-incomplete-preview',action='store_true');parser.add_argument('--owner-config',type=Path);parser.add_argument('--owner-snapshot',type=Path);parser.add_argument('--assert-current-release',type=Path);args=parser.parse_args()
     if args.assert_current_release:
         cfg=json.loads((args.repo/'.github/portal-publisher.json').read_text(encoding='utf-8-sig'));receipt=json.loads((args.assert_current_release/'editorial/release.json').read_text(encoding='utf-8-sig'))
-        if cfg['source']=='feed' and latest_release(cfg['feedUrl'])!=receipt['releaseId']:raise SystemExit('EDITORIAL_RELEASE_SUPERSEDED: rebuild before uploading')
+        if receipt['source']=='feed' and latest_release(cfg['feedUrl'])!=receipt['releaseId']:raise SystemExit('EDITORIAL_RELEASE_SUPERSEDED: rebuild before uploading')
         print('Editorial release is still current; no upload performed by this command.')
     else:
         result=build(args.repo,args.output,args.allow_incomplete_preview,args.mode,args.owner_config,args.owner_snapshot)
