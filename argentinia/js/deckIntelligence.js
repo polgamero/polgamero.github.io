@@ -2,8 +2,10 @@
 // ENTREGA 23.21.6 — Dragon Archetype specialization over Competitive Deck Intelligence · Pool 900.
 // Motor puro de construcción/evaluación. No toca DOM, Firebase ni estado global.
 
+import {entryLoyaltyAbilities,planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
 const COLORS = ['W','U','B','R','G'];
 export const DECK_INTELLIGENCE_VERSION = '23.19.5-di2';
+export const BOT_DECK_INTELLIGENCE_VERSION='3.0.0-pre-release';
 export const DEFAULT_CANDIDATE_COUNT = 64;
 export const DEFAULT_GOLDFISH_ITERATIONS = 48;
 
@@ -87,10 +89,11 @@ function walkStructured(value, visit) {
   visit(value);
   Object.values(value).forEach(v=>walkStructured(v,visit));
 }
-function effectTypes(card) {
+function effectTypes(card,bot3=false) {
   const set=new Set();
   const roots=['effect','etbEffect','activatedAbility','activatedAbilities','triggers','attackTrigger','diesTrigger','landEtbTrigger','combatDamageTrigger','spellCastTrigger','upkeepTrigger','blockTrigger','anyCreatureDiesTrigger','creatureEtbTrigger','opponentDeathTrigger','staticEffect','replacementEffect','saga','dfc'];
   roots.forEach(k=>walkStructured(card?.[k], obj=>{ if (typeof obj.type==='string') set.add(norm(obj.type)); }));
+  if(bot3)entryLoyaltyAbilities(card).forEach(a=>walkStructured(a.effect,obj=>{if(typeof obj.type==='string')set.add(norm(obj.type));}));
   return set;
 }
 function structuredHas(card, predicate) {
@@ -171,7 +174,16 @@ function damageTargetSemantics(card) {
   }
   return {creature,player};
 }
-function inferInteractionSemantics(card,effects) {
+function inferInteractionSemantics(card,effects,bot3=false) {
+  if(bot3&&isPlaneswalker(card)&&Array.isArray(card.loyaltyAbilities)){
+    const roles=new Set();
+    // Ultimate-only effects do not satisfy an immediate interaction floor.
+    for(const ability of entryLoyaltyAbilities(card)){
+      const view={...card,loyaltyAbilities:undefined,effect:ability.effect,text:ability.text||'',requiresTarget:ability.requiresTarget===true};
+      for(const role of inferInteractionSemantics(view,effectTypes(view)))roles.add(role);
+    }
+    return roles;
+  }
   const roles=new Set();
   const broadCreature=['destroy_creature','exile_creature','fight','bounce','gain_control','gain_control_until_eot','cant_attack_next_turn','prevent_attack'];
   const narrow=['destroy_artifact','destroy_enchantment','destroy_land','destroy_nonbasic_land','exile_graveyard'];
@@ -200,8 +212,8 @@ function inferInteractionSemantics(card,effects) {
   return roles;
 }
 
-export function inferCardDeckProfile(card) {
-  const effects=effectTypes(card);
+export function inferCardDeckProfile(card,{bot3=false}={}) {
+  const effects=effectTypes(card,bot3);
   const text=norm(card?.text);
   const keywords=new Set((card?.keywords||[]).map(norm));
   const themes=new Set();
@@ -229,7 +241,7 @@ export function inferCardDeckProfile(card) {
   // DI2 — interacción semántica por OBJETIVO. Un ping al jugador ya no cuenta como removal.
   // Esto corrige el caso real donde Tasador/Sereno/Séptimo Hijo hacían que un mazo con
   // 0 removal pareciera tener 6 piezas de interacción.
-  const interactionRoles=inferInteractionSemantics(card,effects);
+  const interactionRoles=inferInteractionSemantics(card,effects,bot3);
   interactionRoles.forEach(r=>roles.add(r));
   if (roles.has('interaction')) themes.add('control');
   if (roles.has('counterspell')) themes.add('spells');
@@ -237,6 +249,7 @@ export function inferCardDeckProfile(card) {
 
   if (effects.has('draw') || effects.has('draw_and_lose_life') || effects.has('rummage')) roles.add('cardAdvantage');
   if (effects.has('scry') || effects.has('surveil') || effects.has('look_at_top')) roles.add('selection');
+  if(bot3&&effects.has('loot'))roles.add('selection');
   if (effects.has('search_library')) { roles.add('cardAdvantage'); roles.add('tutor'); }
   if (effects.has('ramp') || effects.has('search_land')) { roles.add('ramp'); themes.add('ramp'); }
   if (effects.has('spell_cost_modifier')) roles.add('ramp');
@@ -270,6 +283,8 @@ export function inferCardDeckProfile(card) {
   // Poder base deliberadamente heurístico: no reemplaza playtesting, sólo evita elegir
   // cartas claramente peores cuando hay otra pieza equivalente para el mismo rol.
   let power=50;
+  const planeswalkerValue=bot3&&planeswalker?planeswalkerDeckValue3(card):null;
+  if(planeswalkerValue){power+=planeswalkerValue.total;if(planeswalkerValue.repeatable>=4)roles.add('engine');}
   power += Math.min(12, roles.size*2.3);
   power += roles.has('interaction')?5:0;
   power += roles.has('cardAdvantage')?5:0;
@@ -296,6 +311,7 @@ export function inferCardDeckProfile(card) {
     isInstant:instant,
     isSorcery:sorcery,
     isPlaneswalker:planeswalker,
+    ...(bot3?{bot3:true,planeswalkerValue}:{}),
     themes:[...themes],
     roles:[...roles],
     subtypeTokens:cardSubtypeTokens(card),
@@ -306,9 +322,10 @@ export function inferCardDeckProfile(card) {
   };
 }
 
-export function buildDeckMetaCatalog(cards=[]) {
+export function buildDeckMetaCatalog(cards=[],options={}) {
   const map=new Map();
-  cards.forEach(card=>map.set(card.id,inferCardDeckProfile(card)));
+  map.bot3=options.bot3===true;
+  cards.forEach(card=>map.set(card.id,inferCardDeckProfile(card,options)));
   return map;
 }
 
@@ -350,8 +367,8 @@ function archetypeSupport(eligibleProfiles, id) {
   if (id==='ramp' && matching<6) score-=25;
   return {id,label:arch.label,score,matching,enabler,payoff,focusSubtype};
 }
-export function rankViableArchetypes(cards, identity) {
-  const meta=buildDeckMetaCatalog(cards);
+export function rankViableArchetypes(cards, identity,options={}) {
+  const meta=buildDeckMetaCatalog(cards,options);
   const eligible=cards.filter(c=>!isLand(c)&&identityMatches(c,identity)).map(card=>({card,profile:meta.get(card.id)}));
   return ARCHETYPE_IDS.map(id=>{
     const row=archetypeSupport(eligible,id);
@@ -373,8 +390,8 @@ function weightedPick(scored, rng) {
   return scored[scored.length-1];
 }
 
-function chooseArchetype(cards, identity, rng, quality='competitive') {
-  const ranked=rankViableArchetypes(cards,identity).map(x=>({...x}));
+function chooseArchetype(cards, identity, rng, quality='competitive',options={}) {
+  const ranked=rankViableArchetypes(cards,identity,options).map(x=>({...x}));
   const qp=DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive;
   if (quality==='starter') {
     // Onboarding: no regalar un deck malo, pero sí favorecer planes legibles y con espacio
@@ -440,7 +457,7 @@ function buildArchetypeContext(cards, identity, archetypeId, meta) {
     const lords=eligible.filter(x=>(x.profile.tribalRefs||[]).includes(subtype)&&x.profile.roles.includes('lord')).length;
     typalFocus={subtype,creatures,support,lords,score:creatures*1.25+support*7+lords*9};
   }
-  return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus};
+  return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus,...(meta.bot3?{bot3:true,archetypeId}:{})};
 }
 function availableCopies(eligible, predicate, spellCount) {
   const unique=eligible.reduce((n,x)=>n+(predicate(x.profile,x.card)?1:0),0);
@@ -454,6 +471,10 @@ function buildCompositionRequirements(arch, quality, spellCount, context) {
   const creatureMin=Math.min(spellCount,Math.max(0,Number(arch.creatureFloor)||0));
   const creatureMax=Math.min(spellCount,Math.max(creatureMin,(Number(arch.creatureCeiling)||spellCount)+tol));
   const req={
+    ...(context.bot3?{
+      maxPlaneswalkers:Math.min(['aggro','tempo','typal','dragons','spells'].includes(context.archetypeId)?2:4,({starter:1,good:1,strong:3,elite:4,competitive:4}[quality]||1)),
+      maxPlaneswalkerCopies:quality==='good'||quality==='starter'?1:2
+    }:{}),
     creatureMin,
     creatureMax,
     maxVehicles:Math.max(0,Number(arch.maxVehicles)||0),
@@ -507,6 +528,7 @@ function compositionDeficits(stats, req, archetypeId) {
   need('creatures',stats.creatures,req.creatureMin);
   if (stats.creatures>req.creatureMax) out.push({key:'creatureCeiling',actual:stats.creatures,target:req.creatureMax,missing:stats.creatures-req.creatureMax});
   if (stats.vehicles>req.maxVehicles) out.push({key:'vehicles',actual:stats.vehicles,target:req.maxVehicles,missing:stats.vehicles-req.maxVehicles});
+  if(req.maxPlaneswalkers!==undefined&&stats.planeswalkers>req.maxPlaneswalkers)out.push({key:'planeswalkers',actual:stats.planeswalkers,target:req.maxPlaneswalkers,missing:stats.planeswalkers-req.maxPlaneswalkers});
   need('broadInteraction',stats.broadInteraction,req.broadInteraction);
   need('creatureInteraction',stats.creatureInteraction,req.creatureInteraction);
   need('instantSorcery',stats.instantSorcery,req.instantSorcery);
@@ -555,6 +577,11 @@ function cardCandidateScore(profile, arch, context, copies, card, quality, archC
   if (copies===1) score+=2.5; // consistencia: la segunda copia de una pieza buena es valiosa.
   if (copies===2) score+=1.2;
   if (copies>=3) score-=3.5;
+  if(archContext?.bot3&&profile.isPlaneswalker){
+    const strength=quality==='elite'||quality==='competitive'?1:quality==='strong'?.75:quality==='good'?.35:.15;
+    score+=Math.min(10,(profile.planeswalkerValue?.total||0)*.6)*strength;
+    if(copies>=1)score-=copies*9; // dead legendary copies are not another engine on board
+  }
   // Starter: el primer mazo tiene un plan real, pero deja espacio visible para mejorar la
   // colección: menos premium y selección deliberadamente no-élite.
   if (quality === 'starter') {
@@ -568,7 +595,7 @@ function cardCandidateScore(profile, arch, context, copies, card, quality, archC
 
 function compositionPenalty(deficits) {
   const weights={
-    creatures:130, creatureCeiling:120, vehicles:150,
+    creatures:130, creatureCeiling:120, vehicles:150,planeswalkers:140,
     broadInteraction:155, creatureInteraction:145,
     instantSorcery:105, nonCreature:90, primaryTheme:72,
     typalFocus:220, typalDensity:180, tribalSupport:130, deadSynergy:55
@@ -580,6 +607,7 @@ function profileMatchesDeficit(profile, deficitKey, arch, context) {
   if (deficitKey==='creatures') return profile.isCreature;
   if (deficitKey==='creatureCeiling' || deficitKey==='nonCreature') return !profile.isCreature;
   if (deficitKey==='vehicles') return !profile.isVehicle;
+  if (deficitKey==='planeswalkers') return !profile.isPlaneswalker;
   if (deficitKey==='broadInteraction') return profile.roles.includes('broadInteraction');
   if (deficitKey==='creatureInteraction') return profile.roles.includes('creatureInteraction');
   if (deficitKey==='instantSorcery') return profile.isInstant||profile.isSorcery;
@@ -602,7 +630,7 @@ function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archCont
     const target=deficits[0];
     const counts=new Map(); cards.forEach(c=>counts.set(c.id,(counts.get(c.id)||0)+1));
     const candidatePool=eligible
-      .filter(({card,profile})=>(counts.get(card.id)||0)<4 && profileMatchesDeficit(profile,target.key,arch,archContext))
+      .filter(({card,profile})=>(counts.get(card.id)||0)<(profile.isPlaneswalker&&archContext.bot3?req.maxPlaneswalkerCopies:4) && profileMatchesDeficit(profile,target.key,arch,archContext))
       .map(({card,profile})=>({card,profile,base:profile.power*0.25+synergyScore(profile,arch,archContext)}))
       .sort((a,b)=>b.base-a.base)
       .slice(0,72);
@@ -661,6 +689,7 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
       if (forceCreatureInteraction && !profile.roles.includes('creatureInteraction')) continue;
       if (forceInstantSorcery && !(profile.isInstant||profile.isSorcery)) continue;
       if (profile.isVehicle && comp.vehicles>=req.maxVehicles) continue;
+      if(archContext?.bot3&&profile.isPlaneswalker&&(comp.planeswalkers>=req.maxPlaneswalkers||count>=req.maxPlaneswalkerCopies))continue;
       if (profile.isCreature && comp.creatures>=req.creatureMax && comp.creatures>=req.creatureMin) continue;
       let score=cardCandidateScore(profile,arch,context,count,card,quality,contextInfo,req);
       // Cerca del final, reservar slots para los contratos que todavía faltan.
@@ -802,7 +831,7 @@ function evaluateCandidate(deck, identity, archetypeId, meta, quality, goldfishI
   const req=buildCompositionRequirements(arch,quality,s.spells,archContext);
   const composition=compositionStats(s.profiles,arch,archContext);
   const deficits=compositionDeficits(composition,req,archetypeId);
-  const coreKeys=new Set(['creatures','creatureCeiling','vehicles','broadInteraction','creatureInteraction','instantSorcery','nonCreature']);
+  const coreKeys=new Set(['creatures','creatureCeiling','vehicles','planeswalkers','broadInteraction','creatureInteraction','instantSorcery','nonCreature']);
   const advancedKeys=new Set(['primaryTheme','typalFocus','typalDensity','tribalSupport']);
   const hardDeficits=deficits.filter(d=>coreKeys.has(d.key) || (qp.sophistication==='advanced'&&advancedKeys.has(d.key)) || qp.sophistication==='elite');
   const rarityBudget=qp.rarityBudget;
@@ -856,6 +885,7 @@ function evaluateCandidate(deck, identity, archetypeId, meta, quality, goldfishI
   // Cartas individualmente sólidas, pero en starter pesa menos para conservar upgrade headroom.
   const powerWeight=quality==='starter'?0.10:quality==='good'?0.14:0.18;
   score += s.profiles.reduce((sum,p)=>sum+p.power,0)/Math.max(1,s.profiles.length)*powerWeight;
+  if(archContext.bot3)score+=Math.min(8,s.profiles.filter(p=>p.isPlaneswalker).reduce((sum,p)=>sum+(p.planeswalkerValue?.total||0),0)*.3);
   score -= compositionPenalty(deficits)*0.015; // defectos blandos siguen importando en Starter/Good/Strong.
   return {score,structuralOk:true,summary:{...s,profiles:undefined},composition,requirements:req,deficits,goldfish:gold};
 }
@@ -871,6 +901,7 @@ function pickByQuantile(sorted, quality, rng) {
 }
 
 export function buildCompetitiveDeck(cards, identity, options={}) {
+  const forBot=options.forBot===true;
   const rng=options.rng||Math.random;
   const quality=DECK_QUALITY_PROFILES[options.quality]?options.quality:'competitive';
   const qualityProfile=DECK_QUALITY_PROFILES[quality];
@@ -878,8 +909,8 @@ export function buildCompetitiveDeck(cards, identity, options={}) {
   const goldfishIterations=Math.max(12,Number(options.goldfishIterations)||qualityProfile.goldfishIterations||DEFAULT_GOLDFISH_ITERATIONS);
   const cleanIdentity=[...new Set((identity||[]).filter(c=>COLORS.includes(c)))];
   if (!cleanIdentity.length || cleanIdentity.length>2) throw new Error('Deck Intelligence requiere una identidad de 1 o 2 colores.');
-  const meta=buildDeckMetaCatalog(cards);
-  const archetypeId=options.archetypeId&&ARCHETYPES[options.archetypeId]?options.archetypeId:chooseArchetype(cards,cleanIdentity,rng,quality);
+  const meta=buildDeckMetaCatalog(cards,{bot3:forBot});
+  const archetypeId=options.archetypeId&&ARCHETYPES[options.archetypeId]?options.archetypeId:chooseArchetype(cards,cleanIdentity,rng,quality,{bot3:forBot});
   const arch=ARCHETYPES[archetypeId];
   const archContext=buildArchetypeContext(cards,cleanIdentity,archetypeId,meta);
   const candidates=[];
@@ -902,7 +933,8 @@ export function buildCompetitiveDeck(cards, identity, options={}) {
   return {
     deck:selected.deck,
     report:{
-      engineVersion:DECK_INTELLIGENCE_VERSION,
+      engineVersion:forBot?BOT_DECK_INTELLIGENCE_VERSION:DECK_INTELLIGENCE_VERSION,
+      ...(forBot?{planeswalkerCount:selected.evaluation.summary.planeswalkers,planeswalkerEligibleCards:archContext.eligible.filter(x=>x.profile.isPlaneswalker).length,maxPlaneswalkers:selected.evaluation.requirements.maxPlaneswalkers}:{}),
       identity:cleanIdentity,
       archetypeId,
       archetypeLabel:arch.label,

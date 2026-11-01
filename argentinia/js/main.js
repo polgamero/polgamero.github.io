@@ -1277,7 +1277,11 @@ async function returnToMainMenuAfterAbandon({ destination = 'main' } = {}) {
   teardownBoardLayout({ clearGameplay: true });
   try { els.gameOverOverlay?.classList?.add('hidden'); } catch {}
   try { els.paymentControls?.classList?.add('hidden'); } catch {}
-  document.querySelectorAll('.gy-modal-overlay,#mulligan-overlay,#damage-modal-overlay,#deck-select-overlay,#multiplayer-overlay').forEach(el => el.remove());
+  // Damage assignment is a reusable host from index.html, unlike the dynamic
+  // selectors below. Removing it broke combat in the next game without reload.
+  document.getElementById('damage-modal-overlay')?.classList.add('hidden');
+  state.damageModalOpen = false;
+  document.querySelectorAll('.gy-modal-overlay,#mulligan-overlay,#deck-select-overlay,#multiplayer-overlay').forEach(el => el.remove());
   if (destination === 'tournament') await startTournamentFlow();
   else showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
   try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
@@ -1559,7 +1563,7 @@ async function initGame(deckSource, options = {}) {
   });
   const botQuality = tournamentMatch?.deckQuality || botDeckQuality(state.botDifficulty);
   const botIdentity = Array.isArray(tournamentMatch?.opponent?.colors) && tournamentMatch.opponent.colors.length ? tournamentMatch.opponent.colors : undefined;
-  state.rivalDeck = lesson ? lessonDecks.rival : buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined });
+  state.rivalDeck = lesson ? lessonDecks.rival : buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined, forBot:true });
   // 23.19 — no persistir ni exponer el arquetipo generado del Tano en diagnósticos de runtime.
   // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
   state.rivalDeckBuildReport = null;

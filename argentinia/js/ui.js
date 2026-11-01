@@ -17403,10 +17403,31 @@ window.addEventListener('resize', () => {
   resizeTimeout = setTimeout(sizeAllRows, 120); 
 });
 
-// --- PANEL MANUAL DE ASIGNACIÓN DE DAÑO (INTACTO) ---
+// A prior soft return could remove this static index.html host. Recover the UI
+// before asking for a choice; absence must never silently select automatic damage.
+function ensureDamageAssignmentModal() {
+  let overlay=document.getElementById('damage-modal-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='damage-modal-overlay';overlay.className='hidden';document.body.appendChild(overlay);}
+  const required=['damage-modal-content','btn-dmg-auto','btn-dmg-manual','damage-modal-confirm-container','btn-dmg-confirm','damage-modal-initial-buttons'];
+  if(required.some(id=>!overlay.querySelector('#'+id))){
+    overlay.classList.add('hidden');
+    overlay.innerHTML=`<div class="damage-modal-box">
+      <h2>⚔️ Asignar Daño</h2><p class="damage-modal-hint">Podés seguir mirando las cartas del campo mientras decidís.</p>
+      <div id="damage-modal-content"></div>
+      <div id="damage-modal-initial-buttons" class="damage-modal-initial-buttons">
+        <button id="btn-dmg-auto" class="btn-turn" style="background:#3498db">${gameTextHtml('damage.modal.auto')}</button>
+        <button id="btn-dmg-manual" class="btn-turn" style="background:#e67e22">${gameTextHtml('damage.modal.manual')}</button>
+      </div>
+      <div id="damage-modal-confirm-container" class="hidden"><button id="btn-dmg-confirm" class="btn-turn" style="background:var(--hp-green);width:100%">${gameTextHtml('damage.modal.confirm')}</button></div>
+    </div>`;
+  }
+  return overlay;
+}
+
+// --- PANEL MANUAL DE ASIGNACIÓN DE DAÑO ---
 export function showDamageAssignmentModal(attackerItem, blockersArray, totalDamage, onAuto, onConfirmManual) {
   if (HEADLESS_ENGINE) { onAuto?.(); return; }
-  const overlay = document.getElementById('damage-modal-overlay');
+  const overlay = ensureDamageAssignmentModal();
   const content = document.getElementById('damage-modal-content');
   const btnAuto = document.getElementById('btn-dmg-auto');
   const btnManual = document.getElementById('btn-dmg-manual');
@@ -17427,7 +17448,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   const trampleLabel = `a ${trampleTargetName}`;
 
   function lethalNeeded(bItem) {
-    const remaining = Math.max(0, bItem.card.toughness - (bItem.damageTaken || 0));
+    const remaining = Math.max(0, getEffectiveToughness(bItem) - (bItem.damageTaken || 0));
     if (remaining === 0) return 0;
     return attackerHasDeathtouch ? 1 : remaining;
   }
@@ -17470,7 +17491,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     let html = `<div style="margin-bottom: 15px; font-size: 1rem;">${gameTextHtml('damage.modal.remaining', { damage: unassigned }).replace(String(unassigned), `<strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong>`)}</div>`;
 
     blockersArray.forEach((bItem, idx) => {
-       const hp = bItem.card.toughness - (bItem.damageTaken || 0);
+       const hp = getEffectiveToughness(bItem) - (bItem.damageTaken || 0);
        const needed = lethalNeeded(bItem);
        const met = currentDistribution[idx] >= needed;
        html += `

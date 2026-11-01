@@ -4,6 +4,16 @@
 
 export const BOT_DIFFICULTIES = Object.freeze(['easy','medium','hard']);
 
+// Search strength is independent of good/strong/elite deck construction. Stored
+// difficulty enums and tournament/server settings remain backward compatible.
+export const BOT_COMBAT_SEARCH_PROFILES=Object.freeze({
+  easy:Object.freeze({id:'basic',enabled:false,attackCandidates:0,beam:0,defenseCandidates:0,forecasts:0,replyCandidates:0,finalists:0}),
+  medium:Object.freeze({id:'competent',enabled:true,attackCandidates:12,beam:8,defenseCandidates:8,blockCandidates:24,forecasts:160,replyCandidates:0,finalists:0}),
+  hard:Object.freeze({id:'elite',enabled:true,attackCandidates:32,beam:64,defenseCandidates:48,blockCandidates:256,forecasts:2400,replyCandidates:8,finalists:6})
+});
+
+export function getBotCombatProfile(difficulty){return BOT_COMBAT_SEARCH_PROFILES[normalizeBotDifficulty(difficulty)];}
+
 export const BOT_DIFFICULTY_PROFILES = Object.freeze({
   easy: Object.freeze({
     id:'easy', label:'Fácil', deckQuality:'good',

@@ -71,6 +71,11 @@ import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability, normalizeBotDifficulty } from './botDifficulty.js';
 import { evaluateBotValueAbilityPolicy, isNonUrgentBotValueEffect, projectedBotHandGain, chooseStrategicBotDiscardIndex, buildBotSubtypeCounts } from './botStrategy.js';
 import { chooseHardAttackPlan, chooseHardBlockPlan, combatUnitValue, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { planBotCombat3 } from './combatBotAdapter3.js';
+import { COMBAT_BOT_3_VERSION } from './combatBot3.js';
+import { getBotCombatProfile } from './botDifficulty.js';
+import { chooseMainPhaseCard3 } from './botStrategy3.js';
+import { chooseLoyaltyAbility3 } from './planeswalkerStrategy3.js';
 import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
 import { previewReplacementEvent } from './replacementEngine.js';
@@ -359,13 +364,29 @@ async function tryActivateBotPlaneswalkers() {
     if (pwItem.loyalty + chosen.a.cost <= 0 && affordable.some(({ a }) => a.cost > 0)) {
       chosen = affordable.find(({ a }) => a.cost > 0);
     }
+    if(normalizeBotDifficulty(state.botDifficulty)!=='easy'&&!guidedMatchActive()){
+      const options=affordable.map(entry=>{
+        const sourceCard={...pwItem.card,name:`${pwItem.card.name} — ${entry.a.name}`};
+        const targets=entry.a.requiresTarget?getResolvedEffectTargetCandidates({effect:entry.a.effect,sourceCard,controllerIsLocal:false,chooserIsLocal:false,cardName:entry.a.name}):[];
+        return {...entry,targetValue:Math.max(0,...targets.map(botTargetThreatScore)),lethalPlayerTarget:targets.find(target=>target.type==='player'&&target.isLocal===true)||null};
+      });
+      const boardValue=units=>units.reduce((sum,u)=>sum+combatUnitValue(u,botCombatHelpers()),0);
+      const strategic=chooseLoyaltyAbility3(pwItem,options,{difficulty:normalizeBotDifficulty(state.botDifficulty),
+        ownLife:state.rivalHP,opponentLife:state.localHP,opponentPoison:state.localPoison||0,
+        ownBoardValue:boardValue(state.rivalCombat),opponentBoardValue:boardValue(state.localCombat),ownCreatureCount:state.rivalCombat.length,
+        ownHandSize:state.rivalHand.length,graveyardCount:state.rivalGraveyard.length,graveyardCreatureCount:state.rivalGraveyard.filter(c=>c.type?.includes('Criatura')).length,
+        hasRampTarget:state.rivalDeck.some(c=>landMatchesFilter(c,'basic')),hasProliferateTargets:getProliferateCandidates(state).length>0});
+      if(!strategic)continue;
+      chosen=strategic;
+    }
 
     const ability = chosen.a;
     const sourceCard = { ...pwItem.card, name: `${pwItem.card.name} — ${ability.name}` };
     let targetObj = null;
     if (ability.requiresTarget) {
       // Igual que el humano: target primero, costo después.
-      targetObj = await chooseResolvedEffectTarget({
+      targetObj = chosen.a.effect?.type==='damage'&&Number(chosen.a.effect.amount)>=state.localHP&&chosen.lethalPlayerTarget
+        ? chosen.lethalPlayerTarget : await chooseResolvedEffectTarget({
         effect: ability.effect,
         sourceCard,
         sourceItem: pwItem,
@@ -384,6 +405,9 @@ async function tryActivateBotPlaneswalkers() {
 
     putLoyaltyAbilityOnStack(pwItem, ability, chosen.idx, false, targetObj);
     logMsg(gameText('bot.loyaltyStack', { ability: ability.name, card: pwItem.card.name }));
+    // The bot has finished this action. Open the human's response window using
+    // the same priority engine instead of relying on a later scheduler wake-up.
+    await passPriority('rival');
     return true;
   }
   return false;
@@ -974,7 +998,8 @@ async function tryBotPostBlockTrick() {
 
     state.rivalHand.splice(pumpIndex, 1);
     tapRivalLandsFor(pumpCard);
-    blocker.tempEffects.push(trialMod); // ahora sí, lo dejamos puesto de verdad
+    // The pump belongs to the stack object. Applying it here grants the bonus
+    // before responses and duplicates it when the canonical effect resolves.
 
     const castStackItem = {
       card: pumpCard,
@@ -1263,7 +1288,7 @@ function enumerateBotCrewSets(candidates, required) {
 }
 
 function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
-  const sets=enumerateBotCrewSets(candidates,required);
+  const sets=enumerateBotCrewSets(candidates,required).slice(0,normalizeBotDifficulty(state.botDifficulty)==='hard'?8:4);
   if(!sets.length) return null;
   const helpers=botCombatHelpers();
   const virtualVehicle=makeBotVirtualVehicle(vehicleItem);
@@ -1279,7 +1304,8 @@ function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
       const attackableCost=chosen.chosen.filter(c=>(!c.summoningSickness||hasKeyword(c,'haste'))&&!c.tapped).reduce((sum,c)=>sum+Math.max(0,getEffectivePower(c)||0),0);
       return Number(virtualVehicle.card.power||0)>attackableCost ? chosen : null;
     }
-    const baseline=chooseHardAttackPlan({eligibleAttackers:baselineEligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+    const baseline=planBotCombat3(state,helpers,'attack',{eligibleAttackers:baselineEligible,defenders},{purpose:'crew'})
+      ||chooseHardAttackPlan({eligibleAttackers:baselineEligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
     let best=null;
     for(const option of sets){
       const crewSet=new Set(option.chosen);
@@ -1287,7 +1313,8 @@ function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
       const eligible=state.rivalCombat.map((unit,index)=>({unit,index}))
         .filter(({unit})=>!crewSet.has(unit)&&!unit.tapped&&(!unit.summoningSickness||hasKeyword(unit,'haste'))&&!hasKeyword(unit,'defender'));
       eligible.push({unit:virtualVehicle,index:virtualIndex});
-      const plan=chooseHardAttackPlan({eligibleAttackers:eligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+      const plan=planBotCombat3(state,helpers,'attack',{eligibleAttackers:eligible,defenders},{purpose:'crew',crew:option.chosen,vehicle:vehicleItem})
+        ||chooseHardAttackPlan({eligibleAttackers:eligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
       if(!plan.indexes.includes(virtualIndex)) continue; // si no lo va a usar, no paga Crew.
       const gain=plan.utility-baseline.utility;
       const damageGain=(plan.damage||0)-(baseline.damage||0);
@@ -1303,14 +1330,16 @@ function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
   if(!attackers.length) return null;
   if(!strategic) return sets[0];
   const baselineBlockers=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped);
-  const baseline=chooseHardBlockPlan({attackers,blockers:baselineBlockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+  const baseline=planBotCombat3(state,helpers,'block',{attackers,blockers:baselineBlockers},{purpose:'crew'})
+    ||chooseHardBlockPlan({attackers,blockers:baselineBlockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
   let best=null;
   for(const option of sets){
     const crewSet=new Set(option.chosen);
     const blockers=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!crewSet.has(unit)&&!unit.tapped);
     const virtualBlockerPos=blockers.length;
     blockers.push({unit:virtualVehicle,index:state.rivalCombat.length});
-    const plan=chooseHardBlockPlan({attackers,blockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+    const plan=planBotCombat3(state,helpers,'block',{attackers,blockers},{purpose:'crew',crew:option.chosen,vehicle:vehicleItem})
+      ||chooseHardBlockPlan({attackers,blockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
     if((plan.assignment?.[virtualBlockerPos] ?? -1)<0) continue;
     const gain=baseline.utility-plan.utility; // menor utility del atacante = mejor defensa.
     const damageGain=(baseline.damage||0)-(plan.damage||0);
@@ -2444,6 +2473,18 @@ export async function takeBotPriorityAction() {
       // de prioridad (el comportamiento de base, antes de la Etapa 3).
       if (!botHasCapability(state.botDifficulty, 'strategicMainPhase')) return affordableIndexes[0];
 
+      if(!guidedMatchActive()){
+      const ranked=chooseMainPhaseCard3({
+        candidates:affordableIndexes.map(index=>{const card=state.rivalHand[index],route=chooseBotCastRoute(card);return {card,index,
+          manaValue:parsedManaTotal(getFinalCastingManaCost(card,{useAlternative:route===true,isLocal:false}).cost),
+          landCount:state.rivalLands.length,manaNextTurn:state.rivalLands.length+1,
+          canHitOpponent:card.effect?.type==='damage'&&isResolvedEffectTargetLegal({type:'player',isLocal:true},{cardLike:card,effect:card.effect,sourceCard:card,controllerIsLocal:false,cardName:card.name})};}),
+        ownBoard:state.rivalCombat,opponentBoard:state.localCombat,ownLife:state.rivalHP,opponentLife:state.localHP,
+        helpers:botCombatHelpers(),difficulty:normalizeBotDifficulty(state.botDifficulty)
+      });
+      if(ranked>=0)return ranked;
+      }
+
       // Nivel 1: hay una amenaza grande de tu lado (poder+resistencia por encima de un piso
       // razonable) y el Tano tiene algo de remoción — la prioriza por sobre cualquier otra cosa.
       const biggestThreatValue = state.localCombat.reduce((max, u) => {
@@ -2981,15 +3022,17 @@ export async function takeBotPriorityAction() {
     // bloqueadores usa el evaluador global público sólo para capturar saturación real.
     const mediumWideBoard=!hardCombat && normalizeBotDifficulty(state.botDifficulty)==='medium'
       && eligibleAttackers.length>publicDefenders.length && eligibleAttackers.length>=3;
-    if (hardCombat || mediumWideBoard) {
-      hardAttackPlan=chooseHardAttackPlan({
+    const combat3=!guidedMatchActive()&&getBotCombatProfile(state.botDifficulty).enabled;
+    if (combat3 || hardCombat || mediumWideBoard) {
+      hardAttackPlan=(combat3?planBotCombat3(state,botCombatHelpers(),'attack',{eligibleAttackers,defenders:publicDefenders}):null)||chooseHardAttackPlan({
         eligibleAttackers, defenders:publicDefenders,
         botLife:state.rivalHP, opponentLife:state.localHP,
         helpers:{ getPower:getEffectivePower, getToughness:getEffectiveToughness, hasKeyword, canBlock, predictDuel }
       });
       hardAttackIndexes=new Set(hardAttackPlan.indexes);
       const telemetry={
-        version:hardCombat?COMBAT_BOT_2_VERSION:'23.19.4.6-medium-wide', utility:hardAttackPlan.utility, expectedDamage:hardAttackPlan.damage,
+        version:hardAttackPlan.search?COMBAT_BOT_3_VERSION:hardCombat?COMBAT_BOT_2_VERSION:'23.19.4.6-medium-wide', utility:hardAttackPlan.utility, expectedDamage:hardAttackPlan.damage,
+        search:hardAttackPlan.search||null,uncertainty:hardAttackPlan.uncertainty||[],
         attackPower:hardAttackPlan.attackPower || 0, crackBack:hardAttackPlan.crackBack || 0,
         attackerCount:hardAttackPlan.indexes.length, eligibleAttackers:eligibleAttackers.length, defenders:publicDefenders.length, reason:hardAttackPlan.reason
       };
@@ -3014,7 +3057,9 @@ export async function takeBotPriorityAction() {
         if (shouldAttack) {
           unit.isAttacking = true;
           // Si Combat 2.0 encontró lethal esperado, no desvía daño a un Planeswalker.
-          unit.attackTarget = chooseBotAttackTarget(unit, { forceFace: !!hardAttackPlan && hardAttackPlan.damage >= state.localHP });
+          unit.attackTarget = hardAttackPlan?.search
+            ? state.localPlaneswalkers[hardAttackPlan.attackTargets?.[unitIndex]]||null
+            : chooseBotAttackTarget(unit, { forceFace: !!hardAttackPlan && hardAttackPlan.damage >= state.localHP });
           declaredAttackers.push(unit);
           attackCount++;
           if (unit.attackTarget) {

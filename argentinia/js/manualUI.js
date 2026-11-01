@@ -59,7 +59,7 @@ function setManualText(root, selector, key, mode = 'text') {
 
 const MANUAL_TOC_KEYS = Object.freeze(['inicio','objetivo','simple','turno','combate','pila','habilidades','torneo','multi','tienda','mercado','daily','mazos','completo']);
 
-function applyManualGameTexts(root) {
+export function applyManualGameTexts(root) {
   if (!root) return;
   setManualText(root,'.arg-manual-kicker','manual.header.kicker');
   setManualText(root,'.arg-manual-title','manual.header.title');
@@ -371,14 +371,17 @@ export function prepareGameManualUI() {
   else Promise.resolve().then(scheduleMainMenuHelpLinkFit);
 }
 
-function figure(key, title, caption, animatedCandidate = false) {
+function figure(key, animatedCandidate = false) {
   const config = MANUAL_MEDIA[key] || {};
   const base = `./assets/images/manual/${key}`;
+  const title=escapeManualHtml(gameText(`manual.figure.${key}.title`));
+  const caption=escapeManualHtml(gameText(`manual.figure.${key}.caption`));
+  const alt=escapeManualHtml(gameText(`manual.figure.${key}.alt`));
   return `
     <figure class="arg-manual-figure" data-manual-figure="${key}">
       <div class="arg-manual-media">
-        <img src="${base}.png" data-manual-base="${base}" data-prefer-animated="${animatedCandidate && config.preferAnimated ? 'true' : 'false'}" alt="${config.alt || title}" loading="lazy" decoding="async">
-        <div class="arg-manual-placeholder"><div><strong>${key}.png</strong><small>Placeholder del manual · subilo a assets/images/manual/</small></div></div>
+        <img src="${base}.png" data-manual-base="${base}" data-prefer-animated="${animatedCandidate && config.preferAnimated ? 'true' : 'false'}" alt="${alt}" loading="lazy" decoding="async">
+        <div class="arg-manual-placeholder"><div><strong>${key}.png</strong><small>${escapeManualHtml(gameText('manual.media.placeholder'))}</small></div></div>
         <span class="arg-manual-media-badge">DEMO ANIMADA</span>
       </div>
       <figcaption><b>${title}</b><span>${caption}</span></figcaption>
@@ -429,7 +432,7 @@ export function gameManualHTML() {
               <div class="arg-manual-card"><h4>Mazo</h4><p>Tu biblioteca. Robás desde arriba; algunas cartas buscan, miran o reordenan cartas.</p></div>
               <div class="arg-manual-card"><h4>Cementerio y Exilio</h4><p>El Cementerio recibe cartas usadas o destruidas. Exilio es una zona separada y más difícil de recuperar.</p></div>
             </div>
-            ${figure('manual1','La mesa completa','Ideal: una captura limpia donde se vean mano, Tierras, criaturas, apoyos, mazo, cementerio, exilio, HP y panel de fases.')}
+            ${figure('manual1')}
           </section>
 
           <section class="arg-manual-section" id="manual-simple" data-manual-section="simple">
@@ -456,7 +459,7 @@ export function gameManualHTML() {
               <div class="arg-manual-card"><h4>Artefactos y Encantamientos</h4><p>Permanentes de apoyo; algunos se anexan, otros modifican reglas o generan valor continuo.</p></div>
               <div class="arg-manual-card"><h4>Semidioses, Crónicas y Transportes</h4><p>Usan reglas propias de Creencia, Capítulos y Tripular explicadas más abajo.</p></div>
             </div>
-            ${figure('manual2','Pagar y lanzar una carta','Recomendado ANIMADO: mostrar una carta desde la mano, selección de Tierras/maná, confirmación y entrada a la Pila.',true)}
+            ${figure('manual2',true)}
           </section>
 
           <section class="arg-manual-section" id="manual-combate" data-manual-section="combate">
@@ -468,20 +471,20 @@ export function gameManualHTML() {
               <div class="arg-manual-step"><div><b>Sobrevive o va al Cementerio</b><span>El motor revisa daño letal, Letal, Irrompible, contadores y demás efectos antes de continuar.</span></div></div>
             </div>
             <div class="arg-manual-note arg-manual-warning">Una criatura recién entrada suele tener mareo de invocación: no puede atacar ni pagar costos de girarse hasta que corresponda, salvo que tenga <strong>Apuro</strong>.</div>
-            ${figure('manual3','Ataque, bloqueo y daño','Recomendado ANIMADO: un ataque con 2–3 criaturas, asignación de bloqueadores y resolución de daño/flechas.',true)}
+            ${figure('manual3',true)}
           </section>
 
           <section class="arg-manual-section" id="manual-pila" data-manual-section="pila">
             <p class="arg-manual-section-kicker">RESPUESTAS</p><h3>Pila, prioridad y objetivos</h3>
             <p>Los hechizos y muchas habilidades no resuelven instantáneamente: primero entran en la <strong>Pila</strong>. Cada jugador recibe <strong>prioridad</strong> para responder. Cuando ambos pasan sin agregar nada, resuelve el elemento superior. Por eso, en general, <strong>lo último que entró es lo primero que resuelve</strong>.</p>
             <ul class="arg-manual-list"><li>Los Instantáneos y habilidades con timing adecuado pueden responder a otra acción.</li><li>Los Conjuros, Equipar y habilidades de Creencia suelen exigir timing de conjuro: tu fase principal y Pila vacía.</li><li>Si una carta pide un objetivo, la interfaz resalta únicamente opciones legales.</li><li>Si un objetivo deja de ser legal antes de resolver, el efecto puede no poder aplicarse a ese objetivo.</li></ul>
-            ${figure('manual5','Responder usando la Pila','Recomendado ANIMADO: hechizo A → respuesta B → ambos pasan prioridad → B resuelve antes que A.',true)}
+            ${figure('manual5',true)}
           </section>
 
           <section class="arg-manual-section" id="manual-habilidades" data-manual-section="habilidades">
             <p class="arg-manual-section-kicker">DICCIONARIO DE JUEGO</p><h3>Habilidades y mecánicas principales</h3>
             <p>Las cartas usan terminología propia de Argentinia. Este resumen cubre las palabras que más vas a encontrar; el texto específico de cada carta termina de definir qué hace.</p>
-            ${figure('manual4','Cómo leer una carta','Ideal: una carta ampliada con costo, tipo, texto, habilidades, fuerza/resistencia y rareza claramente visibles.')}
+            ${figure('manual4')}
             <h4>Habilidades de criatura</h4>
             <div class="arg-manual-keywords">
               ${keyword('Vuela','Sólo puede ser bloqueada por criaturas con Vuela o Alcance.')}
@@ -527,7 +530,7 @@ export function gameManualHTML() {
             <p class="arg-manual-section-kicker">CUATRO PARTIDOS</p><h3>Torneo</h3>
             <p>El Torneo arma un fixture de <strong>16 participantes</strong> y eliminación directa: <strong>Octavos → Cuartos → Semifinal → Final</strong>. Cuatro victorias te separan del campeonato.</p>
             <ul class="arg-manual-list"><li>Perder un partido te elimina del Torneo.</li><li>Entre partidos podés volver al menú, cerrar el juego y continuar más tarde.</li><li>Una partida de Torneo ya iniciada no se pausa: abandonar, cerrar o recargar durante esa partida cuenta como derrota.</li><li>Cada ronda ganada entrega el premio configurado para esa etapa.</li><li>Si superaste el límite diario de Torneos premiados, podés seguir jugando en modo práctica.</li></ul>
-            ${figure('manual6','Fixture del Torneo','Captura recomendada: cuadro de 16 participantes con la ronda actual, tu recorrido y premios visibles.')}
+            ${figure('manual6')}
           </section>
 
           <section class="arg-manual-section" id="manual-multi" data-manual-section="multi">
@@ -548,7 +551,7 @@ export function gameManualHTML() {
               <div class="arg-manual-card"><h4>Emojis</h4><p>Hay una base gratuita y emotes premium desbloqueables con Puntos para usar en partidas multiplayer.</p></div>
               <div class="arg-manual-card"><h4>Mi Cofre</h4><p>Guarda sobres y recompensas especiales para que las abras cuando quieras desde el menú principal.</p></div>
             </div>
-            ${figure('manual7','La Tienda','Captura recomendada: vista principal con Sobres, Clasificados, Mazos Prearmados, Fichas/Mejoras y Emojis.')}
+            ${figure('manual7')}
           </section>
 
           <section class="arg-manual-section" id="manual-mercado" data-manual-section="mercado">
@@ -561,7 +564,7 @@ export function gameManualHTML() {
               <div class="arg-manual-step"><div><b>El dueño acepta o rechaza</b><span>Al aceptar, el servidor vuelve a validar ambas colecciones y completa el intercambio de forma atómica.</span></div></div>
             </div>
             <p>También podés revisar tus publicaciones, ofertas salientes y el historial de intercambios completados. Los límites activos se muestran o aplican desde la configuración vigente del juego.</p>
-            ${figure('manual8','Publicación y oferta','Captura recomendada: una publicación mostrando la carta ofrecida, BUSCO, una oferta compatible y los botones de aceptar/rechazar.')}
+            ${figure('manual8')}
           </section>
 
           <section class="arg-manual-section" id="manual-daily" data-manual-section="daily">
@@ -571,14 +574,14 @@ export function gameManualHTML() {
               <div class="arg-manual-day"><b>Día 1</b><span>30 Puntos</span></div><div class="arg-manual-day"><b>Día 2</b><span>30 Puntos</span></div><div class="arg-manual-day"><b>Día 3</b><span>30 Puntos</span></div><div class="arg-manual-day"><b>Día 4</b><span>1 Ficha</span></div><div class="arg-manual-day"><b>Día 5</b><span>60 Puntos</span></div><div class="arg-manual-day"><b>Día 6</b><span>1 Sobre + 100 Puntos</span></div><div class="arg-manual-day"><b>Día 7</b><span>Mítica asegurada</span></div>
             </div>
             <p>El Día 6 guarda el sobre en Mi Cofre. El Día 7 guarda una recompensa mítica asegurada para abrir desde allí. La racha usa la fecha oficial del servidor en Argentina (UTC−3), no el reloj de tu dispositivo.</p>
-            ${figure('manual9','Racha de 7 días','Captura recomendada: pantalla de Recompensas diarias con la racha actual, días reclamados y próximo premio.')}
+            ${figure('manual9')}
           </section>
 
           <section class="arg-manual-section" id="manual-mazos" data-manual-section="mazos">
             <p class="arg-manual-section-kicker">CONSTRUCCIÓN</p><h3>Mazos, colección y Enciclopedia</h3>
             <p><strong>Mis Mazos</strong> te deja crear, editar y guardar mazos. El formato actual trabaja con mazos de 60 cartas y un máximo general de 4 copias de una misma carta, salvo Tierras básicas. El constructor valida automáticamente tamaño, propiedad de cartas y límites vigentes antes de guardar.</p>
             <p>La <strong>Enciclopedia</strong> sirve para explorar el pool y tu progreso de colección. Las cartas recién obtenidas pueden destacarse en el constructor para ayudarte a encontrarlas.</p>
-            ${figure('manual10','Constructor de mazos','Captura recomendada: colección a un lado, mazo armado al otro, filtros visibles y contador 60/60.')}
+            ${figure('manual10')}
           </section>
 
           <section class="arg-manual-section" id="manual-completo" data-manual-section="completo">

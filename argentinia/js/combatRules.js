@@ -35,6 +35,10 @@ import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardBlockPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { planBotCombat3 } from './combatBotAdapter3.js';
+import { COMBAT_BOT_3_VERSION } from './combatBot3.js';
+import { getBotCombatProfile } from './botDifficulty.js';
+import { guidedMatchActive } from './guidedMatch.js';
 import { captureCardVisual, capturePlayerVisual, queueCombatSequenceAnimation, queuePlayerDamageAnimation } from './animationDirector.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
@@ -222,14 +226,14 @@ export function assignBotBlockers() {
   // 23.17.2 — Difícil usa Combat Bot 2.0: evalúa la asignación COMPLETA de
   // bloqueadores en vez de resolver atacante por atacante de manera greedy. Medio conserva
   // exactamente assignSmartBlock(), que era el viejo comportamiento Difícil.
-  if (botHasCapability(state.botDifficulty, 'combat2')) {
+  if (!state.currentMatch && ((!guidedMatchActive()&&getBotCombatProfile(state.botDifficulty).enabled) || botHasCapability(state.botDifficulty, 'combat2'))) {
     const attackerRefs = state.localCombat.map((unit,index)=>({unit,index})).filter(x=>x.unit.isAttacking);
     const blockerRefs = state.rivalCombat.map((unit,index)=>({unit,index})).filter(x=>!x.unit.tapped);
     const helpers={
       getPower:getEffectivePower, getToughness:getEffectiveToughness,
       hasKeyword, canBlock, predictDuel
     };
-    const plan=chooseHardBlockPlan({
+    const plan=planBotCombat3(state,helpers,'block',{attackers:attackerRefs,blockers:blockerRefs})||chooseHardBlockPlan({
       attackers:attackerRefs, blockers:blockerRefs,
       botLife:state.rivalHP, opponentLife:state.localHP, helpers
     });
@@ -240,7 +244,8 @@ export function assignBotBlockers() {
     const used=blockerRefs.filter((_,b)=>plan.assignment[b]>=0).length;
     logMsg(gameText('bot.block.combat2', { count:used }));
     recordTelemetryEvent('bot_combat2_block_plan', {
-      version:COMBAT_BOT_2_VERSION, utility:plan.utility, expectedDamage:plan.damage,
+      version:plan.search?COMBAT_BOT_3_VERSION:COMBAT_BOT_2_VERSION, utility:plan.utility, expectedDamage:plan.damage,
+      search:plan.search||null,uncertainty:plan.uncertainty||[],
       blockerCount:used, attackerCount:attackerRefs.length
     });
     return;
@@ -596,6 +601,29 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         }
       : null;
 
+    // Collect the human assignment BEFORE either side deals damage. An await
+    // after blocker damage exposed a half-resolved fight to render/SBA and could
+    // kill the attacker or abort the remaining attacks while its modal opened.
+    let useManual = false;
+    let manualDistribution = [];
+    let manualPlayerDamage = 0;
+    if (attackerDealsThisStep && isLocalAttacking && aliveBlockers.length > 0 && (aliveBlockers.length > 1 || attackerHasTrample)) {
+      const result = await new Promise((resolve) => {
+        showDamageAssignmentModal(
+          attacker,
+          aliveBlockers,
+          attackerPower,
+          () => resolve({ type: 'auto' }),
+          (distribucion, playerDmg) => resolve({ type: 'manual', distribucion, playerDmg })
+        );
+      });
+      if (result.type === 'manual') {
+        useManual = true;
+        manualDistribution = result.distribucion;
+        manualPlayerDamage = result.playerDmg;
+      }
+    }
+
     aliveBlockers.forEach(blocker => {
       if (!stepFilter(blocker)) return; 
 
@@ -715,28 +743,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking, { amount:damageToPlayerThisStep, targetPlayerIsLocal:!isLocalAttacking });
       }
       continue;
-    }
-
-    let useManual = false;
-    let manualDistribution = [];
-    let manualPlayerDamage = 0;
-
-    if (isLocalAttacking && (aliveBlockers.length > 1 || attackerHasTrample)) {
-      const result = await new Promise((resolve) => {
-        showDamageAssignmentModal(
-          attacker,
-          aliveBlockers,
-          attackerPower,
-          () => resolve({ type: 'auto' }),
-          (distribucion, playerDmg) => resolve({ type: 'manual', distribucion, playerDmg })
-        );
-      });
-
-      if (result.type === 'manual') {
-        useManual = true;
-        manualDistribution = result.distribucion;
-        manualPlayerDamage = result.playerDmg;
-      }
     }
 
     let remainingAttackerPower = attackerPower;

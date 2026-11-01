@@ -1,4 +1,5 @@
 import { createFirestoreUsageAdapter } from './firestoreUsageAdapter.js';
+import { createMatchDocument } from './matchCreation.js';
 import { uploadDiscoveryArt } from './discoveryArtUpload.js';
 import { settleSanctuaryClaimPresentation } from './sanctuaryClaimPresentation.js';
 // js/firebaseClient.js
@@ -27,7 +28,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, startAfter, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken as getAppCheckToken } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { parseEvolutionVariantId, evolutionStageForProfile } from './evolution.js';
@@ -2146,11 +2147,15 @@ function generateMatchCode() {
 // código nuevo si por casualidad ya existe uno igual (con 6 caracteres de ~33 posibles, la
 // chance de choque es insignificante, pero por las dudas no se asume que nunca va a pasar).
 export async function createMatch(uid, profileFields) {
+  const user=auth.currentUser;
+  if (!user || user.uid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+  const idToken=await user.getIdToken();
+  // Match the SDK: forward App Check when available; Rules/Auth remain mandatory.
+  let appCheckToken=null;
+  if (appCheck) { try { appCheckToken=(await getAppCheckToken(appCheck)).token; } catch {} }
+  if (auth.currentUser?.uid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateMatchCode();
-    const ref = doc(db, 'matches', code);
-    const existing = await getDoc(ref);
-    if (existing.exists()) continue; // choque rarísimo — probamos con otro código
 
     const startingRole = chooseMultiplayerStartingRole();
     const data = {
@@ -2193,7 +2198,13 @@ export async function createMatch(uid, profileFields) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    await setDoc(ref, data);
+    try {
+      await createMatchDocument({projectId:app.options.projectId,code,data,idToken,appCheckToken});
+    } catch (error) {
+      // exists:false protects every existing room, including one owned by us.
+      if (error.code === 'already-exists' || error.code === 'failed-precondition') continue;
+      throw error;
+    }
     // FASE 4, ETAPA 6: guardo el código en MI PROPIO perfil — así, si recargo la página a
     // mitad de partida, boot() (main.js) sabe que hay algo para reconectar sin necesitar
     // una consulta cruzada de colecciones (solo lee mi perfil, que ya carga de entrada).

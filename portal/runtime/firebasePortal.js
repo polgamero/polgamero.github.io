@@ -19,6 +19,7 @@ export function portalServices(){return pending??=(async()=>{
     signIn:()=>authSDK.signInWithPopup(auth,new authSDK.GoogleAuthProvider()),
     signOut:()=>authSDK.signOut(auth),
     action:async data=>{if(!config.backendEnabled)throw Error('El servicio editorial todavía no está habilitado.');try{return (await call(data)).data;}catch(e){const error=new Error(e.details?.message||e.message);error.code=e.details?.editorialCode||e.code;throw error;}},
-    fetchRanking:async()=>{const snap=await firestoreSDK.getDocs(firestoreSDK.collection(db,'playerStats'));return snap.docs.map(d=>({id:d.id,...d.data()}));}
+    fetchRanking:async()=>{const snap=await firestoreSDK.getDocs(firestoreSDK.collection(db,'playerStats'));return snap.docs.map(d=>({id:d.id,...d.data()}));},
+    fetchGameTexts:async()=>{const snap=await firestoreSDK.getDoc(firestoreSDK.doc(db,'gameConfig','texts'));return snap.exists()?snap.data():null;}
   };
 })().catch(error=>{pending=null;throw error;});}
