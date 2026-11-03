@@ -6,6 +6,7 @@ import { recordServiceUsage } from './serviceUsage.js';
 import { lobbyChatBlock, lobbyChatGuard, reserveLobbyChat } from './lobbyChatGuard.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js';
 import { ECONOMY_PROTOCOL_VERSION } from './version.js';
+import { botRuntimeObservation, callWithDifficultyObservation } from './difficultyEvidence.js';
 
 export const ECONOMY_FUNCTIONS_REGION = 'southamerica-east1';
 export const ECONOMY_CLIENT_VERSION = ECONOMY_PROTOCOL_VERSION;
@@ -419,7 +420,7 @@ export function matchRewardOperationId(receiptId) {
 }
 
 export function settleMatchRewardServer(reward = {}, operationId = null) {
-  return call('economySettleMatchReward', {
+  return callWithDifficultyObservation(call,'economySettleMatchReward', {
     operationId: operationId || matchRewardOperationId(reward.receiptId),
     receiptId: String(reward.receiptId || ''),
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
@@ -427,18 +428,18 @@ export function settleMatchRewardServer(reward = {}, operationId = null) {
     difficulty: reward.mode === 'multiplayer' ? null : String(reward.difficulty || ''),
     matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
     durationMs: reward.mode === 'multiplayer' ? 0 : Math.max(0, Math.floor(Number(reward.durationMs) || 0))
-  });
+  },reward.mode==='multiplayer'?null:reward.difficultyObservation);
 }
 
-export function applyAbandonPenaltyServer({ mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null } = {}) {
+export function applyAbandonPenaltyServer({ mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null, difficultyObservation = null } = {}) {
   const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
-  return call('economyApplyAbandonPenalty', {
+  return callWithDifficultyObservation(call,'economyApplyAbandonPenalty', {
     operationId: operationId || createEconomyOperationId('abandon'),
     mode: normalizedMode,
     matchId: normalizedMode === 'multiplayer' ? String(matchId || '') : '',
     receiptId: normalizedMode === 'solo' ? String(receiptId || '') : '',
     durationMs: Math.max(0, Math.floor(Number(durationMs) || 0))
-  });
+  },normalizedMode==='solo'?difficultyObservation:null);
 }
 
 export function recoverEconomyOperation(operationId) {
@@ -500,33 +501,33 @@ export function getTournamentServer({ resolveInterrupted = false } = {}) {
 }
 
 export function startTournamentServer(operationId = null) {
-  return call('economyStartTournament', {
+  return callWithDifficultyObservation(call,'economyStartTournament', {
     operationId: operationId || createEconomyOperationId('tournament-start')
-  });
+  },botRuntimeObservation());
 }
 
 export function beginTournamentMatchServer(tournamentId, operationId = null) {
-  return call('economyBeginTournamentMatch', {
+  return callWithDifficultyObservation(call,'economyBeginTournamentMatch', {
     operationId: operationId || createEconomyOperationId('tournament-begin'),
     tournamentId: String(tournamentId || '')
-  });
+  },botRuntimeObservation());
 }
 
-export function settleTournamentMatchServer(tournamentId, matchId, won, operationId = null) {
-  return call('economySettleTournamentMatch', {
+export function settleTournamentMatchServer(tournamentId, matchId, won, operationId = null, difficultyObservation = null) {
+  return callWithDifficultyObservation(call,'economySettleTournamentMatch', {
     operationId: operationId || `tournament-settle:${String(tournamentId || '')}:${String(matchId || '')}`.slice(0, 128),
     tournamentId: String(tournamentId || ''),
     matchId: String(matchId || ''),
     won: won === true
-  });
+  },difficultyObservation);
 }
 
-export function forfeitTournamentServer(tournamentId, matchId, operationId = null) {
-  return call('economyForfeitTournament', {
+export function forfeitTournamentServer(tournamentId, matchId, operationId = null, difficultyObservation = null) {
+  return callWithDifficultyObservation(call,'economyForfeitTournament', {
     operationId: operationId || `tournament-forfeit:${String(tournamentId || '')}:${String(matchId || '')}`.slice(0, 128),
     tournamentId: String(tournamentId || ''),
     matchId: String(matchId || '')
-  });
+  },difficultyObservation);
 }
 
 export function abandonTournamentServer(tournamentId, operationId = null) {

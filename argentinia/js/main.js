@@ -1,3 +1,4 @@
+import { beginDifficultyObservation, currentDifficultyObservation } from './difficultyEvidence.js';
 import { startGuidedMatch, stopGuidedMatch, guidedMatchActive, guidedMatchPaused, guidedMatchProgress, notifyGuidedMulligan, showFirstGameChoice } from './guidedMatch.js';
 import { installSessionInput, sessionActionsReady, captureSessionAction, sessionActionCurrent } from './sessionInput.js';
 import { buildLessonDecks, orderLibrary, REDRAW_HAND } from './guidedMatchModel.js';
@@ -344,7 +345,7 @@ async function recoverTournamentBeforeFixture() {
   const pending = readTournamentPendingSettlement();
   if (pending?.tournamentId && pending?.matchId) {
     try {
-      await settleTournamentMatch(pending.tournamentId, pending.matchId, pending.won === true);
+      await settleTournamentMatch(pending.tournamentId, pending.matchId, pending.won === true, pending.difficultyObservation);
       clearTournamentRecoveryMarkers();
       return { recovered:'pending_settlement' };
     } catch (error) {
@@ -776,6 +777,7 @@ export const state = {
   // puede pagar sin ningún criterio de prioridad. Se cambia desde el menú de Opciones
   // (ver showOptionsMenu en ui.js) — no hay forma de cambiarla a mitad de partida.
   botDifficulty: 'medium',
+  difficultyObservation:null,
   // 23.17.1 — diagnóstico del constructor competitivo; no participa de reglas/sync.
   localDeckBuildReport: null,
   rivalDeckBuildReport: null,
@@ -1344,7 +1346,7 @@ function hookGameplayButtons() {
           if (state.currentTournamentMatch) {
             const t = state.currentTournamentMatch;
             try {
-              await forfeitTournament(t.tournamentId, t.matchId);
+              await forfeitTournament(t.tournamentId, t.matchId, currentDifficultyObservation(state));
               clearTournamentRecoveryMarkers();
               recordTelemetryEvent('tournament_forfeit_committed', { tournamentId:t.tournamentId, matchId:t.matchId, roundKey:t.roundKey });
             } catch (error) {
@@ -1420,7 +1422,7 @@ function hookGameplayButtons() {
                 const abandonReceiptId = state.currentMatch?.matchId || getActiveSoloGameId() || getTelemetryStatus().sessionId || 'solo';
                 const abandonDurationMs = state.currentMatch ? (getTelemetryStatus().elapsedMs || 0) : currentSoloLifecycleDurationMs();
                 const abandonUid=state.currentUser.uid;
-                const abandonRequest={mode:state.currentMatch?'multiplayer':'solo',matchId:state.currentMatch?.matchId||'',receiptId:abandonReceiptId,durationMs:abandonDurationMs};
+                const abandonRequest={difficultyObservation:currentDifficultyObservation(state),mode:state.currentMatch?'multiplayer':'solo',matchId:state.currentMatch?.matchId||'',receiptId:abandonReceiptId,durationMs:abandonDurationMs};
                 trackCleanupTask('apply_abandon_penalty',
                   abandonEvidencePromise
                     .then(confirmed => {
@@ -1568,6 +1570,7 @@ async function initGame(deckSource, options = {}) {
   // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
   state.rivalDeckBuildReport = null;
   await mobileSoloYield('rival_deck_ready', { count: state.rivalDeck.length, quality: botQuality });
+  beginDifficultyObservation(state,{deckQuality:botQuality,deckSource:deckSource.type==='saved'?'saved':lesson?'guided':'automatic'});
 
   // 23.13.52 — ya no existe el supuesto histórico "el humano siempre empieza".
   // El resultado se fija una sola vez antes del mulligan para que esa información pueda
@@ -1591,6 +1594,7 @@ async function initGame(deckSource, options = {}) {
   startTelemetrySession({
     mode: tournamentMatch ? 'tournament' : 'solo',
     difficulty: state.botDifficulty,
+    difficultyObservation:currentDifficultyObservation(state),
     deckLabel,
     soloGameId,
     tournamentId: tournamentMatch?.tournamentId || null,
@@ -1719,7 +1723,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
   if (state.currentUser && (!candidate?.ownerUid || candidate.ownerUid === state.currentUser.uid)) {
     try {
       const result = await applyAbandonPenalty(state.currentUser.uid, {
-        mode:'solo', receiptId:candidate.soloGameId || candidate.telemetrySessionId || 'recovered-solo', durationMs
+        mode:'solo', difficultyObservation:currentDifficultyObservation(candidate.state,{observeRuntime:false}), receiptId:candidate.soloGameId || candidate.telemetrySessionId || 'recovered-solo', durationMs
       });
       if (state.userProfile && result?.total !== undefined) state.userProfile.points = result.total;
       updateAccountUI(state.currentUser);
@@ -1752,12 +1756,14 @@ async function resumeSoloRecoveryGame(candidate) {
   }
 
   const restoredStack = restoreSoloRecoveryState(candidate, state);
+  state.difficultyObservation=candidate.state?.difficultyObservation || null;
   ensureControlEffectSerialAfterHydration();
   replaceSpellStackFromSync(restoredStack);
   const nextSegment = Math.max(1, Number(candidate.segmentIndex) || 1) + 1;
   startTelemetrySession({
     mode: 'solo_reconnect',
     difficulty: state.botDifficulty,
+    difficultyObservation:currentDifficultyObservation(state),
     deckLabel: candidate.deckLabel || 'reconnect',
     soloGameId: candidate.soloGameId,
     segmentIndex: nextSegment,

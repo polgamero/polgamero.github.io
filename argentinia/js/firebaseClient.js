@@ -275,6 +275,7 @@ export const createTradeDispute = asyncProxy('createTradeDispute');
 export const adminGetModerationPendingCount = asyncProxy('adminGetModerationPendingCount');
 export const adminGetModerationCases = asyncProxy('adminGetModerationCases');
 export const adminGetCommunityDashboard = asyncProxy('adminGetCommunityDashboard');
+export const adminGetDifficultyIndicators = asyncProxy('adminGetDifficultyIndicators');
 export const adminSetCommunityBlockedWords = asyncProxy('adminSetCommunityBlockedWords');
 export const adminBanCommunityUser = asyncProxy('adminBanCommunityUser');
 export const adminUnbanCommunityUser = asyncProxy('adminUnbanCommunityUser');

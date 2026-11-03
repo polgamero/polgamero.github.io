@@ -1,3 +1,6 @@
+import { mountDifficultyIndicators, difficultyCsvRows } from './difficultyIndicatorsUI.js';
+import { adminGetDifficultyIndicators } from './firebaseClient.js';
+import { noteDifficultyChange } from './difficultyEvidence.js';
 import {formatTriggerLabel} from './triggerLabels.js';
 import {mountSiteEditorialAdmin} from './siteEditorialAdmin.js';
 import {sharedAssetURL} from './sharedAssets.js';
@@ -11959,6 +11962,7 @@ Receipt: ${receiptId}
   let statsSessionsCache = [];
   let statsPublicRowsCache = [];
   let statsMarketCache = null;
+  const difficultyIndicatorsState = {};
 
   const ADMIN_TRACKED_STAT_KEYS = Object.freeze([
     'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
@@ -12100,7 +12104,11 @@ Receipt: ${receiptId}
         adminMetricCard(gameText('admin.stats.store.emotes'), tracked.emotesPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314'))
       ])
     ];
-    overlay.querySelector('#admin-stats-cards').innerHTML = groups.join('');
+    const cardsRoot=overlay.querySelector('#admin-stats-cards');
+    cardsRoot.innerHTML = groups.join('');
+    const difficultyRoot=document.createElement('section');
+    cardsRoot.prepend(difficultyRoot);
+    mountDifficultyIndicators(difficultyRoot,{load:adminGetDifficultyIndicators,state:difficultyIndicatorsState,lifetime:tracked});
 
     overlay.querySelector('#admin-stats-charts').innerHTML = [
       adminBarChart(gameText('admin.stats.chart.tournamentFunnel'), [
@@ -12206,6 +12214,8 @@ Receipt: ${receiptId}
       ]);
     const lines = [
       ...summary.map(row => row.map(adminCsvCell).join(';')),
+      '',
+      ...difficultyCsvRows(difficultyIndicatorsState.snapshot).map(row=>row.map(adminCsvCell).join(';')),
       '',
       playerHeader.map(adminCsvCell).join(';'),
       ...playerRows.map(row => row.map(adminCsvCell).join(';'))
@@ -14440,7 +14450,7 @@ export function showTournamentScreen(onBack, onPlayMatch) {
     if(busy||!pending?.tournamentId||!pending?.matchId)return;
     setBusy(true);
     try{
-      await settleTournamentMatch(pending.tournamentId,pending.matchId,pending.won===true);
+      await settleTournamentMatch(pending.tournamentId,pending.matchId,pending.won===true,pending.difficultyObservation);
       clearTournamentRecoveryMarkers();
       renderState(await getTournamentState({resolveInterrupted:false}));
     }catch(error){
@@ -15221,7 +15231,9 @@ export function showOptionsMenu(onBack) {
 
   const diffBtn = overlay.querySelector('#opt-difficulty');
   diffBtn.addEventListener('click', () => {
-    state.botDifficulty = nextBotDifficulty(normalizeBotDifficulty(state.botDifficulty));
+    const nextDifficulty=nextBotDifficulty(normalizeBotDifficulty(state.botDifficulty));
+    noteDifficultyChange(state,nextDifficulty);
+    state.botDifficulty = nextDifficulty;
     diffBtn.textContent = difficultyLabel();
     logMsg(gameText('options.difficulty.changed', { difficulty: difficultyLabel() }));
   });

@@ -1,3 +1,4 @@
+import { DIFFICULTY_TEXT_DEFINITIONS } from './difficultyTexts.js';
 import { SITE_TEXT_DEFINITIONS } from './editorialSiteTexts.js';
 import { LESSON_STEPS } from './guidedMatchModel.js';
 import { publicTerminologyText } from './publicTerminology.js';
@@ -25,6 +26,7 @@ function definition(category, defaultText, description) {
 // habilidades/costos y selecciones. Los discriminadores técnicos del motor siguen fuera del catálogo.
 export const GAME_TEXT_DEFINITIONS = Object.freeze({
   ...SITE_TEXT_DEFINITIONS,
+  ...DIFFICULTY_TEXT_DEFINITIONS,
   // Every guided-match step is editable in Admin > Textos del juego.
   ...Object.fromEntries(LESSON_STEPS.flatMap(step=>['title','body'].map(field=>[`guided.step.${step.id}.${field}`,definition('Tutorial de partida simple',step[field],`Paso ${step.id}: ${field==='title'?'título':'explicación'}.`)]))),
   "guided.paused": definition("Tutorial de partida simple","Práctica pausada","Interfaz de la partida guiada."),

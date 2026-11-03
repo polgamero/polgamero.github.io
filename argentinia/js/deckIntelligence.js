@@ -1,3 +1,4 @@
+import { BOT_AI_VERSION } from './botDifficulty.js';
 // js/deckIntelligence.js
 // ENTREGA 23.21.6 — Dragon Archetype specialization over Competitive Deck Intelligence · Pool 900.
 // Motor puro de construcción/evaluación. No toca DOM, Firebase ni estado global.
@@ -5,7 +6,7 @@
 import {entryLoyaltyAbilities,planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
 const COLORS = ['W','U','B','R','G'];
 export const DECK_INTELLIGENCE_VERSION = '23.19.5-di2';
-export const BOT_DECK_INTELLIGENCE_VERSION='3.0.0-pre-release';
+export const BOT_DECK_INTELLIGENCE_VERSION=BOT_AI_VERSION;
 export const DEFAULT_CANDIDATE_COUNT = 64;
 export const DEFAULT_GOLDFISH_ITERATIONS = 48;
 

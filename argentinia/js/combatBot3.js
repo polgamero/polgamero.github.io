@@ -1,7 +1,7 @@
-import {getBotCombatProfile} from './botDifficulty.js';
+import {getBotCombatProfile,BOT_AI_VERSION} from './botDifficulty.js';
 import {prepareCombat3,forecastCombat3,forkCombat3,combat3Units,combat3Power,combat3Toughness} from './combatForecast3.js';
 
-export const COMBAT_BOT_3_VERSION='3.0.0-pre-release';
+export const COMBAT_BOT_3_VERSION=BOT_AI_VERSION;
 const WIN=1_000_000;
 const keyword=(u,k)=>u._combat3Keywords.includes(k);
 const value=u=>u._combat3Value;

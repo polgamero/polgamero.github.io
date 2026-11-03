@@ -120,12 +120,12 @@ export async function beginTournamentMatch(tournamentId) {
   const response = await beginTournamentMatchServer(tournamentId);
   return response?.result || null;
 }
-export async function settleTournamentMatch(tournamentId, matchId, won) {
-  const response = await settleTournamentMatchServer(tournamentId, matchId, won);
+export async function settleTournamentMatch(tournamentId, matchId, won, difficultyObservation = null) {
+  const response = await settleTournamentMatchServer(tournamentId, matchId, won, null, difficultyObservation);
   return response?.result || null;
 }
-export async function forfeitTournament(tournamentId, matchId) {
-  const response = await forfeitTournamentServer(tournamentId, matchId);
+export async function forfeitTournament(tournamentId, matchId, difficultyObservation = null) {
+  const response = await forfeitTournamentServer(tournamentId, matchId, null, difficultyObservation);
   return response?.result || null;
 }
 export async function abandonTournament(tournamentId) {
@@ -740,6 +740,7 @@ async function settleGameRewardOnce(uid, reward = {}) {
     mode,
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
     difficulty: mode === 'solo' ? reward.difficulty : '',
+    ...(mode==='solo' && reward.difficultyObservation ? {difficultyObservation:reward.difficultyObservation} : {}),
     matchId: mode === 'multiplayer' ? matchIdFromReward(reward) : '',
     durationMs: mode === 'solo' ? Math.max(0, Math.floor(Number(reward.durationMs) || 0)) : 0
   }, reward.operationId || null);
@@ -1001,6 +1002,11 @@ export async function adminGetCommunityDashboard() {
   const response = await communityActionServer('admin_dashboard');
   return response?.dashboard || { policy:{blockedWords:[]}, bans:[], cases:[], pendingAdminCount:0 };
 }
+export async function adminGetDifficultyIndicators(difficultyOptions = {}) {
+  const response=await communityActionServer('admin_difficulty_indicators',{difficultyOptions});
+  if(!response?.indicators)throw new Error('DIFFICULTY_INDICATORS_UNAVAILABLE');
+  return response.indicators;
+}
 export async function adminSetCommunityBlockedWords(blockedWords = []) {
   const response = await communityActionServer('admin_set_blocked_words', { blockedWords:Array.isArray(blockedWords)?blockedWords:[] });
   return response?.policy || { blockedWords:[] };
@@ -1089,7 +1095,7 @@ function removePendingAbandonPenalty(uid, operationId) {
   writePendingAbandonPenalties(readPendingAbandonPenalties().filter(row => !(row.uid === uid && row.operationId === operationId)));
 }
 
-export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null, onProgress = null } = {}) {
+export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null, onProgress = null, difficultyObservation = null } = {}) {
   if (!uid || uid !== auth.currentUser?.uid) throw new Error('AUTH_UID_MISMATCH');
   const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
   const stableSource = normalizedMode === 'multiplayer'
@@ -1097,6 +1103,7 @@ export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', re
     : normalizeGameRewardReceiptId(receiptId || 'solo');
   const stableOperationId = operationId || `abandon:${normalizedMode}:${stableSource}:${uid}`.replace(/[^A-Za-z0-9._:-]/g, '_').slice(0, 128);
   const pending = queuePendingAbandonPenalty(uid, {
+    ...(normalizedMode==='solo' && difficultyObservation ? {difficultyObservation} : {}),
     mode: normalizedMode,
     matchId: normalizedMode === 'multiplayer' ? String(matchId || '').trim().toUpperCase() : '',
     receiptId: normalizedMode === 'solo' ? stableSource : '',

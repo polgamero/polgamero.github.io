@@ -1,3 +1,4 @@
+import { currentDifficultyObservation } from './difficultyEvidence.js';
 import { guidedMatchPaused, guidedCanPass } from './guidedMatch.js';
 import { consumePriorityBudget } from './decisionClock.js';
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
@@ -146,9 +147,9 @@ function awardMatchEndPoints(won) {
     if (!state.currentUser || !context.tournamentId || !context.matchId) return;
     if (els.btnRestart) els.btnRestart.disabled = true;
     showGameRewardStatus(gameText('tournament.match.settling'), 'info');
-    markTournamentPendingSettlement({ tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
+    markTournamentPendingSettlement({ tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won, difficultyObservation:currentDifficultyObservation(state) });
     recordTelemetryEvent('tournament_settlement_queued', { tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
-    settleTournamentMatch(context.tournamentId, context.matchId, !!won)
+    settleTournamentMatch(context.tournamentId, context.matchId, !!won, currentDifficultyObservation(state))
       .then(result => {
         if (state.userProfile) {
           if (Number.isFinite(Number(result?.totalPoints))) state.userProfile.points = Number(result.totalPoints);
@@ -218,6 +219,7 @@ function awardMatchEndPoints(won) {
 
   const rewardPayload = {
     receiptId,
+    difficultyObservation:currentDifficultyObservation(state),
     baseDelta: delta,
     mode,
     outcome: won ? 'win' : 'loss',

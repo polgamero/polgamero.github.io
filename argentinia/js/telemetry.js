@@ -1308,6 +1308,7 @@ export function startTelemetrySession(meta = {}) {
     meta: {
       mode: meta.mode || (state?.currentMatch ? 'multiplayer' : 'solo'),
       difficulty: meta.difficulty ?? state?.botDifficulty ?? null,
+      difficultyObservation:meta.difficultyObservation || state?.difficultyObservation || null,
       matchId: meta.matchId ?? state?.currentMatch?.matchId ?? null,
       myRole: meta.myRole ?? state?.currentMatch?.myRole ?? null,
       deckLabel: meta.deckLabel ?? null,

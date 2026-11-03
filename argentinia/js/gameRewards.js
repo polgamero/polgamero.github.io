@@ -1,3 +1,4 @@
+import { normalizeDifficultyObservation } from './difficultyIndicators.js';
 // js/gameRewards.js — Entrega 23.19.5.4 · server-authoritative Reward Settlement recovery journal
 // Cola local mínima y sin Firebase para premios de fin de partida.
 // Se escribe SINCRÓNICAMENTE antes de disparar la transacción remota: si la pestaña muere,
@@ -34,7 +35,9 @@ export function queuePendingGameReward(uid, reward = {}) {
   const ownerUid = String(uid || '');
   const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
   const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
-  if (!ownerUid || !receiptId || baseDelta <= 0) return null;
+  const recordZeroSolo = baseDelta===0 && reward.baseDelta!=null && Number(reward.baseDelta)===0
+    && reward.mode==='solo' && ['win','loss'].includes(reward.outcome) && reward.difficultyObservation;
+  if (!ownerUid || !receiptId || baseDelta <= 0 && !recordZeroSolo) return null;
   const normalized = {
     uid: ownerUid,
     receiptId,
@@ -57,6 +60,7 @@ export function queuePendingGameReward(uid, reward = {}) {
     // 23.19.5.5 — stat-only evidence for server-owned Solo duration. Never participates in
     // reward amount/digest; old pending entries without it remain valid and normalize to 0.
     durationMs: reward.mode === 'multiplayer' ? 0 : Math.max(0, Math.min(24 * 60 * 60 * 1000, Math.floor(Number(reward.durationMs) || 0))),
+    ...(reward.mode!=='multiplayer' && reward.difficultyObservation ? {difficultyObservation:normalizeDifficultyObservation(reward.difficultyObservation)} : {}),
     queuedAtMs: Math.max(0, Math.floor(Number(reward.queuedAtMs) || Date.now()))
   };
   const all = safeReadAll();

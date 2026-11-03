@@ -1,3 +1,4 @@
+import { normalizeDifficultyObservation } from './difficultyIndicators.js';
 // js/tournamentRecovery.js — HF23.3.8 tournament client recovery markers.
 // sessionStorage is intentionally tab-scoped: opening Tournament in another tab must never
 // inherit authority to resolve the match that is still alive elsewhere.
@@ -54,6 +55,7 @@ export function markTournamentPendingSettlement(payload = {}) {
     matchId,
     roundKey: String(payload.roundKey || '').trim(),
     won: payload.won === true,
+    difficultyObservation:normalizeDifficultyObservation(payload.difficultyObservation),
     savedAtMs: Date.now()
   });
 }

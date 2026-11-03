@@ -2,6 +2,8 @@
 // Fuente única de verdad para los perfiles del Tano. La dificultad define capacidades,
 // no reglas distintas del juego: ningún perfil recibe información privada del rival.
 
+export const BOT_AI_VERSION = '3.0.0-pre-release';
+
 export const BOT_DIFFICULTIES = Object.freeze(['easy','medium','hard']);
 
 // Search strength is independent of good/strong/elite deck construction. Stored
