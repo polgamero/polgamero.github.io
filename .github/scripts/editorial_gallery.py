@@ -50,6 +50,11 @@ def gallery_page(raw,route,settings,selection,icons):
     match=re.search(r'<main\b[^>]*>(.*?)</main>',raw,re.S)
     if not match:raise ValueError('Gallery main missing: '+route)
     body=match[1]
+    # This function also consumes already generated pages. Reuse one shell;
+    # accumulating wrappers would add another inset and padding on every build.
+    shell=r'\s*<div class="page-shell public-shell(?: public-detail)?">(.*)</div>\s*'
+    while (wrapped:=re.fullmatch(shell,body,re.S)):
+        body=wrapped[1]
     # Only play actions move to the game. The brand belongs to the portal home.
     body=body.replace('href="/"','href="/jugar/"')
     if route=='/cartas/':
