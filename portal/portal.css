@@ -58,3 +58,13 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   .manual-page .arg-manual-figure figcaption span{display:block;margin-top:4px}
 }
 @media(max-width:370px){.manual-page .arg-manual-toc{grid-template-columns:minmax(0,1fr)}}
+
+/* Reserved legend artwork: native no-script fallback, no game dependencies. */
+.article-reserved-art{margin:28px auto;max-width:480px}
+.article-reserved-art object{display:block;width:100%;aspect-ratio:2/3;max-height:75vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#0b1710}
+.article-art-fallback{box-sizing:border-box;min-height:280px;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--paper);background:#0b1710}
+.article-art-fallback img{display:block;max-width:220px;width:100%;height:auto}
+.article-art-fallback p{font-size:24px;font-weight:700}
+.article-reserved-art figcaption{padding-top:12px;color:var(--muted);font-size:16px}
+.public-card-guide{max-width:900px;margin:32px auto;line-height:1.65}
+.public-card-guide section{margin:24px 0}

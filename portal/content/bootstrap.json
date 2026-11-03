@@ -819,5 +819,1215 @@
         ]
       }
     ]
+  },
+  {
+    "version": 2,
+    "id": "la-difunta-correa",
+    "slug": "la-difunta-correa",
+    "title": "La Difunta Correa: el agua que mantiene una memoria",
+    "excerpt": "El relato de Deolinda, las botellas en el camino y una devoción de San Juan que invita a pensar qué significa acompañar a quien atraviesa el desierto.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "San Juan · Cuyo",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Argentina.gob.ar, Visitar el santuario Difunta Correa",
+        "url": "https://www.argentina.gob.ar/viaja-por-argentina/que-hacer/visitar-el-santuario-difunta-correa",
+        "accessedOn": "2026-11-02",
+        "note": "Presentación institucional del santuario y de su relato devocional. No acredita el milagro como hecho verificable."
+      },
+      {
+        "id": "2",
+        "title": "Cultura de la Nación, Exposición sobre la Difunta Correa y Martina Chapanay",
+        "url": "https://www.argentina.gob.ar/node/393975",
+        "accessedOn": "2026-11-02",
+        "note": "Referencia de una exposición sobre memorias del desierto cuyano; no se reproduce su material visual."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Una madre en el paisaje del desierto",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La historia de la Difunta Correa tiene en su centro una necesidad concreta: agua. La presentación institucional del santuario de Vallecito, en San Juan, cuenta que Deolinda Correa caminó por el desierto de Caucete con su bebé buscando a su marido. Según el relato devocional, murió durante el recorrido y el niño fue encontrado con vida, todavía alimentándose de ella. Es una narración de fe, no un episodio cuyo desenlace extraordinario podamos certificar.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "El motivo conmueve porque reúne dos movimientos opuestos. La travesía interrumpe una vida, pero el cuidado continúa cuando todo parece perdido. Nuestra lectura se detiene en ese contraste: el personaje no necesita conquistar un territorio ni vencer a un enemigo para ocupar un lugar en la memoria. Su fuerza narrativa surge de sostener a alguien más en una situación límite.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Por qué una botella puede contar una historia",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La misma fuente institucional describe las botellas de agua que los devotos llevan como símbolo. El santuario se ubica en Vallecito y la celebración adquiere formas colectivas, con encuentros religiosos y procesiones. Conviene distinguir el lugar que puede visitarse, las prácticas que allí se realizan y las creencias con las que cada persona las interpreta. Son dimensiones relacionadas, pero no idénticas.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Una botella depositada en una ofrenda puede leerse como una respuesta tardía a la sed del relato. El objeto cotidiano se convierte en un gesto de atención. Esa lectura no exige compartir la devoción: permite comprender por qué un recurso sencillo puede guardar más significado que una representación monumental. La abundancia de agua en una casa tampoco vuelve menor la falta de agua en un camino.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Memoria popular y representación",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La Casa Natal de Sarmiento incluyó a Deolinda y Martina Chapanay en una exposición sobre historias del desierto cuyano. Ese encuentro de figuras ofrece otra entrada: pensar cómo las personas, los relatos y los paisajes llegan a representarse en museos. Una exposición es una selección cultural, no una prueba de todas las afirmaciones que circulan alrededor de sus protagonistas.",
+            "sources": [
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Al ilustrar a Deolinda, una decisión posible es mostrar el cuidado antes que el espectáculo de la tragedia. La postura de las manos, el recipiente o la distancia del horizonte pueden expresar vulnerabilidad sin convertirla en un objeto de curiosidad. La imagen que acompaña este artículo pertenece a la interpretación visual de ARGENTINIA; no es un retrato histórico ni una fotografía del episodio.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Leer sin reducir la devoción a una respuesta fácil",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Preguntar si una historia es verdadera o falsa puede dejar afuera lo que las personas hacen con ella. También sería un error convertir la fuerza de una creencia en demostración de un milagro. Entre ambos extremos hay preguntas más fértiles: qué se recuerda, qué se ofrece y qué vínculos se construyen alrededor de esa memoria.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La Difunta Correa permite conversar sobre hospitalidad, trayectos y cuidados. Quien lea otra versión puede observar a qué personaje sigue el narrador y cuánto espacio concede al paisaje. Esas elecciones cambian nuestra experiencia del relato. Reconocerlas ayuda a escuchar la tradición con respeto y a distinguirla de una recreación artística, como la que propone nuestro universo de cartas.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "la-telesita",
+    "slug": "la-telesita",
+    "title": "La Telesita: cuando la memoria se convierte en baile",
+    "excerpt": "Una figura santiagueña, una muerte trágica y una memoria celebrada entre música y promesas. Cómo leer una versión sin confundirla con una biografía comprobada.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Santiago del Estero",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Municipalidad de Santiago del Estero, La Telesita",
+        "url": "https://www.santiagociudad.gov.ar/cultura/telesita",
+        "accessedOn": "2026-11-02",
+        "note": "Versión literaria difundida por el municipio. Sus juicios y su lenguaje pertenecen al texto reproducido; no se adoptan como diagnóstico ni testimonio propio."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Una presencia que sigue a la música",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La versión publicada por la Municipalidad de Santiago del Estero presenta a una mujer llamada Telésfora o Teresa que recorre el monte y llega a viviendas y reuniones. El relato vincula su final con un incendio y describe cómo, después de su muerte, su recuerdo se asocia con promesas pagadas mediante bailes. Esa es la versión que tomamos como referencia; no disponemos aquí de una biografía documental que permita verificar cada episodio.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La transformación más interesante no ocurre entre un cuerpo humano y un monstruo. Ocurre entre una ausencia y una reunión: alguien que ya no está vuelve a ocupar el centro de una celebración. Nuestra lectura propone escuchar ese cambio. La música no cancela el dolor del relato, pero le da una forma compartida que puede sostenerse entre varias personas.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "El baile como forma de recordar",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "En la narración municipal, un visitante pregunta por una fiesta y recibe como explicación que se trata de una promesa a la Telesita. La escena muestra participantes, música y objetos del encuentro. El narrador los interpreta con el vocabulario y las comparaciones de su propia mirada. Es importante no convertir esas valoraciones en la única descripción posible de la práctica.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Recordar mediante una danza exige cuerpos presentes y tiempo compartido. A diferencia de una inscripción que permanece quieta, un baile vuelve a hacerse. Esta diferencia permite pensar la memoria como una actividad y no sólo como un depósito de datos. ¿Qué ocurre con una historia cuando alguien aprende el ritmo, invita a otra persona o reconoce una melodía sin conocer toda la narración?",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Una lectura atenta al lenguaje",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El texto de referencia incluye palabras y juicios que hoy merecen ser interrogados, especialmente cuando describe la vulnerabilidad de su protagonista. Podemos leer una fuente antigua sin repetir su trato hacia las personas. Separar el acontecimiento narrado del juicio del narrador es una herramienta útil también fuera del folklore: una voz segura no deja de tener un punto de vista.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "En esta lectura no usamos el relato para diagnosticar a Telésfora ni para presentar su sufrimiento como un destino pintoresco. Nos interesa el paso de una persona vulnerable a una figura que reúne a otros. Esa pregunta cambia el foco de la representación: la escena puede atender al gesto de acompañar, al espacio que se abre en una ronda o a la música que atraviesa un lugar.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "La Telesita en una imagen nueva",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ilustración preparada para ARGENTINIA es una interpretación contemporánea. No reproduce una fotografía de Telésfora ni demuestra cómo se vestía. Puede dialogar con el relato a través del movimiento y de la luz, sin fijar una apariencia única para todas sus versiones. La distinción entre figura recordada e imagen inventada forma parte del cuidado editorial.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Al volver a encontrar la Telesita en una canción, una escena o un relato familiar, vale observar qué se conserva: quizá el baile, quizá la promesa, quizá el desenlace. No necesitamos fusionar todas las versiones para apreciar su recorrido. Cada una permite preguntar quién cuenta la historia y de qué modo invita a participar de esa memoria.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "la-mulanima",
+    "slug": "la-mulanima",
+    "title": "La Mulánima: los sonidos de una condena nocturna",
+    "excerpt": "Fuego, cadenas y una transformación: una lectura de la Mula Ánima que distingue el terror del relato de los juicios sobre las personas.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Norte y centro de Argentina",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Municipalidad de Santiago del Estero, La Mula Ánima",
+        "url": "https://www.santiagociudad.gov.ar/cultura/almamula",
+        "accessedOn": "2026-11-02",
+        "note": "Síntesis de variantes y nombres. Se presenta como tradición narrativa; sus castigos y juicios morales no son recomendaciones ni hechos demostrados."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Un ser que se anuncia antes de aparecer",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La Mula Ánima también recibe nombres como Mulánima, Alma Mula o Mujer Mula. La presentación municipal santiagueña describe una figura que recorre la noche entre fuego, cadenas y un rebuzno doloroso. Vincula la transformación de una mujer con transgresiones religiosas o familiares, en versiones que no deben tratarse como una única historia uniforme. Aquí nos detenemos en su construcción narrativa.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Antes de imaginar su aspecto, conviene pensar cómo la oímos. Un ruido al que todavía no le vemos la causa ocupa el espacio de otra manera: puede estar cerca, puede alejarse, puede confundirse con algo conocido. En nuestra lectura, las cadenas y la voz sostienen el miedo porque convierten el camino en un lugar de espera. La aparición visual llega después de esa incertidumbre.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "El castigo y la voz que lo cuenta",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El resumen de referencia organiza parte del relato alrededor de una condena. Presenta una figura animal y, al mismo tiempo, conserva señales de sufrimiento humano. La relación entre transformación y juicio moral permite preguntar desde qué autoridad se describe a la protagonista. Leer esa relación no significa aceptar que las personas merezcan violencia por apartarse de una norma.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Una narración puede ofrecer miedo y también hacer visible una forma de control. ¿Quién señala la falta? ¿Quién nombra a la criatura? ¿Se escucha la voz de la persona transformada o solamente la interpretación de otros? Estas preguntas abren una lectura diferente de la persecución nocturna: junto al monstruo aparece una disputa por la manera de explicar una vida.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Variantes que conviene conservar separadas",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Los distintos nombres no autorizan a juntar cualquier detalle que aparezca en una búsqueda. Un relato localizado puede describir una señal que otro no menciona. La fuente municipal reúne varias características y posibilidades; su alcance no nos permite asignar cada una a todas las provincias ni fechar el origen de la creencia. Una síntesis útil mantiene visibles esos límites.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Al comparar versiones, proponemos registrar tres cosas: el lugar de la acción, la causa que se atribuye a la transformación y la forma en que termina el encuentro. Si una adaptación cambia una de ellas, también cambia el sentido de la escena. Esa comparación aporta más que discutir cuál ilustración tiene la anatomía correcta de una criatura que pertenece al relato.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Imaginar sin repetir el juicio",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ilustración de ARGENTINIA trabaja con un motivo fantástico. No representa un animal real ni identifica a una persona o comunidad. El fuego puede funcionar como luz en un camino y las cadenas como una carga; no necesitamos convertir el dolor en una escena explícita para que la figura tenga intensidad.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La Mulánima interesa porque permanece entre dos condiciones: cuerpo perseguido y aparición temida. Mantener esa tensión deja espacio para leer algo más que un susto. El camino nocturno puede seguir siendo inquietante mientras preguntamos quién carga con el castigo y quién conserva el poder de contar su historia. Esa es la pregunta que acompaña nuestra interpretación.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-basilisco",
+    "slug": "el-basilisco",
+    "title": "El Basilisco: una mirada que cambia con quien la cuenta",
+    "excerpt": "De las descripciones del monstruo a los testimonios de Córdoba: por qué una criatura no se comprende sólo enumerando sus poderes.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Tradiciones de Córdoba y otras regiones",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Soledad Sgarella, Seres míticos en relatos orales de Córdoba, DIVERSA",
+        "url": "https://www.diversidadreligiosa.com.ar/blog/seres-miticos-cordoba/",
+        "accessedOn": "2026-11-02",
+        "note": "Entrevista y reseña del trabajo de Relatos del Viento; se consulta el texto, no se afirma haber oído sus registros de campo."
+      },
+      {
+        "id": "2",
+        "title": "Folklore del Norte, Mitos y leyendas argentinas",
+        "url": "https://www.folkloredelnorte.com.ar/tradyley.htm",
+        "accessedOn": "2026-11-02",
+        "note": "Índice de difusión cultural que incluye al Basilisco. No se usa como registro de una experiencia real."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Más que una lista de atributos",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Un bestiario suele invitarnos a preguntar cómo es una criatura y qué peligro representa. Con el Basilisco, la mirada se vuelve un motivo especialmente sugerente: mirar puede dejar de ser una acción segura. Pero la figura no se agota en ese mecanismo. Antes de reunir detalles de distintos sitios en un monstruo definitivo, conviene saber de qué versión viene cada uno.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Una puerta de entrada argentina es el trabajo de Relatos del Viento en Córdoba. La entrevista publicada por DIVERSA incluye al Basilisco entre los seres presentes en su recopilación y explica que el libro combina ilustraciones, descripciones y testimonios. Sus responsables piden atender al vínculo de esos relatos con las comunidades y los territorios. No hemos escuchado aquí todos los audios ni sustituimos esa investigación por una descripción inventada.",
+            "sources": [
+              "1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "El encuentro y el lugar",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura propone cambiar una pregunta. En lugar de preguntar solamente qué puede hacer el Basilisco, podemos preguntar qué le ocurre a quien cree encontrarse con él. La espera, la sospecha y la decisión de mirar pertenecen a la experiencia del personaje humano. Un monstruo casi inmóvil puede mover toda una escena si modifica la conducta de quienes están alrededor.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Esto también permite diferenciar una ilustración de un testimonio. El dibujo necesita resolver una forma visible; el relato puede mantenerla incompleta. Ninguna de esas elecciones obliga a corregir la otra. Un testimonio de tradición oral tiene valor por lo que nos permite conocer de una experiencia y de su transmisión, aunque no funcione como una ficha anatómica.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "No trasladar una variante sin avisar",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El índice de Folklore del Norte ofrece otra referencia de circulación del nombre en una colección argentina. Un índice localiza un tema, pero no demuestra por sí solo el origen de cada detalle que pueda asociársele. Tampoco basta con encontrar una figura del mismo nombre en otro país para atribuirle automáticamente sus rasgos a todos los relatos argentinos.",
+            "sources": [
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Para comparar dos versiones, conviene mirar cómo empieza el peligro y cómo se resuelve. La historia cambia si la amenaza depende de una mirada, de un encuentro nocturno o de una sospecha en la casa. Registrar esas diferencias conserva la riqueza del conjunto. Limarlas para obtener una descripción única puede producir una criatura más fácil de clasificar y una tradición más difícil de comprender.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Una imagen propia, una lectura abierta",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Basilisco de ARGENTINIA pertenece a una interpretación visual nueva. No es una reproducción del arte del libro reseñado ni una evidencia de su existencia. Su función es acompañar esta lectura y, en el futuro, dialogar con la ficción del juego. La imagen puede atraer la vista sin reemplazar las fuentes del artículo.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "El interés de esta figura está también en el límite de la observación: aquello que querríamos ver puede ser lo que el relato nos enseña a evitar. Cuando vuelvas a encontrar al Basilisco, fijate si el narrador te deja mirar con libertad o si empieza por advertirte. En esa decisión pequeña suele empezar el efecto del miedo.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-yastay",
+    "slug": "el-yastay",
+    "title": "El Yastay: el límite entre tomar y arrasar",
+    "excerpt": "El protector de los animales en una tradición andina y una pregunta que sigue abierta: cuánto puede tomar una persona de un territorio compartido.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Tradiciones andinas y del noroeste",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Equipo NAyA, Diccionario de Mitos y Leyendas: Yastay / Llastay",
+        "url": "https://www.cuco.com.ar/yastay.htm",
+        "accessedOn": "2026-11-02",
+        "note": "Entrada comparativa de difusión antropológica; se conservan sus variantes sin atribuirles una distribución uniforme."
+      },
+      {
+        "id": "2",
+        "title": "Administración de Parques Nacionales, Panorámica de Calilegua",
+        "url": "https://www.argentina.gob.ar/parquesnacionales/region-noroeste/parque-nacional-calilegua/panoramica",
+        "accessedOn": "2026-11-02",
+        "note": "Menciona un recorrido interpretativo con Yastay y otras figuras. No certifica una versión única de cada relato."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Un protector que obliga a detenerse",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Yastay, también escrito Llastay en las referencias consultadas, aparece asociado con la protección de animales y con límites para quien sale a cazarlos. La entrada del diccionario del Equipo NAyA reúne variantes y menciona vínculos con otras figuras protectoras. Esa comparación nos sirve como mapa de lectura, no como permiso para fusionarlas en un solo personaje.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La pregunta que nos interesa es qué cambia cuando el animal deja de ser una posesión disponible. Si el territorio tiene un guardián, la capacidad de capturar no equivale a un derecho sin medida. Nuestra interpretación ve en esa tensión una estructura narrativa poderosa: el cazador puede tener herramientas, experiencia y fuerza, pero encuentra un límite que no controla.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Necesidad, exceso y responsabilidad",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Leído desde esa perspectiva, el conflicto no se reduce a buenos y malos separados desde el comienzo. Una acción puede cambiar de sentido según su medida. Buscar alimento, acumular sin necesidad o hacer de la captura una exhibición no son decisiones idénticas. El relato invita a observar la conducta de quien toma algo y no solamente la rareza de la aparición.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Es una lectura editorial, no la afirmación de que todas las comunidades interpretan al Yastay con categorías ambientales actuales. Convertirlo sin más en una mascota de conservación borraría parte de su contexto. Podemos encontrar una pregunta fértil para el presente sin atribuirle a una tradición un programa que nunca hemos documentado.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Un nombre en un territorio de relatos",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Parques Nacionales incluye al Yastay, junto con Pombero, Ucumar y Coquena, al describir propuestas interpretativas en el entorno de Calilegua. La referencia muestra una presencia cultural en ese recorrido; no basta para decidir dónde nació la figura ni qué versión es más antigua. También recuerda que el paisaje puede leerse a través de más de una clase de conocimiento.",
+            "sources": [
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Una comparación cuidadosa puede atender a qué animales se nombran, qué hace el guardián y qué aprende el personaje humano. Si dos relatos responden de manera distinta, la diferencia merece conservarse. La diversidad no es un error de una transmisión defectuosa: puede ser justamente aquello que hace posible que una historia encuentre sentido en lugares distintos.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Del guardián a la imaginación del juego",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ilustración de ARGENTINIA propone una forma visible para acompañar el artículo. Es una creación del proyecto, no una imagen ritual de una comunidad ni un registro zoológico. Las futuras decisiones de diseño de una carta tampoco definirán qué debe significar el Yastay fuera del juego.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Como ejercicio de lectura, imaginá una escena en la que el encuentro no termine con una victoria del cazador. ¿Qué podría aprender al regresar sin aquello que buscaba? La pregunta abre una aventura distinta: el éxito deja de medirse únicamente por lo que se consigue llevar y empieza a incluir lo que se decide dejar en su lugar.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "leyenda-de-la-yerba-mate",
+    "slug": "leyenda-de-la-yerba-mate",
+    "title": "La leyenda de la yerba mate: un regalo que empieza al compartir",
+    "excerpt": "El origen contado de una planta, las adaptaciones para nuevas generaciones y el valor de una ronda que invita a alguien más.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Área cultural guaraní · Litoral",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Educ.ar, La leyenda de la yerba mate, El taller de historias",
+        "url": "https://www.educ.ar/recursos/100523/la-leyenda-de-la-yerba-mate",
+        "accessedOn": "2026-11-02",
+        "note": "Ficha de una adaptación audiovisual de Ronda. Se consulta su presentación, sin reproducir el video ni atribuirle todos los detalles de otras versiones."
+      },
+      {
+        "id": "2",
+        "title": "Educ.ar, Leyenda de la yerba mate, versión de Ana María Shua",
+        "url": "https://www.educ.ar/recursos/155505?level_id=0&title=primaria-2-y-3",
+        "accessedOn": "2026-11-02",
+        "note": "Ficha de una narración contemporánea. No se cita ni reproduce el cuento."
+      },
+      {
+        "id": "3",
+        "title": "INYM, Historia",
+        "url": "https://inym.org.ar/historia.html",
+        "accessedOn": "2026-11-02",
+        "note": "Referencia institucional para diferenciar la historia de la actividad yerbatera de los relatos sobre su origen."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Dos preguntas sobre un origen",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Preguntar de dónde viene la yerba mate puede llevarnos por caminos distintos. Uno sigue la planta, su cultivo y el trabajo necesario para prepararla. Otro escucha las historias que explican por qué llegó a ser valiosa para las personas. La leyenda pertenece a ese segundo camino: ofrece un origen con personajes, decisiones y consecuencias, no una descripción botánica del nacimiento de una especie.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Educ.ar reúne adaptaciones que muestran cómo sigue contándose ese origen. Una pertenece a El taller de historias, una serie donde un abuelo comparte relatos con sus nietos; otra presenta una versión de Ana María Shua. Las fichas permiten identificar esas mediaciones. No las usamos como si fueran una transcripción directa y única de la tradición guaraní.",
+            "sources": [
+              "1",
+              "2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "La hospitalidad como centro de lectura",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Nuestra propuesta es atender al intercambio que un relato de regalo hace posible. Una persona puede recibir algo extraordinario, pero la historia cambia cuando ese bien no queda encerrado para su uso exclusivo. Compartir requiere un segundo movimiento: reconocer a quien llega, hacer espacio y aceptar que una costumbre puede unir sin convertir a todos en la misma persona.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Esa lectura permite pensar la ronda sin idealizarla. Una invitación tiene sentido cuando deja elegir al otro. El gesto de compartir puede expresarse de muchas maneras y no exige que todo el mundo beba lo mismo o participe igual. El interés está en la relación que se ofrece, no en usar una costumbre para decidir quién pertenece y quién queda afuera.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Adaptar también es tomar decisiones",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Un cuento leído, una animación y una conversación familiar disponen de recursos diferentes. La voz puede dejar una pausa donde una imagen muestra un paisaje. Un diálogo puede dar protagonismo a un personaje secundario. Al comparar adaptaciones, es útil observar qué se conserva y qué cambia antes de hablar de una versión correcta y otra equivocada.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La historia institucional del INYM ofrece una clase de información distinta: la organización y el desarrollo de la actividad yerbatera. Esa historia no demuestra ni invalida el sentido de una leyenda. Separar los planos evita un atajo frecuente: usar el valor cultural de una narración como si explicara por sí solo cómo se produjo cada transformación material de una planta en un alimento.",
+            "sources": [
+              "3"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Una ronda en el universo de ARGENTINIA",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El mate es también una inspiración del proyecto y de Matito, nuestro personaje original. La afinidad está en el gesto de hacer lugar; no presentamos a Matito como protagonista de una leyenda tradicional. La ilustración de este artículo es otra creación visual y tampoco pretende reemplazar las imágenes o interpretaciones de las comunidades relacionadas con el relato.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Para seguir leyendo, elegí una adaptación identificada y preguntate a quién beneficia el regalo, cómo circula y qué cambia después de recibirlo. Son preguntas pequeñas, pero ayudan a salir de una enumeración de personajes. La leyenda puede entonces conversar con una experiencia cercana: algo compartido adquiere un valor que no se mide solamente por la cantidad que queda en el recipiente.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-futre",
+    "slug": "el-futre",
+    "title": "El Futre: la montaña donde una deuda no termina",
+    "excerpt": "El fantasma de los Andes entre memoria ferroviaria y recreación musical. Una traición narrada puede sobrevivir al viaje que la puso en marcha.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Mendoza · Cordillera de los Andes",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Gobierno de Mendoza, Llega El Futre, fantasma de los Andes",
+        "url": "https://www.mendoza.gov.ar/prensa/llega-el-futre-fantasmas-de-los-andes/",
+        "accessedOn": "2026-11-02",
+        "note": "Sinopsis de una obra de Natalio Faingold, no documento judicial ni registro histórico del crimen narrado."
+      },
+      {
+        "id": "2",
+        "title": "Gobierno de Mendoza, Los libros mendocinos que hay que llevar en la mochila",
+        "url": "https://www.mendoza.gov.ar/prensa/los-libros-mendocinos-que-hay-que-llevar-en-la-mochila-en-el-verano-2019/",
+        "accessedOn": "2026-11-02",
+        "note": "Menciona El Futre de Chanti como una recreación de un mito popular mendocino. No se reproduce ese libro."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Un fantasma con más de una versión",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Futre tiene una presencia reconocible en la divulgación cultural mendocina. Para entrar en su historia elegimos una adaptación identificada: el oratorio de Natalio Faingold presentado por el Gobierno de Mendoza. Su sinopsis sitúa una traición en un contexto ferroviario y convierte a Foster, encargado de transportar salarios, en un fantasma que busca venganza. Se trata de una trama artística; no la tomamos como demostración de un crimen histórico.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Nombrar la adaptación importa porque evita que sus decisiones se conviertan, por repetición, en datos supuestamente indiscutibles. Un personaje, un vínculo o un desenlace pueden pertenecer a esa obra concreta. El lector gana una referencia que puede seguir y, al mismo tiempo, conserva la posibilidad de encontrar otra versión sin tener que declararla falsa.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "El salario como conflicto narrativo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura se detiene en el dinero que debía llegar a otras personas. En esa situación imaginada, el robo no interrumpe sólo un trayecto: rompe una confianza. El encargado del pago conecta lugares y trabajadores que quizá nunca aparezcan juntos en la escena. La traición puede, por eso, extender sus consecuencias más allá de la víctima visible.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Esta perspectiva vuelve más inquietante la figura del fantasma. No regresa únicamente alguien que perdió la vida; regresa una obligación que quedó sin cumplir. El relato convierte una deuda en presencia. Es una interpretación de la estructura del conflicto, no la afirmación de que toda versión del Futre responda al mismo significado social.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "La montaña como escenario",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Una escena de viaje cambia cuando el entorno limita lo que los personajes pueden hacer. La distancia, la visibilidad y el aislamiento pueden hacer que una decisión pequeña parezca irreversible. En la sinopsis del oratorio, una tormenta forma parte del encuentro con el fantasma. El paisaje participa así de la tensión dramática; no es solamente un fondo para una aparición.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "El personaje también circula en otras formas. Una selección de lecturas del Gobierno de Mendoza menciona El Futre de Chanti. La referencia permite reconocer una recreación distinta sin atribuirle aquí escenas que no hemos consultado. Saber que existe un libro no equivale a haberlo leído ni autoriza a usar sus ilustraciones como si fueran material libre.",
+            "sources": [
+              "2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Una figura para mirar de nuevo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La imagen de ARGENTINIA es una interpretación visual propia del proyecto. Su vestuario o su composición no funcionan como prueba de una época, una identidad o un encuentro real. En una ilustración fantástica podemos explorar qué queda de una persona cuando el relato la reduce a su aparición: un movimiento, un objeto, la sensación de que algo no terminó.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Al comparar otra narración del Futre, fijate qué pone en primer plano: la víctima, el culpable, el camino o quienes transmiten la historia. Cada elección reparte de manera diferente el miedo y la responsabilidad. La montaña puede guardar el mismo nombre mientras las historias cambian la pregunta que nos hacen al atravesarla.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-kurupi",
+    "slug": "el-kurupi",
+    "title": "El Kurupí: leer una figura guaraní sin mezclar sus rasgos",
+    "excerpt": "Una figura de fuerte presencia visual exige contexto: cómo distinguir nombre, representación artística y versiones de un universo cultural compartido.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Área cultural guaraní",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "AECID, Centro Cultural de España Juan de Salazar, Pieza de agosto",
+        "url": "https://www.aecid.es/web/cce-juan-de-salazar/-/pieza-de-agosto",
+        "accessedOn": "2026-11-02",
+        "note": "Presentación institucional recuperada en el índice del buscador: describe una talla identificada como Kurupí. La página completa no pudo recuperarse; no se atribuyen detalles adicionales."
+      },
+      {
+        "id": "2",
+        "title": "Portal Guaraní, Kurupi, escultura del Museo Mitológico Ramón Elías",
+        "url": "https://www.portalguarani.com/967_ramon_elias__/8888_kurupi__escultura_del_museo_mitologico_raman_elias.html",
+        "accessedOn": "2026-11-02",
+        "note": "Ficha de una representación del museo paraguayo. Se consulta su identificación; no se reutiliza la fotografía."
+      },
+      {
+        "id": "3",
+        "title": "GuaraniAyvu, diccionario",
+        "url": "https://guaraniayvu.org/",
+        "accessedOn": "2026-11-02",
+        "note": "Entrada kurupi: ser mitológico. Una definición léxica no reemplaza la diversidad de las narraciones."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Empezar por el nombre",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Kurupí nombra una figura del imaginario guaraní. La entrada léxica de GuaraniAyvu lo identifica como ser mitológico; las referencias culturales consultadas permiten, además, localizar representaciones en Paraguay. Ese punto de partida sitúa la lectura en un área cultural que no se reduce a las fronteras actuales de un solo país. No lo presentamos como una criatura exclusiva de Argentina.",
+            "sources": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La precisión es especialmente útil con nombres que circulan en listas de internet. Dos figuras pueden parecerse en la escritura o compartir el escenario del monte sin tener los mismos atributos. Acumular rasgos de distintas descripciones produce un personaje nuevo, pero no lo vuelve automáticamente una síntesis fiel de una tradición. Una recreación necesita reconocer cuándo está tomando esa libertad.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Representar no es explicar todo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ficha de Portal Guaraní identifica una escultura del Museo Mitológico Ramón Elías. El índice institucional de AECID presenta otra talla como Kurupí y destaca su carácter reconocible. Estas referencias documentan representaciones; no son relatos de campo que permitan reconstruir cada variante ni constituyen una licencia para reproducir sus imágenes.",
+            "sources": [
+              "1",
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Una figura tallada concentra significado en una forma. Puede volver muy visible un rasgo y dejar otros fuera. Nuestra lectura propone atender a esa operación: qué permite reconocer al personaje y qué preguntas siguen abiertas después de reconocerlo. La potencia visual no reemplaza el contexto de la obra, la identidad de quien la realiza o las historias con las que dialoga.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "El riesgo de una descripción aislada",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Reducir una figura cultural a su atributo más llamativo puede hacerla más fácil de recordar y mucho más difícil de comprender. El cuerpo, el deseo o el peligro pueden ser parte de un relato sin agotar lo que ese relato significa. Aquí evitamos la descripción gráfica y no usamos diferencias corporales para presentar a una comunidad como exótica o ajena.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Al encontrarte con una versión, conviene observar su género. Una ficha de museo describe una pieza; un diccionario explica una palabra; un cuento organiza acciones. Si les pedimos la misma clase de respuesta, terminamos atribuyendo a una fuente lo que sólo imaginamos a partir de otra. Distinguir esas funciones es una manera concreta de leer con mayor atención.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "La interpretación de ARGENTINIA",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La imagen que acompaña este artículo es una creación visual del proyecto. No se presenta como reproducción de la escultura citada ni como modelo definitivo del Kurupí. Tampoco inventamos una mecánica de carta para explicar retrospectivamente la tradición: el diseño de juego tendrá sus propias decisiones y deberá mantener clara esa diferencia.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Una buena pregunta para seguir explorando es qué relación establece la figura con quienes la nombran. ¿Aparece como advertencia, como personaje de una historia o como motivo de una obra? Esa relación puede variar. Conservar la procedencia de cada versión deja que la diversidad se vea y evita reemplazarla por una colección de rasgos reunidos sin contexto.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-toro-muerto",
+    "slug": "el-toro-muerto",
+    "title": "Toro Muerto: un nombre real y las historias que imaginamos",
+    "excerpt": "Un arroyo de Traslasierra, un nombre que despierta imágenes y una distinción necesaria entre paisaje documentado y criatura inventada.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Traslasierra · Córdoba",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Agencia Córdoba Turismo, Te presentamos San Lorenzo",
+        "url": "https://cordobaturismo.gov.ar/noticias/conociendo-san-lorenzo/",
+        "accessedOn": "2026-11-02",
+        "note": "Describe la localidad y el arroyo Toro Muerto. No documenta una leyenda de un toro demoníaco ni de un tesoro custodiado."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "El lugar antes que el monstruo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Toro Muerto es el nombre de un arroyo del entorno de San Lorenzo, en Traslasierra. La descripción de la Agencia Córdoba Turismo lo vincula con el río Panaholma y menciona balnearios y una cascada. Ese es un referente concreto para empezar. La misma fuente no cuenta una leyenda de un toro que custodie tesoros ni establece un origen fantástico para el nombre.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Un nombre así despierta imágenes con facilidad. Podemos imaginar un animal, una pérdida o un peligro que espera cerca del agua. Esas asociaciones pertenecen a quien escucha el nombre; no demuestran por sí solas lo que ocurrió allí ni lo que sus habitantes han contado. Distinguir ambos planos hace más interesante el encuentro con el paisaje, porque deja de imponerle una historia que no hemos documentado.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Cómo un nombre organiza una mirada",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura propone un ejercicio: pensar qué miraríamos al llegar a un sitio antes y después de conocer su nombre. Una curva del agua puede parecer distinta cuando esperamos encontrar una señal. La forma de una roca o un ruido pueden incorporarse a una narración incluso sin haber cambiado físicamente. El nombre no transforma el lugar, pero puede transformar nuestra atención.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Ese mecanismo es útil para la ficción. Una historia puede comenzar con una palabra y preguntarse qué presencia podría corresponderle. La libertad creativa aparece cuando se reconoce como tal. Si decidimos dibujar un toro espectral inspirado en ese nombre, estamos creando una figura, no recuperando automáticamente una leyenda de Córdoba. Ambas actividades tienen valor y necesitan presentaciones diferentes.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Lo que aporta la referencia del territorio",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La presentación turística también menciona rastros culturales y propuestas para recorrer el entorno. En este artículo la usamos como referencia geográfica, no como garantía de que todos los servicios o accesos sigan disponibles. Una descripción institucional de un lugar tampoco permite atribuir una historia a sus comunidades sin una fuente que la identifique.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Para acercarnos a un relato local, harían falta otras preguntas: quién lo cuenta, en qué ocasión y qué relación tiene con el sitio. Un título repetido en muchas páginas puede seguir dependiendo de una única afirmación sin procedencia. La repetición vuelve familiar una idea, pero no añade por sí misma testimonios independientes. Esta diferencia importa cuando deseamos conocer un lugar y no sólo coleccionar nombres inquietantes.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Una criatura posible dentro del juego",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ilustración de Toro Muerto preparada para ARGENTINIA es una interpretación fantástica original. No afirma representar un ser de una tradición documentada. El juego puede explorar esa imagen y construir su propio personaje, siempre que el lector pueda distinguir la invención del proyecto de la información sobre el arroyo real.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "La pregunta final no necesita resolver un supuesto misterio: ¿qué nos hace imaginar un nombre cuando todavía no conocemos su historia? Conservar esa pregunta permite disfrutar del arte sin falsificar un origen. El arroyo queda en el territorio; la criatura, en nuestra imaginación. La lectura gana algo cuando puede recorrer ambos espacios sabiendo en cuál está en cada momento.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-anima-sola",
+    "slug": "el-anima-sola",
+    "title": "El Ánima Sola: una imagen para pensar el desamparo",
+    "excerpt": "Entre imágenes devocionales y memorias populares, una lectura que distingue las variantes latinoamericanas de las historias argentinas con nombre propio.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Devociones latinoamericanas",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Secretaría de Cultura de México, Catálogo Nacional: El Anima Sola",
+        "url": "https://sitiosymonumentos.cultura.gob.mx/ii-monumentos-muebles-de-propiedad-federal/el-anima-sola/",
+        "accessedOn": "2026-11-02",
+        "note": "Ficha institucional identificada en el buscador; la página devolvió error al abrirse. Sólo se usa la existencia de la obra y la variante resumida en su índice."
+      },
+      {
+        "id": "2",
+        "title": "Filmoteca UNAM, Acervo Paul Leduc: Anima sola",
+        "url": "https://acervoleduc.filmoteca.unam.mx/?coleccion_objetos=anima-sola",
+        "accessedOn": "2026-11-02",
+        "note": "Ficha de un objeto del acervo asociado con Latino Bar; no se reproduce la imagen ni se deduce una distribución argentina del culto."
+      },
+      {
+        "id": "3",
+        "title": "Cultura de la Nación, Jornada sobre mitos y devociones populares",
+        "url": "https://www.argentina.gob.ar/node/392416",
+        "accessedOn": "2026-11-02",
+        "note": "Referencia argentina para el estudio de devociones populares; no demuestra que todas las figuras latinoamericanas tengan la misma presencia local."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Una figura que pide contexto",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El nombre Ánima Sola puede llevar a imágenes y relatos distintos. El catálogo cultural mexicano identifica una obra con ese título; una ficha de la Filmoteca de la UNAM describe una representación vinculada con el acervo de Paul Leduc. Son referencias localizadas en México. No las convertimos en pruebas de que exista una única versión ni de que su devoción esté extendida por toda Argentina.",
+            "sources": [
+              "1",
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La cautela no vuelve menos sugerente a la figura. Sola es una palabra que organiza inmediatamente nuestra lectura: alguien está separado de los demás, sin acompañamiento o esperando una ayuda. Nuestra interpretación parte de esa condición. Antes de preguntarnos qué poder tendría un alma, podemos preguntarnos qué mirada le concede la imagen a quien permanece sin compañía.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Variantes y nombres propios",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ficha mexicana del catálogo y la del acervo no describen exactamente el mismo referente narrativo. Esta diferencia basta para evitar una biografía universal construida al reunir versiones incompatibles. Una identificación de museo nos dice algo sobre una pieza concreta; no autoriza a completar sus silencios con cualquier descripción encontrada bajo el mismo nombre.",
+            "sources": [
+              "1",
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "En una lectura comparada, resulta útil separar tres cosas: el título de una imagen, el personaje que una tradición asocia con ella y los usos que las personas le dan. Pueden relacionarse sin coincidir por completo. Un objeto puede cambiar de contexto y adquirir nuevos sentidos; reconocer ese recorrido es distinto de afirmar que todos sus significados estuvieron presentes desde el origen.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Una comparación con las memorias argentinas",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La Biblioteca Nacional y Cultura de la Nación han propuesto encuentros para estudiar mitos y devociones populares argentinas. Esa perspectiva invita a escuchar figuras con trayectorias locales, como la Difunta Correa, sin suponer que todas las creencias sobre muertos o almas forman el mismo relato. Compartir una pregunta sobre la muerte no borra las diferencias de historia y territorio.",
+            "sources": [
+              "3"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Podemos comparar el cuidado que despierta una figura desamparada con los gestos de acompañamiento alrededor de otras memorias. La comparación es una herramienta de lectura, no una equivalencia religiosa. Mantenerla abierta permite advertir tanto afinidades como diferencias: quién recuerda, qué objeto ofrece y qué relación espera construir mediante ese gesto.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "Dar forma sin prometer favores",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La ilustración de ARGENTINIA es una creación del proyecto y no reproduce los objetos de los catálogos citados. Puede explorar visualmente la espera, la soledad o la posibilidad del encuentro. No ofrece instrucciones rituales, no promete efectos sobre la vida de quien la mire y no certifica una interpretación religiosa.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "En el universo fantástico de un juego, un alma puede recibir una historia nueva. La responsabilidad editorial consiste en reconocer cuándo comienza esa invención. Dejar claro el límite permite que la imagen conserve intensidad sin convertir la fe de otras personas en una regla de ficción ni presentar una recreación como si fuera documentación de una tradición argentina.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-chancho-de-monte",
+    "slug": "el-chancho-de-monte",
+    "title": "Chancho de monte: el animal real y la sombra imaginada",
+    "excerpt": "Los pecaríes pertenecen a nuestros ambientes naturales. El miedo de una escena fantástica no alcanza para convertirlos en una especie de demonio del folklore.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Montes y ambientes del norte argentino",
+    "tags": [],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Administración de Parques Nacionales, Parque Nacional El Impenetrable",
+        "url": "https://www.argentina.gob.ar/node/149994",
+        "accessedOn": "2026-11-02",
+        "note": "Incluye al pecarí entre la fauna del área. No es una fuente sobre un demonio de los Hornillos."
+      },
+      {
+        "id": "2",
+        "title": "Administración de Parques Nacionales, Calilegua: actividades",
+        "url": "https://www.argentina.gob.ar/parquesnacionales/region-noroeste/parque-nacional-calilegua/actividades",
+        "accessedOn": "2026-11-02",
+        "note": "Menciona huellas de pecarí de collar en las Yungas; no identifica toda especie llamada chancho de monte."
+      },
+      {
+        "id": "3",
+        "title": "Fundación Azara, Buenos Aires: la historia de su paisaje natural",
+        "url": "https://www.fundacionazara.org.ar/img/libros/buenos-aires-la-historia-de-su-paisaje-natural.pdf",
+        "accessedOn": "2026-11-02",
+        "note": "Referencia zoológica sobre pecaríes y nombres comunes; no se usan sus imágenes ni se le atribuye una leyenda."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Un nombre que no designa un monstruo",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Chancho de monte es un nombre común asociado con pecaríes. No identifica por sí solo una criatura sobrenatural ni una única especie. Parques Nacionales incluye al pecarí entre la fauna de El Impenetrable y menciona huellas de pecarí de collar entre las experiencias de observación en Calilegua. Son referencias sobre animales y ambientes reales.",
+            "sources": [
+              "1",
+              "2",
+              "3"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "La distinción importa porque una escena puede resultar inquietante sin que su protagonista sea imaginario. Oír algo moverse entre vegetación cerrada cambia nuestra atención: no vemos su tamaño, calculamos mal la distancia, completamos lo que falta con expectativas. El miedo pertenece a esa experiencia humana; no convierte al animal en evidencia de un demonio.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Leer una huella antes de inventar su dueño",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Las propuestas de Calilegua mencionan huellas de varios mamíferos de las Yungas. La referencia recuerda que muchos encuentros con fauna comienzan por señales indirectas. Un rastro puede despertar una pregunta sin resolverla inmediatamente. Identificarlo exige conocimiento del ambiente, no solamente la confianza con la que alguien cuenta una historia.",
+            "sources": [
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "En nuestra lectura, esa demora tiene valor narrativo. Un personaje que todavía no sabe qué pasó por un lugar dispone de más de una explicación. La ficción puede sostener la incertidumbre durante una escena; una descripción de fauna necesita otro procedimiento. Confundir ambos registros nos haría pedir a un cuento precisión zoológica o usar el efecto de un cuento como demostración naturalista.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "El paisaje tiene habitantes antes de tener espectadores",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Impenetrable es presentado por Parques Nacionales como un área que conserva diversidad de especies y culturas. La fauna no aparece allí para representar nuestros temores: tiene una existencia que no depende de la escena que imaginemos. Por eso no equiparamos un nombre de divulgación a una condición monstruosa ni atribuimos al animal los poderes de una ilustración.",
+            "sources": [
+              "1"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Una pregunta interesante para quien dibuja es cuánto del entorno deja ver. Una sombra aislada puede parecer una amenaza sin límites; la misma figura en un paisaje legible puede volverse parte de un mundo más complejo. Elegir una de esas composiciones cambia el relato visual, no la naturaleza del animal. El espectador necesita poder reconocer cuándo está mirando una creación fantástica.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "La figura que inventa ARGENTINIA",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La imagen preparada para este artículo pertenece a la ficción del proyecto. Si muestra rasgos extraordinarios, esos rasgos son decisiones artísticas. No presentamos como tradición documentada la denominación Demonio de los Hornillos: las fuentes citadas no sostienen esa equivalencia. El texto tampoco atribuye una narración a una comunidad sin un registro que la identifique.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Separar realidad y creación no impide disfrutar del misterio. Permite recorrer dos preguntas distintas: qué animales habitan un ambiente y qué historias somos capaces de imaginar a partir de lo que apenas alcanzamos a percibir. La primera invita a conocer; la segunda, a crear. Una imagen puede acompañar ambas si no oculta la diferencia entre ellas.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
+  },
+  {
+    "version": 2,
+    "id": "el-ucumar",
+    "slug": "el-ucumar",
+    "title": "El Ucumar: entre el encuentro, el relato y la imagen",
+    "excerpt": "El hombre-oso del imaginario del norte y una criatura ya presente en ARGENTINIA. Cómo acercarse a sus historias sin confundir una representación con una prueba.",
+    "author": "ARGENTINIA — Magia y Leyenda",
+    "preparedOn": "2026-11-02",
+    "region": "Noroeste argentino",
+    "tags": [
+      "carta:crea_199"
+    ],
+    "sources": [
+      {
+        "id": "1",
+        "title": "Cultura de la Nación, Salamanqueros y Bestiario nacional",
+        "url": "https://www.argentina.gob.ar/noticias/salamanqueros-el-juego-de-cartas-disenado-por-la-biblioteca-nacional",
+        "accessedOn": "2026-11-02",
+        "note": "La presentación de la exposición incluye al Ucumar en su recorrido del noroeste; no ofrece una versión oral completa."
+      },
+      {
+        "id": "2",
+        "title": "Casa Nacional del Bicentenario, KINO CNB: OFFNI Cine Fest",
+        "url": "https://casadelbicentenario.cultura.gob.ar/actividad/kino-cnb-offni-cine-fest/",
+        "accessedOn": "2026-11-02",
+        "note": "Sinopsis institucional identificada en el buscador: El Ucumar, de Octavio Revol Molina, 2023. La película no se vio durante esta preparación y no se describen sus resultados."
+      },
+      {
+        "id": "3",
+        "title": "Biblioteca Ana Teruel, UNJu, Entre condenados, ucumares y gualichados",
+        "url": "https://bibliotecacisor.unju.edu.ar/cgi-bin/koha/opac-detail.pl?biblionumber=164",
+        "accessedOn": "2026-11-02",
+        "note": "Registro bibliográfico localizado en el buscador; no se afirma haber leído el volumen completo."
+      }
+    ],
+    "sections": [
+      {
+        "id": "seccion-1",
+        "title": "Una figura en el mapa cultural",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El Ucumar aparece en el recorrido del noroeste de Bestiario nacional, la exposición de la Biblioteca Nacional presentada por Cultura de la Nación. Su presencia también puede rastrearse en referencias bibliográficas de la Universidad Nacional de Jujuy. Esos puntos permiten ubicar una figura cultural y buscar lecturas; no constituyen evidencia zoológica de un ser extraordinario.",
+            "sources": [
+              "1",
+              "3"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Llamarlo simplemente el Pie Grande argentino puede volverlo reconocible para un lector, pero también llevarlo demasiado pronto a otra historia. En lugar de empezar por esa equivalencia, proponemos atender a los encuentros que cada versión organiza: quién cruza un límite, qué alcanza a ver y cómo vuelve a contar aquello que le pasó. Una comparación puede ser útil sin borrar el nombre propio.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-2",
+        "title": "Entre mirar y encontrar evidencia",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "La sinopsis institucional de El Ucumar, película de Octavio Revol Molina, presenta una búsqueda de biólogos en la selva norteña y relatos locales sobre el hombre-oso. Aquí sólo usamos esa descripción de programación cultural. No hemos visto la película ni afirmamos qué concluye su investigación; tampoco transformamos la premisa de una obra en la confirmación de un animal.",
+            "sources": [
+              "2"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Nuestra lectura se interesa por la diferencia entre una impresión intensa y un indicio que otros puedan examinar. Un testimonio puede ser valioso para conocer cómo una persona vivió un encuentro, aunque no permita resolver por sí mismo todas las preguntas sobre su causa. Escuchar con respeto y evaluar una afirmación no son tareas incompatibles. El problema aparece cuando se exige que una sola clase de relato haga el trabajo de todas las demás.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-3",
+        "title": "Lo que una imagen decide",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "El dibujo necesita elegir un cuerpo, una postura y una escala. La narración oral puede dejar esas cosas incompletas. Una criatura ilustrada en detalle puede parecer más definida que el encuentro que la inspiró; esa definición procede del artista. No es un descubrimiento nuevo sobre el personaje ni una prueba de que todas las versiones lo describan del mismo modo.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "Esa diferencia abre una pregunta de composición: ¿vemos al Ucumar de frente o seguimos su rastro? La primera opción ofrece presencia; la segunda conserva incertidumbre. Ninguna es obligatoria. Reconocer la elección permite disfrutar del trabajo visual sin pedirle que represente una única forma auténtica para una figura que circula por relatos y recreaciones diferentes.",
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "seccion-4",
+        "title": "La carta que ya está en la mesa",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "ARGENTINIA ya tiene El Ucumar de la Quebrada, una criatura legendaria de su universo fantástico. Este artículo incorpora la lectura editorial pendiente; la existencia de la carta no significaba que ese texto estuviera publicado. Su ilustración original acompaña la historia como arte del juego, no como fotografía de un encuentro real.",
+            "sources": []
+          },
+          {
+            "type": "paragraph",
+            "text": "En la carta, su tamaño y la relación con las tierras son decisiones de diseño. No las usamos para explicar retrospectivamente una creencia regional. Conservar esa distancia deja que el folklore y el juego dialoguen sin confundirse. El lector puede seguir las referencias culturales, y el jugador explorar una amenaza en su mazo: dos recorridos distintos que se encuentran en un personaje.",
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "cover": null
   }
 ]

@@ -17,6 +17,8 @@ from xml.sax.saxutils import escape as xml_escape
 sys.dont_write_bytecode=True
 from editorial_layout import chrome,intro,link,extract_body,esc,relative
 from editorial_game import home,cards,evolutions
+from editorial_value import load_guides,card_guide,remove_internal_future_copy
+from card_reference import public_cards,reference
 from editorial_feed import read_release,latest_release,NoApprovedRelease
 
 SIBLINGS=('band','botonera','clima','curso_js','curso_react','cv','top5','trivia','privacidad','terminos')
@@ -170,8 +172,12 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     if landing.is_file():landing.write_text(landing.read_text(encoding='utf-8-sig').replace('/argentinia/assets/','/assets/'),encoding='utf-8')
     # Public card gallery retains its URLs/noindex. Only asset/play references move.
     copy_tree(app/'cartas',output/'cartas')
+    guides=load_guides(portal);reference_cards=public_cards(app)
     for path in (output/'cartas').rglob('*.html'):
         text=path.read_text(encoding='utf-8-sig').replace('href="/"','href="/jugar/"')
+        text=card_guide(path.parent.name,text,guides)
+        text=reference(text,reference_cards)
+        text=text.replace('Pool actual: 900 cartas · esta página es de sólo lectura','Galería pública de ARGENTINIA · lectura y consulta')
         path.write_text(text,encoding='utf-8')
     (output/'css').mkdir(exist_ok=True);shutil.copyfile(app/'css/public-info.css',output/'css/public-info.css')
     copy_tree(portal/'runtime',output/'runtime')
@@ -205,6 +211,7 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         source=repo/name/'index.html'
         if source.is_file():
             route='/'+name+'/';body=extract_body(source,'legal',route,settings)
+            if name=='terminos':body=remove_internal_future_copy(body)
             write_route(output,route,portal_page(route,title,title+' de ARGENTINIA.','<div class="page-shell legal-body">'+body+'</div>',settings))
     matito=site_pages.get('matito')
     matito_body=(matito['html'] if matito else intro('Matito te invita a la ronda','Conocé a Matito y sus evoluciones.'))+evolutions(payload['gameMedia'])
@@ -229,6 +236,8 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         if (repo/name).is_file():shutil.copyfile(repo/name,output/name)
     (output/'.nojekyll').touch()
     (output/'editorial').mkdir(exist_ok=True)
+    # Public article starters only; no private draft or backend seed export.
+    (output/'editorial/article-presets.json').write_text((portal/'content/bootstrap.json').read_text(encoding='utf-8'),encoding='utf-8')
     receipt={'schemaVersion':1,'releaseId':snapshot['releaseId'],'source':'owner-snapshot' if owner_snapshot else actual_source,'gameBuildId':game_manifest['buildId'],'articles':[{'id':r['article']['id'],'slug':r['article']['slug'],'route':'/' if 'sitio:portada' in r['article']['tags'] else '/matito/' if 'sitio:matito' in r['article']['tags'] else '/leyendas/'+r['article']['slug']+'/','revision':r['revision'],'contentHash':r['contentHash']} for r in rendered]}
     (output/'editorial/release.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     (output/'editorial/game-cards.json').write_text(json.dumps(payload['gameCards'],ensure_ascii=False,separators=(',',':')),encoding='utf-8')

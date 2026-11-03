@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 sys.dont_write_bytecode=True
 from build_public_pages import INDEXED,ALIASES,SIBLINGS,MAX_PUBLISHED_BYTES,game_document,remote_asset
 from editorial_layout import extract_body
+from editorial_value import remove_internal_future_copy
 
 
 class Page(HTMLParser):
@@ -81,6 +82,7 @@ def verify(repo,artifact,report):
         check(target.is_dir(),'lost retained site '+site)
         if site in ('privacidad','terminos'):
             expected_body=extract_body(source/'index.html','legal','/'+site+'/',{'playUrl':'/jugar/','contactEmail':'magiayleyenda@gmail.com'})
+            if site=='terminos':expected_body=remove_internal_future_copy(expected_body)
             check(expected_body in read(target/'index.html'),'legal body changed '+site)
         else:
             for p in source.rglob('*'):

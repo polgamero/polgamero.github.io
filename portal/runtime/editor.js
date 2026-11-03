@@ -1,3 +1,4 @@
+import {mergeArticlePresets} from './articlePresets.js';
 import {portalServices} from './firebasePortal.js';
 import {normalizeArticle,newArticle,fromLegacy,editorialId,articleMedia,formatEditorialRuns,editParagraph} from './articleModel.js';
 import {renderArticle} from './articleRenderer.js';
@@ -59,15 +60,22 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
     for(const r of data.revisions)box.append(button(`Cargar revisión ${r.revision} · ${r.createdAt}`,async()=>{if(busy||!await discard())return;await locked(async current=>{const old=await api.action({action:'get',articleId:article.id,revision:r.revision});await loadMedia(old.article);if(!current())return;article=normalizeArticle(old.article);head=old.head;dirty=true;pendingOperation=null;epoch++;render();say('Revisión anterior recuperada para editar. Guardala para crear una revisión nueva; la edición pública no cambió.');});}));
     box.append(el('p',{},`Se muestran las últimas ${data.revisions.length} de ${data.total} revisiones. Las anteriores se conservan en el servidor.`));
   });}
+  async function initialArticles(){
+    const response=await fetch(new URL('../editorial/article-presets.json',import.meta.url),{cache:'no-store'});
+    if(!response.ok)throw Error('No se pudo cargar la edición preparada. Reintentá antes de importar o publicar.');
+    const prepared=await response.json();
+    const remote=local?[]:(await api.action({action:'seeds'})).articles;
+    return mergeArticlePresets(remote,prepared);
+  }
   async function importSeeds(){if(busy||!await discard())return;if(!await showGameDialog('Se crearán borradores con el contenido inicial que todavía no estén guardados. No se publicará nada.',{title:'Artículos iniciales',confirm:true,acceptLabel:'Crear borradores',valid:()=>active}))return;
-    await locked(async valid=>{const seeds=local?await fetch(new URL('../seed-articles.json',import.meta.url)).then(r=>r.json()):(await api.action({action:'seeds'})).articles;const heads=local?{heads:[...localHeads.values()].map(v=>v.head)}:await api.action({action:'list'});const ids=new Set(heads.heads.map(h=>h.id));let created=0;
+    await locked(async valid=>{const seeds=await initialArticles();const heads=local?{heads:[...localHeads.values()].map(v=>v.head)}:await api.action({action:'list'});const ids=new Set(heads.heads.map(h=>h.id));let created=0;
       for(const raw of seeds){if(!valid())return;const data=fromLegacy(raw);if(ids.has(data.id))continue;if(local){localHeads.set(data.id,{article:data,head:{id:data.id,title:data.title,revision:1}});}else await api.action({action:'save',requestId:editorialId().toLowerCase(),article:data,expectedRevision:0});created++;}
       if(!valid())return;await listArticles();say(`${created} borradores iniciales creados${local?' en esta sesión local':' en el servidor'}. No se publicaron.`);
     });}
   async function publishInitialEdition(){
     if(local||!publisher||busy||!await discard())return;
     await locked(async valid=>{
-      const seeds=(await api.action({action:'seeds'})).articles;
+      const seeds=await initialArticles();
       const {heads}=await api.action({action:'list'}),byId=new Map(heads.map(h=>[h.id,h]));
       const plan=[];
       for(const raw of seeds){

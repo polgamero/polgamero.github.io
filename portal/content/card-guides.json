@@ -1,0 +1,129 @@
+[
+  {
+    "slug": "a-las-chapas",
+    "name": "A las Chapas",
+    "sections": [
+      {"title": "Cuándo usarla", "text": "Por un maná rojo, A las Chapas convierte una criatura que ya tenés en una amenaza mayor durante ese turno. Su mejor momento suele aparecer después de que el rival decide cómo bloquear: dos puntos de fuerza pueden transformar un intercambio desfavorable en la eliminación de una criatura importante. También puede cerrar una partida cuando el atacante no fue bloqueado y faltan exactamente esos dos puntos de daño."},
+      {"title": "Lo que el aumento no resuelve", "text": "El efecto no agrega resistencia ni otorga Arrolla. Una criatura pequeña puede matar a su bloqueador y morir igualmente, y el daño sobrante de una criatura sin Arrolla no pasa al jugador. Si el rival elimina la criatura objetivo antes de que se resuelva el hechizo, perdés tanto esa criatura como la oportunidad de aprovechar el aumento. Reservá el truco para un intercambio que justifique comprometer otra carta."},
+      {"title": "Ejemplo para decidir", "text": "Una criatura 2/2 que recibe este efecto se vuelve 4/2 hasta el final del turno. Contra una 3/3 puede haber intercambio de ambas, no una supervivencia garantizada. Antes de lanzarlo, contá el daño y revisá qué maná conserva el rival. Pagar poco no vuelve gratuito el riesgo de quedarte sin criatura ni truco."}
+    ],
+    "related": ["yacare-del-banado", "injerto-de-ceibo"]
+  },
+  {
+    "slug": "la-luz-mala",
+    "name": "La Luz Mala",
+    "legend": "/leyendas/luz-mala-tradicion/",
+    "sections": [
+      {"title": "Una amenaza que también defiende", "text": "La Luz Mala combina seis puntos de fuerza con Alcance e Intocable. Puede presionar con rapidez, pero también quedarse disponible para bloquear criaturas con Volar. Elegir entre atacar y conservar ese bloqueo depende del próximo turno del rival: una carrera de daño que parece favorable puede cambiar si dejás libre un ataque aéreo."},
+      {"title": "Intocable tiene límites", "text": "Intocable dificulta que el rival la elija como objetivo; no la vuelve inmune al daño de combate ni garantiza que sobreviva a efectos que no hacen objetivo. Sus tres puntos de resistencia importan: varios bloqueadores modestos pueden intercambiarse por ella. Tampoco tiene Arrolla, así que una criatura pequeña puede absorber su ataque aunque la diferencia de fuerza sea grande."},
+      {"title": "El valor de su última habilidad", "text": "Cuando muere, el rival pierde dos vidas y vos ganás dos. Ese cambio puede modificar una carrera ajustada, pero no recupera la presencia que perdés en la mesa. Evaluá el ataque completo: daño que puede pasar, intercambio de criaturas y vidas después del disparo. La figura del folklore inspira el nombre y la ambientación; estas habilidades pertenecen a la ficción y las reglas de ARGENTINIA."}
+    ],
+    "related": ["la-luz-mala-cruza-el-camino", "pacto-de-sangre"]
+  },
+  {
+    "slug": "el-nahuelito",
+    "name": "El Nahuelito",
+    "legend": "/leyendas/nahuelito-lago-imaginacion-y-evidencia/",
+    "sections": [
+      {"title": "Tamaño a cambio de tiempo", "text": "El Nahuelito es una criatura azul 6/6 por cinco manás. Su aporte es directo: un cuerpo grande para disputar el combate. No necesita que tengas otras piezas para que sus estadísticas importen, pero exige llegar a una etapa de la partida en la que puedas invertir ese maná sin quedar demasiado expuesto."},
+      {"title": "Cómo darle un lugar en el mazo", "text": "Funciona mejor cuando las cartas anteriores sostienen la mesa o retrasan la presión del rival. Llenar la mano de criaturas caras no reemplaza ese trabajo: si no llegás a lanzarlas, su tamaño no te protege. Compará cuántas amenazas de coste alto llevás y cuántas jugadas útiles tenés en los primeros turnos. Al entrar, tampoco puede atacar inmediatamente sin un permiso adicional."},
+      {"title": "No confundir cartas del mismo personaje", "text": "Esta ficha corresponde a El Nahuelito, no a Nahuelito, Sombra del Lago. La carta aquí mostrada no tiene el disparo de robar al atacar ni Intocable de esa otra versión. Una criatura pequeña puede bloquearla y detener su daño al jugador porque tampoco tiene Arrolla. Su ilustración es una interpretación fantástica del personaje; no documenta un avistamiento en un lago real."}
+    ],
+    "related": ["velo-de-bruma", "a-las-chapas"]
+  },
+  {
+    "slug": "brote-de-ceibo-montaraz",
+    "name": "Brote de Ceibo Montaraz",
+    "legend": null,
+    "sections": [
+      {"title": "Crecer con el desarrollo del mazo", "text": "El Brote empieza como una criatura 1/2 por dos manás. Cada Tierra que entra bajo tu control dispara Arraigo y le agrega un contador +1/+1. A diferencia de un aumento hasta el final del turno, esos contadores permanecen sobre esa criatura. Su interés está en convertir una jugada habitual, desarrollar las tierras, en una amenaza que cambia de tamaño."},
+      {"title": "El orden de las jugadas importa", "text": "Si podés jugar una Tierra después de que el Brote haya entrado, esa entrada puede hacerlo crecer. Una Tierra que ya estaba en el campo antes de que llegara no dispara su habilidad retroactivamente. No retrases por costumbre una Tierra que necesitás para pagar otras acciones: compará el contador que buscás con lo que dejás de hacer en ese turno."},
+      {"title": "Plan y puntos débiles", "text": "Buscá una curva que lo acompañe y formas de seguir poniendo Tierras cuando el combate se complique. Su crecimiento no le da evasión ni protección, y una respuesta del rival puede eliminarlo antes de que acumule valor. Injerto de Ceibo agrega otro contador de forma directa, pero gastarlo sobre el Brote concentra dos cartas en una sola criatura. El árbol inspira la ambientación; esta planta de combate es ficción del juego."}
+    ],
+    "related": ["injerto-de-ceibo", "polinizador-de-la-salamanca"]
+  },
+  {
+    "slug": "injerto-de-ceibo",
+    "name": "Injerto de Ceibo",
+    "legend": null,
+    "sections": [
+      {"title": "Un crecimiento que permanece", "text": "Injerto de Ceibo pone un contador +1/+1 sobre una criatura que controlás por un maná verde. Puede llevar una criatura por encima de un tamaño de bloqueo importante o aumentar su resistencia para intercambios futuros. El contador permanece mientras siga sobre ese permanente; no es el mismo tipo de mejora que un efecto limitado al turno."},
+      {"title": "Por qué no es un truco de combate", "text": "Es un Conjuro. No lo reserves esperando lanzarlo como respuesta después de ver bloqueadores: su momento normal es tu fase principal, con la Pila vacía y teniendo prioridad. Esa diferencia de timing es central al compararlo con A las Chapas. Una mejora permanente puede ser más valiosa a largo plazo, pero anuncia al rival el nuevo tamaño antes del combate."},
+      {"title": "Una combinación posible", "text": "Sobre Brote de Ceibo Montaraz agrega un contador sin depender de que entre otra Tierra. Si después resolvés un efecto de Amplificar sobre una criatura que ya tiene ese tipo de contador, existe una vía adicional para aumentarlo. Ninguna de esas inversiones protege al objetivo de ser eliminado. Repartir mejoras entre varias amenazas puede ser preferible a concentrarlas cuando el rival conserva respuestas."}
+    ],
+    "related": ["brote-de-ceibo-montaraz", "polinizador-de-la-salamanca"]
+  },
+  {
+    "slug": "leyenda-susurrada-en-la-salamanca",
+    "name": "Leyenda Susurrada en la Salamanca",
+    "legend": "/leyendas/salamanca-musica-y-precio-del-talento/",
+    "sections": [
+      {"title": "Preparar la siguiente carta", "text": "Este encantamiento hace Chusmear 1 cuando muere una criatura que controlás. Su utilidad está en mejorar qué vas a encontrar después, especialmente en partidas con muchos intercambios. Chusmear no equivale a robar: podés revisar y ordenar tus próximos recursos sin que aumente por ello la cantidad de cartas en tu mano."},
+      {"title": "Qué exige al mazo", "text": "Una mesa sin criaturas propias no aprovecha ese disparo. Antes de incluirlo, revisá cuántos cuerpos podés desarrollar y si sus muertes forman parte de un plan razonable. Atacar de forma desfavorable sólo para disparar Chusmeá puede perder presencia más rápido de lo que mejora tus robos. Su coste negro y verde también pide una base de maná capaz de producir ambos colores."},
+      {"title": "Antes de transformarla", "text": "La cara mostrada ofrece una activación de transformación por un maná negro y uno verde. Revisá en el juego la otra cara y el estado de la Pila antes de comprometer ese pago. Esta guía describe la cara pública de la ficha y no presupone habilidades de la cara transformada. El nombre remite al relato de la Salamanca; su sistema de transformación y selección de cartas es una creación de ARGENTINIA."}
+    ],
+    "related": ["polinizador-de-la-salamanca", "pacto-de-sangre"]
+  },
+  {
+    "slug": "polinizador-de-la-salamanca",
+    "name": "Polinizador de la Salamanca",
+    "legend": "/leyendas/salamanca-musica-y-precio-del-talento/",
+    "sections": [
+      {"title": "Preparar contadores antes de jugarlo", "text": "El Polinizador es una criatura 2/2 verde y azul cuyo efecto de entrada permite Amplificar. El valor de esa entrada depende de los contadores que ya existen. No conviene evaluar sólo su fuerza y resistencia: puede aportar una mejora repartida entre varios permanentes que ya tengan contadores adecuados."},
+      {"title": "Una secuencia concreta", "text": "Si primero ponés un contador +1/+1 sobre Brote de Ceibo Montaraz, por su Arraigo o mediante Injerto de Ceibo, la entrada posterior del Polinizador puede ampliar ese recurso. La secuencia inversa no produce lo mismo cuando todavía no hay contadores que aumentar. Amplificar no significa inventar un contador +1/+1 sobre cualquier criatura sin contadores: revisá las opciones legales que ofrece la decisión."},
+      {"title": "Cuándo vale la inversión", "text": "En una mesa sin contadores relevantes, quizá estés pagando tres manás de dos colores por poco más que un 2/2. En una mesa preparada, la misma carta puede modificar varios intercambios futuros. Conservá suficientes jugadas tempranas para llegar a esa situación sin depender de una única combinación. Su nombre e ilustración pertenecen al universo fantástico del juego, no a una especie documentada de una cueva real."}
+    ],
+    "related": ["brote-de-ceibo-montaraz", "injerto-de-ceibo"]
+  },
+  {
+    "slug": "la-luz-mala-cruza-el-camino",
+    "name": "La Luz Mala Cruza el Camino",
+    "legend": "/leyendas/luz-mala-tradicion/",
+    "sections": [
+      {"title": "Valor distribuido en capítulos", "text": "Esta Saga negra organiza su efecto en tres capítulos: Chusmear 1, hacer descartar una carta al oponente y producir una pérdida y ganancia de una vida. No es una carta que entregue toda su utilidad de golpe. Conviene pensar si la partida tiene tiempo para que ese desarrollo importe y qué recurso necesitás en el momento de jugarla."},
+      {"title": "Leer la situación del rival", "text": "El descarte es más relevante cuando el rival todavía tiene cartas que perder. Si ya juega con la mano vacía, ese capítulo no tiene el mismo impacto. El último cambio de vidas puede ajustar una carrera, pero no bloquea a una criatura atacante ni sustituye una respuesta a una amenaza que ya está en la mesa. Su bajo coste permite acompañarla con otras jugadas en turnos posteriores."},
+      {"title": "Una decisión de construcción", "text": "Podés considerarla en un plan que busque desgastar recursos y ordenar sus próximos robos. Comparala con una criatura o una respuesta directa del mismo coste: la Saga ofrece una secuencia de pequeñas ventajas, mientras otras cartas cambian de inmediato el combate. El relato de la Luz Mala explica su ambientación; la sucesión de capítulos es una forma narrativa elegida para el juego."}
+    ],
+    "related": ["la-luz-mala", "pacto-de-sangre"]
+  },
+  {
+    "slug": "pacto-de-sangre",
+    "name": "Pacto de Sangre",
+    "sections": [
+      {"title": "Ganar con los intercambios", "text": "Pacto de Sangre convierte cada muerte de una criatura rival en una pérdida de una vida para ese jugador y una ganancia de una para vos. Puede dar valor adicional a bloqueos y hechizos de eliminación que ya tenías motivos para realizar. La habilidad mira las criaturas del oponente: no se dispara simplemente porque muera una tuya."},
+      {"title": "Lo que no hace por sí solo", "text": "El encantamiento no elimina criaturas ni pone un bloqueador en la mesa. Si estás bajo presión y no podés provocar muertes rivales, invertir tres manás en él puede dejarte más expuesto. Una criatura que vuelve a la mano o es exiliada no está muriendo; no cuentes esos movimientos como disparos de esta carta. Revisá la forma en que tus otras respuestas retiran amenazas."},
+      {"title": "Cómo evaluar el espacio en el mazo", "text": "Su sitio natural está en partidas con intercambios reiterados, no en una combinación que requiera una sola muerte para justificar todo el plan. Imaginá dos turnos reales: qué criatura rival podés eliminar, cuánto daño recibís mientras tanto y si preferirías otra amenaza. Varias copias aumentan la inversión en cartas que necesitan acciones ajenas para empezar a rendir."}
+    ],
+    "related": ["la-luz-mala", "leyenda-susurrada-en-la-salamanca"]
+  },
+  {
+    "slug": "velo-de-bruma",
+    "name": "Velo de Bruma",
+    "sections": [
+      {"title": "Proteger una inversión", "text": "Velo de Bruma es un Aura azul que da Intocable a la criatura encantada. Puede hacer más difícil que el rival la elija como objetivo una vez que el Aura ya se resolvió. Tiene sentido comparar esa protección con el valor de la criatura que querés conservar, especialmente si ya invertiste recursos en mejorarla."},
+      {"title": "La ventana anterior a la protección", "text": "No supongas que Intocable protege al objetivo mientras el Aura está pendiente en la Pila. El rival conserva la posibilidad de responder antes de que la protección exista. Si retira la criatura en esa ventana, tu intento de protegerla puede hacerte perder otra carta. Además, un Aura no se juega con timing de Instantáneo salvo que haya un permiso que lo habilite."},
+      {"title": "Defensas que todavía hacen falta", "text": "Intocable no aumenta resistencia, no evita un bloqueo y no detiene por sí sola efectos que no eligen objetivo. El Nahuelito puede volverse más difícil de señalar con una respuesta, pero sigue sin Arrolla y puede ser bloqueado. Antes de reservar un espacio para el Aura, identificá qué peligro concreto querés cubrir y cuáles van a seguir presentes."}
+    ],
+    "related": ["el-nahuelito", "la-luz-mala"]
+  },
+  {
+    "slug": "yacare-del-banado",
+    "name": "Yacaré del Bañado",
+    "sections": [
+      {"title": "Presión con Arrolla", "text": "El Yacaré del Bañado ofrece un cuerpo 4/4 por cuatro manás y Arrolla. Su ventaja frente a un bloqueador pequeño es que puede asignar el daño letal necesario a ese bloqueador y enviar el resto al defensor. No significa que todo su daño ignore a quien bloquea: primero hay una asignación legal que respetar."},
+      {"title": "Un ejemplo sencillo", "text": "Sin modificadores, daño previo ni prevención, al bloquearlo una criatura 1/1 puede recibir un punto y el jugador tres. Si la resistencia efectiva del bloqueador cambia, esa cuenta también cambia. Un aumento de fuerza como A las Chapas puede ampliar el excedente, pero no agrega resistencia al Yacaré y tampoco elimina el riesgo de una respuesta del rival."},
+      {"title": "Cuándo conservarlo atrás", "text": "Una criatura grande puede ser tu mejor atacante y, al mismo tiempo, el único bloqueo que evita una derrota en el turno siguiente. Antes de girarla para atacar, calculá el daño que recibirías sin ella. En la construcción del mazo representa una amenaza de coste medio: necesitás acciones anteriores para no depender de llegar al cuarto maná con la mesa vacía."}
+    ],
+    "related": ["a-las-chapas", "brote-de-ceibo-montaraz"]
+  },
+  {
+    "slug": "vibora-del-pajonal",
+    "name": "Víbora del Pajonal",
+    "sections": [
+      {"title": "Una amenaza que cuenta de otra manera", "text": "La Víbora del Pajonal es una criatura verde 1/2 con Contagio. Su daño al jugador se traduce en contadores de veneno en lugar de la pérdida normal de vidas. Eso abre un plan distinto: una mesa que parece soportar pequeños ataques según las vidas puede estar acercándose a la derrota por veneno."},
+      {"title": "Qué cambia al bloquear", "text": "El daño de Contagio a criaturas se representa mediante contadores -1/-1. No leas un intercambio como si sólo dejara daño marcado que se limpia al terminar el turno: los contadores modifican sus estadísticas. La Víbora sigue teniendo poca fuerza y resistencia, y un bloqueo puede eliminarla aunque deje debilitada a la otra criatura. No tiene Arrolla para trasladar excedentes al jugador."},
+      {"title": "Evitar planes que se estorban", "text": "En un mazo con pocas fuentes de veneno, alternar entre daño normal y Contagio puede dividir tus esfuerzos en dos objetivos que no se suman como vidas perdidas. Revisá cuántas cartas sostienen realmente esa condición de victoria. Si incorporás efectos de Amplificar, necesitás que el contador correspondiente ya exista y que la elección sea legal; no equivalen a conectar un ataque automáticamente."}
+    ],
+    "related": ["polinizador-de-la-salamanca", "a-las-chapas"]
+  }
+]
