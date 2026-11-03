@@ -1,3 +1,4 @@
+import { SITE_TEXT_DEFINITIONS } from './editorialSiteTexts.js';
 import { LESSON_STEPS } from './guidedMatchModel.js';
 import { publicTerminologyText } from './publicTerminology.js';
 import { RETIRED_GAME_TEXT_KEYS } from './retiredGameTexts.js';
@@ -23,6 +24,7 @@ function definition(category, defaultText, description) {
 // Clasificados/Enciclopedia/Recompensas/lobby; Etapa 6 suma partida, combate, Stack/prioridad,
 // habilidades/costos y selecciones. Los discriminadores técnicos del motor siguen fuera del catálogo.
 export const GAME_TEXT_DEFINITIONS = Object.freeze({
+  ...SITE_TEXT_DEFINITIONS,
   // Every guided-match step is editable in Admin > Textos del juego.
   ...Object.fromEntries(LESSON_STEPS.flatMap(step=>['title','body'].map(field=>[`guided.step.${step.id}.${field}`,definition('Tutorial de partida simple',step[field],`Paso ${step.id}: ${field==='title'?'título':'explicación'}.`)]))),
   "guided.paused": definition("Tutorial de partida simple","Práctica pausada","Interfaz de la partida guiada."),

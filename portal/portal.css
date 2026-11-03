@@ -60,11 +60,19 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 @media(max-width:370px){.manual-page .arg-manual-toc{grid-template-columns:minmax(0,1fr)}}
 
 /* Reserved legend artwork: native no-script fallback, no game dependencies. */
-.article-reserved-art{margin:28px auto;max-width:480px}
-.article-reserved-art object{display:block;width:100%;aspect-ratio:2/3;max-height:75vh;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#0b1710}
+.article-legend-art>object{display:block;width:100%;aspect-ratio:724/544;border-radius:8px;overflow:hidden;background:#0b1710;object-fit:cover}
 .article-art-fallback{box-sizing:border-box;min-height:280px;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--paper);background:#0b1710}
 .article-art-fallback img{display:block;max-width:220px;width:100%;height:auto}
 .article-art-fallback p{font-size:24px;font-weight:700}
 .article-reserved-art figcaption{padding-top:12px;color:var(--muted);font-size:16px}
 .public-card-guide{max-width:900px;margin:32px auto;line-height:1.65}
 .public-card-guide section{margin:24px 0}
+.story-art object{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;pointer-events:none;background:#0b1710}
+.story-art .editorial-image{margin:0}.story-art .editorial-image figcaption{display:none}
+.story-art .article-art-fallback{min-height:0;height:100%;padding:14px}.story-art .article-art-fallback img{max-width:150px;aspect-ratio:auto;object-fit:contain}.story-art .article-art-fallback p{font-size:18px;margin:6px 0}
+.article-legend-art .article-art-fallback{min-height:0;height:100%;padding:18px}.article-legend-art .article-art-fallback img{max-width:180px}
+[data-site-text]{white-space:pre-line}
+.site-footer [data-consent-reopen]{border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:8px 0;cursor:pointer;text-decoration:underline;min-height:40px}
+.site-footer [data-consent-reopen][hidden]{display:none}
+@media(min-width:1001px){.site-header{gap:20px}.site-header nav{gap:18px}.site-header nav a{font-size:17px}}
+@media(min-width:761px) and (max-width:1000px){.site-header{flex-wrap:wrap;gap:0 20px}.site-header nav{order:3;flex-basis:100%;overflow-x:auto;justify-content:flex-start}.site-header .play-link{margin-left:auto}}

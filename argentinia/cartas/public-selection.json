@@ -3,8 +3,8 @@
   "publishedEligible": 880,
   "publicCount": 180,
   "rarityCounts": {
-    "Common": 90,
     "Uncommon": 60,
+    "Common": 90,
     "Rare": 24,
     "Mythic": 6
   },

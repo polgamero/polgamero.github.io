@@ -1,6 +1,9 @@
 // Build-time adapter for the same renderer used by the browser editor.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import {SITE_TEXT_DEFINITIONS} from '../../argentinia/js/editorialSiteTexts.js';
+import {MANA_ICON_URLS} from '../../argentinia/js/manaSymbolCatalog.js';
+import {articleStoryArtworkHTML} from '../../portal/runtime/articleArtwork.js';
 import {normalizeArticle,fromLegacy,canonicalJSON,articleMedia} from '../../portal/runtime/articleModel.js';
 import {renderArticle,articleJSONLD,articleGameCard,imageHTML} from '../../portal/runtime/articleRenderer.js';
 import {publicGameManualHTML} from '../../argentinia/js/manualUI.js';
@@ -25,6 +28,6 @@ const output=input.articles.map(entry=>{
   if(entry.contentHash&&entry.contentHash!==contentHash)throw Error('EDITORIAL_CONTENT_HASH_MISMATCH');
   const bodySections=article.tags.includes('sitio:portada')?article.sections.filter(s=>!['modo-solo','modo-torneo','modo-mazos','flasheras','invitacion'].includes(s.id)):article.sections;
   const bodyHTML=bodySections.length?renderArticle({...article,sections:bodySections},{gameCards,mediaUrl:id=>'/media/'+id+'.webp',bodyOnly:true}):article.cover?imageHTML(article.cover,id=>'/media/'+id+'.webp'):'';
-  return {article,contentHash,media:articleMedia(article),revision:entry.revision??null,gameCard:articleGameCard(article,gameCards),bodyHTML,html:renderArticle(article,{gameCards,mediaUrl:id=>'/media/'+id+'.webp',publication:entry.publication}),jsonld:articleJSONLD(article,entry.publication)};
+  return {article,contentHash,media:articleMedia(article),revision:entry.revision??null,gameCard:articleGameCard(article,gameCards),storyArtHTML:article.cover?imageHTML(article.cover,id=>'/media/'+id+'.webp'):articleStoryArtworkHTML(article,articleGameCard(article,gameCards)),bodyHTML,html:renderArticle(article,{gameCards,mediaUrl:id=>'/media/'+id+'.webp',publication:entry.publication}),jsonld:articleJSONLD(article,entry.publication)};
 });
-process.stdout.write(JSON.stringify({articles:output,sharedAssets:SHARED_ASSETS,manualHTML:publicGameManualHTML(),gameCards,gameMedia}));
+process.stdout.write(JSON.stringify({siteTextDefaults:Object.fromEntries(Object.entries(SITE_TEXT_DEFINITIONS).map(([k,d])=>[k,d.defaultText])),manaIcons:MANA_ICON_URLS,articles:output,sharedAssets:SHARED_ASSETS,manualHTML:publicGameManualHTML(),gameCards,gameMedia}));

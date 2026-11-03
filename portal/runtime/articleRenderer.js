@@ -1,3 +1,4 @@
+import {siteTextHTML} from '../../argentinia/js/editorialSiteTexts.js';
 import {articleArtworkHTML} from './articleArtwork.js';
 import {normalizeArticle,httpsUrl} from './articleModel.js';
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,5 +20,5 @@ export function articleJSONLD(raw,publication=null){const a=normalizeArticle(raw
 export function articleGameCard(article,cards=[]){const tag=article.tags.find(t=>t.startsWith('carta:'));return tag?cards.find(c=>c.id===tag.slice(6))||null:null;}
 export function articleGameCardHTML(article,cards=[]){
   const card=articleGameCard(article,cards);if(!card||!/^\/assets\/images\/cards\/[^/?#\\]+\.png$/i.test(card.imageURL))return '';
-  return `<figure class="article-game-card"><img src="${esc(card.imageURL)}" alt="Ilustración original de ${esc(card.name)} en ARGENTINIA" loading="lazy" decoding="async"><figcaption><p class="eyebrow">LA LEYENDA EN EL JUEGO</p><h2>${esc(card.name)}</h2><p>${esc(card.flavorText||card.text)}</p><a class="text-link" href="/jugar/">Jugá ARGENTINIA →</a></figcaption></figure>`;
+  return `<figure class="article-game-card"><img src="${esc(card.imageURL)}" alt="Ilustración original de ${esc(card.name)} en ARGENTINIA" loading="lazy" decoding="async"><figcaption><p class="eyebrow">${siteTextHTML('legends.gameEyebrow')}</p><h2>${esc(card.name)}</h2><p>${esc(card.flavorText||card.text)}</p><a class="text-link" href="/jugar/">${siteTextHTML('legends.play')}</a></figcaption></figure>`;
 }

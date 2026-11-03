@@ -15,6 +15,8 @@ from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape
 sys.dont_write_bytecode=True
+from editorial_copy import configure as configure_copy,text as site_text
+from editorial_gallery import gallery_page,selection_metadata,symbols_html
 from editorial_layout import chrome,intro,link,extract_body,esc,relative
 from editorial_game import home,cards,evolutions
 from editorial_value import load_guides,card_guide,remove_internal_future_copy
@@ -132,6 +134,7 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         snapshot={'releaseId':None,'articles':[{'article':a,'publication':None} for a in initial]};media_files={}
     command=['node','--experimental-default-type=module',str(repo/'.github/scripts/render_editorial.mjs')]
     payload=json.loads(subprocess.run(command,input=json.dumps(snapshot,ensure_ascii=False),text=True,encoding='utf-8',capture_output=True,check=True).stdout)
+    configure_copy(payload['siteTextDefaults'])
     rendered=payload['articles'];policy=payload['sharedAssets']
     revision=os.environ.get('GITHUB_SHA') or policy['fallbackRevision']
     if not re.fullmatch(r'[a-f0-9]{40}',revision) or policy['repository']!='polgamero/polgamero.github.io':raise ValueError('Invalid immutable shared-media revision/repository')
@@ -173,14 +176,22 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     # Public card gallery retains its URLs/noindex. Only asset/play references move.
     copy_tree(app/'cartas',output/'cartas')
     guides=load_guides(portal);reference_cards=public_cards(app)
+    selection=selection_metadata(app,reference_cards)
+    settings={'origin':cfg['origin'],'playUrl':'/jugar/','contactEmail':'magiayleyenda@gmail.com','sharedRevision':revision}
+    (output/'cartas/public-selection.json').write_text(json.dumps(selection,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     for path in (output/'cartas').rglob('*.html'):
-        text=path.read_text(encoding='utf-8-sig').replace('href="/"','href="/jugar/"')
+        route='/cartas/'+('' if path.parent.name=='cartas' else path.parent.name+'/')
+        text=gallery_page(path.read_text(encoding='utf-8-sig'),route,settings,selection,payload['manaIcons'])
         text=card_guide(path.parent.name,text,guides)
         text=reference(text,reference_cards)
+        text=symbols_html(text,payload['manaIcons'])
         text=text.replace('Pool actual: 900 cartas · esta página es de sólo lectura','Galería pública de ARGENTINIA · lectura y consulta')
         path.write_text(text,encoding='utf-8')
     (output/'css').mkdir(exist_ok=True);shutil.copyfile(app/'css/public-info.css',output/'css/public-info.css')
     copy_tree(portal/'runtime',output/'runtime')
+    for module in ('articleArtwork.js','articleRenderer.js'):
+        path=output/'runtime'/module
+        path.write_text(path.read_text(encoding='utf-8').replace("'../../argentinia/js/editorialSiteTexts.js'","'/js/editorialSiteTexts.js'"),encoding='utf-8')
     # The editor uses the actual game-owned models/dialogs. Source copies remain
     # only for isolated authoring/Functions; deployed stubs share one ESM owner.
     for name in ('editorialModel.js','editorialFrames.js','editorialShapes.js','gameDialogs.js'):
@@ -196,9 +207,9 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         if kinds:
             if len(kinds)!=1 or kinds[0] not in ('portada','matito') or kinds[0] in site_pages:raise ValueError('Duplicate or unknown site content page')
             site_pages[kinds[0]]=item
-        else:listing.append({**article,'gameCard':item.get('gameCard')})
-    write_route(output,'/',portal_page('/','ARGENTINIA — Magia y Leyenda','Cartas coleccionables, estrategia y fantasía argentina. Conocé a Matito, las leyendas, el ranking y jugá ARGENTINIA.',home(listing[:6],payload['gameCards'],payload['gameMedia'],site_pages.get('portada',{}).get('article'),site_pages.get('matito',{}).get('article'),'<section class="page-shell home-editorial-copy">'+site_pages.get('portada',{}).get('bodyHTML','')+'</section>'),settings,script='home.js'))
-    write_route(output,'/leyendas/',portal_page('/leyendas/','Mitos y leyendas de Argentina','Relatos argentinos, variantes y fuentes para seguir leyendo.',intro('Un territorio de relatos','Relatos, lugares y fuentes para recorrer el imaginario argentino.','MITOS Y LEYENDAS DE ARGENTINA')+'<section class="page-shell section-space">'+(cards('/leyendas/',listing) if listing else '<p>No hay artículos en esta edición.</p>')+'</section>',settings))
+        else:listing.append({**article,'gameCard':item.get('gameCard'),'storyArtHTML':item.get('storyArtHTML')})
+    write_route(output,'/',portal_page('/','ARGENTINIA — Magia y Leyenda','Cartas coleccionables, estrategia y fantasía argentina. Conocé a Matito, las leyendas, el ranking y jugá ARGENTINIA.',home(listing[:6],payload['gameCards'],payload['gameMedia'],site_pages.get('portada',{}).get('article'),site_pages.get('matito',{}).get('article'),'<section class="page-shell home-editorial-copy">'+site_pages.get('portada',{}).get('bodyHTML','')+'</section>',public_count=len(reference_cards)),settings,script='home.js'))
+    write_route(output,'/leyendas/',portal_page('/leyendas/','Mitos y leyendas de Argentina','Relatos argentinos, variantes y fuentes para seguir leyendo.','<header class="page-intro page-shell"><p class="eyebrow">'+site_text('legends.eyebrow')+'</p><h1>'+site_text('legends.title')+'</h1><p class="lead">'+site_text('legends.lead')+'</p></header>'+'<section class="page-shell section-space">'+(cards('/leyendas/',listing) if listing else '<p>No hay artículos en esta edición.</p>')+'</section>',settings))
     for name,title,description in [('sobre-el-proyecto','El proyecto','El universo de ARGENTINIA y sus inspiraciones.'),('criterios-editoriales','Cómo contamos estas historias','Fuentes, variantes, autoría y correcciones.'),('contacto','Hablemos de una historia','Contacto público del proyecto ARGENTINIA.'),('ranking','Ranking del juego','La clasificación real de los jugadores de ARGENTINIA.')]:
         route='/'+name+'/'
         body=(portal/'templates'/(name+'.html')).read_text(encoding='utf-8')
@@ -208,11 +219,9 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
     manual=payload['manualHTML']
     write_route(output,'/manual/',portal_page('/manual/','Cómo se juega ARGENTINIA','Turnos, maná, combate, pila y modos de juego.','<div class="page-shell manual-body" data-game-manual>'+manual+'</div>',settings,script='manual.js',classes='manual-page'))
     for name,title in [('privacidad','Política de Privacidad'),('terminos','Términos y Condiciones')]:
-        source=repo/name/'index.html'
-        if source.is_file():
-            route='/'+name+'/';body=extract_body(source,'legal',route,settings)
-            if name=='terminos':body=remove_internal_future_copy(body)
-            write_route(output,route,portal_page(route,title,title+' de ARGENTINIA.','<div class="page-shell legal-body">'+body+'</div>',settings))
+        route='/'+name+'/'
+        body=(portal/'templates'/(name+'.html')).read_text(encoding='utf-8')
+        write_route(output,route,portal_page(route,title,title+' de ARGENTINIA.','<div class="page-shell legal-body">'+body+'</div>',settings))
     matito=site_pages.get('matito')
     matito_body=(matito['html'] if matito else intro('Matito te invita a la ronda','Conocé a Matito y sus evoluciones.'))+evolutions(payload['gameMedia'])
     write_route(output,'/matito/',portal_page('/matito/','Matito y sus evoluciones','El compañero de ARGENTINIA: Matito, Mator y Materex.','<div class="page-shell article-shell">'+matito_body+'</div>',settings))

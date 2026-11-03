@@ -12,6 +12,7 @@ sys.dont_write_bytecode=True
 from build_public_pages import INDEXED,ALIASES,SIBLINGS,MAX_PUBLISHED_BYTES,game_document,remote_asset
 from editorial_layout import extract_body
 from editorial_value import remove_internal_future_copy
+from editorial_consent import ADSENSE_SCRIPT
 
 
 class Page(HTMLParser):
@@ -81,9 +82,12 @@ def verify(repo,artifact,report):
         source=repo/site;target=artifact/site
         check(target.is_dir(),'lost retained site '+site)
         if site in ('privacidad','terminos'):
-            expected_body=extract_body(source/'index.html','legal','/'+site+'/',{'playUrl':'/jugar/','contactEmail':'magiayleyenda@gmail.com'})
-            if site=='terminos':expected_body=remove_internal_future_copy(expected_body)
-            check(expected_body in read(target/'index.html'),'legal body changed '+site)
+            expected_body=read(repo/'portal/templates'/(site+'.html')).strip()
+            check(expected_body in read(target/'index.html'),'reviewed legal body changed '+site)
+            check(not re.search(r'conviene revisarlos|Si más adelante incorporás|procuraremos solicitarlo',read(target/'index.html')),'internal or obsolete legal copy '+site)
+            if site=='privacidad':
+                for url in ('https://www.google.com/settings/ads','https://www.aboutads.info/choices/','https://policies.google.com/technologies/partner-sites'):
+                    check(url in expected_body,'missing advertising privacy control '+url)
         else:
             for p in source.rglob('*'):
                 if p.is_file():check((target/p.relative_to(source)).is_file() and (target/p.relative_to(source)).read_bytes()==p.read_bytes(),'retained site changed '+site+'/'+p.relative_to(source).as_posix())
@@ -118,6 +122,10 @@ def verify(repo,artifact,report):
             if local.is_dir():local=local/'index.html'
             check(local.resolve().is_relative_to(artifact) and local.is_file(),'broken editorial local link '+route+' -> '+value)
         if route not in ('/404.html','/editor/'):check('class="play-link" href="/jugar/"' in text,'JUGAR destination incorrect '+route)
+        if route not in ('/404.html','/editor/'):
+            check(sum(t=='script' and a.get('src')==ADSENSE_SCRIPT for t,a in page.tags)==1,'missing or duplicated official CMP/AdSense tag '+route)
+            check('data-consent-reopen' in text and '/runtime/consent.js' in text,'consent revocation entry missing '+route)
+            check(any(t=='meta' and a.get('name')=='referrer' and a.get('content')=='strict-origin-when-cross-origin' for t,a in page.tags),'CMP referrer policy '+route)
     check((artifact/'favicon.png').read_bytes()==(repo/'argentinia/favicon.png').read_bytes(),'original favicon differs')
     home=Page(read(artifact/'index.html')).tags
     if report['mode']=='portal':

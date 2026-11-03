@@ -1,5 +1,7 @@
 """Public editorial HTML primitives; original ARGENTINIA assets and text-only imports."""
 import html,json,math,posixpath,re
+from editorial_copy import text as site_text
+from editorial_consent import consent_head
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 BRAND="ARGENTINIA — Magia y Leyenda"
@@ -44,9 +46,9 @@ def link(route, target, label, cls=""):
 
 
 def chrome(route, title, description, content, config, active="", extra_class="", structured=None):
-    nav = [("/matito/", "Matito"), ("/leyendas/", "Leyendas"), ("/ranking/", "Ranking"), ("/manual/", "Cómo jugar"), ("/sobre-el-proyecto/", "El proyecto")]
-    nav_html = "".join(f'<a href="{relative(route, path)}"' + (' aria-current="page"' if active == path else '') + f'>{label}</a>' for path, label in nav)
-    footer = "".join(link(route, path, label) for path, label in [("/leyendas/", "Leyendas"), ("/criterios-editoriales/", "Criterios editoriales"), ("/sobre-el-proyecto/", "El proyecto"), ("/contacto/", "Contacto"), ("/privacidad/", "Privacidad"), ("/terminos/", "Términos")])
+    nav = [("/matito/", "matito"), ("/leyendas/", "legends"), ("/cartas/", "cards"), ("/ranking/", "ranking"), ("/manual/", "manual"), ("/sobre-el-proyecto/", "project")]
+    nav_html = "".join(f'<a href="{relative(route, path)}"' + (' aria-current="page"' if active == path else '') + f'>{site_text('nav.'+label)}</a>' for path, label in nav)
+    footer = "".join('<a href="'+relative(route,path)+'">'+site_text("nav."+label)+"</a>" for path, label in [("/leyendas/", "legends"), ("/criterios-editoriales/", "criteria"), ("/sobre-el-proyecto/", "project"), ("/contacto/", "contact"), ("/privacidad/", "privacy"), ("/terminos/", "terms")])
     data = ''
     if structured:
         # Prevent user text from closing a JSON-LD script element.
@@ -61,13 +63,16 @@ def chrome(route, title, description, content, config, active="", extra_class=""
 <meta name="description" content="{esc(description)}">
 <link rel="icon" href="{relative(route, '/favicon.png')}" type="image/png">
 <link rel="stylesheet" href="{relative(route, '/portal.css')}">
+{consent_head(route)}
 {data}</head>
-<body class="{esc(extra_class)}"><a class="skip-link" href="#contenido">Ir al contenido</a>
+<body class="{esc(extra_class)}"><a class="skip-link" href="#contenido">{site_text('nav.skip')}</a>
 <header class="site-header"><a class="brand" href="{relative(route, '/')}" aria-label="{BRAND}, inicio">{logo(route, priority=True)}</a>
 <nav aria-label="Principal">{nav_html}</nav>
-<a class="play-link" href="{esc(play_url(config['playUrl']))}">JUGAR <span aria-hidden="true">↗</span></a></header>
+<a class="play-link" href="{esc(play_url(config['playUrl']))}">{site_text('nav.play')} <span aria-hidden="true">↗</span></a></header>
 <main id="contenido">{content}</main>
-<footer class="site-footer"><div class="page-shell footer-grid"><div><strong>ARGENTINIA — Magia y Leyenda</strong><p>Historias para leer.<br>Un mundo para jugar.</p></div><nav aria-label="Información y contacto">{footer}</nav><p class="footer-note">{BRAND}<br>Tradiciones, fuentes y ficción: cada una con su lugar.</p></div></footer>
+<footer class="site-footer"><div class="page-shell footer-grid"><div><strong>ARGENTINIA — Magia y Leyenda</strong><p>{site_text('footer.tagline')}</p></div><nav aria-label="Información y contacto">{footer}<button type="button" data-consent-reopen hidden>{site_text('consent.settings')}</button></nav><p class="footer-note">{BRAND}<br>{site_text('footer.note')}</p></div></footer>
+<script type="module" src="/runtime/siteTexts.js"></script>
+<script type="module" src="/runtime/consent.js"></script>
 </body></html>
 '''
 
