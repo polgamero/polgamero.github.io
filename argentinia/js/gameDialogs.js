@@ -11,7 +11,7 @@ function styles() {
 }
 export function ensureGameDialogStyles(){styles();}
 export function closeGameDialog() { active?.finish(false); }
-export function showGameDialog(message, { title = 'Argentinia', confirm = false, acceptLabel = 'Entendido', valid = () => true, input = null } = {}) {
+export function showGameDialog(message, { title = 'Argentinia', confirm = false, acceptLabel = 'Entendido', cancelLabel = 'Cancelar', valid = () => true, input = null, bindDecision = null } = {}) {
   closeGameDialog(); styles();
   const previousFocus = document.activeElement;
   const overlay = document.createElement('div'); overlay.className = 'gy-modal-overlay arg-game-dialog';
@@ -27,12 +27,13 @@ export function showGameDialog(message, { title = 'Argentinia', confirm = false,
   }
   const actions = document.createElement('footer');
   const accept = document.createElement('button'); accept.type = 'button'; accept.textContent = acceptLabel;
-  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancelar';
+  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = cancelLabel;
   panel.append(heading, copy);if(field)panel.append(field);panel.append(actions); if (confirm) actions.append(cancel); actions.append(accept); overlay.append(panel);
   return new Promise(resolve => {
-    let settled = false;
+    let settled = false, stopDecision = null;
     const finish = accepted => {
       if (settled) return; settled = true;
+      stopDecision?.();
       clearInterval(watch); document.removeEventListener('keydown', keydown, true); overlay.remove();
       if (active?.overlay === overlay) active = null;
       if (previousFocus?.isConnected) previousFocus.focus?.({ preventScroll: true });
@@ -51,6 +52,7 @@ export function showGameDialog(message, { title = 'Argentinia', confirm = false,
     accept.addEventListener('click', () => finish(true)); cancel.addEventListener('click', () => finish(false));
     active = { overlay, finish }; document.addEventListener('keydown', keydown, true);
     document.body.append(overlay); (field || (confirm ? cancel : accept)).focus();
+    stopDecision = bindDecision?.(overlay,finish) || null;
   });
 }
 

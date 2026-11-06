@@ -12,7 +12,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot } from './ui.js';
+import { createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot, showRedundantAuraConfirmation } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
@@ -43,6 +43,7 @@ import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermiss
 import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
 import { normalizeLibraryEffect, getLibraryWindowEntries, getLibraryEligibleEntries, chooseBotLibraryEntries, libraryCardMatchesFilter, libraryCardCanMoveToDestination } from './libraryEngine.js';
 import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
+import { canPayXCost, maximumAffordableX } from './xCostPayment.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
 import { evaluateStateBasedActions, hasMechanicalStateActions, SBA_MAX_PASSES } from './rulesKernel.js';
 import { buildApnapTriggerGroups, stackPlacementFromResolutionOrders } from './triggerOrdering.js';
@@ -4086,10 +4087,29 @@ export function getCastingManaCostString(card, options = {}) {
 export function getFinalCastingManaCost(card, options = {}) {
   const manaString = getCastingManaCostString(card, options);
   const baseCost = parseManaCost(manaString);
-  if (manaString?.includes('{X}')) baseCost.generic += Math.max(0, Math.floor(Number(options.xValue) || 0));
+  const xSymbols = manaString?.match(/\{X\}/g)?.length || 0;
+  baseCost.generic += xSymbols * Math.max(0, Math.floor(Number(options.xValue) || 0));
   const casterIsLocal = options.isLocal !== false;
   const result = applySpellCostModifiers(state, card, casterIsLocal, baseCost, options);
   return { ...result, manaString, baseCost };
+}
+
+// X is bounded by this selected casting route (alternative, kicker, taxes and
+// reductions), not the printed cost. Planning never activates a mana source.
+export function getLocalXPaymentLimit(card) {
+  const pending = state.pendingCastTransaction;
+  const tx = pending?.card === card ? pending : null;
+  const options = { useAlternative:!!tx?.useAlternative, kicked:!!tx?.kicked, baseOverride:tx?.baseOverride ?? null, isLocal:true };
+  const bundle = getCastCompositeCostBundle(card,options.useAlternative);
+  const canPay = xValue => canPayCastCompositeNonManaCosts(card,true,options.useAlternative,{excludeCard:card}) &&
+    canPayXCost(state,card,getFinalCastingManaCost(card,{...options,xValue}).cost,{
+      // Reserve resources which the later mandatory cost selector must retain.
+      excludeItems:bundle.sacrifices.length ? [...state.localCombat] : [],
+      excludeCards:bundle.graveyardExiles.length || tx?.castFrom==='escape' ? [...state.localGraveyard] : [],
+      lifeReserved:bundle.life,
+      hasHaste:item=>getEffectiveKeywords(item).some(k=>String(k).toLowerCase()==='haste')
+    });
+  return { max:maximumAffordableX(canPay), canPay };
 }
 
 function canAssignDistinctResources(resources, requirements, matches) {
@@ -7688,9 +7708,36 @@ export function getKeywordsGrantedByPendingSpell(pendingCard) {
   return [];
 }
 
-export function handleCombatClick(item, isLocal, index) {
+function requestRedundantAuraConfirmation(item, isLocal, keywords) {
+  const card=state.pendingTargetCard, tx=state.pendingCastTransaction;
+  const match=state.currentMatch, serial=state.priorityClockSerial;
+  const uid=state.currentUser?.uid;
+  const turn=state.turnCount, phase=state.phase, activePlayer=state.activePlayer;
+  const source=state.pendingTargetSource;
+  const confirmation={kind:'redundant_aura',card,item};
+  state.pendingActionConfirmation=confirmation;
+  const valid=()=>!state.gameOver && state.pendingActionConfirmation===confirmation &&
+    state.currentMatch===match && state.currentUser?.uid===uid && !isMultiplayerInteractionBlocked() && (!match || state.priorityClockSerial===serial) &&
+    state.turnCount===turn && state.phase===phase && state.activePlayer===activePlayer && state.priorityPlayer==='local' &&
+    state.pendingCastTransaction===tx && state.pendingTargetCard===card && state.pendingTargetSource===source &&
+    (isLocal?state.localCombat:state.rivalCombat).includes(item);
+  void showRedundantAuraConfirmation(card,item.card,keywords,valid).then(accepted=>{
+    const current=valid();
+    if(state.pendingActionConfirmation!==confirmation)return;
+    state.pendingActionConfirmation=null;
+    if(!current){render();return;}
+    // Re-enter the original adapter so protection, ownership, timing and all
+    // other target rules are checked again. Approval applies only to this aura.
+    if(accepted)handleCombatClick(item,isLocal,(isLocal?state.localCombat:state.rivalCombat).indexOf(item),card);
+    else render(); // No retains target selection; no mana or cards were spent.
+  });
+  render();
+}
+
+export function handleCombatClick(item, isLocal, index, approvedAura = null) {
   if (isMultiplayerInteractionBlocked()) return;
   if (state.damageModalOpen) return;
+  if (state.pendingActionConfirmation) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
   if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
     logMsg(gameText('pending.discard'));
@@ -7800,11 +7847,13 @@ export function handleCombatClick(item, isLocal, index) {
       return;
     }
 
-    // No dejar apilar una habilidad redundante: si ya tiene Vuela, no le vuelvas a poner
-    // algo que otorgue Vuela (aunque venga de una fuente distinta).
     const grantedKeywords = getKeywordsGrantedByPendingSpell(state.pendingTargetCard);
-    const redundant = grantedKeywords.find(k => hasKeyword(item, k));
-    if (redundant) {
+    const redundant = [...new Set(grantedKeywords.filter(k => hasKeyword(item, k)))];
+    if (redundant.length && state.pendingTargetCard.adjunta && approvedAura !== state.pendingTargetCard) {
+      requestRedundantAuraConfirmation(item,isLocal,redundant);
+      return;
+    }
+    if (redundant.length && !state.pendingTargetCard.adjunta) {
       logMsg(gameText('ability.keyword.already', { card: item.card.name }));
       return;
     }
@@ -9015,15 +9064,8 @@ function abortCastTransaction(message = 'Cancelaste el casteo.', { timeout = fal
   return true;
 }
 
-function selectedCastBaseManaString(tx) {
-  if (tx.baseOverride) return tx.baseOverride;
-  const alt = tx.useAlternative ? normalizeCompositeCost(tx.card?.alternativeCost) : null;
-  return tx.useAlternative ? (alt?.manaCost || null) : (tx.card?.manaCost || null);
-}
-
 function castRouteContainsX(tx) {
-  const base = selectedCastBaseManaString(tx);
-  return typeof base === 'string' && base.includes('{X}');
+  return !!getCastingManaCostString(tx.card,tx)?.includes('{X}');
 }
 
 function beginHumanCastTransaction(index, card, options = {}) {
@@ -10430,7 +10472,12 @@ export function cancelModeChoice() {
 export function confirmXValue(xValueRaw) {
   const xc = state.pendingXChoice;
   if (!xc) return;
-  const xValue = Math.max(0, Math.floor(Number(xValueRaw) || 0)); // nunca negativo (regla real: X puede ser 0, no menos)
+  const xValue = Number(xValueRaw);
+  const limit = getLocalXPaymentLimit(xc.card);
+  if (!Number.isSafeInteger(xValue) || xValue < 0 || xValue > limit.max || !limit.canPay(xValue)) {
+    recordTelemetryEvent('cast_x_rejected', { reason:'x_unpayable', max:limit.max });
+    return false;
+  }
 
   if (state.pendingCastTransaction && xc.castTransactionId === state.pendingCastTransaction.id) {
     state.pendingXChoice = null;
@@ -10444,10 +10491,7 @@ export function confirmXValue(xValueRaw) {
   state.pendingXChoice = null;
   state.pendingXValue = xValue;
   state.pendingSpellIndex = xc.index;
-  let cost = parseManaCost(xc.card.manaCost); // el {X} de la cadena no suma nada acá
-  cost.generic += xValue;
-  const addMana = getCompositeCostManaString(xc.card.additionalCost);
-  if (addMana) cost = sumManaCosts(cost, parseManaCost(addMana));
+  const cost = getFinalCastingManaCost(xc.card,{xValue,kicked:!!state.pendingKicked,isLocal:true}).cost;
   state.pendingAlternativeCostChosen = false;
   state.pendingSpellCostsIrreversible = false;
   state.pendingCompositeCostPayment = false;

@@ -60,8 +60,9 @@ import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTrigg
 import { addToStack, spellStack, isStackItemLegalCounterTarget, isStackItemLegalCopyTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { gameText } from './gameTexts.js';
 import { isSoloPriorityFullControl } from './ui.js';
-import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost } from './manaPool.js';
+import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost, spendCostAutomatically } from './manaPool.js';
 import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
+import { readPaymentSources, planManaSources, maximumAffordableX } from './xCostPayment.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
 import { normalizeLibraryEffect, libraryCardMatchesFilter } from './libraryEngine.js';
@@ -172,11 +173,11 @@ function canBotPayCastRoute(card, useAlternative = false, options = {}) {
     useAlternative,
     kicked:!!options.kicked,
     baseOverride:options.baseOverride ?? null,
-    xValue:options.xValue ?? 0,
+    xValue:options.xValue ?? (getCastingManaCostString(card,{...options,useAlternative})?.includes('{X}') ? 1 : 0),
     isLocal:false
   });
   const planned = botPaymentMethodPlan(card,final.cost,{...options,useAlternative});
-  if (!canRivalAfford({ manaCost:null }, { parsedCost:planned.cost })) return false;
+  if (!canRivalAfford({ manaCost:null }, { parsedCost:planned.cost, excludeItems:planned.plan.convoke })) return false;
   return canPayCastCompositeNonManaCosts(card, false, useAlternative, {
     excludeCard: options.excludeCard || null,
     lifeFloor: (options.lifeFloor ?? 5) + (planned.plan.phyrexianLifeAmount || 0)
@@ -212,6 +213,9 @@ function commitBotPaymentMethodPlan(card, plan) {
 }
 
 async function payBotCastRoute(card, useAlternative = false, options = {}) {
+  if (getCastingManaCostString(card,{...options,useAlternative})?.includes('{X}') && !(options.xValue >= 1)) {
+    throw new Error(`Tano debe anunciar X positivo para ${card.name}`);
+  }
   const final = getFinalCastingManaCost(card, {
     useAlternative,
     kicked:!!options.kicked,
@@ -220,7 +224,7 @@ async function payBotCastRoute(card, useAlternative = false, options = {}) {
     isLocal:false
   });
   const planned = botPaymentMethodPlan(card,final.cost,{...options,useAlternative});
-  if (!canRivalAfford({manaCost:null},{parsedCost:planned.cost})) throw new Error(`Tano no puede pagar el costo final de ${card.name}`);
+  if (!canRivalAfford({manaCost:null},{parsedCost:planned.cost,excludeItems:planned.plan.convoke})) throw new Error(`Tano no puede pagar el costo final de ${card.name}`);
   if (!commitBotPaymentMethodPlan(card,planned.plan)) throw new Error(`Tano perdió recursos preparados de ${card.name}`);
   if (parsedManaTotal(planned.cost)>0) tapRivalLandsFor({ manaCost:null }, { parsedCost:planned.cost });
   await payCastCompositeNonManaCosts(card, false, useAlternative);
@@ -630,8 +634,10 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
 
   // 601.2a: la carta deja conceptualmente el cementerio al anunciar el casteo. Todavía
   // no se activó ninguna fuente ni se pagó nada.
-  const card = state.rivalGraveyard.splice(idx, 1)[0];
+  const card = state.rivalGraveyard[idx];
   const { source, ability } = getAbility(card);
+  const xValue = chooseBotXValue(card,false,{baseOverride:ability.cost});
+  state.rivalGraveyard.splice(idx,1);
 
   let aiTargetObj = null;
   if (card.effect) {
@@ -656,7 +662,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   }
 
   // Objetivo fijado: recién ahora fuentes y pago.
-  await payBotCastRoute(card, false, { baseOverride: ability.cost });
+  await payBotCastRoute(card, false, { baseOverride: ability.cost, xValue });
 
   // Zafar paga su exilio como parte del commit de costos, después de fijar objetivos.
   if (source === 'escape') {
@@ -683,7 +689,8 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     isLocal: false,
     targetObj: aiTargetObj,
     type: stackType,
-    castFrom: source
+    castFrom: source,
+    xValue
   };
   addToStack(castStackItem);
   flushDeferredLandManaTriggers();
@@ -703,14 +710,12 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   return true;
 }
 
-// Elegir un valor de X: el Tano gasta TODO lo que le sobra después de pagar el resto del
-// costo de la carta — más grande, mejor, no hay motivo real para guardarse maná en su
-// propia fase principal (a diferencia de un truco reactivo, donde sí conviene guardar).
-function chooseBotXValue(card) {
-  const baseCost = parseManaCost(card.manaCost); // el {X} de la cadena no suma nada acá
-  const baseTotal = baseCost.W + baseCost.U + baseCost.B + baseCost.R + baseCost.G + baseCost.generic;
-  const totalAvailable = getRivalTotalAvailableMana();
-  return Math.max(0, totalAvailable - baseTotal);
+// Maximize the actual final payable cost. Candidate selection uses X=1, so
+// an X spell is retained until it can do something. Fixed/free replacement costs
+// have no payable X and keep the engine's normal X=0 semantics.
+function chooseBotXValue(card, useAlternative = false, options = {}) {
+  if (!getCastingManaCostString(card,{...options,useAlternative})?.includes('{X}')) return 0;
+  return Math.max(0,maximumAffordableX(xValue=>canBotPayCastRoute(card,useAlternative,{...options,xValue})));
 }
 
 // Elegir TODOS los objetivos de un hechizo multi-target, uno por cada entrada de
@@ -796,34 +801,10 @@ function chooseBotMode(card) {
 }
 
 export function canRivalAfford(card, options = null) {
-  const excludeItems = options?.excludeItems || [];
-  if (!card.manaCost && !options?.parsedCost) return true;
-  const cost = options?.parsedCost ? { ...options.parsedCost } : parseManaCost(card.manaCost);
-  const available = cloneManaPool(state.rivalManaPool);
-  const flexible = [];
-
-  getRivalManaSources(excludeItems).forEach(item => {
-    if (!botCanActivateMana(item, false)) return;
-    const amount = botManaAmount(item, false);
-    const opts = botManaOptions(item, false);
-    const legal = [...new Set(opts.filter(t => MANA_TYPES.includes(t)))];
-    if (legal.length === 1) addMana(available, legal[0], amount);
-    else if (legal.length > 1) flexible.push({ options: legal, amount });
-  });
-
-  // Pool + fuentes fijas cubren primero lo que puedan.
-  const remaining = { ...cost };
-  spendAvailableTowardCost(available, remaining);
-
-  // Las fuentes flexibles se asignan primero a símbolos específicos que todavía falten.
-  flexible.sort((a,b) => a.options.length - b.options.length).forEach(src => {
-    let chosen = MANA_TYPES.find(t => src.options.includes(t) && (remaining[t] || 0) > 0);
-    if (!chosen && remaining.generic > 0) chosen = src.options[0];
-    if (!chosen) return;
-    addMana(available, chosen, src.amount);
-    spendAvailableTowardCost(available, remaining);
-  });
-  return manaCostTotal(remaining) === 0;
+  const cost = options?.parsedCost || parseManaCost(card.manaCost);
+  return planManaSources(state.rivalManaPool,cost,readPaymentSources(state,false,{
+    excludeItems:options?.excludeItems || [], hasHaste:item=>hasKeyword(item,'haste')
+  })) !== null;
 }
 
 export function tapRivalLandsFor(card, options = null) {
@@ -831,25 +812,12 @@ export function tapRivalLandsFor(card, options = null) {
   if (!card.manaCost && !options?.parsedCost) return;
   const remaining = options?.parsedCost ? { ...options.parsedCost } : parseManaCost(card.manaCost);
   if (!state.rivalManaPool) state.rivalManaPool = { W:0,U:0,B:0,R:0,G:0,C:0 };
-  spendAvailableTowardCost(state.rivalManaPool, remaining);
-  if (manaCostTotal(remaining) === 0) return;
-
-  const sources = getRivalManaSources(excludeItems).filter(item => botCanActivateMana(item, false));
-  sources.sort((a,b) => {
-    const ao = botManaOptions(a, false).length;
-    const bo = botManaOptions(b, false).length;
-    return ao - bo;
-  });
-
-  for (const source of sources) {
-    if (manaCostTotal(remaining) === 0) break;
-    const opts = botManaOptions(source, false);
-    const legal = [...new Set(opts.filter(t => MANA_TYPES.includes(t)))];
-    if (!legal.length) continue;
-    let chosen = MANA_TYPES.find(t => legal.includes(t) && (remaining[t] || 0) > 0);
-    if (!chosen && remaining.generic > 0) chosen = legal[0];
-    if (!chosen) continue;
-    const amount = botManaAmount(source, false);
+  const plan = planManaSources(state.rivalManaPool,remaining,readPaymentSources(state,false,{
+    excludeItems,hasHaste:item=>hasKeyword(item,'haste')
+  }));
+  if (!plan) throw new Error('Tano no puede pagar el coste completo sin dejar deuda');
+  for (const { item:source, type:chosen, ability } of plan) {
+    const amount = ability.amount;
     const tappedForMana = botManaRequiresTap(source, false);
     const wasTappedForMana=!!source.tapped;
     if (tappedForMana) {
@@ -861,8 +829,8 @@ export function tapRivalLandsFor(card, options = null) {
     if (botManaSacrifices(source, false)) performSacrifice(source, false);
     addMana(state.rivalManaPool, chosen, amount);
     if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, chosen, amount, { forceDeferNormalTriggers:true, eventSnapshot:landManaEventSnapshot });
-    spendAvailableTowardCost(state.rivalManaPool, remaining);
   }
+  if (!spendCostAutomatically(state.rivalManaPool,remaining)) throw new Error('Fuentes del Tano cambiaron durante el pago');
 }
 
 function shouldBotActivateHealing(effect, timing = 'legacy') {
@@ -922,21 +890,26 @@ async function tryBotCombatTrick() {
   if (attackingUnits.length === 0) return false;
 
   const cardIndex = state.rivalHand.findIndex(c =>
-    c.type.includes('Instantáneo') && c.effect && c.effect.type === 'damage' && canRivalAfford(c)
+    c.type.includes('Instantáneo') && c.effect && c.effect.type === 'damage' && chooseBotCastRoute(c,{excludeCard:c}) !== null
   );
   if (cardIndex === -1) return false;
 
   const card = state.rivalHand[cardIndex];
-  const target = attackingUnits.find(c => isValidBotTarget(c, card.colors) && getEffectiveToughness(c) <= card.effect.amount);
+  const useAlternative = chooseBotCastRoute(card,{excludeCard:card});
+  if (useAlternative === null) return false;
+  const xValue = chooseBotXValue(card,useAlternative);
+  const damage = card.effect.amount === 'X' ? xValue : card.effect.amount;
+  const target = attackingUnits.find(c => isValidBotTarget(c, card.colors) && getEffectiveToughness(c) - (c.damageTaken||0) <= damage);
   if (!target) return false;
 
   const targetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(target), item: target };
   // Target fijado: recién ahora se compromete la carta y se activan fuentes.
   state.rivalHand.splice(cardIndex, 1);
-  tapRivalLandsFor(card);
+  await payBotCastRoute(card,useAlternative,{xValue});
 
   const castStackItem = {
     card,
+    xValue,
     isLocal: false,
     targetObj: targetObj,
     type: 'instant'
@@ -976,7 +949,7 @@ async function tryBotPostBlockTrick() {
 
     const pumpIndex = state.rivalHand.findIndex(c => {
       const hasFlash = c.keywords && c.keywords.includes('flash');
-      if (!(c.type.includes('Instantáneo') || hasFlash) || c.effect?.type !== 'pump' || !canRivalAfford(c)) return false;
+      if (!(c.type.includes('Instantáneo') || hasFlash) || c.effect?.type !== 'pump' || chooseBotCastRoute(c,{excludeCard:c}) === null) return false;
       // X queda afuera a propósito: elegir X a ciegas en medio de una simulación de combate
       // es un caso raro que no vale la pena resolver acá.
       return typeof c.effect.powerMod === 'number' && typeof c.effect.toughnessMod === 'number';
@@ -984,6 +957,9 @@ async function tryBotPostBlockTrick() {
     if (pumpIndex === -1) continue;
 
     const pumpCard = state.rivalHand[pumpIndex];
+    const useAlternative = chooseBotCastRoute(pumpCard,{excludeCard:pumpCard});
+    if (useAlternative === null) continue;
+    const xValue = chooseBotXValue(pumpCard,useAlternative);
     const trialMod = { powerMod: pumpCard.effect.powerMod || 0, toughnessMod: pumpCard.effect.toughnessMod || 0 };
 
     // Probamos el pump DIRECTO sobre el objeto real (después lo sacamos si no sirve) para
@@ -997,12 +973,13 @@ async function tryBotPostBlockTrick() {
     if (!survivesWithPump) continue; // ni con el pump se salva, no vale la pena gastarlo
 
     state.rivalHand.splice(pumpIndex, 1);
-    tapRivalLandsFor(pumpCard);
+    await payBotCastRoute(pumpCard,useAlternative,{xValue});
     // The pump belongs to the stack object. Applying it here grants the bonus
     // before responses and duplicates it when the canonical effect resolves.
 
     const castStackItem = {
       card: pumpCard,
+      xValue,
       isLocal: false,
       targetObj: { type: 'creature', isLocal: false, item: blocker, index: state.rivalCombat.indexOf(blocker) },
       type: 'instant'
@@ -1069,9 +1046,11 @@ export async function checkRivalCounterOrResponse() {
       const savedCreature = threatened.targetObj.item;
       const useAlternative = chooseBotCastRoute(protectCard);
       if (useAlternative === null) { state.rivalHand.splice(protectIndex, 0, protectCard); return false; }
-      await payBotCastRoute(protectCard, useAlternative);
+      const xValue = chooseBotXValue(protectCard,useAlternative);
+      await payBotCastRoute(protectCard, useAlternative, {xValue});
       const castStackItem = {
         card: protectCard,
+        xValue,
         isLocal: false,
         targetObj: { type: 'creature', isLocal: false, item: savedCreature, index: state.rivalCombat.indexOf(savedCreature) },
         type: 'instant'
@@ -1116,6 +1095,7 @@ export async function checkRivalCounterOrResponse() {
     const responseCard = state.rivalHand[responseIndex];
     const useAlternative = chooseBotCastRoute(responseCard, { excludeCard: responseCard });
     if (useAlternative === null) return false;
+    const xValue = chooseBotXValue(responseCard,useAlternative,{excludeCard:responseCard});
 
     // CR 601: targetear la Stack/campo ANTES de comprometer carta, fuentes o costos.
     let targetObj = null;
@@ -1135,7 +1115,7 @@ export async function checkRivalCounterOrResponse() {
       const vulnerable = state.localCombat.find(c =>
         isValidBotTarget(c, responseCard.colors)
         && !isReservedReactiveCreatureTarget(c)
-        && getEffectiveToughness(c) - (c.damageTaken || 0) <= responseCard.effect.amount
+        && getEffectiveToughness(c) - (c.damageTaken || 0) <= (responseCard.effect.amount === 'X' ? xValue : responseCard.effect.amount)
       );
       targetObj = vulnerable
         ? { type: 'creature', isLocal: true, index: state.localCombat.indexOf(vulnerable), item: vulnerable }
@@ -1154,10 +1134,11 @@ export async function checkRivalCounterOrResponse() {
     if (responseCard.requiresTarget && !targetObj) return false;
 
     state.rivalHand.splice(responseIndex, 1);
-    await payBotCastRoute(responseCard, useAlternative);
+    await payBotCastRoute(responseCard, useAlternative, {xValue});
 
     const castStackItem = {
       card: responseCard,
+      xValue,
       isLocal: false,
       targetObj: targetObj,
       // Un permanente con Flash (artefacto/criatura) tiene que entrar al campo como
@@ -2147,9 +2128,8 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
     const routeManaCost=getCastingManaCostString(card,{useAlternative,kicked:botKicked,baseOverride});
     let botXValue=0;
     if(routeManaCost?.includes('{X}')){
-      botXValue=chooseBotXValue({...card,manaCost:routeManaCost});
-      while(botXValue>0 && !canBotPayCastRoute(card,useAlternative,{baseOverride,kicked:botKicked,xValue:botXValue})) botXValue--;
-      if(!canBotPayCastRoute(card,useAlternative,{baseOverride,kicked:botKicked,xValue:botXValue})) continue;
+      botXValue=chooseBotXValue(card,useAlternative,{baseOverride,kicked:botKicked});
+      if(botXValue<1) continue;
     }
 
     let targetObj=null;
@@ -2337,11 +2317,12 @@ async function takeGuidedBotAction() {
   const route=chooseBotCastRoute(card,{excludeCard:card});
   if(route===null)throw Error('GUIDED_BOT_CANNOT_PAY');
   if(targetObj?!(card.effect?.type==='counter'&&isStackItemLegalCounterTarget(card.effect.type,counterTarget)):!canBotBuildMainPhaseCastProposal(card))throw Error('GUIDED_BOT_ILLEGAL_PROPOSAL');
-  await payBotCastRoute(card,route,{excludeCard:card});
+  const xValue = chooseBotXValue(card,route,{excludeCard:card});
+  await payBotCastRoute(card,route,{excludeCard:card,xValue});
   if(guidedMatchProgress()!==progress||state.currentMatch||state.gameOver)return true;
   state.rivalHand.splice(state.rivalHand.indexOf(card),1);
   progress.botCastKeys.add(key);progress.botHighlight='#stack-container';
-  const stackItem={card,isLocal:false,targetObj,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
+  const stackItem={card,isLocal:false,targetObj,xValue,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
   addToStack(stackItem);flushDeferredLandManaTriggers();await triggerSpellCast(false,card,stackItem);
   state.priorityPlayer='local';state.consecutivePasses=0;render();return true;
 }
@@ -2604,12 +2585,8 @@ export async function takeBotPriorityAction() {
       const routeManaCost = getCastingManaCostString(cardToPlay, { useAlternative, kicked: botKicked });
       let botXValue = null;
       if (routeManaCost && routeManaCost.includes('{X}')) {
-        const manaSourceCard = { ...cardToPlay, manaCost: routeManaCost };
-        botXValue = chooseBotXValue(manaSourceCard);
-        // 23.15.4: el estimador histórico no conocía taxes/reducciones/Vaquita/Rebuscar.
-        // Ajustamos X hacia abajo hasta una ruta realmente pagable por el Cost Engine final.
-        while (botXValue > 0 && !canBotPayCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue})) botXValue -= 1;
-        if (!canBotPayCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue})) {
+        botXValue = chooseBotXValue(cardToPlay,useAlternative,{kicked:botKicked});
+        if (botXValue < 1 || !canBotPayCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue})) {
           recordTelemetryEvent('bot_cast_proposal_rejected',{cardId:originalCardToPlay?.id||null,cardName:originalCardToPlay?.name||null,reason:'final_cost_unpayable',phase:state.phase});
           passPriority('rival');
           return;

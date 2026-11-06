@@ -84,7 +84,7 @@ function hasAnyResolutionChoice(state) {
 export function deriveLocalPriorityActivity(state) {
   if (!state || state.gameOver) return null;
   if (state.multiplayerWaitingForReady) return 'ready';
-  if (state.pendingActionConfirmation) return 'choosing_mode';
+  if (state.pendingActionConfirmation) return state.pendingActionConfirmation.kind === 'redundant_aura' ? 'resolution_choice' : 'choosing_mode';
   if ((state.consecutivePasses || 0) >= 2) return 'resolving';
   if (state.isDiscarding) return 'discarding';
   if (state.damageModalOpen) return 'assigning_damage';

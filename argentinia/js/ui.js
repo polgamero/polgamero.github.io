@@ -29,6 +29,7 @@ import {
   canPlayCard,
   canActivateActivatedAbilityNow,
   getFinalCastingManaCost,
+  getLocalXPaymentLimit,
   canPlayLandFromGraveyard,
   tapLocalLand,
   handleCombatClick,
@@ -187,6 +188,25 @@ function timedModalChoice(overlay, callback, fallbackArgs, options = {}) {
     action,onActionExpire:cancelPendingActionForDeadline,blocked:()=>!!(state.multiplayerSyncBlocked||state.multiplayerSessionSuperseded),record:recordTelemetryEvent,
     notice:action?'Al vencer se cancela el intento. Los costes irreversibles ya pagados se conservan.':undefined,
     ...Object.fromEntries(Object.entries(options).filter(([,value])=>value!==undefined))
+  });
+}
+
+// Same shared confirmation and decision lifetime as the rest of the game. This
+// warning does not pay or cast anything; Yes only resumes target declaration.
+export function showRedundantAuraConfirmation(aura, target, keywords, valid) {
+  if (HEADLESS_ENGINE) return Promise.resolve(true);
+  return showGameDialog(gameText(keywords.length>1?'aura.keyword.confirmMultiple':'aura.keyword.confirm', {
+    card:target.name, ability:keywords.map(publicKeywordLabel).join(', '), aura:aura.name
+  }), {
+    title:gameText('aura.keyword.title'), confirm:true,
+    acceptLabel:gameText('aura.keyword.yes'), cancelLabel:gameText('aura.keyword.no'), valid,
+    bindDecision:(overlay,finish)=>{
+      const choice = timedModalChoice(overlay,finish,()=>[true],{
+        action:false,remove:false,isCurrent:valid,clockHost:overlay.querySelector('section'),
+        notice:gameText('aura.keyword.timeout')
+      });
+      return ()=>choice(false);
+    }
   });
 }
 
@@ -495,13 +515,13 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
 }
 
 export function showXValueModal(card, onConfirm, onCancel) {
-  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseXValue()); return; }
+  if (HEADLESS_ENGINE) {
+    const { max } = getLocalXPaymentLimit(card);
+    if (max < 0) onCancel?.();
+    else onConfirm?.(Math.min(max,Math.max(0,Math.floor(Number(headlessChoice.chooseXValue())||0))));
+    return;
+  }
   injectMulliganStyles();
-  const untappedLands = state.localLands.filter(l => !l.tapped).length;
-  const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
-  const baseCost = { ...card };
-  const restOfCostSymbols = (card.manaCost.match(/\{[^}]+\}/g) || []).filter(s => s !== '{X}').length;
-  const roughMaxX = Math.max(0, manaPoolTotal(state.localManaPool) + untappedLands + untappedRocks - restOfCostSymbols);
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -512,7 +532,7 @@ export function showXValueModal(card, onConfirm, onCancel) {
       </div>
       <div style="padding: 20px; text-align: center;">
         <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${renderInlineGameSymbols(card.text || '')}</p>
-        <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">${gameTextHtml('modal.x.approx', { max: roughMaxX })}</p>
+        <p id="x-payment-limit" style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;"></p>
         <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom: 20px;">
           <button id="x-minus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">−</button>
           <span id="x-value-display" style="font-size: 28px; font-weight: bold; color: var(--gold, #d4af37); min-width: 50px;">0</span>
@@ -531,15 +551,32 @@ export function showXValueModal(card, onConfirm, onCancel) {
 
   let xValue = 0;
   const display = modalOverlay.querySelector('#x-value-display');
+  const minus = modalOverlay.querySelector('#x-minus');
+  const plus = modalOverlay.querySelector('#x-plus');
+  const confirm = modalOverlay.querySelector('#x-confirm');
+  function refreshLimit() {
+    const { max } = getLocalXPaymentLimit(card);
+    xValue = Math.min(xValue,Math.max(0,max));
+    display.textContent = xValue;
+    minus.disabled = xValue === 0;
+    plus.disabled = xValue >= max;
+    confirm.disabled = max < 0;
+    modalOverlay.querySelector('#x-payment-limit').innerHTML = gameTextHtml('modal.x.approx', { max:Math.max(0,max) });
+    return max;
+  }
+  refreshLimit();
   modalOverlay.querySelector('#x-minus').addEventListener('click', () => {
     xValue = Math.max(0, xValue - 1);
-    display.textContent = xValue;
+    refreshLimit();
   });
   modalOverlay.querySelector('#x-plus').addEventListener('click', () => {
-    xValue += 1;
-    display.textContent = xValue;
+    const max = refreshLimit();
+    xValue = Math.min(xValue + 1,Math.max(0,max));
+    refreshLimit();
   });
   modalOverlay.querySelector('#x-confirm').addEventListener('click', () => {
+    const before = xValue;
+    if (refreshLimit() < 0 || before !== xValue) return;
     finish(true,xValue);
   });
   modalOverlay.querySelector('#x-cancel').addEventListener('click', () => {
@@ -2115,7 +2152,10 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const isPlaneswalker = card.type.includes('Planeswalker');
   const effectiveLandType = isBattlefieldLand ? getEffectiveLandTypeLine(state, itemObj, isLocal) : card.type;
   const displayType = publicCardTypeLine(itemObj.isAnimatedLand ? `${effectiveLandType} · Criatura` : effectiveLandType);
-  const loyaltyText = isPlaneswalker ? `${itemObj.loyalty}` : '';
+  // A spell on the stack has no battlefield counters yet. Use printed Creencia
+  // there, and retain a real battlefield zero rather than falling back to print.
+  const loyaltyValue = itemObj.loyalty ?? card.loyalty;
+  const loyaltyText = isPlaneswalker ? (Number.isFinite(loyaltyValue) ? String(loyaltyValue) : '—') : '';
 
   const attachedAuras = itemObj.auras || [];
   const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
