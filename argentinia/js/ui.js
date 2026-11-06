@@ -97,7 +97,7 @@ import { applyCardZoom } from './cardZoom.js';
 import { announcePhaseTransition } from './phaseBanner.js';
 import { readTournamentPendingSettlement, clearTournamentPendingSettlement, clearTournamentActiveMatch, clearTournamentRecoveryMarkers, tournamentRecoveryMatchesActive } from './tournamentRecovery.js';
 import { buildDeckComposition, formatManaValue } from './deckComposition.js';
-import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './deckStatistics.js';
+import { ensureDeckInsightsStyles, showDeckInsights } from './deckStatisticsUI.js';
 import { getCardBrowserSortOptions, normalizeCardBrowserSort, compareCardsForBrowser } from './cardBrowser.js';
 import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from './artLayout.js';
 import { openArtLayoutEditor } from './artLayoutEditor.js';
@@ -8847,6 +8847,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   injectEncyclopediaStyles();
   injectStoreStyles();
   injectDeckBuilderStyles();
+  ensureDeckInsightsStyles();
 
   const ownedCounts = getDeckBuilderOwnedCounts();
   const recentAcquisitions = loadDeckbuilderRecentState(state.userProfile?.collection || []);
@@ -8901,6 +8902,12 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     normalizedExistingIds.forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
   }
 
+  const savedDeckCounts = {...deckCounts};
+  const collapsedDeckGroups = new Map();
+  let defaultGroupsCollapsed = false;
+  let statisticsChartMode = 'bars';
+  let statisticsDialog = null;
+
   const overlay = document.createElement('div');
   overlay.id = 'deckbuilder-overlay';
 
@@ -8921,6 +8928,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       ${existingDeck
         ? `<input class="deckbuilder-name-input" id="deckbuilder-name-input" maxlength="30" value="${escapeHtml(workingDeckName)}" aria-label="Nombre del mazo">`
         : `<div class="deckbuilder-name">${escapeHtml(workingDeckName)}</div>`}
+      <button class="store-buy-btn" id="deckbuilder-stats" type="button">📊 Estadísticas del mazo</button>
       <button class="store-buy-btn" id="deckbuilder-save" disabled>💾 Guardar mazo</button>
     </div>
     <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
@@ -8930,7 +8938,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <div class="encyclopedia-grid-box" id="deckbuilder-grid"></div>
       </div>
       <div class="encyclopedia-filters deckbuilder-filters">
-        <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Buscar carta...">
+        <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Nombre o texto de la carta…" aria-label="Buscar por nombre o texto">
+        <button type="button" class="deckbuilder-recent-action" id="deckbuilder-recent" title="Ordenar por última adquisición, incluso cartas que ya no tienen la etiqueta Nueva. Conserva tus filtros actuales.">🆕 Últimas obtenidas</button>
         <div class="card-browser-zoom" title="Cambiar tamaño de las cartas">
           <span>🔍</span>
           <input type="range" id="deckbuilder-card-zoom" min="8" max="40" step="1" value="${defaultZoom}">
@@ -8969,7 +8978,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <div class="card-browser-filter-grid archetypes">${browserMechanicFiltersHTML('deck')}</div>
       </div>
       <div class="deckbuilder-side">
-        <button class="deckbuilder-stats-btn" id="deckbuilder-stats" type="button">📊 Estadísticas del mazo</button>
+        <div class="deckbuilder-side-actions" role="group" aria-label="Secciones del mazo"><button type="button" id="deckbuilder-collapse-all">Minimizar todo</button><button type="button" id="deckbuilder-expand-all">Expandir todo</button></div>
         <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 / ${DECK_SIZE_EXACT} cartas)</div>
         <div class="deckbuilder-list" id="deckbuilder-list"></div>
       </div>
@@ -9052,8 +9061,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
   }
 
-  function getCurrentDeckEntries() {
-    return Object.entries(deckCounts)
+  function getCurrentDeckEntries(counts = deckCounts) {
+    return Object.entries(counts)
       .filter(([, n]) => n > 0)
       .map(([trackingKey, count]) => {
         const variant = parseCardVariantId(trackingKey);
@@ -9249,7 +9258,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         (!flasheraOnly || record.isFlasheraTile) &&
         (!evolvableOnly || isEvolutionEligibleCard(card)) &&
         (!newOnly || isNewlyObtained(card.id)) &&
-        (!query || normalizeSearch(card.name).includes(query));
+        (!query || normalizeSearch(`${card.name} ${card.text || ''}`).includes(query));
       record.node.hidden = !matches;
       if (matches) visible += 1;
       entry.pane.appendChild(record.node); // mueve el nodo existente; mantiene su <img>
@@ -9259,88 +9268,32 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     refreshPoolTileStates();
   }
 
+  function showRecentCollection() {
+    for (const tab of ENCYCLOPEDIA_TABS) sortByTab.set(tab.key,{key:RECENT_SORT_KEY,direction:'desc'});
+    newOnly=false;
+    overlay.querySelector('#deckbuilder-new-only').checked=false;
+    refreshPool();
+    overlay.querySelector('#deck-sort-key').focus();
+  }
+
   function showDeckStatisticsModal() {
-    const entries = getCurrentDeckEntries();
-    const stats = buildDeckStatistics(entries);
-    const health = analyzeDeckHealth(stats);
-    const modal = document.createElement('div');
-    modal.className = 'deck-stats-overlay';
-
-    const curveKeys = ['0','1','2','3','4','5','6+'];
-    const curveMax = Math.max(1, ...curveKeys.map(key => stats.curve[key] || 0));
-    const curveHTML = curveKeys.map(key => {
-      const count = stats.curve[key] || 0;
-      const width = Math.round((count / curveMax) * 100);
-      return `<div class="deck-curve-row"><strong>${key === '6+' ? '6+' : `CMC ${key}`}</strong><div class="deck-curve-track"><div class="deck-curve-fill" style="width:${width}%"></div></div><span>${count}</span></div>`;
-    }).join('');
-
-    const colorMeta = [
-      ['W','⚪ Blanco'],['U','🔵 Azul'],['B','⚫ Negro'],['R','🔴 Rojo'],['G','🟢 Verde'],['C','◇ Incoloro']
-    ];
-    const colorHTML = colorMeta.map(([key,label]) => `
-      <div class="deck-color-row">
-        <strong>${label}</strong>
-        <div class="deck-color-values"><span>demanda <b>${stats.demand[key] || 0}</b></span><span>fuentes <b>${stats.sources[key] || 0}</b></span></div>
-      </div>`).join('');
-
-    const healthHTML = health.map(item => `<div class="deck-health-item ${item.level}"><strong>${escapeHtml(item.title)}</strong> <span>— ${escapeHtml(item.detail)}</span></div>`).join('');
-
-    modal.innerHTML = `
-      <div class="deck-stats-modal" role="dialog" aria-modal="true" aria-label="Estadísticas del mazo">
-        <div class="deck-stats-header"><div class="deck-stats-title">📊 Estadísticas — ${escapeHtml(workingDeckName || 'Mazo')}</div><button class="deck-stats-close" type="button" aria-label="Cerrar">×</button></div>
-        <div class="deck-stats-grid">
-          <section class="deck-stats-panel wide">
-            <h4>Resumen general</h4>
-            <div class="deck-stats-kpis">
-              <div class="deck-stats-kpi"><strong>${stats.total}</strong><span>cartas</span></div>
-              <div class="deck-stats-kpi"><strong>${stats.lands}</strong><span>tierras</span></div>
-              <div class="deck-stats-kpi"><strong>${stats.creatures}</strong><span>criaturas</span></div>
-              <div class="deck-stats-kpi"><strong>${stats.nonlands}</strong><span>no-tierras</span></div>
-              <div class="deck-stats-kpi"><strong>${formatManaValue(stats.averageManaValue)}</strong><span>MV sin tierras</span></div>
-            </div>
-          </section>
-          <section class="deck-stats-panel"><h4>Curva de maná</h4>${curveHTML}</section>
-          <section class="deck-stats-panel"><h4>Demanda de color vs fuentes</h4>${colorHTML}<div class="deck-stats-note">“Demanda” cuenta símbolos coloreados en los costes. “Fuentes” cuenta permanentes del mazo capaces de producir ese color; las fuentes de cualquier color cuentan para cada color que pueden pagar.${stats.flexibleSources ? ` · ${stats.flexibleSources} fuente(s) flexible(s).` : ''}</div></section>
-          <section class="deck-stats-panel wide"><h4>Salud del mazo · orientativo</h4><div class="deck-health-list">${healthHTML}</div><div class="deck-stats-note">Estas señales no bloquean el guardado ni pretenden definir un único estilo correcto de construcción.</div></section>
-          <section class="deck-stats-panel wide">
-            <h4>🎲 Probar mano · simulación Monte Carlo</h4>
-            <div class="deck-hand-sim-intro"><button class="deck-hand-sim-btn" type="button">Simular 100 manos</button><span>100 manos aleatorias de 7 cartas, sin mulligan previo.</span></div>
-            <div class="deck-hand-results" hidden></div>
-            <div class="deck-hand-distribution" hidden></div>
-            <div class="deck-stats-note">Criterios: “equilibrada” = 2–4 tierras + al menos un hechizo CMC ≤3; “salida temprana” = 2–4 tierras + al menos una jugada CMC 1–2; “mulligan probable” = 0–1 o 6–7 tierras. Son métricas de referencia, no reglas universales.</div>
-          </section>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-
-    const close = () => modal.remove();
-    modal.querySelector('.deck-stats-close').addEventListener('click', close);
-    modal.addEventListener('click', event => { if (event.target === modal) close(); });
-
-    modal.querySelector('.deck-hand-sim-btn').addEventListener('click', () => {
-      const result = simulateOpeningHands(entries, 100);
-      const results = modal.querySelector('.deck-hand-results');
-      const dist = modal.querySelector('.deck-hand-distribution');
-      results.hidden = false;
-      dist.hidden = false;
-      const metrics = [
-        ['Mano equilibrada',`${result.balancedPct}%`],
-        ['Salida temprana',`${result.earlyPlayPct}%`],
-        ['Mulligan probable',`${result.mulliganPct}%`],
-        ['3–4 tierras',`${result.threeFourLandsPct}%`],
-        ['0 tierras',`${result.zeroLandPct}%`],
-        ['1 tierra',`${result.oneLandPct}%`],
-        ['5+ tierras',`${result.fivePlusLandsPct}%`],
-        ['Prom. tierras',result.averageLands.toFixed(2)],
-        ['Prom. criaturas',result.averageCreatures.toFixed(2)],
-        ['Con criatura',`${result.creatureHandPct}%`]
-      ];
-      results.innerHTML = metrics.map(([label,value]) => `<div class="deck-hand-metric"><strong>${value}</strong><span>${label}</span></div>`).join('');
-      const max = Math.max(1, ...result.landHistogram);
-      dist.innerHTML = result.landHistogram.map((pct,index) => {
-        const barPct = Math.max(1, Math.round((pct / max) * 100));
-        return `<div class="deck-hand-dist-col"><div class="deck-hand-dist-bar-slot"><div class="deck-hand-dist-bar" style="--deck-hand-bar-height:${barPct}%"></div></div><b>${index}</b><span>${pct}%</span></div>`;
-      }).join('');
+    statisticsDialog?.close();
+    hideDeckCardPreview();
+    const statisticsUid=state.currentUser?.uid;
+    statisticsDialog=showDeckInsights({
+      entries:getCurrentDeckEntries(),
+      beforeEntries:existingDeck?getCurrentDeckEntries(savedDeckCounts):null,
+      name:workingDeckName,
+      chartMode:statisticsChartMode,
+      valid:()=>overlay.isConnected&&state.currentUser?.uid===statisticsUid,
+      onChartMode:mode=>{statisticsChartMode=mode;},
+      onRecent:showRecentCollection,
+      onLocate:entry=>{
+        collapsedDeckGroups.set(entry.categoryKey,false);
+        renderList();
+        const item=[...list.querySelectorAll('.deckbuilder-list-item')].find(node=>node.dataset.trackingKey===entry.trackingKey);
+        if(item){item.classList.add('deckbuilder-located');item.scrollIntoView({block:'center'});const label=item.querySelector('.deckbuilder-list-card-name');label.tabIndex=-1;label.focus({preventScroll:true});}
+      }
     });
   }
 
@@ -9354,6 +9307,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     updateDeckSaveState();
 
     hideDeckCardPreview();
+    overlay.querySelector('#deckbuilder-collapse-all').disabled=entries.length===0;
+    overlay.querySelector('#deckbuilder-expand-all').disabled=entries.length===0;
     if (entries.length === 0) {
       list.innerHTML = '<div class="deckbuilder-empty-hint">Todavía no agregaste ninguna carta — hacé click en una de la izquierda.</div>';
       return;
@@ -9366,9 +9321,19 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const groupEl = document.createElement('section');
       groupEl.className = 'deckbuilder-type-group';
 
-      const header = document.createElement('div');
+      const header = document.createElement('button');
+      header.type = 'button';
       header.className = 'deckbuilder-type-header';
+      header.dataset.deckGroup = group.key;
+      const body = document.createElement('div');
+      body.className = 'deckbuilder-type-body';
+      body.id = 'deckbuilder-group-' + group.key;
+      const toggle = document.createElement('span');
+      toggle.className = 'deckbuilder-type-toggle';
+      toggle.setAttribute('aria-hidden','true');
+      header.appendChild(toggle);
       const headerMain = document.createElement('span');
+      headerMain.className = 'deckbuilder-type-header-main';
       headerMain.innerHTML = `${group.label} <span class="deckbuilder-type-header-count">(${group.count})</span>`;
       header.appendChild(headerMain);
       if (group.showManaValue) {
@@ -9377,12 +9342,21 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         mv.textContent = `MV = ${formatManaValue(group.manaValue)}`;
         header.appendChild(mv);
       }
-      groupEl.appendChild(header);
+      header.setAttribute('aria-controls',body.id);
+      const syncCollapsed=()=>{
+        const collapsed=collapsedDeckGroups.get(group.key)??defaultGroupsCollapsed;
+        body.hidden=collapsed;header.setAttribute('aria-expanded',String(!collapsed));
+        toggle.textContent=collapsed?'▸':'▾';
+      };
+      header.addEventListener('click',()=>{hideDeckCardPreview();collapsedDeckGroups.set(group.key,!body.hidden);syncCollapsed();});
+      syncCollapsed();
+      groupEl.append(header,body);
 
       const renderEntries = (parent, cmcEntries) => {
         cmcEntries.forEach(entry => {
           const item = document.createElement('div');
           item.className = 'deckbuilder-list-item';
+          item.dataset.trackingKey = entry.trackingKey;
           const label = document.createElement('span');
           label.className = 'deckbuilder-list-card-name';
           label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' · Mejorada' : ''}${entry.isEvolved ? ` · ${gameText('workshop.evolution.badge',{stage:entry.evolutionStage})}` : ''}${entry.isFlashera ? ' · FLASHERA' : ''}`;
@@ -9417,7 +9391,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
       if (group.key === 'tierras') {
         const flat = group.cmcGroups.flatMap(cmcGroup => cmcGroup.entries);
-        renderEntries(groupEl, flat);
+        renderEntries(body, flat);
       } else {
         group.cmcGroups.forEach(cmcGroup => {
           const cmcEl = document.createElement('div');
@@ -9427,7 +9401,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
           cmcTitle.textContent = `CMC: ${cmcGroup.cmc}`;
           cmcEl.appendChild(cmcTitle);
           renderEntries(cmcEl, cmcGroup.entries);
-          groupEl.appendChild(cmcEl);
+          body.appendChild(cmcEl);
         });
       }
       list.appendChild(groupEl);
@@ -9522,8 +9496,17 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   });
 
   overlay.querySelector('#deckbuilder-stats').addEventListener('click', showDeckStatisticsModal);
+  overlay.querySelector('#deckbuilder-recent').addEventListener('click', showRecentCollection);
+  for(const [id,collapsed] of [['deckbuilder-collapse-all',true],['deckbuilder-expand-all',false]]){
+    overlay.querySelector('#'+id).addEventListener('click',()=>{
+      defaultGroupsCollapsed=collapsed;
+      for(const group of buildDeckComposition(getCurrentDeckEntries()))collapsedDeckGroups.set(group.key,collapsed);
+      renderList();
+    });
+  }
 
   overlay.querySelector('#deckbuilder-cancel').addEventListener('click', () => {
+    statisticsDialog?.close();
     overlay.remove();
     onCancel();
   });

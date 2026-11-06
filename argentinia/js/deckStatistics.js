@@ -1,4 +1,7 @@
+import { normalizeManaAbility } from './manaSources.js';
 const COLORS = ['W','U','B','R','G','C'];
+const isLandCard = card => /Tierra/i.test(String(card?.type || ''));
+const isCreatureCard = card => card?.power !== undefined || /Criatura/i.test(String(card?.type || ''));
 
 function safeCmc(card) {
   const n = Number(card?.cmc);
@@ -13,6 +16,8 @@ export function parseManaDemand(manaCost = '') {
 }
 
 export function getManaSourceProfile(card) {
+  const ability = normalizeManaAbility(card);
+  if (ability) return { colors:[...ability.options], flexible:ability.options.length>1, amount:ability.amount };
   const colors = new Set();
   let flexible = false;
   const produced = String(card?.produces || '').toUpperCase();
@@ -36,15 +41,15 @@ export function buildDeckStatistics(entries = []) {
     demand:{W:0,U:0,B:0,R:0,G:0,C:0},
     cardColors:{W:0,U:0,B:0,R:0,G:0,C:0},
     sources:{W:0,U:0,B:0,R:0,G:0,C:0}, flexibleSources:0, manaSourceCards:0,
-    typeCounts:{}
+    typeCounts:{}, flexibleSymbols:0, xCards:0
   };
   for (const entry of entries) {
     if (!entry?.card || !entry?.count || entry.count <= 0) continue;
-    const count = entry.count;
+    const count = Math.max(0,Math.floor(Number(entry.count)||0));
     const card = entry.card;
     const category = entry.categoryKey || 'otros';
     const isLand = category === 'tierras' || /Tierra/i.test(String(card.type || ''));
-    const isCreature = category === 'criaturas';
+    const isCreature = isCreatureCard(card);
     stats.total += count;
     stats.typeCounts[category] = (stats.typeCounts[category] || 0) + count;
     if (isLand) stats.lands += count;
@@ -56,6 +61,8 @@ export function buildDeckStatistics(entries = []) {
       if (bucket in stats.curve) stats.curve[bucket] += count;
       const demand = parseManaDemand(card.manaCost);
       COLORS.forEach(c => { stats.demand[c] += demand[c] * count; });
+      stats.flexibleSymbols += (String(card.manaCost||'').match(/\{[^}]*\/[^}]*\}/g)||[]).length*count;
+      if(String(card.manaCost||'').includes('{X}'))stats.xCards+=count;
     }
     if (isCreature) stats.creatures += count;
     const colors = Array.isArray(card.colors) ? card.colors : [];
@@ -105,7 +112,7 @@ export function analyzeDeckHealth(stats) {
 
 function expandEntries(entries) {
   const deck = [];
-  for (const entry of entries) for (let i=0; i<(entry.count || 0); i++) deck.push({ card:entry.card, categoryKey:entry.categoryKey });
+  for (const entry of entries) if(entry?.card)for (let i=0; i<Math.max(0,Math.floor(Number(entry.count)||0)); i++) deck.push({ card:entry.card, categoryKey:entry.categoryKey });
   return deck;
 }
 
@@ -128,9 +135,9 @@ export function simulateOpeningHands(entries = [], iterations = 100, rng = Math.
   for (let r=0; r<runs; r++) {
     const hand = sampleHand(deck, 7, rng);
     const lands = hand.filter(x => x.categoryKey === 'tierras' || /Tierra/i.test(String(x.card?.type || ''))).length;
-    const creatures = hand.filter(x => x.categoryKey === 'criaturas').length;
-    const hasEarly3 = hand.some(x => x.categoryKey !== 'tierras' && safeCmc(x.card) <= 3);
-    const hasEarly2 = hand.some(x => x.categoryKey !== 'tierras' && safeCmc(x.card) >= 1 && safeCmc(x.card) <= 2);
+    const creatures = hand.filter(x => isCreatureCard(x.card)).length;
+    const hasEarly3 = hand.some(x => x.categoryKey !== 'tierras' && !isLandCard(x.card) && safeCmc(x.card) <= 3);
+    const hasEarly2 = hand.some(x => x.categoryKey !== 'tierras' && !isLandCard(x.card) && safeCmc(x.card) >= 1 && safeCmc(x.card) <= 2);
     landHistogram[Math.min(7, lands)] += 1;
     landsTotal += lands; creaturesTotal += creatures;
     if (lands >= 2 && lands <= 4 && hasEarly3) balanced += 1;
@@ -150,4 +157,35 @@ export function simulateOpeningHands(entries = [], iterations = 100, rng = Math.
     averageLands: landsTotal / runs, averageCreatures: creaturesTotal / runs,
     landHistogram: landHistogram.map(n => pct(n))
   };
+}
+
+// Exact descriptive draw probabilities, without replacement. They describe the
+// cards in the current list; they do not prove timing, targets or color payment.
+export function drawCountProbability(total, successes, draws, hits) {
+  const n=Math.max(0,Math.floor(Number(total)||0));
+  const k=Math.min(n,Math.max(0,Math.floor(Number(successes)||0)));
+  const d=Math.min(n,Math.max(0,Math.floor(Number(draws)||0)));
+  if(!n || !Number.isSafeInteger(hits) || hits<0 || hits>d || hits>k || d-hits>n-k)return 0;
+  const choose=(a,b)=>{let result=1;for(let i=1;i<=Math.min(b,a-b);i++)result=result*(a-i+1)/i;return result;};
+  return choose(k,hits)*choose(n-k,d-hits)/choose(n,d);
+}
+
+export function openingHandProfile(entries=[]) {
+  const stats=buildDeckStatistics(entries),draws=Math.min(7,stats.total);
+  const early=entries.reduce((n,e)=>n+(e?.card&&e.categoryKey!=='tierras'&&!isLandCard(e.card)&&safeCmc(e.card)>=1&&safeCmc(e.card)<=2?Math.max(0,Math.floor(Number(e.count)||0)):0),0);
+  return {draws,earlyCards:early,
+    twoFourLands:stats.total?[2,3,4].reduce((n,k)=>n+drawCountProbability(stats.total,stats.lands,draws,k),0)*100:0,
+    atLeastOneEarly:stats.total?(1-drawCountProbability(stats.total,early,draws,0))*100:0,
+    atLeastOneCreature:stats.total?(1-drawCountProbability(stats.total,stats.creatures,draws,0))*100:0};
+}
+
+export function compareDeckEntries(before=[],after=[]) {
+  const counts=entries=>new Map(entries.map(e=>[e.trackingKey||e.card.id,e]));
+  const old=counts(before),next=counts(after),added=[],removed=[];
+  for(const key of new Set([...old.keys(),...next.keys()])){
+    const a=old.get(key),b=next.get(key),delta=(b?.count||0)-(a?.count||0);
+    if(delta>0)added.push({...b,count:delta});
+    if(delta<0)removed.push({...a,count:-delta});
+  }
+  return {added,removed,before:buildDeckStatistics(before),after:buildDeckStatistics(after)};
 }
