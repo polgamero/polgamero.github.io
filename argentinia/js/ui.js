@@ -9701,6 +9701,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, op
 export function showMyDecksScreen(onBack) {
   injectMyDecksStyles();
   injectDeckBuilderStyles(); // Stage30: premium marker in saved-deck details is styled without entering the builder first.
+  ensureDeckBuilderLayoutStyles(); // Shared variant pills also apply before opening Editar.
   injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
   injectDeckBuilderStyles(); // reusamos .deckbuilder-enhanced-marker para marcar la copia mejorada
   injectStoreStyles(); // .store-back-link/.store-section: siempre disponibles
@@ -9887,23 +9888,26 @@ export function showMyDecksScreen(onBack) {
       slot.style.position = 'relative';
       // Acá nunca hay grisado: todo lo que está en un mazo, por definición, es tuyo.
       slot.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
+      const pills = document.createElement('div');
+      pills.className = 'deckbuilder-variant-pills';
+      slot.appendChild(pills);
+      if (isFlashera) {
+        const marker = document.createElement('div');
+        marker.className = 'deckbuilder-flashera-marker'; marker.textContent='💫 FLASHERA';
+        marker.setAttribute('aria-label','Copia Flashera guardada');
+        pills.appendChild(marker);
+      }
       if (isEnhanced) {
         const marker = document.createElement('div');
         marker.className = 'deckbuilder-enhanced-marker';
         marker.textContent = '✨ Mejorada';
-        slot.appendChild(marker);
+        pills.appendChild(marker);
       }
       if (isEvolved) {
         const marker = document.createElement('div');
         marker.className = 'deckbuilder-enhanced-marker deckbuilder-evolved-marker';
         marker.textContent = gameText('workshop.evolution.badge',{stage:evolutionStage});
-        slot.appendChild(marker);
-      }
-      if (isFlashera) {
-        const marker = document.createElement('div');
-        marker.className = 'deckbuilder-flashera-marker'; marker.textContent='💫 FLASHERA';
-        marker.setAttribute('aria-label','Copia Flashera guardada');
-        slot.appendChild(marker);
+        pills.appendChild(marker);
       }
       grid.appendChild(slot);
     });
