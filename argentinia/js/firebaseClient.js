@@ -244,6 +244,7 @@ export const applyAbandonPenalty = asyncProxy('applyAbandonPenalty');
 export const flushPendingAbandonPenalties = asyncProxy('flushPendingAbandonPenalties');
 export const getSanctuaryStatus = asyncProxy('getSanctuaryStatus');
 export const loadAuthorizedDiscoveryCards = asyncProxy('loadAuthorizedDiscoveryCards');
+export const refreshDiscoveryCardsForPlay = asyncProxy('refreshDiscoveryCardsForPlay');
 export const resolveSanctuaryBarcode = asyncProxy('resolveSanctuaryBarcode');
 export const claimSanctuaryBarcode = asyncProxy('claimSanctuaryBarcode');
 export const resolveSanctuaryResonance = asyncProxy('resolveSanctuaryResonance');

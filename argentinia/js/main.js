@@ -18,6 +18,7 @@ import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTy
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, loadAuthorizedDiscoveryCards, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, attestMultiplayerDeck, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
+import {clearDiscoveryPlayAssets} from './discoveryPlayAssets.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
@@ -2153,6 +2154,7 @@ async function boot() {
   // refresque el avatar y el widget de cuenta sin tener que reabrir nada a mano.
   onAuthChange((firebaseUser) => {
     const serial = ++authIdentitySerial;
+    if(state.currentUser?.uid!==firebaseUser?.uid){clearDiscoveryPlayAssets();cardDb.clearAuthorizedDiscoveryCards?.();}
     state.authInitialResolved = true;
     state.authIdentityReady = !firebaseUser;
     state.currentUser = firebaseUser ? {

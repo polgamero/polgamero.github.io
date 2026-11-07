@@ -156,7 +156,8 @@ export function applyCardTextLayoutToBox(box, cardId, layoutOverride = null) {
   if (!isElementLike(box)) return;
   const id = String(cardId || '');
   if (id) box.dataset.cardTextLayoutId = id;
-  const layout = layoutOverride ? normalizeCardTextLayout(layoutOverride) : getCardTextLayout(id);
+  const selectedOverride=layoutOverride||box.__argDiscoveryTextOverride;
+  const layout = selectedOverride ? normalizeCardTextLayout(selectedOverride) : getCardTextLayout(id);
   const autoTextCqw = finiteNumber(box.dataset.autoTextCqw, 6);
   const title = box.closest?.('.card')?.querySelector?.('.card-title');
   if (title) {
@@ -209,11 +210,12 @@ export async function ensureCardTextLayoutsLoaded({ force = false } = {}) {
   return loadPromise;
 }
 
-export function registerCardTextBox(box, cardId) {
+export function registerCardTextBox(box, cardId, layoutOverride = undefined) {
   if (!isElementLike(box)) return;
   const id = String(cardId || '');
   if (!id) return;
   box.dataset.cardTextLayoutId = id;
+  if(isDiscoveryCardId(id)&&layoutOverride!==undefined)box.__argDiscoveryTextOverride=normalizeCardTextLayout(layoutOverride);
   applyCardTextLayoutToBox(box, id);
   const canAttemptRemoteLoad = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof window.location?.href === 'string';
   if (canAttemptRemoteLoad && !remoteLoaded && !loadPromise && !lastLoadError) {

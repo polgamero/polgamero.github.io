@@ -827,6 +827,18 @@ export async function getSanctuaryStatus() {
   return response?.status || null;
 }
 
+export async function refreshDiscoveryCardsForPlay({matchId='',revealCardIds=[],revealOfferId=''}={}) {
+  const uid=auth.currentUser?.uid;if(!uid)return {ownedCards:[],matchCards:[]};
+  const payload={includeDiscoveryAssets:true};
+  if(matchId){payload.matchId=String(matchId);payload.matchSessionId=MULTIPLAYER_CLIENT_SESSION_ID;payload.revealCardIds=revealCardIds;if(revealOfferId)payload.revealOfferId=String(revealOfferId);}
+  const response=await getSanctuaryStatusServer(payload);
+  if(auth.currentUser?.uid!==uid)return {ownedCards:[],matchCards:[]};
+  if(Array.isArray(response?.publicDiscoveryCatalog))cardDb.setDiscoveryPublicCatalog(response.publicDiscoveryCatalog);
+  const ownedCards=Array.isArray(response?.authorizedDiscoveryCards)?response.authorizedDiscoveryCards:[];
+  cardDb.injectAuthorizedDiscoveryCards(ownedCards);
+  return {ownedCards,matchCards:Array.isArray(response?.matchDiscoveryCards)?response.matchDiscoveryCards:[],pendingMatchCards:Number(response?.pendingMatchCards)||0};
+}
+
 export async function resolveSanctuaryBarcode(gtin) {
   const response = await resolveSanctuaryBarcodeServer(gtin);
   return response?.resolution || null;
@@ -1448,6 +1460,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   }
 
   const ownedCounts = {};
+  cardDb.assertOwnedDiscoveryDeck(cardIds,data,{maxCopies:MAX_COPIES_PER_CARD});
   if (allowVirtualAdminPool) {
     // 23.11.13 — colección virtual de test: el admin puede guardar mazos contra todo el
     // pool sin persistir 511 IDs/copias artificiales en su perfil. Los topes legales de
@@ -1455,6 +1468,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
     cardDb.enabledCards.forEach(card => {
       ownedCounts[card.id] = card.type?.includes('básica') ? DECK_SIZE_EXACT : MAX_COPIES_PER_CARD;
     });
+    for(const id of data.collection||[])if(cardDb.authorizedDiscoveryCards.some(card=>card.id===id))ownedCounts[id]=(ownedCounts[id]||0)+1;
   } else {
     (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
   }
@@ -1486,7 +1500,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   });
 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
-    if (!cardDb.isEnabled(baseId)) throw new Error(`La carta ${cardDb.getById(baseId)?.name || baseId} está deshabilitada y no puede guardarse en un mazo jugable.`);
+    if (!cardDb.isOwnedPlayable(baseId,data)) throw new Error(`La carta ${cardDb.getById(baseId)?.name || baseId} está deshabilitada o no está autorizada para este mazo.`);
     if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
     // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
     // (esas no tienen límite, ni acá ni en el contrato canónico de Argentinia).

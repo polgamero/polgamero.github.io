@@ -2292,13 +2292,13 @@ button.mana-pool-chip:disabled { opacity: 1; }
    Mientras el puntero está sobre el campo rival elevamos SU contenedor completo y luego
    la carta hovered, sin alterar el orden normal cuando no hay hover.
    ========================================================== */
-#rival-hand + .field-zone-container:hover {
+html:not(.argentinia-mobile) #rival-hand + .field-zone-container:hover {
   z-index: 3000;
 }
-#rival-hand + .field-zone-container .card:hover {
+html:not(.argentinia-mobile) #rival-hand + .field-zone-container .card:hover {
   z-index: 4000 !important;
 }
-#rival-hand + .field-zone-container .card.tapped:hover .card-inner {
+html:not(.argentinia-mobile) #rival-hand + .field-zone-container .card.tapped:hover .card-inner {
   z-index: 4001 !important;
 }
 

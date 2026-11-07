@@ -288,8 +288,11 @@ export function adminDailyDebugServer(mode) {
   return call('economyAdminDailyDebug', { mode: String(mode || '') });
 }
 
-export function getSanctuaryStatusServer({includeDiscoveryAssets=false}={}) {
-  return call('economyGetSanctuaryStatus',{includeDiscoveryAssets:includeDiscoveryAssets===true});
+export function getSanctuaryStatusServer({includeDiscoveryAssets=false,matchId='',matchSessionId='',revealCardIds=[],revealOfferId=''}={}) {
+  const payload={includeDiscoveryAssets:includeDiscoveryAssets===true};
+  if(matchId){payload.matchId=String(matchId);payload.matchSessionId=String(matchSessionId);payload.revealCardIds=Array.isArray(revealCardIds)?[...revealCardIds]:revealCardIds;}
+  if(matchId&&revealOfferId)payload.revealOfferId=String(revealOfferId);
+  return call('economyGetSanctuaryStatus',payload);
 }
 
 

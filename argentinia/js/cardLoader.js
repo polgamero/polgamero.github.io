@@ -8,6 +8,9 @@ import { PUBLIC_POOL_BASELINE } from './poolContract.js';
 import { ensureCardCatalogLoaded, applyCardCatalogToPool, subscribeCardCatalog } from './cardPublication.js';
 import { injectPrivateDiscoveryArtLayouts } from './artLayout.js';
 import { injectPrivateDiscoveryTextLayouts } from './textLayout.js';
+import {isDiscoveryCard} from './discoveryCards.js';
+import {isOwnedDiscoveryPlayable,ownedCardCopies,ownedDiscoveryDeckIds} from './discoveryPlayability.js';
+import {assertDeckFlasheraOwnership} from './flasheraDeck.js';
 
 const IMAGE_MANIFEST_URL = './assets/images/cards/cards-image-manifest.json';
 const DISCOVERY_PUBLIC_URL = './assets/data/discovery-public.json';
@@ -327,6 +330,28 @@ class CardDatabase {
   }
 
   isEnabled(id) { return !!this.getEnabledById(id); }
+
+  discoveryAuthorizationIds() { return new Set(this.authorizedDiscoveryCards.map(card=>String(card.id))); }
+
+  isOwnedPlayable(id,profile) {
+    const card=this.getById(id);
+    return isDiscoveryCard(card)
+      ? isOwnedDiscoveryPlayable(card,profile,this.discoveryAuthorizationIds())
+      : !!card&&card.enabled!==false;
+  }
+
+  getOwnedPlayableCards(profile,{includePublicVirtual=false}={}) {
+    const authorized=this.discoveryAuthorizationIds();
+    return this.allCards.filter(card=>isDiscoveryCard(card)
+      ? isOwnedDiscoveryPlayable(card,profile,authorized)
+      : card.enabled!==false&&(includePublicVirtual||ownedCardCopies(profile,card.id)>0));
+  }
+
+  assertOwnedDiscoveryDeck(cardIds,profile,{maxCopies=4}={}) {
+    const selected=ownedDiscoveryDeckIds(cardIds,profile,{getCard:id=>this.getById(id),authorizedIds:this.discoveryAuthorizationIds(),maxCopies});
+    if(selected.length)assertDeckFlasheraOwnership(profile,selected,{maxCopiesPerCard:maxCopies});
+    return selected;
+  }
 
   getByType(typeString, { includeDisabled = false } = {}) {
     const source = includeDisabled ? this.allCards : this.enabledCards;

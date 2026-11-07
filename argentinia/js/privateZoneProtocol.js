@@ -1,6 +1,8 @@
 // js/privateZoneProtocol.js — Entrega 23.10
 // Contrato puro para selecciones sobre zonas privadas del rival.
 // Este módulo NO conoce state ni Firestore: construye ofertas saneadas y valida commits.
+import {isDiscoveryCard} from './discoveryCards.js';
+import {discoveryCardForPlay} from './discoveryPlayability.js';
 
 export const PRIVATE_ZONE_VISIBILITY = Object.freeze({
   OPAQUE: 'opaque_slots',
@@ -61,6 +63,13 @@ function sanitizePrivateFaceDescriptor(card) {
   out.type = card.type || null;
   out.cmc = Number.isFinite(Number(card.cmc)) ? Number(card.cmc) : 0;
   out.colors = Array.isArray(card.colors) ? [...card.colors] : [];
+  if(isDiscoveryCard(card)){
+    const safe=discoveryCardForPlay(card);
+    out.acquisition={type:'discovery'};
+    if(safe.discovery)out.discovery=clonePrivateRevealValue(safe.discovery);
+    if(safe.discoveryPresentation)out.discoveryPresentation=clonePrivateRevealValue(safe.discoveryPresentation);
+    if(/^https:\/\//i.test(String(safe.runtimeImageUrl||'')))out.runtimeImageUrl=safe.runtimeImageUrl;
+  }
   // Visible only when this specific slot is legally revealed; opaque offers stay opaque.
   if (card.flashera === true && card.isToken !== true) out.flashera = true;
   if (card?.dfc?.kind === 'transform' && card.dfc.backFace) {

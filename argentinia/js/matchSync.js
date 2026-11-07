@@ -8,6 +8,7 @@
 //      de cada cliente, incluyendo targets y fuentes de habilidades.
 import { deriveLocalPriorityActivity } from './priorityUX.js';
 import { controllerRoleForSide } from './controlEngine.js';
+import {discoverySafePublicValue} from './discoveryPlayability.js';
 
 export const PER_PLAYER_FIELDS = [
   'HP', 'Poison', 'ManaPool', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
@@ -274,7 +275,7 @@ export function serializeStackForPublic(stack, state, myRole) {
       id: item?.id ?? null,
       controllerRole: item?.isLocal ? myRole : otherRole(myRole),
       type: item?.type || null,
-      card: item?.card || null,
+      card: discoverySafePublicValue(item?.card || null),
       target: serializeStackTarget(item?.targetObj, state, myRole),
       xValue: item?.xValue ?? null,
       castFrom: item?.castFrom ?? null,
@@ -408,7 +409,7 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
   patch.abandonedBy = state.abandonedBy === 'local' ? myRole : (state.abandonedBy === 'rival' ? rivalRole : null);
   patch.stackState = serializeStackForPublic(stack, state, myRole);
 
-  return patch;
+  return discoverySafePublicValue(patch);
 }
 
 export function extractRivalStateFromPublicDoc(publicDoc, myRole, touchedKeys = null) {

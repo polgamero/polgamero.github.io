@@ -10,6 +10,7 @@ import { gameRandom } from './gameRng.js';
 import { parseCardVariantId } from './cardVariant.js';
 import { assertDeckFlasheraOwnership, isFlasheraDeck } from './flasheraDeck.js';
 import { putPhysicalFlashera } from './flasheraGameplay.js';
+import {discoveryCardForPlay} from './discoveryPlayability.js';
 
 export function shuffle(array, randomFn = gameRandom) {
   if (!Array.isArray(array)) return array;
@@ -251,6 +252,7 @@ export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, pro
   // Stage31: the finish must survive into physical game instances. Reject invented
   // premium copies before shuffle/hand split (also used by Solo/Tournament/PvP).
   if (!Array.isArray(cardIds)) throw new Error('El mazo debe ser una lista de variantes canónicas.');
+  cardDb.assertOwnedDiscoveryDeck(cardIds,profile);
   if (isFlasheraDeck(cardIds)) {
     if (!profile || !Array.isArray(profile.collection)) {
       const error = new Error('No se pudo verificar la propiedad de las cartas Flasheras antes de jugar.');
@@ -269,11 +271,11 @@ export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, pro
       const baseId = variant.baseId;
       const cardDef = cardDb.getById(baseId);
       if (!cardDef) return null;
-      if (cardDef.enabled === false) {
+      if (!cardDb.isOwnedPlayable(baseId,profile)) {
         const error = new Error(`La carta ${cardDef.name || baseId} está deshabilitada. Editá el mazo antes de jugar.`);
         error.code = 'CARD_DISABLED'; error.cardId = baseId; throw error;
       }
-      let cloned = { ...cardDef };
+      let cloned = { ...discoveryCardForPlay(cardDef) };
       if (parsedEvolution.stage > 0) {
         const authorizedStage = evolutionStageForProfile(evolutions, baseId);
         if (authorizedStage !== parsedEvolution.stage) {

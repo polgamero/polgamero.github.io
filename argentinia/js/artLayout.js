@@ -174,7 +174,8 @@ export function applyArtLayoutToImage(img, cardId, layoutOverride = null) {
   if (!isElementLike(img)) return;
   const id = String(cardId || '');
   if (id) img.dataset.cardArtId = id;
-  const layout = layoutOverride ? normalizeArtLayout(layoutOverride) : getArtLayout(id);
+  const selectedOverride=layoutOverride||img.__argDiscoveryArtOverride;
+  const layout = selectedOverride ? normalizeArtLayout(selectedOverride) : getArtLayout(id);
 
   // Sin layout custom NO agregamos transform: preserva pixel-a-pixel el renderer histórico
   // (width/height 120%, object-fit:cover, object-position:center top y static-position flex).
@@ -239,12 +240,13 @@ export async function ensureArtLayoutsLoaded({ force = false } = {}) {
 // Se llama desde createCardElement. Es deliberadamente fire-and-forget: nunca convierte el
 // render sincrónico de una carta en una dependencia de red. La primera carta dispara UNA
 // sola carga compartida; las demás reutilizan esa Promise.
-export function registerCardArtImage(img, cardId) {
+export function registerCardArtImage(img, cardId, layoutOverride = undefined) {
   if (!isElementLike(img)) return;
   const id = String(cardId || '');
   if (!id) return;
   img.classList.add('card-art-image');
   img.dataset.cardArtId = id;
+  if(isDiscoveryCardId(id)&&layoutOverride!==undefined)img.__argDiscoveryArtOverride=normalizeArtLayout(layoutOverride);
   applyArtLayoutToImage(img, id);
 
   const canAttemptRemoteLoad = typeof window !== 'undefined' && typeof document !== 'undefined' &&
