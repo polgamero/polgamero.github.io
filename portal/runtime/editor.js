@@ -1,4 +1,5 @@
 import {mergeArticlePresets} from './articlePresets.js';
+import {planArticleRevision,revisedEdition} from './articleRevisionBatch.js';
 import {portalServices} from './firebasePortal.js';
 import {normalizeArticle,newArticle,fromLegacy,editorialId,articleMedia,formatEditorialRuns,editParagraph} from './articleModel.js';
 import {renderArticle} from './articleRenderer.js';
@@ -14,7 +15,7 @@ const configURL=new URL('../portal-config.json',import.meta.url);
 export async function mountEditor(root,{services=portalServices,embedded=false}={}){
   const login=root.querySelector('[data-editor-login]'),content=root.querySelector('[data-editor-workspace]'),status=root.querySelector('[data-editor-status]');
   const list=root.querySelector('[data-editor-list]'),form=root.querySelector('[data-editor-form]'),preview=root.querySelector('[data-editor-preview]'),toolbar=root.querySelector('[data-editor-toolbar]');
-  let api=null,user=null,article=null,head=null,dirty=false,busy=false,epoch=0,active=false,local=false,publisher=false,stopAuth=null;
+  let api=null,user=null,article=null,head=null,dirty=false,busy=false,epoch=0,active=false,local=false,publisher=false,batchPublisher=false,stopAuth=null;
   let pendingOperation=null,queued=null,live=null;
   const media=mediaCache(data=>api.action(data));
   const say=text=>{status.textContent=text;};
@@ -60,10 +61,13 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
     for(const r of data.revisions)box.append(button(`Cargar revisión ${r.revision} · ${r.createdAt}`,async()=>{if(busy||!await discard())return;await locked(async current=>{const old=await api.action({action:'get',articleId:article.id,revision:r.revision});await loadMedia(old.article);if(!current())return;article=normalizeArticle(old.article);head=old.head;dirty=true;pendingOperation=null;epoch++;render();say('Revisión anterior recuperada para editar. Guardala para crear una revisión nueva; la edición pública no cambió.');});}));
     box.append(el('p',{},`Se muestran las últimas ${data.revisions.length} de ${data.total} revisiones. Las anteriores se conservan en el servidor.`));
   });}
-  async function initialArticles(){
+  async function preparedArticles(){
     const response=await fetch(new URL('../editorial/article-presets.json',import.meta.url),{cache:'no-store'});
     if(!response.ok)throw Error('No se pudo cargar la edición preparada. Reintentá antes de importar o publicar.');
-    const prepared=await response.json();
+    return response.json();
+  }
+  async function initialArticles(){
+    const prepared=await preparedArticles();
     const remote=local?[]:(await api.action({action:'seeds'})).articles;
     return mergeArticlePresets(remote,prepared);
   }
@@ -73,10 +77,10 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
       if(!valid())return;await listArticles();say(`${created} borradores iniciales creados${local?' en esta sesión local':' en el servidor'}. No se publicaron.`);
     });}
   async function publishInitialEdition(){
-    if(local||!publisher||busy||!await discard())return;
+    if(local||!batchPublisher||busy||!await discard())return;
     await locked(async valid=>{
       const seeds=await initialArticles();
-      const {heads}=await api.action({action:'list'}),byId=new Map(heads.map(h=>[h.id,h]));
+      const {heads}=await api.action({action:'list'}),byId=new Map(heads.map(head=>[head.id,head]));
       const plan=[];
       for(const raw of seeds){
         if(!valid())return;
@@ -85,22 +89,125 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
         plan.push({article:data,head:existing?.head||null});
       }
       if(!valid())return;
-      const description=plan.map(p=>`• ${p.article.title}${p.head?' · revisión '+p.head.revision:' · nueva'}`).join('\n');
-      if(!await showGameDialog('Se solicitará publicar estas entradas. Los borradores existentes se conservarán tal como están; no se reemplazarán con el contenido inicial.\n\n'+description,{title:'Publicar edición inicial',confirm:true,acceptLabel:'Solicitar publicación',valid}))return;
+      if(plan.every(({head})=>head&&head.desiredRevision===head.revision)){
+        await checkBatchPublication(plan,valid);
+        return;
+      }
+      const description=plan.map(({article,head})=>`• ${article.title} · ${head?`revisión ${head.revision}`:'entrada nueva'}`).join('\n');
+      const confirmed=await showGameDialog(
+        'Se solicitará una publicación para toda la edición. Los borradores existentes se conservarán.\n\n'+description,
+        {title:'Publicar edición inicial',confirm:true,acceptLabel:'Solicitar publicación',valid}
+      );
+      if(!confirmed||!valid())return;
+      for(const item of plan){
+        if(!valid())return;
+        if(item.head)continue;
+        const saved=await api.action({action:'save',requestId:editorialId().toLowerCase(),article:item.article,expectedRevision:0});
+        item.head=saved.head;
+      }
+      if(!valid())return;
+      await listArticles();
+      if(valid())await sendBatchPublication(plan,valid);
+    });
+  }
+  async function prepareRevisionBatch(valid){
+    const edition=revisedEdition(await preparedArticles());
+    const plan=[];
+    for(const revision of edition){
+      if(!valid())return [];
+      let saved;
+      try{
+        saved=await api.action({action:'get',articleId:revision.id});
+      }catch(error){
+        if(error.code!=='NOT_FOUND')throw error;
+      }
+      const item=planArticleRevision(revision,saved);
+      validateSiteContent(item.article);
+      plan.push(item);
+    }
+    return plan;
+  }
+  async function saveRevisionBatch(){
+    if(local||busy||!await discard())return;
+    await locked(async valid=>{
+      say('Buscando las 19 entradas de la revisión editorial…');
+      const plan=await prepareRevisionBatch(valid);
+      if(!valid())return;
+      const pending=plan.filter(item=>item.changed);
+      if(!pending.length){say('Las 19 entradas de esta edición ya están guardadas.');return;}
+      const list=pending.map(({article,head})=>`• ${article.title} · ${head?`revisión actual ${head.revision}`:'entrada nueva'}`).join('\n');
+      const confirmed=await showGameDialog(
+        `Se guardarán ${pending.length} entradas como borradores. Las revisiones anteriores quedan en el historial. Se conservan la portada, las etiquetas y las imágenes. Las imágenes del cuerpo quedan al final del texto nuevo.\n\n${list}`,
+        {title:'Guardar revisión editorial',confirm:true,acceptLabel:'Guardar lote',valid}
+      );
+      if(!confirmed||!valid()){if(valid())say('Guardado cancelado.');return;}
+      article=null;head=null;dirty=false;pendingOperation=null;
+      form.replaceChildren();preview.replaceChildren();root.querySelector('[data-editor-history]').replaceChildren();
       let completed=0;
       try{
-        for(const item of plan){
+        for(const item of pending){
           if(!valid())return;
-          const saved=item.head?{head:item.head}:await api.action({action:'save',requestId:editorialId().toLowerCase(),article:item.article,expectedRevision:0});
+          await api.action({action:'save',requestId:editorialId().toLowerCase(),article:item.article,expectedRevision:item.head?.revision??0});
           if(!valid())return;
-          const result=await api.action({action:'publish',requestId:editorialId().toLowerCase(),articleId:item.article.id,expectedRevision:saved.head.revision});
-          queued={desiredRelease:result.releaseId,dispatch:result.dispatch};completed++;
-          say(`Publicación solicitada: ${completed} de ${plan.length}. Esperando Pages.`);
+          completed++;
+          say(`Borradores guardados en este intento: ${completed} de ${pending.length}.`);
         }
+        await listArticles();
+        if(valid())say('Las 19 entradas están guardadas. Podés revisarlas y solicitar la publicación del lote.');
+      }catch(error){
         if(!valid())return;
-        article=null;head=null;dirty=false;pendingOperation=null;form.replaceChildren();preview.replaceChildren();await listArticles();
-        say('Edición inicial enviada. La versión pública cambiará cuando termine Pages; consultá la publicación de cada entrada.');
-      }catch(error){throw Error(`Se solicitaron ${completed} de ${plan.length} entradas. ${error.message} Podés reintentar; se conservarán los borradores guardados.`);}
+        await listArticles().catch(()=>{});
+        throw Error(`Guardado interrumpido. El servidor confirmó ${completed} de ${pending.length} entradas en este intento. ${error.message}`);
+      }
+    });
+  }
+  async function checkBatchPublication(plan,valid){
+    const [state,receipt]=await Promise.all([
+      api.action({action:'status'}),
+      deployedRelease(api.config.publicationStatusPath).catch(()=>null)
+    ]);
+    if(!valid())return;
+    queued=state;
+    const visible=plan.every(item=>receipt?.articles.some(entry=>entry.id===item.article.id&&entry.revision===item.head.revision));
+    const dispatch=state.dispatch;
+    const failed=dispatch?.state==='failed'||(dispatch?.workflowStatus==='completed'&&dispatch.conclusion&&dispatch.conclusion!=='success');
+    if(visible)say(`Las ${plan.length} revisiones ya aparecen en la edición pública.`);
+    else if(failed)say('Falló la publicación. Podés reintentar el envío a Pages.');
+    else say('Pages todavía no confirma la edición solicitada.');
+  }
+  async function sendBatchPublication(plan,valid){
+    const payload={entries:plan.map(({article,head})=>({articleId:article.id,expectedRevision:head.revision}))};
+    const result=await api.action({action:'publishBatch',requestId:pendingId('publishBatch',payload),...payload});
+    if(!valid())return;
+    pendingOperation=null;
+    queued={desiredRelease:result.releaseId,dispatch:result.dispatch};
+    if(payload.entries.some(entry=>entry.articleId===head?.id&&entry.expectedRevision===head.revision)){
+      head={...head,desiredRevision:head.revision,everPublished:true};
+    }
+    if(result.dispatch.state==='failed')say('La edición quedó registrada. Podés reintentar el envío a Pages.');
+    else if(result.dispatch.state==='superseded')say('Hay una edición más nueva. Consultá la publicación del lote.');
+    else say('Se solicitó una publicación para todo el lote. Pages todavía debe confirmar la edición pública.');
+  }
+  async function publishRevisionBatch(){
+    if(local||!batchPublisher||busy||!await discard())return;
+    await locked(async valid=>{
+      say('Comprobando los borradores de la revisión editorial…');
+      const plan=await prepareRevisionBatch(valid);
+      if(!valid())return;
+      const changed=plan.find(item=>!item.head||item.changed);
+      if(changed)throw Error(`«${changed.article.title}» difiere de la edición preparada. Compará el borrador o usá Guardar revisión editorial.`);
+      if(plan.every(({head})=>head.desiredRevision===head.revision)){
+        await checkBatchPublication(plan,valid);
+        return;
+      }
+      for(const {article} of plan)normalizeArticle(article,{publish:true});
+      const description=plan.map(({article,head})=>`• ${article.title} · revisión ${head.revision}`).join('\n');
+      const confirmed=await showGameDialog(
+        `Se solicitará una publicación para las ${plan.length} entradas guardadas.\n\n${description}`,
+        {title:'Publicar revisión editorial',confirm:true,acceptLabel:'Solicitar publicación del lote',valid}
+      );
+      if(!confirmed||!valid()){if(valid())say('Publicación cancelada.');return;}
+      await sendBatchPublication(plan,valid);
     });
   }
   async function addImage(target){
@@ -156,9 +263,25 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
   function renderToolbar(){
     toolbar.replaceChildren();if(!active)return;
     toolbar.append(button('Nueva entrada',async()=>{if(busy||!await discard())return;article=newArticle();head=null;dirty=true;epoch++;pendingOperation=null;render();say(local?'Nueva entrada en modo local.':'Nueva entrada sin guardar.');},{'data-editor-new':''}),button('Cargar artículos iniciales',importSeeds,{'data-editor-seed':''}));
-    if(!local&&publisher)toolbar.append(button('Publicar edición inicial',publishInitialEdition,{'data-editor-initial-publish':''}));
+    if(!local){
+      toolbar.append(button('Guardar revisión editorial',saveRevisionBatch,{'data-editor-revision-batch-save':''}));
+      if(batchPublisher)toolbar.append(
+        button('Publicar edición inicial',publishInitialEdition,{'data-editor-initial-publish':''}),
+        button('Publicar revisión editorial',publishRevisionBatch,{'data-editor-revision-batch-publish':''})
+      );
+    }
     if(article){toolbar.append(button(local?'Guardar en esta sesión':'Guardar borrador',save,{'data-editor-save':''}),button('Vista previa',()=>{try{preview.innerHTML=renderArticle(article,{gameCards:api?.gameCards||[],mediaUrl:id=>media.url(id)});preview.hidden=false;preview.scrollIntoView({block:'start',behavior:'auto'});say('Vista previa del contenido. No cambia la edición pública.');}catch(e){say(e.message);}},{'data-editor-show-preview':''}),button('Revisiones anteriores',history,{'data-editor-history-button':''}));
-      if(!local){const pub=button('Publicar',()=>publish(false),{'data-editor-publish':''});pub.disabled=!head||dirty||!publisher;const remove=button('Retirar de la edición pública',()=>publish(true),{'data-editor-unpublish':''});remove.disabled=!head||!head.desiredRevision||dirty||!publisher;toolbar.append(pub,remove,button('Consultar publicación',()=>locked(refreshPublication),{'data-editor-refresh':''}));if(queued?.dispatch?.state==='failed'||(queued?.dispatch?.workflowStatus==='completed'&&queued.dispatch.conclusion&&queued.dispatch.conclusion!=='success'))toolbar.append(button('Reintentar envío a Pages',()=>locked(async valid=>{const result=await api.action({action:'retryPublication',releaseId:queued.desiredRelease});if(valid()){queued={desiredRelease:result.releaseId,dispatch:result.dispatch};say(publicationLabel(head,queued,live));}})));}
+      if(!local){const pub=button('Publicar',()=>publish(false),{'data-editor-publish':''});pub.disabled=!head||dirty||!publisher;const remove=button('Retirar de la edición pública',()=>publish(true),{'data-editor-unpublish':''});remove.disabled=!head||!head.desiredRevision||dirty||!publisher;toolbar.append(pub,remove,button('Consultar publicación',()=>locked(refreshPublication),{'data-editor-refresh':''}));}
+    }
+    const dispatch=queued?.dispatch;
+    if(!local&&publisher&&queued?.desiredRelease&&(dispatch?.state==='failed'||(dispatch?.workflowStatus==='completed'&&dispatch.conclusion&&dispatch.conclusion!=='success'))){
+      toolbar.append(button('Reintentar envío a Pages',()=>locked(async valid=>{
+        const result=await api.action({action:'retryPublication',releaseId:queued.desiredRelease});
+        if(!valid())return;
+        queued={desiredRelease:result.releaseId,dispatch:result.dispatch};
+        if(head)say(publicationLabel(head,queued,live));
+        else say(result.dispatch.state==='failed'?'Falló el reintento de envío a Pages.':result.dispatch.state==='superseded'?'Hay una edición más nueva. Consultá la publicación del lote.':'Envío solicitado. Consultá la edición pública desde Publicar revisión editorial.');
+      })));
     }
     if(!local&&!embedded)toolbar.append(button('Salir',async()=>{if(!await discard())return;await api.signOut();}));
     for(const b of toolbar.querySelectorAll('button'))if(busy)b.disabled=true;
@@ -166,9 +289,9 @@ export async function mountEditor(root,{services=portalServices,embedded=false}=
     form.inert=busy;list.inert=busy;
   }
   async function activate(service,identity,isLocal=false){
-    api=service;user=identity;local=isLocal;active=true;publisher=false;article=null;head=null;dirty=false;epoch++;media.clear();content.hidden=false;form.replaceChildren();preview.replaceChildren();login.hidden=true;
+    api=service;user=identity;local=isLocal;active=true;publisher=false;batchPublisher=false;article=null;head=null;dirty=false;queued=null;live=null;epoch++;media.clear();content.hidden=false;form.replaceChildren();preview.replaceChildren();login.hidden=true;
     const serial=epoch;
-    if(!local){const permissions=await api.action({action:'permissions'});if(!active||identity.uid!==user?.uid||serial!==epoch)return;publisher=permissions.publisherConfigured;}
+    if(!local){const permissions=await api.action({action:'permissions'});if(!active||identity.uid!==user?.uid||serial!==epoch)return;publisher=permissions.publisherConfigured;batchPublisher=publisher&&permissions.supportsBatchPublication===true;}
     api.gameCards??=await fetch(new URL('../editorial/game-cards.json',import.meta.url)).then(r=>r.ok?r.json():[]).catch(()=>[]);
     await listArticles();if(!active||identity.uid!==user?.uid||serial!==epoch)return;renderToolbar();say(local?'Modo local de diseño: nada se guarda remotamente ni se publica.':publisher?'Editor conectado. Elegí una entrada o creá una nueva.':'Editor conectado. Guardado disponible; publicación todavía sin configurar.');
     try{const backup=JSON.parse(localStorage.getItem(backupKey())||'null');if(backup?.article){const recovery=button('Recuperar copia de este navegador',async()=>{if(busy||!await discard())return;await locked(async valid=>{const data=normalizeArticle(backup.article);let saved=null;if(!local){try{saved=await api.action({action:'get',articleId:data.id});}catch(e){if(e.code!=='NOT_FOUND')throw e;}await loadMedia(data);}if(!valid())return;head=saved?.head||null;article=data;dirty=true;epoch++;render();say('Copia recuperada. Guardala en el servidor para conservarla entre dispositivos.');});});root.querySelector('[data-editor-recovery]').replaceChildren(recovery);}}catch{}
