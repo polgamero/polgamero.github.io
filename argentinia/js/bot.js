@@ -51,6 +51,7 @@ import {
   flushDeferredLandManaTriggers,
   payBotActivatedDiscardCost,
   dispatchGameEvent,
+  suspendRivalCardFromHand,
   waitForTriggerOrdering
 } from './main.js';
 
@@ -67,7 +68,7 @@ import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
 import { normalizeLibraryEffect, libraryCardMatchesFilter } from './libraryEngine.js';
 import { permissionBaseManaOverride, consumeExilePlayPermission, clearExilePlayStateOnLeave, EXILE_PLAY_ENGINE_VERSION } from './exilePlayEngine.js';
-import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
+import { SUSPEND_ENGINE_VERSION, clearSuspendState, normalizeSuspendSpec } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability, normalizeBotDifficulty } from './botDifficulty.js';
 import { evaluateBotValueAbilityPolicy, isNonUrgentBotValueEffect, projectedBotHandGain, chooseStrategicBotDiscardIndex, buildBotSubtypeCounts } from './botStrategy.js';
@@ -2283,6 +2284,34 @@ async function playBotLandFromHand(landIndex) {
   await botThinkDelay(800);
 }
 
+async function tryBotSuspendFromHand() {
+  if (state.currentMatch || guidedMatchActive() || hasBotRuntimeBlocker() ||
+      state.priorityPlayer !== 'rival' || state.activePlayer !== 'rival' ||
+      !['main1','main2'].includes(state.phase) || spellStack.length) return false;
+  const options = [];
+  for (const card of state.rivalHand) {
+    const spec = normalizeSuspendSpec(card);
+    if (!spec?.cost || botControlsLegendaryNamed(card)) continue;
+    const cost = parseManaCost(spec.cost);
+    if (!canRivalAfford(card,{parsedCost:cost})) continue;
+    // When there is no useful immediate cast, prefer a sooner payoff for less mana.
+    const score = (card.power !== undefined ? 2 : 0) + Math.min(7,Number(card.cmc)||0) -
+      spec.time * 2 - parsedManaTotal(cost);
+    options.push({card,score});
+  }
+  options.sort((a,b) => b.score-a.score);
+  const chosen = options[0];
+  if (!chosen || !suspendRivalCardFromHand(chosen.card, manaCost => {
+    const cost = parseManaCost(manaCost);
+    if (!canRivalAfford(chosen.card,{parsedCost:cost})) return false;
+    tapRivalLandsFor(chosen.card,{parsedCost:cost});
+    return true;
+  })) return false;
+  if (state.priorityPlayer === 'rival' && !hasBotRuntimeBlocker()) await passPriority('rival');
+  else render();
+  return true;
+}
+
 // This opponent expresses a scripted intention, then uses the normal payment, stack,
 // triggers and combat engine. It never casts a human card or chooses a human target.
 async function takeGuidedBotAction() {
@@ -2459,8 +2488,9 @@ export async function takeBotPriorityAction() {
         candidates:affordableIndexes.map(index=>{const card=state.rivalHand[index],route=chooseBotCastRoute(card);return {card,index,
           manaValue:parsedManaTotal(getFinalCastingManaCost(card,{useAlternative:route===true,isLocal:false}).cost),
           landCount:state.rivalLands.length,manaNextTurn:state.rivalLands.length+1,
-          canHitOpponent:card.effect?.type==='damage'&&isResolvedEffectTargetLegal({type:'player',isLocal:true},{cardLike:card,effect:card.effect,sourceCard:card,controllerIsLocal:false,cardName:card.name})};}),
+          canHitOpponent:['damage','poison'].includes(card.effect?.type)&&isResolvedEffectTargetLegal({type:'player',isLocal:true},{cardLike:card,effect:card.effect,sourceCard:card,controllerIsLocal:false,cardName:card.name})};}),
         ownBoard:state.rivalCombat,opponentBoard:state.localCombat,ownLife:state.rivalHP,opponentLife:state.localHP,
+        opponentPoison:state.localPoison,
         helpers:botCombatHelpers(),difficulty:normalizeBotDifficulty(state.botDifficulty)
       });
       if(ranked>=0)return ranked;
@@ -2542,7 +2572,8 @@ export async function takeBotPriorityAction() {
       return indexes;
     };
 
-    let affordableIndex = pickBestMainPhaseCardIndex(getAllAffordableMainPhaseCardIndexes());
+    const affordableIndex = pickBestMainPhaseCardIndex(getAllAffordableMainPhaseCardIndexes());
+    if (affordableIndex === -1 && await tryBotSuspendFromHand()) return;
     
     if (affordableIndex !== -1) {
       // 23.10 / CR 601: se aparta conceptualmente la carta al anunciarla, pero no se

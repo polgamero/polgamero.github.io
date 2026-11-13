@@ -9235,5 +9235,219 @@
         }
       }
     ]
+  },
+  {
+    "id": "crea_372",
+    "name": "Rata del Playón",
+    "type": "Criatura — Rata",
+    "manaCost": "{C}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "",
+    "flavorText": "Se aprendió de memoria el horario de todas las compactadoras.",
+    "image": "rata_del_playon.png",
+    "enabled": false,
+    "power": 1,
+    "toughness": 2,
+    "keywords": []
+  },
+  {
+    "id": "crea_373",
+    "name": "Boyero de la Tosquera",
+    "type": "Criatura — Mutante",
+    "manaCost": "{1}{C}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Amenaza.",
+    "flavorText": "Al que entra solo no lo llama dos veces.",
+    "image": "boyero_de_la_tosquera.png",
+    "enabled": false,
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "menace"
+    ]
+  },
+  {
+    "id": "crea_374",
+    "name": "Vigía de la Cota Cero",
+    "type": "Criatura — Mutante",
+    "manaCost": "{1}{C}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Alcance.",
+    "flavorText": "El terraplén subió tres metros. Él siguió viendo el río.",
+    "image": "vigia_de_la_cota_cero.png",
+    "enabled": false,
+    "power": 1,
+    "toughness": 3,
+    "keywords": [
+      "reach"
+    ]
+  },
+  {
+    "id": "crea_375",
+    "name": "Capataz de la Transferencia",
+    "type": "Criatura — Mutante",
+    "manaCost": "{2}{C}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tus hechizos de criatura Mutante cuestan {1} menos.",
+    "flavorText": "«Que entre el que sigue. Si no pasa por el portón, desarmen el portón.»",
+    "image": "capataz_de_la_transferencia.png",
+    "enabled": false,
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "reduce",
+      "scope": "own",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Mutante"
+      }
+    }
+  },
+  {
+    "id": "crea_376",
+    "name": "Remendón del Cinturón",
+    "type": "Criatura — Mutante",
+    "manaCost": "{2}{C}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando muera, mirá las tres primeras cartas de tu biblioteca. Podés revelar una carta de permanente con valor de maná 3 o menos y ponerla en tu mano. Poné el resto en el fondo.",
+    "flavorText": "Dejó anotado qué tornillos todavía servían.",
+    "image": "remendon_del_cinturon.png",
+    "enabled": false,
+    "power": 3,
+    "toughness": 2,
+    "keywords": [],
+    "diesTrigger": {
+      "type": "look_at_top",
+      "lookCount": 3,
+      "amount": 1,
+      "filter": {
+        "cardType": "permanent",
+        "maxManaValue": 3
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "crea_377",
+    "name": "Inspector del Terraplén",
+    "type": "Criatura — Mutante",
+    "manaCost": "{4}{C}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando entre, mirá la mano del oponente y exiliá una carta que no sea tierra de esa mano.",
+    "flavorText": "El acta tiene un solo casillero: decomisado.",
+    "image": "inspector_del_terraplen.png",
+    "enabled": false,
+    "power": 4,
+    "toughness": 4,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "self": true
+        },
+        "target": "opponent",
+        "effect": {
+          "type": "private_zone_move",
+          "zone": "hand",
+          "amount": 1,
+          "visibility": "reveal_candidates",
+          "destination": "exile",
+          "range": "all",
+          "filter": "nonland",
+          "target": "opponent_player"
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_378",
+    "name": "La Topadora de la Quema",
+    "type": "Criatura — Mutante",
+    "manaCost": "{4}{C}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Apuro, Arrolla, Impuesto {2}.",
+    "flavorText": "El motor se paró en el 83. Desde entonces el ruido viene de adentro.",
+    "image": "la_topadora_de_la_quema.png",
+    "enabled": false,
+    "power": 5,
+    "toughness": 4,
+    "keywords": [
+      "haste",
+      "trample",
+      "ward_2"
+    ]
+  },
+  {
+    "id": "crea_379",
+    "name": "Cuadrillero del Desguace",
+    "type": "Criatura — Mutante",
+    "manaCost": "{3}{R}{C}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Apuro. Cuando entre, ganá el control de la criatura objetivo de un oponente hasta el final del turno. Enderezala. Gana Apuro hasta el final del turno.",
+    "flavorText": "«Por hoy laburás de este lado del alambrado.»",
+    "image": "cuadrillero_del_desguace.png",
+    "enabled": false,
+    "power": 3,
+    "toughness": 1,
+    "keywords": [
+      "haste"
+    ],
+    "etbEffect": {
+      "type": "gain_control_until_eot",
+      "requiresTarget": true,
+      "targetKind": "creature",
+      "targetController": "opponent",
+      "untap": true,
+      "grantHaste": true
+    }
+  },
+  {
+    "id": "crea_380",
+    "name": "La Boca del Último Módulo",
+    "type": "Criatura legendaria — Mutante",
+    "manaCost": "{6}{C}{C}",
+    "cmc": 8,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Arrolla. Cuando entre, exiliá la criatura objetivo de un oponente.",
+    "flavorText": "Cerraron el módulo a las seis. A las seis y cuarto, el módulo abrió la boca.",
+    "image": "la_boca_del_ultimo_modulo.png",
+    "enabled": false,
+    "power": 7,
+    "toughness": 7,
+    "keywords": [
+      "trample"
+    ],
+    "etbEffect": {
+      "type": "exile_creature",
+      "requiresTarget": true,
+      "targetController": "opponent"
+    }
   }
 ]

@@ -162,17 +162,37 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 128,
     planeswalkers: 8,
   }),
+  colorless_public_925: makeMilestone('23.22.0 HF7 · Incoloro', 925, {
+    tierras: 69,
+    artefactos: 91,
+    criaturas: 380,
+    instantaneos: 153,
+    conjuros: 111,
+    encantamientos: 113,
+    planeswalkers: 8,
+  }),
+  colorless_1025: makeMilestone('23.22.0 HF7 · Incoloro', 1025, {
+    tierras: 69,
+    artefactos: 101,
+    criaturas: 430,
+    instantaneos: 168,
+    conjuros: 121,
+    encantamientos: 128,
+    planeswalkers: 8,
+  }),
 
 });
 
-export const CURRENT_POOL_MILESTONE = 'cards_addendum_1010';
+export const CURRENT_POOL_MILESTONE = 'colorless_1025';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];
 
-// Agregado puntual aprobado: 1010 cartas físicas; 910 en el bootstrap público.
+// Expansión incolora: 1025 cartas físicas y 925 en el bootstrap público.
 // Las 100 Discovery siguen hidratándose con autoridad; los hitos históricos no cambian.
-export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.cards_addendum_public_910;
+export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.colorless_public_925;
 export const PHYSICAL_POOL_BASELINE = POOL_BASELINE;
 
 // Metadata only: ten physical additions, four EVO variants under two bases.
 export const CARD_ADDENDUM_BASE_IDS = Object.freeze(["crea_368", "crea_369", "inst_150", "ench_111", "ench_112", "crea_370", "crea_371", "ench_113", "art_090", "inst_151"]);
 export const CARD_ADDENDUM_EVOLUTION_BASE_IDS = Object.freeze(["crea_368", "crea_369"]);
+
+export const COLORLESS_EXPANSION_IDS = Object.freeze(["tier_069", "crea_372", "crea_373", "crea_374", "crea_375", "crea_376", "crea_377", "crea_378", "crea_379", "crea_380", "art_091", "inst_152", "inst_153", "conj_110", "conj_111"]);

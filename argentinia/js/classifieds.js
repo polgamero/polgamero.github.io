@@ -322,7 +322,7 @@ export function countOwnedClassifiedCard(profile, cardId) {
 }
 
 export function getClassifiedsBasicLandPackProfileState(profile, weekKey) {
-  const validColors = new Set(['W','U','B','R','G']);
+  const validColors = new Set(['W','U','B','R','G','C']);
   const sameWeek = String(profile?.classifiedsBasicLandPackWeekKey || '') === String(weekKey || '');
   const purchasedColors = sameWeek && Array.isArray(profile?.classifiedsBasicLandPacksPurchased)
     ? [...new Set(profile.classifiedsBasicLandPacksPurchased

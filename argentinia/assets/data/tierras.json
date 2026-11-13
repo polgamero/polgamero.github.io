@@ -1401,5 +1401,19 @@
         }
       }
     }
+  },
+  {
+    "id": "tier_069",
+    "name": "Relleno Sanitario",
+    "type": "Tierra básica",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {C}.",
+    "flavorText": "Acá termina el recorrido de todo. Menos del camión.",
+    "image": "relleno_sanitario.png",
+    "enabled": false,
+    "produces": "C"
   }
 ]

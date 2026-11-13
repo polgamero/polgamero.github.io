@@ -2086,7 +2086,8 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 
           if (revivedCard.etbEffect) {
             let etbTarget = null;
-            if (revivedCard.requiresTarget) {
+            const chooseEtbTarget = revivedCard.requiresTarget || revivedCard.etbEffect.requiresTarget === true;
+            if (chooseEtbTarget) {
               // El target de una habilidad disparada se elige ANTES de que esa habilidad
               // entre a la Stack. Reusamos el selector general del Punto 7.
               etbTarget = await chooseResolvedEffectTarget({
@@ -2099,7 +2100,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
               });
             }
 
-            if (!revivedCard.requiresTarget || etbTarget) {
+            if (!chooseEtbTarget || etbTarget) {
               queueTriggeredAbility({
                 effect: revivedCard.etbEffect,
                 sourceCard: revivedCard,
@@ -2392,6 +2393,7 @@ async function executeStackItem(item) {
           sourceItem: newPermanentItem,
           isLocal,
           targetObj: card.requiresTarget ? targetObj : null,
+          requiresTarget: card.etbEffect.requiresTarget === true,
           triggerType: 'etb'
         });
       }
@@ -2424,6 +2426,7 @@ async function executeStackItem(item) {
         sourceItem: newPermanentItem,
         isLocal,
         targetObj: card.requiresTarget ? targetObj : null,
+        requiresTarget: card.etbEffect.requiresTarget === true,
         triggerType: 'etb'
       });
     }

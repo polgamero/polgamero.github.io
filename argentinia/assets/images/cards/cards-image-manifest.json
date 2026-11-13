@@ -4,28 +4,28 @@
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "cards_addendum_public_910",
-    "contractVersion": "23.22.0 HF7 · Agregado puntual",
-    "total": 910,
+    "milestone": "colorless_public_925",
+    "contractVersion": "23.22.0 HF7 · Incoloro",
+    "total": 925,
     "categories": {
-      "tierras": 68,
-      "artefactos": 90,
-      "criaturas": 371,
-      "instantaneos": 151,
-      "conjuros": 109,
+      "tierras": 69,
+      "artefactos": 91,
+      "criaturas": 380,
+      "instantaneos": 153,
+      "conjuros": 111,
       "encantamientos": 113,
       "planeswalkers": 8
     },
-    "uniqueIds": 910
+    "uniqueIds": 925
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 910,
-    "referencedFaceCount": 926,
+    "referencedCardCount": 925,
+    "referencedFaceCount": 941,
     "doubleFacedCardCount": 16,
-    "uniqueReferencedFileCount": 925,
-    "missingCardCount": 926,
+    "uniqueReferencedFileCount": 940,
+    "missingCardCount": 941,
     "cardsWithoutImageFieldCount": 0
   },
   "evolutionImages": {
@@ -175,6 +175,13 @@
       "category": "artefactos",
       "face": "front",
       "image": "boleadoras_de_alambre.png"
+    },
+    {
+      "id": "art_091",
+      "name": "Bomba de Lixiviados",
+      "category": "artefactos",
+      "face": "front",
+      "image": "bomba_de_lixiviados.png"
     },
     {
       "id": "art_029",
@@ -884,6 +891,13 @@
       "image": "catastro_del_conurbano.png"
     },
     {
+      "id": "conj_110",
+      "name": "Cavar Hasta la Napa",
+      "category": "conjuros",
+      "face": "front",
+      "image": "cavar_hasta_la_napa.png"
+    },
+    {
       "id": "conj_044",
       "name": "Cenizas al Viento",
       "category": "conjuros",
@@ -1218,6 +1232,13 @@
       "category": "conjuros",
       "face": "front",
       "image": "pacto_bajo_la_mesa.png"
+    },
+    {
+      "id": "conj_111",
+      "name": "Parte de Recupero",
+      "category": "conjuros",
+      "face": "front",
+      "image": "parte_de_recupero.png"
     },
     {
       "id": "conj_096",
@@ -1794,6 +1815,13 @@
       "image": "bombista_de_la_tribuna_vieja.png"
     },
     {
+      "id": "crea_373",
+      "name": "Boyero de la Tosquera",
+      "category": "criaturas",
+      "face": "front",
+      "image": "boyero_de_la_tosquera.png"
+    },
+    {
       "id": "crea_271",
       "name": "Brigadista de las Sierras",
       "category": "criaturas",
@@ -1918,6 +1946,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "capataz_caravana.png"
+    },
+    {
+      "id": "crea_375",
+      "name": "Capataz de la Transferencia",
+      "category": "criaturas",
+      "face": "front",
+      "image": "capataz_de_la_transferencia.png"
     },
     {
       "id": "crea_170",
@@ -2163,6 +2198,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "cria_de_brasa_errante.png"
+    },
+    {
+      "id": "crea_379",
+      "name": "Cuadrillero del Desguace",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cuadrillero_del_desguace.png"
     },
     {
       "id": "crea_182",
@@ -2893,6 +2935,13 @@
       "image": "inspector_de_prorrogas.png"
     },
     {
+      "id": "crea_377",
+      "name": "Inspector del Terraplén",
+      "category": "criaturas",
+      "face": "front",
+      "image": "inspector_del_terraplen.png"
+    },
+    {
       "id": "crea_276",
       "name": "Inspectora de Consorcio",
       "category": "criaturas",
@@ -2970,6 +3019,13 @@
       "image": "jinete_viento_zonda.png"
     },
     {
+      "id": "crea_380",
+      "name": "La Boca del Último Módulo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "la_boca_del_ultimo_modulo.png"
+    },
+    {
       "id": "crea_171",
       "name": "La Dama Blanca del Kilómetro Cero",
       "category": "criaturas",
@@ -3010,6 +3066,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "la_sirena_del_rio_de_la_plata.png"
+    },
+    {
+      "id": "crea_378",
+      "name": "La Topadora de la Quema",
+      "category": "criaturas",
+      "face": "front",
+      "image": "la_topadora_de_la_quema.png"
     },
     {
       "id": "crea_252",
@@ -3649,6 +3712,13 @@
       "image": "rata_galpon.png"
     },
     {
+      "id": "crea_372",
+      "name": "Rata del Playón",
+      "category": "criaturas",
+      "face": "front",
+      "image": "rata_del_playon.png"
+    },
+    {
       "id": "crea_251",
       "name": "Ratón de Bodega",
       "category": "criaturas",
@@ -3689,6 +3759,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "relojera_de_retiro.png"
+    },
+    {
+      "id": "crea_376",
+      "name": "Remendón del Cinturón",
+      "category": "criaturas",
+      "face": "front",
+      "image": "remendon_del_cinturon.png"
     },
     {
       "id": "crea_240",
@@ -4032,6 +4109,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "verdulera_mercado.png"
+    },
+    {
+      "id": "crea_374",
+      "name": "Vigía de la Cota Cero",
+      "category": "criaturas",
+      "face": "front",
+      "image": "vigia_de_la_cota_cero.png"
     },
     {
       "id": "crea_048",
@@ -5259,6 +5343,13 @@
       "image": "cortar_la_espera.png"
     },
     {
+      "id": "inst_152",
+      "name": "Corte de Emergencia",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "corte_de_emergencia.png"
+    },
+    {
       "id": "inst_018",
       "name": "Corte de Manga",
       "category": "instantaneos",
@@ -5775,6 +5866,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "polen_de_la_salamanca.png"
+    },
+    {
+      "id": "inst_153",
+      "name": "Precinto de Clausura",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "precinto_de_clausura.png"
     },
     {
       "id": "inst_082",
@@ -6447,6 +6545,13 @@
       "category": "tierras",
       "face": "front",
       "image": "refugio_jakob.png"
+    },
+    {
+      "id": "tier_069",
+      "name": "Relleno Sanitario",
+      "category": "tierras",
+      "face": "front",
+      "image": "relleno_sanitario.png"
     },
     {
       "id": "tier_041",

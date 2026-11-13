@@ -52,6 +52,7 @@ export function emptyPlayerStats() {
     basicLandPacksBlack: 0,
     basicLandPacksRed: 0,
     basicLandPacksGreen: 0,
+    basicLandPacksColorless: 0,
     storePacksPurchased: 0,
     enhancementsCrafted: 0,
     workshopMachinesUnlocked: 0,

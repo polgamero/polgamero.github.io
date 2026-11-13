@@ -268,17 +268,17 @@
     "assets/images/menu/city-distant.webp": "e433b0953c34c46517ad82e625adc4e0e795ae12ffe6c0901c5377069840a6f6",
     "assets/images/menu/city-distant-mobile.webp": "6f52ab9acc13861b1241097aac8b647f5534c1087d0174b542f977f5b955685c"
   },
-  "pool": 1010,
+  "pool": 1025,
   "publicPool": 910,
-  "poolMilestone": "cards_addendum_1010",
+  "poolMilestone": "colorless_1025",
   "publicPoolMilestone": "cards_addendum_public_910",
-  "label": "Agregado puntual de cartas · Pool 1010",
+  "label": "Incoloro · Pool 1025",
   "cardAddendum": {
     "physicalCardsAdded": 10,
     "evolutionVariantsAdded": 4,
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "7e71865fb31666cb9c64",
+  "buildId": "d103859df6adc8918da4",
   "serviceUsageSchema": "arg-service-usage-v1"
 }

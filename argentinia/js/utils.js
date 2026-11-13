@@ -4,7 +4,7 @@ import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner } from './zoneOwnership.js';
 import { cardForNonBattlefieldZone } from './transformEngine.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
-import { buildCompetitiveDeck } from './deckIntelligence.js';
+import { buildCompetitiveDeck, buildOpponentDeck } from './deckIntelligence.js';
 import { parseEvolutionVariantId, evolutionStageForProfile, applyEvolutionStage } from './evolution.js';
 import { gameRandom } from './gameRng.js';
 import { parseCardVariantId } from './cardVariant.js';
@@ -223,7 +223,8 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
   const identity = forcedIdentity || pickDeckIdentity();
   const quality = options.quality || 'competitive';
   const replayRng = options.rng || (() => gameRandom('deck_intelligence'));
-  const result = buildCompetitiveDeck(cardDb.enabledCards, identity, { ...options, quality, rng: replayRng });
+  const build = options.forBot === true ? buildOpponentDeck : buildCompetitiveDeck;
+  const result = build(cardDb.enabledCards, identity, { ...options, quality, rng: replayRng });
   lastRandomDeckReport = result.report;
   // 23.19 — privacidad de juego Solo: el mazo del Tano es información oculta.
   // No imprimir identidad, arquetipo, score ni curva del mazo generado en consola.

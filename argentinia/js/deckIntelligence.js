@@ -4,7 +4,11 @@ import { BOT_AI_VERSION } from './botDifficulty.js';
 // Motor puro de construcción/evaluación. No toca DOM, Firebase ni estado global.
 
 import {entryLoyaltyAbilities,planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
+import {getManaSourceOptions} from './manaSources.js';
 const COLORS = ['W','U','B','R','G'];
+const MANA_LANES = [...COLORS, 'C'];
+const COLORLESS_BASIC_ID = 'tier_069';
+const MIN_COLORLESS_DESIGNS = 9;
 export const DECK_INTELLIGENCE_VERSION = '23.19.5-di2';
 export const BOT_DECK_INTELLIGENCE_VERSION=BOT_AI_VERSION;
 export const DEFAULT_CANDIDATE_COUNT = 64;
@@ -43,10 +47,13 @@ const ARCHETYPES = Object.freeze({
   spells:     { label:'Spells', lands:23, creatureFloor:6, creatureCeiling:16, maxVehicles:1, broadInteractionFloor:8, creatureInteractionFloor:3, instantSorceryFloor:14, nonCreatureFloor:16, primaryThemeFloor:13, themes:['spells'], roleTargets:{ broadInteraction:8, cardAdvantage:5, threat:9, payoff:4 }, curve:{1:4,2:10,3:9,4:6,5:3,'6+':2} },
   suspend:    { label:'En espera / Tiempo', lands:24, creatureFloor:10, creatureCeiling:24, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:2, instantSorceryFloor:4, nonCreatureFloor:8, primaryThemeFloor:8, themes:['suspend','exile'], roleTargets:{ enabler:6, payoff:4, threat:12, broadInteraction:5, cardAdvantage:3 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
   transform:  { label:'Transform', lands:24, creatureFloor:18, creatureCeiling:30, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:2, instantSorceryFloor:2, nonCreatureFloor:4, primaryThemeFloor:9, themes:['transform'], roleTargets:{ enabler:5, payoff:4, threat:16, broadInteraction:5 }, curve:{1:2,2:8,3:9,4:8,5:5,'6+':3} },
-  ramp:       { label:'Ramp', lands:25, creatureFloor:12, creatureCeiling:24, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:3, instantSorceryFloor:2, nonCreatureFloor:6, primaryThemeFloor:7, themes:['ramp'], roleTargets:{ ramp:7, threat:13, broadInteraction:5, finisher:5 }, curve:{1:1,2:6,3:8,4:7,5:6,'6+':8} }
+  ramp:       { label:'Ramp', lands:25, creatureFloor:12, creatureCeiling:24, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:3, instantSorceryFloor:2, nonCreatureFloor:6, primaryThemeFloor:7, themes:['ramp'], roleTargets:{ ramp:7, threat:13, broadInteraction:5, finisher:5 }, curve:{1:1,2:6,3:8,4:7,5:6,'6+':8} },
+  colorless:  { label:'Incoloro', lands:25, creatureFloor:18, creatureCeiling:25, maxVehicles:1, broadInteractionFloor:5, creatureInteractionFloor:4, instantSorceryFloor:4, nonCreatureFloor:7, primaryThemeFloor:18, themes:['colorless'], roleTargets:{ ramp:6, threat:18, broadInteraction:5, finisher:4 }, curve:{1:4,2:9,3:9,4:6,5:5,'6+':3} },
+  poison:     { label:'Veneno', lands:23, creatureFloor:16, creatureCeiling:25, maxVehicles:1, broadInteractionFloor:4, creatureInteractionFloor:3, instantSorceryFloor:5, nonCreatureFloor:8, themes:['poison'], roleTargets:{ threat:16, broadInteraction:4, protection:3 }, curve:{1:5,2:12,3:10,4:6,5:3,'6+':1} }
 });
 
-export const ARCHETYPE_IDS = Object.freeze(Object.keys(ARCHETYPES));
+// The card browser keeps its public filters. Poison is a bot deck plan.
+export const ARCHETYPE_IDS = Object.freeze(Object.keys(ARCHETYPES).filter(id=>id!=='poison'&&id!=='colorless'));
 
 function norm(value='') {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -64,17 +71,19 @@ function isPermanent(card) { return isCreature(card) || isArtifact(card) || type
 function cmc(card) { const n=Number(card?.cmc); return Number.isFinite(n)&&n>=0?n:0; }
 function identityMatches(card, identity) {
   const cols = Array.isArray(card?.colors) ? card.colors : [];
-  return cols.length === 0 || cols.every(c => identity.includes(c));
+  return cols.every(c => identity.includes(c)) && (!requiresColorless(card) || identity.includes('C'));
 }
+function requiresColorless(card) { return String(card?.manaCost || '').includes('{C}'); }
 function rarityRank(card) {
   return ({common:0,uncommon:1,rare:2,mythic:3}[norm(card?.rarity)] ?? 0);
 }
 function manaDemand(cost='') {
-  const out={W:0,U:0,B:0,R:0,G:0};
-  for (const m of String(cost||'').matchAll(/\{([WUBRG])\}/g)) out[m[1]]++;
+  const out={W:0,U:0,B:0,R:0,G:0,C:0};
+  for (const m of String(cost||'').matchAll(/\{([WUBRGC])\}/g)) out[m[1]]++;
   return out;
 }
-function sourceColors(card) {
+function sourceColors(card, includeColorless = false) {
+  if (includeColorless) return getManaSourceOptions(card);
   const out=new Set();
   const p=String(card?.produces||'').toUpperCase(); if (COLORS.includes(p)) out.add(p);
   for (const c of (Array.isArray(card?.producesOptions)?card.producesOptions:[])) if (COLORS.includes(String(c).toUpperCase())) out.add(String(c).toUpperCase());
@@ -253,7 +262,7 @@ export function inferCardDeckProfile(card,{bot3=false}={}) {
   if(bot3&&effects.has('loot'))roles.add('selection');
   if (effects.has('search_library')) { roles.add('cardAdvantage'); roles.add('tutor'); }
   if (effects.has('ramp') || effects.has('search_land')) { roles.add('ramp'); themes.add('ramp'); }
-  if (effects.has('spell_cost_modifier')) roles.add('ramp');
+  if (effects.has('spell_cost_modifier') || (bot3 && requiresColorless(card) && card.produces==='C')) roles.add('ramp');
 
   if (effects.has('create_tokens') || /crea (?:una|un|dos|tres|\d+)/.test(text)) { themes.add('tokens'); roles.add('enabler'); }
   if (card?.diesTrigger || card?.anyCreatureDiesTrigger || effects.has('sacrifice') || /sacrific/.test(text)) { themes.add('sacrifice'); roles.add(card?.diesTrigger || /siempre que .*muera|cuando .*muera/.test(text) ? 'payoff':'enabler'); }
@@ -280,6 +289,10 @@ export function inferCardDeckProfile(card,{bot3=false}={}) {
   if (roles.has('interaction') && roles.has('cardAdvantage')) themes.add('control');
   if (creature && mv>=3 && mv<=5) themes.add('midrange');
   if (!themes.size) themes.add(creature && mv<=3 ? 'aggro' : 'midrange');
+  const poisonStarter = bot3 && ((creature && keywords.has('infect')) || effects.has('poison'));
+  const poisonSupport = bot3 && effects.has('proliferate');
+  if (poisonStarter || poisonSupport) themes.add('poison');
+  if (bot3 && requiresColorless(card)) themes.add('colorless');
 
   // Poder base deliberadamente heurístico: no reemplaza playtesting, sólo evita elegir
   // cartas claramente peores cuando hay otra pieza equivalente para el mismo rol.
@@ -302,6 +315,7 @@ export function inferCardDeckProfile(card,{bot3=false}={}) {
 
   return {
     id:card?.id,
+    ...(bot3?{colors:card.colors || [], legendary:/legendari[oa]/.test(typeText(card))}:{}),
     mv,
     isCreature:creature,
     isLand:isLand(card),
@@ -312,7 +326,7 @@ export function inferCardDeckProfile(card,{bot3=false}={}) {
     isInstant:instant,
     isSorcery:sorcery,
     isPlaneswalker:planeswalker,
-    ...(bot3?{bot3:true,planeswalkerValue}:{}),
+    ...(bot3?{bot3:true,planeswalkerValue,poisonStarter,poisonSupport}:{}),
     themes:[...themes],
     roles:[...roles],
     subtypeTokens:cardSubtypeTokens(card),
@@ -391,6 +405,21 @@ function weightedPick(scored, rng) {
   return scored[scored.length-1];
 }
 
+function signatureBotArchetype(cards, identity, meta) {
+  const colors=[...identity].sort().join('');
+  if (colors!=='BG' && colors!=='GR') return null;
+  const eligible=cards.filter(card=>!isLand(card)&&identityMatches(card,identity)).map(card=>meta.get(card.id));
+  if (colors==='BG') {
+    const early=eligible.filter(profile=>profile.poisonStarter&&profile.mv<=2).length;
+    const starters=eligible.filter(profile=>profile.poisonStarter).length;
+    const amplifiers=eligible.filter(profile=>profile.poisonSupport).length;
+    return early>=3 && starters>=5 && amplifiers>=3 ? 'poison' : null;
+  }
+  const dragons=eligible.filter(profile=>profile.isCreature&&profile.subtypeTokens.includes('dragon')).length;
+  const support=eligible.filter(profile=>!profile.subtypeTokens.includes('dragon')&&profile.tribalRefs.includes('dragon')).length;
+  return dragons>=6 && support>=3 ? 'dragons' : null;
+}
+
 function chooseArchetype(cards, identity, rng, quality='competitive',options={}) {
   const ranked=rankViableArchetypes(cards,identity,options).map(x=>({...x}));
   const qp=DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive;
@@ -421,6 +450,15 @@ function chooseArchetype(cards, identity, rng, quality='competitive',options={})
     else score=38-i*3+ratio*10;
     return {...x,score};
   });
+  // Reuse the selection roll so construction starts at the same RNG position.
+  const signature=options.bot3 && options.allowSignature!==false && options.meta
+    ? signatureBotArchetype(cards,identity,options.meta) : null;
+  if (signature) {
+    const share=.15;
+    const roll=rng();
+    if (roll<share) return signature;
+    return weightedPick(candidates,()=> (roll-share)/(1-share))?.id || 'midrange';
+  }
   return weightedPick(candidates,rng)?.id || 'midrange';
 }
 function curveBucket(mv) { return mv>=6?'6+':String(Math.floor(mv)); }
@@ -434,7 +472,7 @@ function curveCounts(profiles) {
   profiles.forEach(p=>out[curveBucket(p.mv)]++);
   return out;
 }
-function chooseTypalFocus(eligibleProfiles) {
+function chooseTypalFocus(eligibleProfiles, minDesigns=4, preferredSubtype=null) {
   const rows=new Map();
   const rowFor=t=>{ if (!rows.has(t)) rows.set(t,{subtype:t,creatures:0,support:0,lords:0}); return rows.get(t); };
   for (const {profile} of eligibleProfiles) {
@@ -443,14 +481,20 @@ function chooseTypalFocus(eligibleProfiles) {
       const row=rowFor(t); row.support++; if (profile.roles.includes('lord')) row.lords++;
     }
   }
-  const viable=[...rows.values()].filter(r=>r.creatures>=4 && (r.support>=1 || r.lords>=1));
+  const viable=[...rows.values()].filter(r=>r.creatures>=minDesigns && (r.support>=1 || r.lords>=1));
   viable.forEach(r=>r.score=r.creatures*1.25+r.support*7+r.lords*9);
   viable.sort((a,b)=>b.score-a.score || b.creatures-a.creatures || a.subtype.localeCompare(b.subtype));
-  return viable[0]||null;
+  return viable.find(row=>row.subtype===preferredSubtype)||viable[0]||null;
 }
-function buildArchetypeContext(cards, identity, archetypeId, meta) {
+function typalDensityRequirement(arch, quality) {
+  const scale=quality==='elite'||quality==='competitive'?1:quality==='strong'?0.92:0.78;
+  return Math.max(0,Math.min(1,(Number(arch.typalDensityFloor)||0)*scale));
+}
+function buildArchetypeContext(cards, identity, archetypeId, meta, quality, preferredSubtype) {
   const eligible=cards.filter(c=>!isLand(c)&&identityMatches(c,identity)).map(card=>({card,profile:meta.get(card.id)}));
-  let typalFocus=archetypeId==='typal'?chooseTypalFocus(eligible):null;
+  const arch=ARCHETYPES[archetypeId];
+  const minDesigns=meta.bot3 ? Math.max(4,Math.ceil(arch.creatureFloor*typalDensityRequirement(arch,quality)/4)) : 4;
+  let typalFocus=archetypeId==='typal'?chooseTypalFocus(eligible,minDesigns,meta.bot3?preferredSubtype:null):null;
   if (archetypeId==='dragons') {
     const subtype='dragon';
     const creatures=eligible.filter(x=>x.profile.isCreature&&x.profile.subtypeTokens.includes(subtype)).length;
@@ -458,7 +502,8 @@ function buildArchetypeContext(cards, identity, archetypeId, meta) {
     const lords=eligible.filter(x=>(x.profile.tribalRefs||[]).includes(subtype)&&x.profile.roles.includes('lord')).length;
     typalFocus={subtype,creatures,support,lords,score:creatures*1.25+support*7+lords*9};
   }
-  return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus,...(meta.bot3?{bot3:true,archetypeId}:{})};
+  const splash = archetypeId==='colorless' ? identity.find(lane=>lane!=='C') : null;
+  return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus,splash,...(meta.bot3?{bot3:true,archetypeId}:{})};
 }
 function availableCopies(eligible, predicate, spellCount) {
   const unique=eligible.reduce((n,x)=>n+(predicate(x.profile,x.card)?1:0),0);
@@ -484,8 +529,15 @@ function buildCompositionRequirements(arch, quality, spellCount, context) {
     instantSorcery:cap(arch.instantSorceryFloor,p=>p.isInstant||p.isSorcery),
     nonCreature:cap(arch.nonCreatureFloor,p=>!p.isCreature),
     primaryTheme:cap(arch.primaryThemeFloor,p=>arch.themes.some(t=>p.themes.includes(t))),
-    typalDensity:Math.max(0,Math.min(1,(Number(arch.typalDensityFloor)||0)*(quality==='elite'||quality==='competitive'?1:quality==='strong'?0.92:0.78))),
+    typalDensity:typalDensityRequirement(arch,quality),
     tribalSupport:cap(arch.tribalSupportFloor,p=>context.focusSubtype && (p.flexibleTribe||(p.tribalRefs||[]).includes(context.focusSubtype))),
+    ...(arch===ARCHETYPES.poison?{
+      poisonStarters:quality==='elite'?14:12,
+      earlyPoison:6,
+      poisonSupport:quality==='elite'?5:4,
+      poisonStarterCeiling:16,
+      poisonSupportCeiling:6
+    }:{}),
     deadSynergyMax:Number(qp.deadSynergyMax)??4
   };
   return req;
@@ -520,12 +572,19 @@ function compositionStats(profiles, arch, context) {
     interaction:roles.interaction||0,
     narrowInteraction:roles.narrowInteraction||0,
     reach:roles.reach||0,
-    themeHits,focusSubtype:focus,focusCreatures,typalDensity,tribalSupport,deadSynergy,subtypeCounts
+    themeHits,focusSubtype:focus,focusCreatures,typalDensity,tribalSupport,deadSynergy,subtypeCounts,
+    ...(context?.splash?{splashSpells:profiles.filter(p=>p.colors.includes(context.splash)).length}:{}),
+    ...(arch===ARCHETYPES.poison?{
+      poisonStarters:profiles.filter(p=>p.poisonStarter).length,
+      earlyPoison:profiles.filter(p=>p.poisonStarter&&p.mv<=2).length,
+      poisonSupport:profiles.filter(p=>p.poisonSupport).length
+    }:{})
   };
 }
 function compositionDeficits(stats, req, archetypeId) {
   const out=[];
   const need=(key,actual,target)=>{ if (target>actual) out.push({key,actual,target,missing:target-actual}); };
+  const cap=(key,actual,target)=>{ if (actual>target) out.push({key,actual,target,missing:actual-target}); };
   need('creatures',stats.creatures,req.creatureMin);
   if (stats.creatures>req.creatureMax) out.push({key:'creatureCeiling',actual:stats.creatures,target:req.creatureMax,missing:stats.creatures-req.creatureMax});
   if (stats.vehicles>req.maxVehicles) out.push({key:'vehicles',actual:stats.vehicles,target:req.maxVehicles,missing:stats.vehicles-req.maxVehicles});
@@ -535,6 +594,13 @@ function compositionDeficits(stats, req, archetypeId) {
   need('instantSorcery',stats.instantSorcery,req.instantSorcery);
   need('nonCreature',stats.nonCreature,req.nonCreature);
   need('primaryTheme',stats.themeHits,req.primaryTheme);
+  if (archetypeId==='poison') {
+    need('poisonStarters',stats.poisonStarters,req.poisonStarters);
+    need('earlyPoison',stats.earlyPoison,req.earlyPoison);
+    need('poisonSupport',stats.poisonSupport,req.poisonSupport);
+    cap('poisonStarterCeiling',stats.poisonStarters,req.poisonStarterCeiling);
+    cap('poisonSupportCeiling',stats.poisonSupport,req.poisonSupportCeiling);
+  }
   if ((archetypeId==='typal' || archetypeId==='dragons') && req.typalDensity>0) {
     if (!stats.focusSubtype) out.push({key:'typalFocus',actual:0,target:1,missing:1});
     else if (stats.typalDensity+1e-9<req.typalDensity) out.push({key:'typalDensity',actual:stats.typalDensity,target:req.typalDensity,missing:req.typalDensity-stats.typalDensity});
@@ -573,11 +639,22 @@ function cardCandidateScore(profile, arch, context, copies, card, quality, archC
     if ((profile.isInstant||profile.isSorcery) && stats.instantSorcery<req.instantSorcery) score+=10+(req.instantSorcery-stats.instantSorcery)*0.9;
     if (!profile.isCreature && stats.nonCreature<req.nonCreature) score+=8+(req.nonCreature-stats.nonCreature)*0.7;
     if (arch.themes.some(t=>profile.themes.includes(t)) && stats.themeHits<req.primaryTheme) score+=8;
+    if (arch===ARCHETYPES.colorless) {
+      if (archContext.splash && profile.colors.includes(archContext.splash)) {
+        if (stats.splashSpells<7) score+=15;
+        else if (stats.splashSpells>=12) score-=12;
+      }
+      if (profile.roles.includes('ramp') && (roles.ramp||0)<4) score+=10;
+    }
+    if (profile.poisonStarter && stats.poisonStarters<req.poisonStarters) score+=16;
+    if (profile.poisonStarter && profile.mv<=2 && stats.earlyPoison<req.earlyPoison) score+=12;
+    if (profile.poisonSupport && stats.poisonSupport<req.poisonSupport) score+=12;
     if (profile.roles.includes('narrowInteraction') && !profile.roles.includes('broadInteraction') && stats.broadInteraction<req.broadInteraction) score-=5;
   }
   if (copies===1) score+=2.5; // consistencia: la segunda copia de una pieza buena es valiosa.
   if (copies===2) score+=1.2;
   if (copies>=3) score-=3.5;
+  if (arch===ARCHETYPES.colorless && profile.legendary && profile.mv>=7 && copies>=1) score-=copies*9;
   if(archContext?.bot3&&profile.isPlaneswalker){
     const strength=quality==='elite'||quality==='competitive'?1:quality==='strong'?.75:quality==='good'?.35:.15;
     score+=Math.min(10,(profile.planeswalkerValue?.total||0)*.6)*strength;
@@ -599,7 +676,8 @@ function compositionPenalty(deficits) {
     creatures:130, creatureCeiling:120, vehicles:150,planeswalkers:140,
     broadInteraction:155, creatureInteraction:145,
     instantSorcery:105, nonCreature:90, primaryTheme:72,
-    typalFocus:220, typalDensity:180, tribalSupport:130, deadSynergy:55
+    typalFocus:220, typalDensity:180, tribalSupport:130, deadSynergy:55,
+    poisonStarters:155, earlyPoison:140, poisonSupport:140, poisonStarterCeiling:155, poisonSupportCeiling:140
   };
   return deficits.reduce((sum,d)=>sum+(weights[d.key]||80)*Math.max(0.25,Number(d.missing)||1),0);
 }
@@ -613,10 +691,18 @@ function profileMatchesDeficit(profile, deficitKey, arch, context) {
   if (deficitKey==='creatureInteraction') return profile.roles.includes('creatureInteraction');
   if (deficitKey==='instantSorcery') return profile.isInstant||profile.isSorcery;
   if (deficitKey==='primaryTheme') return arch.themes.some(t=>profile.themes.includes(t));
+  if (deficitKey==='poisonStarters') return profile.poisonStarter;
+  if (deficitKey==='earlyPoison') return profile.poisonStarter && profile.mv<=2;
+  if (deficitKey==='poisonSupport') return profile.poisonSupport;
+  if (deficitKey==='poisonStarterCeiling') return !profile.poisonStarter;
+  if (deficitKey==='poisonSupportCeiling') return !profile.poisonSupport;
   if (deficitKey==='typalFocus' || deficitKey==='typalDensity') return !!focus && profile.isCreature && profile.subtypeTokens.includes(focus);
   if (deficitKey==='tribalSupport') return !!focus && (profile.flexibleTribe||(profile.tribalRefs||[]).includes(focus));
   if (deficitKey==='deadSynergy') return !(profile.tribalRefs||[]).length || !!focus && (profile.tribalRefs||[]).includes(focus);
   return true;
+}
+function colorlessSpellCopyLimit(profile, arch) {
+  return arch===ARCHETYPES.colorless && profile.legendary && profile.mv>=7 ? 2 : 4;
 }
 function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archContext, req) {
   let cards=[...chosen];
@@ -631,7 +717,7 @@ function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archCont
     const target=deficits[0];
     const counts=new Map(); cards.forEach(c=>counts.set(c.id,(counts.get(c.id)||0)+1));
     const candidatePool=eligible
-      .filter(({card,profile})=>(counts.get(card.id)||0)<(profile.isPlaneswalker&&archContext.bot3?req.maxPlaneswalkerCopies:4) && profileMatchesDeficit(profile,target.key,arch,archContext))
+      .filter(({card,profile})=>(counts.get(card.id)||0)<(profile.isPlaneswalker&&archContext.bot3?req.maxPlaneswalkerCopies:colorlessSpellCopyLimit(profile,arch)) && profileMatchesDeficit(profile,target.key,arch,archContext))
       .map(({card,profile})=>({card,profile,base:profile.power*0.25+synergyScore(profile,arch,archContext)}))
       .sort((a,b)=>b.base-a.base)
       .slice(0,72);
@@ -665,7 +751,7 @@ function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archCont
 function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng, quality, archContext) {
   const arch=ARCHETYPES[archetypeId]||ARCHETYPES.midrange;
   const eligible=archContext?.eligible?.map(x=>x.card) || cards.filter(c=>!isLand(c)&&identityMatches(c,identity));
-  const contextInfo=archContext || buildArchetypeContext(cards,identity,archetypeId,meta);
+  const contextInfo=archContext || buildArchetypeContext(cards,identity,archetypeId,meta,quality);
   const req=buildCompositionRequirements(arch,quality,spellCount,contextInfo);
   const chosen=[], profiles=[], copies=new Map();
   while (chosen.length<spellCount) {
@@ -680,8 +766,8 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
     const forceInstantSorcery=Math.max(0,req.instantSorcery-comp.instantSorcery)>=remaining;
     for (const card of eligible) {
       const count=copies.get(card.id)||0;
-      if (count>=4) continue;
       const profile=meta.get(card.id);
+      if (count>=colorlessSpellCopyLimit(profile,arch)) continue;
       const rarityBudget=(DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive).rarityBudget;
       if (rarityBudget && exceedsRarityBudget([...chosen,card],rarityBudget)) continue;
       if (forceCreature && !profile.isCreature) continue;
@@ -692,6 +778,8 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
       if (profile.isVehicle && comp.vehicles>=req.maxVehicles) continue;
       if(archContext?.bot3&&profile.isPlaneswalker&&(comp.planeswalkers>=req.maxPlaneswalkers||count>=req.maxPlaneswalkerCopies))continue;
       if (profile.isCreature && comp.creatures>=req.creatureMax && comp.creatures>=req.creatureMin) continue;
+      if (profile.poisonStarter && comp.poisonStarters>=req.poisonStarterCeiling) continue;
+      if (profile.poisonSupport && comp.poisonSupport>=req.poisonSupportCeiling) continue;
       let score=cardCandidateScore(profile,arch,context,count,card,quality,contextInfo,req);
       // Cerca del final, reservar slots para los contratos que todavía faltan.
       const urgency=Math.max(0,req.broadInteraction-comp.broadInteraction)+Math.max(0,req.creatureInteraction-comp.creatureInteraction)+Math.max(0,req.instantSorcery-comp.instantSorcery)+Math.max(0,req.nonCreature-comp.nonCreature);
@@ -715,8 +803,8 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
   return repairSpellCandidate(chosen,meta,arch,archetypeId,quality,contextInfo,req);
 }
 function colorPips(cards) {
-  const out={W:0,U:0,B:0,R:0,G:0};
-  cards.forEach(card=>{const d=manaDemand(card.manaCost);COLORS.forEach(c=>out[c]+=d[c]);});
+  const out={W:0,U:0,B:0,R:0,G:0,C:0};
+  cards.forEach(card=>{const d=manaDemand(card.manaCost);MANA_LANES.forEach(c=>out[c]+=d[c]);});
   return out;
 }
 function pickBasic(basics,color,rng) {
@@ -724,11 +812,13 @@ function pickBasic(basics,color,rng) {
   return pool.length ? {...pool[Math.floor(rng()*pool.length)]} : null;
 }
 function buildLandCandidate(cards, identity, spells, landCount, rng) {
+  const usesColorless = identity.includes('C');
+  const getSources = card => sourceColors(card, usesColorless);
   const lands=cards.filter(isLand);
   const basics=lands.filter(c=>norm(c.type).includes('basica') && identity.includes(String(c.produces||'').toUpperCase()));
   const nonbasics=lands.filter(c=>{
     if (norm(c.type).includes('basica')) return false;
-    const cols=sourceColors(c);
+    const cols=getSources(c);
     return cols.length>0 && cols.every(col=>identity.includes(col));
   });
   const pips=colorPips(spells);
@@ -736,8 +826,8 @@ function buildLandCandidate(cards, identity, spells, landCount, rng) {
   const totalPips=identity.reduce((s,c)=>s+pips[c],0)||identity.length;
   identity.forEach(c=>desiredSources[c]=(pips[c]||1)/totalPips);
 
-  const duals=nonbasics.filter(c=>sourceColors(c).length>=2);
-  const monoUtility=nonbasics.filter(c=>sourceColors(c).length===1);
+  const duals=nonbasics.filter(c=>getSources(c).length>=2);
+  const monoUtility=nonbasics.filter(c=>getSources(c).length===1);
   const picks=[], copies=new Map();
   const dualBudget=identity.length===2 ? Math.min(8,Math.max(4,Math.round(landCount*0.28))) : 0;
   for (let i=0;i<dualBudget && duals.length;i++) {
@@ -754,9 +844,10 @@ function buildLandCandidate(cards, identity, spells, landCount, rng) {
   while (picks.length<landCount) {
     let chosenColor=identity[0];
     if (identity.length===2) {
-      const current={}; identity.forEach(c=>current[c]=picks.filter(l=>sourceColors(l).includes(c)).length);
+      const current={}; identity.forEach(c=>current[c]=picks.filter(l=>getSources(l).includes(c)).length);
       const deficits=identity.map(c=>({c,def:(desiredSources[c]*landCount)-(current[c]||0)})).sort((a,b)=>b.def-a.def);
-      chosenColor=deficits[0].c;
+      const scarce = usesColorless && identity.find(c=>current[c]<10);
+      chosenColor=scarce || deficits[0].c;
     }
     const basic=pickBasic(basics,chosenColor,rng) || (basics.length?{...basics[Math.floor(rng()*basics.length)]}:null);
     if (!basic) break;
@@ -765,13 +856,15 @@ function buildLandCandidate(cards, identity, spells, landCount, rng) {
   return picks;
 }
 
-function summarizeDeck(deck, meta) {
+function summarizeDeck(deck, meta, identity) {
   const spells=deck.filter(c=>!isLand(c));
   const lands=deck.filter(isLand);
   const profiles=spells.map(c=>meta.get(c.id));
   const pips=colorPips(spells);
   const sources={W:0,U:0,B:0,R:0,G:0};
-  lands.forEach(l=>sourceColors(l).forEach(c=>sources[c]++));
+  if (identity.includes('C')) sources.C=0;
+  else delete pips.C;
+  lands.forEach(l=>sourceColors(l, identity.includes('C')).forEach(c=>sources[c]++));
   const curve=curveCounts(profiles), roles=roleCounts(profiles);
   const themes={}; profiles.forEach(p=>p.themes.forEach(t=>themes[t]=(themes[t]||0)+1));
   const rarity={Common:0,Uncommon:0,Rare:0,Mythic:0};
@@ -797,7 +890,7 @@ function openingGoldfish(deck, identity, iterations, rng) {
     const lands=hand.filter(isLand), spells=hand.filter(c=>!isLand(c));
     if (lands.length>=2&&lands.length<=4) healthy++;
     if (spells.some(c=>cmc(c)<=2)) early++;
-    const handSources=new Set(lands.flatMap(sourceColors));
+    const handSources=new Set(lands.flatMap(land=>sourceColors(land, identity.includes('C'))));
     if (identity.every(c=>handSources.has(c)) || identity.length===1&&handSources.has(identity[0])) colorReady++;
     const first10=[...hand,...draws.slice(0,3)];
     const landCount10=first10.filter(isLand).length;
@@ -828,16 +921,24 @@ function rarityPenalty(summary,budget) {
 function evaluateCandidate(deck, identity, archetypeId, meta, quality, goldfishIterations, rng, archContext) {
   const arch=ARCHETYPES[archetypeId]||ARCHETYPES.midrange;
   const qp=DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive;
-  const s=summarizeDeck(deck,meta);
+  const s=summarizeDeck(deck,meta,identity);
   const req=buildCompositionRequirements(arch,quality,s.spells,archContext);
   const composition=compositionStats(s.profiles,arch,archContext);
   const deficits=compositionDeficits(composition,req,archetypeId);
-  const coreKeys=new Set(['creatures','creatureCeiling','vehicles','planeswalkers','broadInteraction','creatureInteraction','instantSorcery','nonCreature']);
+  const coreKeys=new Set(['creatures','creatureCeiling','vehicles','planeswalkers','broadInteraction','creatureInteraction','instantSorcery','nonCreature',
+    'poisonStarters','earlyPoison','poisonSupport','poisonStarterCeiling','poisonSupportCeiling']);
   const advancedKeys=new Set(['primaryTheme','typalFocus','typalDensity','tribalSupport']);
   const hardDeficits=deficits.filter(d=>coreKeys.has(d.key) || (qp.sophistication==='advanced'&&advancedKeys.has(d.key)) || qp.sophistication==='elite');
   const rarityBudget=qp.rarityBudget;
   const starterRarityInvalid=!!rarityBudget && ((s.rarity.Mythic||0)>rarityBudget.mythic || (s.rarity.Mythic||0)+(s.rarity.Rare||0)>rarityBudget.rarePlusMythic);
-  if (hardDeficits.length || starterRarityInvalid) {
+  const missingColorlessBase=arch===ARCHETYPES.colorless && (
+    identity.some(lane=>s.sources[lane]<10) ||
+    (archContext.splash && (composition.splashSpells<5 || composition.splashSpells>13)) ||
+    s.profiles.filter(profile=>profile.themes.includes('colorless')&&profile.mv<=2).length<6 ||
+    !s.profiles.some(profile=>profile.themes.includes('colorless')&&profile.roles.includes('finisher')) ||
+    (s.roles.ramp||0)<3
+  );
+  if (hardDeficits.length || starterRarityInvalid || missingColorlessBase) {
     const penalty=compositionPenalty(hardDeficits)+(starterRarityInvalid?1200:0);
     return {
       score:-100000-penalty,
@@ -901,6 +1002,29 @@ function pickByQuantile(sorted, quality, rng) {
   return sorted[lo+Math.floor(rng()*(hi-lo+1))];
 }
 
+export function canBuildColorlessDeck(cards) {
+  const hasBasic = cards.some(card=>card.id===COLORLESS_BASIC_ID && card.produces==='C' && isLand(card));
+  const designs = cards.filter(card=>!card.colors?.length && requiresColorless(card));
+  return hasBasic && designs.length>=MIN_COLORLESS_DESIGNS
+    && designs.filter(card=>cmc(card)<=2).length>=2
+    && designs.some(card=>isCreature(card) && cmc(card)>=5);
+}
+
+export function buildOpponentDeck(cards, identity, options = {}) {
+  const rng = options.rng || Math.random;
+  if (canBuildColorlessDeck(cards) && rng()<0.24) {
+    const colorlessIdentity = rng()<0.5 ? ['C'] : ['C', identity[Math.floor(rng()*identity.length)]];
+    try {
+      return buildCompetitiveDeck(cards, colorlessIdentity, {
+        ...options, rng, forBot:true, archetypeId:'colorless', focusSubtype:null, fallbackArchetypeId:null
+      });
+    } catch (error) {
+      if (error.code!=='DECK_COMPOSITION_UNAVAILABLE') throw error;
+    }
+  }
+  return buildCompetitiveDeck(cards, identity, { ...options, rng, forBot:true });
+}
+
 export function buildCompetitiveDeck(cards, identity, options={}) {
   const forBot=options.forBot===true;
   const rng=options.rng||Math.random;
@@ -908,12 +1032,18 @@ export function buildCompetitiveDeck(cards, identity, options={}) {
   const qualityProfile=DECK_QUALITY_PROFILES[quality];
   const candidateCount=Math.max(12,Number(options.candidateCount)||qualityProfile.candidateCount||DEFAULT_CANDIDATE_COUNT);
   const goldfishIterations=Math.max(12,Number(options.goldfishIterations)||qualityProfile.goldfishIterations||DEFAULT_GOLDFISH_ITERATIONS);
-  const cleanIdentity=[...new Set((identity||[]).filter(c=>COLORS.includes(c)))];
+  const lanes=forBot ? MANA_LANES : COLORS;
+  const cleanIdentity=[...new Set((identity||[]).filter(c=>lanes.includes(c)))];
   if (!cleanIdentity.length || cleanIdentity.length>2) throw new Error('Deck Intelligence requiere una identidad de 1 o 2 colores.');
   const meta=buildDeckMetaCatalog(cards,{bot3:forBot});
-  const archetypeId=options.archetypeId&&ARCHETYPES[options.archetypeId]?options.archetypeId:chooseArchetype(cards,cleanIdentity,rng,quality,{bot3:forBot});
+  const forcedArchetype=cleanIdentity.includes('C') ? 'colorless' :
+    Object.hasOwn(ARCHETYPES,options.archetypeId) && options.archetypeId!=='colorless' && (forBot || options.archetypeId!=='poison')
+      ? options.archetypeId : null;
+  const archetypeId=forcedArchetype || chooseArchetype(cards,cleanIdentity,rng,quality,{
+    bot3:forBot,meta,allowSignature:options.allowSignature
+  });
   const arch=ARCHETYPES[archetypeId];
-  const archContext=buildArchetypeContext(cards,cleanIdentity,archetypeId,meta);
+  const archContext=buildArchetypeContext(cards,cleanIdentity,archetypeId,meta,quality,options.focusSubtype);
   const candidates=[];
   for (let i=0;i<candidateCount;i++) {
     // Jitter de +/-1 tierra en algunas candidatas; la evaluación decide si realmente mejora.
@@ -928,7 +1058,21 @@ export function buildCompetitiveDeck(cards, identity, options={}) {
     if (!evaluation.structuralOk) continue;
     candidates.push({deck,evaluation,index:i});
   }
-  if (!candidates.length) throw new Error(`No se pudo construir un mazo ${cleanIdentity.join('/')} de 60 cartas.`);
+  if (!candidates.length) {
+    if (forBot && options.fallbackArchetypeId && options.fallbackArchetypeId!==archetypeId) {
+      const fallback=buildCompetitiveDeck(cards,cleanIdentity,{
+        ...options,archetypeId:options.fallbackArchetypeId,focusSubtype:null,fallbackArchetypeId:null
+      });
+      fallback.report.requestedArchetypeId=archetypeId;
+      return fallback;
+    }
+    if (forBot && !forcedArchetype && options.allowSignature!==false && ['poison','dragons'].includes(archetypeId)) {
+      return buildCompetitiveDeck(cards,cleanIdentity,{...options,allowSignature:false});
+    }
+    const error = new Error(`No se pudo construir un mazo ${cleanIdentity.join('/')} de 60 cartas.`);
+    error.code = 'DECK_COMPOSITION_UNAVAILABLE';
+    throw error;
+  }
   candidates.sort((a,b)=>a.evaluation.score-b.evaluation.score);
   const selected=pickByQuantile(candidates,quality,rng);
   return {

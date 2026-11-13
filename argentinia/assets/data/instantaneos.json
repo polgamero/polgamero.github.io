@@ -3199,5 +3199,39 @@
       "targetKind": "creature",
       "targetController": "self"
     }
+  },
+  {
+    "id": "inst_152",
+    "name": "Corte de Emergencia",
+    "type": "Instantáneo",
+    "manaCost": "{2}{C}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Contrarrestá el hechizo objetivo que no sea criatura.",
+    "flavorText": "La palanca roja sirve para cortar la corriente. La otra, para que nadie la vuelva a dar.",
+    "image": "corte_de_emergencia.png",
+    "enabled": false,
+    "requiresTarget": true,
+    "effect": {
+      "type": "counter_non_creature"
+    }
+  },
+  {
+    "id": "inst_153",
+    "name": "Precinto de Clausura",
+    "type": "Instantáneo",
+    "manaCost": "{3}{C}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Exiliá la criatura objetivo.",
+    "flavorText": "Le pusieron tres precintos. Lo que había adentro pidió un cuarto.",
+    "image": "precinto_de_clausura.png",
+    "enabled": false,
+    "requiresTarget": true,
+    "effect": {
+      "type": "exile_creature"
+    }
   }
 ]

@@ -1708,7 +1708,7 @@ export function getTargetRules(card) {
     // Remoción: apunta a una criatura de cualquier lado (igual que destruir/rebotar). En
     // exile_and_return en particular, apuntar a tu PROPIA criatura suele ser justo el punto
     // (retriggerea su "cuando entra", le saca auras malas encima, resetea el daño marcado).
-    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+    return { allowPlayer: false, allowLocalCreature: effect.targetController !== 'opponent', allowRivalCreature: effect.targetController !== 'self', allowLocalPermanent: false, allowRivalPermanent: false };
   }
   // ETAPA MOTOR 1: estos dos efectos antes caían en el default genérico, que también
   // permitía seleccionar jugadores. La resolución solo entiende criaturas, así que ofrecer
@@ -2062,15 +2062,17 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const hasCornerStat = hasDisplayCombatStats || card.type.includes('Planeswalker');
 
   let formattedTextHTML = '';
-  if (isBasicLand && landSymbolImg) {
-    const landSymbolUrl = `./assets/images/${landSymbolImg}`;
+  const colorlessBasic = isBasicLand && card.produces === 'C';
+  if (isBasicLand && (landSymbolImg || colorlessBasic)) {
+    const landSymbolUrl = colorlessBasic ? MANA_ICON_URLS.C : `./assets/images/${landSymbolImg}`;
+    const symbolStyle = colorlessBasic ? 'width:36%; height:62%; object-fit:contain' : 'width:100%; height:100%; object-fit:cover';
     const basicFlavor=String(card.flavorText||'').trim();
     const basicFlavorHTML=basicFlavor?`<div class="card-flavor-text" style="position:absolute;left:5%;right:5%;bottom:4%;padding:3%;background:rgba(253,251,247,.92);white-space:pre-line;z-index:2">${escapeCardTextHtml(basicFlavor)}</div>`:'';
     // 23.13.17 — una sola capa real. El asset ocupa toda la caja inferior con cover;
     // el PNG puede prepararse con margen/expansión vertical sin que el renderer duplique el
     // mismo dibujo como fondo + foreground (artefacto visual que se notaba especialmente en móvil).
     formattedTextHTML = `<div class="card-text-box basic-land-symbol-box"${basicFlavor?' data-auto-text-cqw="6"':''} style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden;${basicFlavor?'font-size:clamp(3px,var(--card-text-effective-size,6cqw),26px);':''}">
-        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
+        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="${symbolStyle}; object-position:center;" onerror="this.style.display='none'">
         ${basicFlavorHTML}
       </div>`;
   } else {
@@ -5327,7 +5329,7 @@ function injectStoreStyles() {
     .classifieds-basic-land-title { color:#f0e0b0; font-size:18px; font-weight:900; letter-spacing:.055em; }
     .classifieds-basic-land-subtitle { color:#b8c9cf; font-size:11px; line-height:1.45; margin-top:5px; }
     .classifieds-basic-land-strip {
-      display:grid; grid-template-columns:repeat(5,minmax(145px,1fr)); align-items:start; gap:13px;
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); align-items:start; gap:13px;
     }
     .classifieds-land-pack-slot { --card-w:min(156px,100%); }
     .classifieds-land-pack-title { color:#d8edf5; font-size:11px; font-weight:850; text-align:center; min-height:16px; }
@@ -6109,7 +6111,7 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="classifieds-basic-land-title" id="classifieds-basic-land-title">${gameTextHtml('classifieds.basicLands.title')}</div>
           <div class="classifieds-basic-land-subtitle">${gameTextHtml('classifieds.basicLands.subtitle')}</div>
         </div>
-        <div class="classifieds-basic-land-strip" id="classifieds-basic-land-strip" aria-label="Cinco packs semanales de Tierras Básicas"></div>
+        <div class="classifieds-basic-land-strip" id="classifieds-basic-land-strip" aria-labelledby="classifieds-basic-land-title"></div>
       </section>
       <div class="classifieds-refresh-row store-nav-row">
         <button class="store-back-link" id="classifieds-back">${gameTextHtml('classifieds.backStore')}</button>
@@ -12057,7 +12059,7 @@ Receipt: ${receiptId}
     'tournamentsPlayed','tournamentMatches','tournamentWins','tournamentLosses','tournamentQuarterfinals',
     'tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted',
     'eloGames','eloWins','eloLosses','basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite',
-    'basicLandPacksBlue','basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
+    'basicLandPacksBlue','basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen','basicLandPacksColorless',
     'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
     'emotesPurchased','dailyRewardsClaimed','essenceEarned','essenceSpent','essenceCurrent','achievementClaims','industrialMixes'
   ]);
@@ -12209,7 +12211,8 @@ Receipt: ${receiptId}
         { label:gameText('admin.stats.color.blue'), value:tracked.basicLandPacksBlue },
         { label:gameText('admin.stats.color.black'), value:tracked.basicLandPacksBlack },
         { label:gameText('admin.stats.color.red'), value:tracked.basicLandPacksRed },
-        { label:gameText('admin.stats.color.green'), value:tracked.basicLandPacksGreen }
+        { label:gameText('admin.stats.color.green'), value:tracked.basicLandPacksGreen },
+        { label:gameText('admin.stats.color.colorless'), value:tracked.basicLandPacksColorless }
       ]),
       adminBarChart(gameText('admin.stats.chart.economy'), [
         { label:gameText('admin.stats.chart.pointsEarned'), value:tracked.pointsEarned },

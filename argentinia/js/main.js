@@ -20,7 +20,7 @@ import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, loadAuthorizedDiscoveryCards, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, attestMultiplayerDeck, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
 import {clearDiscoveryPlayAssets} from './discoveryPlayAssets.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { applyTournamentConfig } from './tournamentConfig.js';
+import { applyTournamentConfig, getTournamentBotDeckOptions } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
 import { RELEASE_DISPLAY_VERSION, ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
@@ -1567,7 +1567,11 @@ async function initGame(deckSource, options = {}) {
   });
   const botQuality = tournamentMatch?.deckQuality || botDeckQuality(state.botDifficulty);
   const botIdentity = Array.isArray(tournamentMatch?.opponent?.colors) && tournamentMatch.opponent.colors.length ? tournamentMatch.opponent.colors : undefined;
-  state.rivalDeck = lesson ? lessonDecks.rival : buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined, forBot:true });
+  state.rivalDeck = lesson ? lessonDecks.rival : buildRandomDeck(botIdentity, {
+    ...getTournamentBotDeckOptions(tournamentMatch?.opponent),
+    quality:botQuality,
+    forBot:true
+  });
   // 23.19 — no persistir ni exponer el arquetipo generado del Tano en diagnósticos de runtime.
   // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
   state.rivalDeckBuildReport = null;
@@ -8776,11 +8780,11 @@ export function expireExilePlayPermissionsForCleanup(endingPlayerIsLocal = true)
 }
 
 
-function suspendTimingAllows(card) {
-  if (!card || state.gameOver || state.priorityPlayer !== 'local') return false;
+function suspendTimingAllows(card, player = 'local') {
+  if (!card || state.gameOver || state.priorityPlayer !== player) return false;
   const isInstant = String(card.type || '').includes('Instantáneo') || (card.keywords || []).includes('flash');
   if (isInstant) return true;
-  return spellStack.length === 0 && state.activePlayer === 'local' && ['main1','main2'].includes(state.phase);
+  return spellStack.length === 0 && state.activePlayer === player && ['main1','main2'].includes(state.phase);
 }
 
 export function canSuspendCardFromHand(card) {
@@ -8817,19 +8821,43 @@ export function suspendCardFromHand(index) {
   checkPaymentComplete(); render(); return true;
 }
 
+function moveHandCardToSuspend(card, handIndex, spec, isLocal) {
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const exile = isLocal ? state.localExile : state.rivalExile;
+  const role = engineRoleForSide(isLocal);
+  hand.splice(handIndex, 1);
+  stampCardOwner(card,isLocal,state.currentMatch?.myRole||null);
+  ensureExileObjectId(card,isLocal ? 'local' : 'rival');
+  exile.push(card);
+  markCardSuspended(card,{exileObjectId:card._exileObjectId,ownerRole:role,suspendedByRole:role});
+  const actor = {controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,cause:'suspend_action'};
+  dispatchGameEvent({...actor,type:'card_exiled',zoneFrom:'hand',zoneTo:'exile'});
+  dispatchGameEvent({...actor,type:'counter_added',amount:spec.time,zoneFrom:'exile',zoneTo:'exile',metadata:{counterType:'time',suspended:true}});
+}
+
+// Suspend is a special action. It exiles the card and adds Time without casting it.
+export function suspendRivalCardFromHand(card, payMana) {
+  if (state.currentMatch || state.isGuidedLearningMatch || !suspendTimingAllows(card,'rival') ||
+      state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingTriggerOrderChoice ||
+      state.pendingLegendChoice || state.sbaKernelRunning) return false;
+  const index = state.rivalHand.indexOf(card);
+  const spec = normalizeSuspendSpec(card);
+  if (index < 0 || !spec?.cost || !payMana(spec.cost)) return false;
+  moveHandCardToSuspend(card,index,spec,false);
+  flushDeferredLandManaTriggers();
+  state.consecutivePasses=0;
+  logMsg(gameText('suspend.exiled',{card:card.name,time:spec.time}));
+  recordTelemetryEvent('bot_suspend_from_hand',{cardId:card.id,time:spec.time,cost:spec.cost});
+  return true;
+}
+
 function commitSuspendAction() {
   const tx=state.pendingSuspendTransaction;
   if (!tx) return false;
   const card=tx.card;
   const idx=state.localHand.indexOf(card);
   if (idx<0 || !suspendTimingAllows(card)) { clearSuspendPaymentState({rollback:true}); logMsg(gameText('suspend.cant')); render(); return false; }
-  state.localHand.splice(idx,1);
-  stampCardOwner(card,true,state.currentMatch?.myRole||null);
-  ensureExileObjectId(card,'local');
-  state.localExile.push(card);
-  markCardSuspended(card,{ exileObjectId:card._exileObjectId, ownerRole:state.currentMatch?.myRole||'local', suspendedByRole:state.currentMatch?.myRole||'local' });
-  dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,card,zoneFrom:'hand',zoneTo:'exile',cause:'suspend_action'});
-  dispatchGameEvent({type:'counter_added',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,card,amount:tx.spec.time,zoneFrom:'exile',zoneTo:'exile',cause:'suspend_action',metadata:{counterType:'time',suspended:true}});
+  moveHandCardToSuspend(card,idx,tx.spec,true);
   clearSuspendPaymentState({rollback:false});
   state.consecutivePasses=0; resetPriorityClock();
   logMsg(gameText('suspend.exiled',{card:card.name,time:tx.spec.time}));

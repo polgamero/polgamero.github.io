@@ -3,8 +3,13 @@ import {planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
 
 // Rank already legal/affordable proposals. Own hand is allowed; no opponent hand,
 // library or future draw enters this function. Payment/targeting stay canonical.
-export function chooseMainPhaseCard3({candidates,ownBoard,opponentBoard,ownLife,opponentLife,helpers,difficulty}){
+export function chooseMainPhaseCard3({candidates,ownBoard,opponentBoard,ownLife,opponentLife,opponentPoison=0,helpers,difficulty}){
   const limit=difficulty==='hard'?12:4;
+  const poison = Math.max(0,Number(opponentPoison)||0);
+  const poisonFinisher = candidates.find(({card,canHitOpponent}) =>
+    (card.effect?.type === 'poison' && canHitOpponent && poison + Number(card.effect.amount) >= 10) ||
+    (card.effect?.type === 'proliferate' && poison >= 9));
+  if (poisonFinisher) return poisonFinisher.index;
   const threat=units=>units.reduce((sum,u)=>sum+Math.max(0,helpers.getPower(u))+Math.max(0,helpers.getToughness(u))*.5,0);
   const ownThreat=threat(ownBoard),opponentThreat=threat(opponentBoard),behind=opponentThreat>ownThreat;
   let best=null;
@@ -16,6 +21,8 @@ export function chooseMainPhaseCard3({candidates,ownBoard,opponentBoard,ownLife,
     if(['destroy_creature','exile_creature','bounce','fight','damage'].includes(effect.type))score+=behind?7:2;
     if(effect.type==='destroy_all_creatures')score+=Math.max(-12,Math.min(25,(opponentThreat-ownThreat)*1.2));
     if(effect.type==='damage'&&Number(effect.amount)>=opponentLife&&candidate.canHitOpponent===true)score+=100;
+    if(effect.type==='poison'&&candidate.canHitOpponent===true)score+=3+poison*.8;
+    if(effect.type==='proliferate'&&poison>0)score+=2+poison*.8;
     if(effect.type==='draw'||effect.type==='search_library')score+=ownBoard.length?2:0;
     if(effect.type==='heal')score+=ownLife<=6?5:-2;
     if((card.keywords||[]).includes('haste'))score+=power*1.5;

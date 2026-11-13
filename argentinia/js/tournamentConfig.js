@@ -29,6 +29,26 @@ export const TOURNAMENT_DEFAULT_CONFIG = Object.freeze({
 
 export const TOURNAMENT_POLICY = { ...TOURNAMENT_DEFAULT_CONFIG };
 
+// These are local deck-building profiles. The server still supplies the entrant,
+// color identity, round quality, bracket and result authority.
+const NPC_DECK_PLANS = Object.freeze({
+  npc_013: { identity:'GR', archetypeId:'dragons' }, // El Pelado del Andén
+  npc_022: { identity:'BG', archetypeId:'poison' },  // La Mona de Pompeya
+  npc_034: { identity:'GW', archetypeId:'typal', focusSubtype:'bestia' } // La Gallega del Mercado
+});
+
+export function getTournamentBotDeckOptions(opponent) {
+  const identity = Array.isArray(opponent?.colors) ? [...opponent.colors].sort().join('') : '';
+  const plan = Object.hasOwn(NPC_DECK_PLANS, opponent?.id) ? NPC_DECK_PLANS[opponent.id] : null;
+  const originalArchetype = opponent?.archetypeId || undefined;
+  if (!plan || plan.identity !== identity) return { archetypeId:originalArchetype };
+  return {
+    archetypeId:plan.archetypeId,
+    focusSubtype:plan.focusSubtype,
+    fallbackArchetypeId:plan.archetypeId !== originalArchetype ? originalArchetype : undefined
+  };
+}
+
 const DIFFICULTIES = new Set(['easy','medium','hard']);
 const QUALITIES = new Set(['good','strong','elite']);
 function int(v, fallback, min=0, max=1_000_000){

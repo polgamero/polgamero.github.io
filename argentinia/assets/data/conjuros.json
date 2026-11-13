@@ -2462,5 +2462,52 @@
       "reveal": false
     },
     "enabled": false
+  },
+  {
+    "id": "conj_110",
+    "name": "Cavar Hasta la Napa",
+    "type": "Conjuro",
+    "manaCost": "{2}{C}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Podés buscar una tierra básica en tu biblioteca y ponerla en el campo de batalla girada. Después barajá.",
+    "flavorText": "La excavadora sacó agua, botellas y una chapa con una fecha que todavía no llegó.",
+    "image": "cavar_hasta_la_napa.png",
+    "enabled": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "basic",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    }
+  },
+  {
+    "id": "conj_111",
+    "name": "Parte de Recupero",
+    "type": "Conjuro",
+    "manaCost": "{2}{C}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Mirá las cuatro primeras cartas de tu biblioteca. Podés revelar una carta de criatura de entre ellas y ponerla en tu mano. Poné el resto en el fondo.",
+    "flavorText": "Lo que sale del playón se pesa. Lo que camina solo se anota aparte.",
+    "image": "parte_de_recupero.png",
+    "enabled": false,
+    "effect": {
+      "type": "look_at_top",
+      "lookCount": 4,
+      "amount": 1,
+      "filter": {
+        "cardType": "creature"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
   }
 ]

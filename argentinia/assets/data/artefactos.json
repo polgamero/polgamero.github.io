@@ -2312,5 +2312,27 @@
       "requiresTarget": false,
       "timing": "instant"
     }
+  },
+  {
+    "id": "art_091",
+    "name": "Bomba de Lixiviados",
+    "type": "Artefacto",
+    "manaCost": "{1}{C}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Cuando entre, podés buscar una tierra básica en tu biblioteca, revelarla y ponerla en tu mano. Después barajá.\n{T}: Agregá {C}.",
+    "flavorText": "Anda a toda hora. El capataz prefiere no averiguar con qué.",
+    "image": "bomba_de_lixiviados.png",
+    "enabled": false,
+    "produces": "C",
+    "etbEffect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "basic",
+      "destination": "hand",
+      "allowFewer": true,
+      "reveal": true
+    }
   }
 ]
