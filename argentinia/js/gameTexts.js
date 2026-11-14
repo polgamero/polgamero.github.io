@@ -1982,6 +1982,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'effect.fog': definition('Habilidades y costos', '🌫️ ¡{card}! Se previene todo el daño de combate este turno.', 'Efecto Fog.'),
   'effect.drawLoseLife': definition('Habilidades y costos', '📖 ¡{card}! {target} robó una carta y perdió {life} de vida.', 'Robar y perder vida.'),
   'effect.drain': definition('Habilidades y costos', '🩸 ¡{card}! Drena {amount} de vida.', 'Drenar vida.'),
+  'effect.loseLife': definition('Habilidades y costos', '🩸 {card}: {target} pierde {amount} de Vida.', 'Pérdida de Vida por un efecto.'),
   'effect.targetDamage': definition('Habilidades y costos', '💥 ¡{card}! Le hizo {amount} de daño a {target}.', 'Daño a objetivo.'),
   'effect.targetHeal': definition('Habilidades y costos', '💚 ¡{card}! Curó {amount} de HP a {target}.', 'Curación a objetivo.'),
   'effect.poison': definition('Habilidades y costos', '☠️ ¡{card}! {target} recibió {amount} contador(es) de Veneno.', 'Veneno a jugador.'),

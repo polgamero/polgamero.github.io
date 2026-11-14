@@ -2013,6 +2013,15 @@ function resolveBotModalVariantForPreflight(card) {
   return { ...card, effect: chosenMode.effect, requiresTarget: chosenMode.requiresTarget, chosenModeText: chosenMode.text };
 }
 
+function chooseBotLandAuraTarget(card) {
+  const options = {cardLike:card,sourceCard:card,controllerIsLocal:false};
+  for (const [index,item] of [...state.localLands,...state.localCombat.filter(isLandPermanent)].entries()) {
+    const target = {type:'land',isLocal:true,item,index};
+    if (isResolvedEffectTargetLegal(target,options)) return target;
+  }
+  return null;
+}
+
 function canBotBuildMainPhaseCastProposal(rawCard) {
   const card = resolveBotModalVariantForPreflight(rawCard);
   if (!card) return false;
@@ -2020,6 +2029,7 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
 
   // Auras: replicamos exactamente el criterio del casteo real (maldición rival vs buff propio).
   if (card.adjunta) {
+    if (card.enchantKind === 'land') return !!chooseBotLandAuraTarget(card);
     if (card.alcance === 'criatura_rival') {
       return state.localCombat.some(c => isValidBotTarget(c, card.colors));
     }
@@ -2175,7 +2185,10 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
       if(!target) continue;
       targetObj={type:'stack',stackId:target.id};
     } else if(card.adjunta){
-      if(card.alcance==='criatura_rival'){
+      if(card.enchantKind === 'land'){
+        targetObj=chooseBotLandAuraTarget(card);
+        if(!targetObj) continue;
+      } else if(card.alcance==='criatura_rival'){
         const validTargets=state.localCombat.filter(c=>isValidBotTarget(c,card.colors));
         if(!validTargets.length) continue;
         const chosen=validTargets.reduce((prev,current)=>getEffectivePower(prev)>getEffectivePower(current)?prev:current);
@@ -2251,9 +2264,14 @@ export async function castSuspendedCardForBot(original) {
     const target=legalBotCounterTargets(card.effect.type).at(-1);
     if(!target) return false; targetObj={type:'stack',stackId:target.id};
   } else if(card.adjunta){
-    const candidates=card.alcance==='criatura_rival' ? state.localCombat : state.rivalCombat;
-    const valid=candidates.filter(c=>isValidBotTarget(c,card.colors)); if(!valid.length) return false;
-    targetObj={type:'creature',isLocal:card.alcance==='criatura_rival',item:valid[0]};
+    if (card.enchantKind === 'land') {
+      targetObj = chooseBotLandAuraTarget(card);
+      if (!targetObj) return false;
+    } else {
+      const candidates=card.alcance==='criatura_rival' ? state.localCombat : state.rivalCombat;
+      const valid=candidates.filter(c=>isValidBotTarget(c,card.colors)); if(!valid.length) return false;
+      targetObj={type:'creature',isLocal:card.alcance==='criatura_rival',item:valid[0]};
+    }
   } else if(card.requiresTarget){
     const chosen=await chooseResolvedEffectTarget({effect:card.effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
     if(!chosen) return false; targetObj=chosen;
@@ -2682,7 +2700,10 @@ export async function takeBotPriorityAction() {
         stackType = 'aura';
         // Maldiciones (alcance: criatura_rival) van a tu criatura más peligrosa;
         // las Auras normales (buff propio) van a la mejor criatura del Tano.
-        if (cardToPlay.alcance === 'criatura_rival') {
+        if (cardToPlay.enchantKind === 'land') {
+          aiTargetObj = chooseBotLandAuraTarget(cardToPlay);
+          validPlay = !!aiTargetObj;
+        } else if (cardToPlay.alcance === 'criatura_rival') {
           const validTargets = state.localCombat.filter(c => isValidBotTarget(c, cardToPlay.colors));
           if (validTargets.length > 0) {
             const chosen = validTargets.reduce((prev, current) =>

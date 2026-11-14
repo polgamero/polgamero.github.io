@@ -85,7 +85,7 @@ import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
 import { checkpointSoloRecovery } from './soloRecovery.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, RELEASE_DISPLAY_VERSION } from './version.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, RELEASE_DISPLAY_VERSION, getLoadedBuildId } from './version.js';
 import { withEconomyButtonPending, ensureEconomyPendingStyles } from './economyPending.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { createSoloPriorityController, SOLO_PRIORITY_B_MODES } from './soloPriorityShortcuts.js';
@@ -1569,6 +1569,10 @@ function escapeCardTextHtml(text) {
 
 export function getTargetRules(card) {
   if (card.adjunta) {
+    if (card.enchantKind === 'land') return {
+      allowPlayer:false, allowLocalCreature:false, allowRivalCreature:false,
+      allowLocalPermanent:false, allowRivalPermanent:false, allowLocalLand:true, allowRivalLand:true
+    };
     // `alcance` decide a quién se le puede adjuntar: "criatura_propia" (default, ej. Poncho del
     // Paisano), "criatura_rival" (Auras-maldición, ej. Maldición del Yaguareté) o "cualquier_criatura".
     const alcance = card.alcance || 'criatura_propia';
@@ -11090,10 +11094,10 @@ export function showAdminPanel(onBack) {
       <td class="admin-animation-name">${escapeHtml(animationLabel)}</td>
       <td class="admin-animation-audio" data-animation-audio-opus="${def.key}">${opusHTML}</td>
       <td class="admin-animation-audio" data-animation-audio-mp3="${def.key}">${mp3HTML}</td>
-      <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
-      <td><input type="number" class="admin-animation-tuning-volume" data-animation-tuning-volume="${def.key}" value="${Number(tuning.relativeVolume || 1).toFixed(2)}" min="0.25" max="2" step="0.05"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(animationLabel)}"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(animationLabel)}"></td>
+      <td><input type="number" id="admin-animation-speed-${def.key}" aria-label="Velocidad de ${escapeHtml(animationLabel)}" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
+      <td><input type="number" id="admin-animation-volume-${def.key}" aria-label="Volumen de ${escapeHtml(animationLabel)}" class="admin-animation-tuning-volume" data-animation-tuning-volume="${def.key}" value="${Number(tuning.relativeVolume || 1).toFixed(2)}" min="0.25" max="2" step="0.05"></td>
+      <td><input type="checkbox" id="admin-animation-sfx-start-${def.key}" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(animationLabel)}"></td>
+      <td><input type="checkbox" id="admin-animation-sfx-key-${def.key}" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(animationLabel)}"></td>
       <td class="admin-animation-cadence">${cadenceLabel}</td>
     </tr>`;
   }).join('');
@@ -11140,12 +11144,12 @@ export function showAdminPanel(onBack) {
     <div class="admin-section">
       <div class="admin-section-title">Próximamente</div>
       <div class="admin-field-row admin-field-row-disabled">
-        <span class="admin-field-label">Vida inicial de cada jugador</span>
-        <input type="number" class="admin-field-input" value="20" disabled>
+        <label class="admin-field-label" for="cfg-initial-life-preview">Vida inicial de cada jugador</label>
+        <input type="number" id="cfg-initial-life-preview" class="admin-field-input" value="20" disabled>
       </div>
       <div class="admin-field-row admin-field-row-disabled">
-        <span class="admin-field-label">Tamaño de mano inicial</span>
-        <input type="number" class="admin-field-input" value="7" disabled>
+        <label class="admin-field-label" for="cfg-initial-hand-preview">Tamaño de mano inicial</label>
+        <input type="number" id="cfg-initial-hand-preview" class="admin-field-input" value="7" disabled>
       </div>
     </div>
   `;
@@ -11322,10 +11326,11 @@ export function showAdminPanel(onBack) {
     `<button class="encyclopedia-tab${idx === 0 ? ' active' : ''}" data-admin-tab="${tab.key}">${tab.label}</button>`
   ).join('');
 
+  const buildId = getLoadedBuildId();
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
-      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Release ${RELEASE_DISPLAY_VERSION} · Motor ${ENGINE_VERSION}</span></div>
+      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Release ${RELEASE_DISPLAY_VERSION} · Motor ${ENGINE_VERSION} · Protocolo ${ENGINE_PROTOCOL_VERSION}${buildId ? ' · Build '+buildId : ''}</span></div>
     </div>
     <div class="admin-body">
       <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>
@@ -16760,6 +16765,7 @@ export function showGameRewardStatus(message, kind = 'info') {
 
 function zoneGroupingKey(item, idx, zoneType) {
   const baseKey = item?.card?.id || item?.card?.name || `item_${idx}`;
+  if (zoneType === 'land' && item?.auras?.length) return `enchanted_${baseKey}_${idx}`;
   // 23.17.5.5 — las Sagas iguales NO se apilan visualmente: dos copias con capítulos
   // distintos deben verse como instancias separadas para poder seguir su progreso real.
   // La identidad estable prioriza _syncObjectId; si no existe aún, caemos a instance/id+idx.

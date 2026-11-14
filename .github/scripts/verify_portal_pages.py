@@ -76,7 +76,7 @@ def verify(repo,artifact,report):
     game=json.loads(read(artifact/'build-manifest.json'));original=json.loads(read(repo/'argentinia/build-manifest.json'))
     check(game=={**original,'refreshAssets':['./jugar/index.html' if p=='./index.html' else p for p in original['refreshAssets']]},'published cache manifest differs beyond entry route')
     check(game['buildId']==receipt['gameBuildId'],'game/cache/receipt buildId differs')
-    check(game['protocolVersion']=='mp-23.19.2-fl41','multiplayer protocol changed')
+    check(game['protocolVersion']==original['engineProtocolVersion'],'published multiplayer protocol differs from source engine manifest')
     for url in game['refreshAssets']:check((artifact/url.lstrip('/')).is_file(),'missing canonical refresh asset '+url)
     for site in SIBLINGS:
         source=repo/site;target=artifact/site
@@ -139,7 +139,7 @@ def verify(repo,artifact,report):
         check((artifact/'js'/name).is_file(),'missing shared game component '+name)
     check((artifact/'editorial-admin.html').is_file(),'embedded Admin template missing')
     if errors:raise ValueError('\n'.join(errors))
-    return {'status':'PASS','indexedRoutes':len(expected),'retainedSites':10,'gameBuildId':game['buildId'],'protocol':'mp-23.19.2-fl41','publishedBytes':total_bytes,'externalOriginals':len(shared['externalOriginals']),'deployExecuted':False}
+    return {'status':'PASS','indexedRoutes':len(expected),'retainedSites':10,'gameBuildId':game['buildId'],'protocol':game['protocolVersion'],'publishedBytes':total_bytes,'externalOriginals':len(shared['externalOriginals']),'deployExecuted':False}
 
 
 if __name__=='__main__':

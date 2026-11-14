@@ -25,7 +25,7 @@ import { queuePermanentExitAnimation, queueReanimateAnimation, queueGameEventAni
 import { resolveSubtypeReference } from './typalEngine.js';
 import { battlefieldEffectTargets, graveyardEntryCard, graveyardForSide, permanentMoveManaLimit } from './publicZoneEffects.js';
 import { cardManaValue } from './libraryEngine.js';
-import { findBattlefieldItemLocation, refreshPublicEffectTarget, removeControlEffectFromPermanent, choosePublicEffectOption } from './main.js';
+import { findBattlefieldItemLocation, refreshPublicEffectTarget, removeControlEffectFromPermanent, choosePublicEffectOption, chooseTriggeredEffectOption, tapPermanentForEffect, scheduleExiledPermanentReturn, resolveExiledPermanentReturn, waitForTriggerOrdering } from './main.js';
 
 
 function replacementDamageAmount({ amount, targetItem = null, targetIsLocal, sourceCard = null, sourceIsLocal = true, combat = false, cause = 'effect' }) {
@@ -477,6 +477,7 @@ export async function resolveTopStackItem() {
   // el objeto que acaba de resolverse. Con Trigger Stack los disparos ya no resuelven de
   // costado, pero mantenemos la garantía de no devolver prioridad con un descarte a medias.
   await waitForDiscardEffects();
+  await waitForTriggerOrdering();
 
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
@@ -953,7 +954,11 @@ async function resolvePermanentMove(effect, target, {card,isLocal}) {
       sendAurasToGraveyard(targetItem,controller);
       if (location.zoneName === 'combat') cleanupIfVehicle(targetItem);
     }
-    moveBattlefieldCardToZone(targetItem.card,ownerDestinationZone(targetCard,controller,zoneTo));
+    const destination = ownerDestinationZone(targetCard,controller,zoneTo);
+    const moved = moveBattlefieldCardToZone(targetItem.card,destination);
+    if (moved && zoneTo === 'exile' && effect.returnAtNextEndStep) {
+      scheduleExiledPermanentReturn(destination.at(-1),owner,isLocal);
+    }
     logMsg(gameText(destroy ? 'effect.destroy.done' : 'effect.exile.permanent',{card:card.name,target:targetCard.name}));
     if (died) {
       queueCreatureDeathBatch([{unit:targetItem,isLocal:controller}]);
@@ -985,7 +990,13 @@ async function resolvePublicZoneEffect(effect,target,{card,item,isLocal}) {
   resolution.isCurrent = valid;
   state.pendingPublicEffectResolution = resolution;
   try {
-    if (effect.type === 'sacrifice_other_or_damage') {
+    if (effect.type === 'pay_or_optional_draw') {
+      const ask = (side,choice,amount) => chooseTriggeredEffectOption({side,choice,amount,cardName:card.name,stackId:item.id,valid});
+      const accepted = await ask(target.isLocal,'pay_to_prevent_draw',effect.amount);
+      if (!valid() || (accepted && tryAutoPayCounterTax(target.isLocal,effect.amount))) return;
+      const amount = effect.drawAmount ?? 1;
+      if (await ask(isLocal,'optional_draw',amount) && valid()) await resolveDrawCards(isLocal,amount);
+    } else if (effect.type === 'sacrifice_other_or_damage') {
       const source = item?.sourceItem || item?.source?.sourceItem;
       const sacrificed = await resolveSacrificeEffect({target:'own_creature',amount:1},card.name,isLocal,{excludedItem:source,valid});
       if (!sacrificed.length && valid() && !getSacrificeEffectCandidates(isLocal,'creature').some(candidate=>candidate !== source)) {
@@ -1122,10 +1133,8 @@ async function transformBattlefieldItem(subject,{actorIsLocal=true,sourceCard=nu
   if(loc.zone!==destination){
     if(loc.kind==='combat' && newKind!=='creature'){
       repairCopyCombatDeparture(loc,subject);
-      // El motor actual sólo modela Auras/Equipos anexables a criaturas. Si deja de ser
-      // criatura, esos attachments se vuelven ilegales inmediatamente.
       detachEquipmentFrom(subject,loc.isLocal);
-      sendAurasToGraveyard(subject,loc.isLocal);
+      sendAurasToGraveyard(subject,loc.isLocal,aura => aura.enchantKind !== 'land' || !isLandPermanent(subject));
     }
     loc.zone.splice(loc.index,1);
     destination.push(subject);
@@ -1159,6 +1168,11 @@ async function transformBattlefieldItem(subject,{actorIsLocal=true,sourceCard=nu
 // habilidades puedan pasar por una sola puerta de entrada.
 async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
   const { card, item, isLocal, enforceProtectionAll = false } = context;
+
+  if (effectToApply.type === 'tap_permanent') {
+    tapPermanentForEffect(targetObj.item,isLocal);
+    return;
+  }
 
   // 23.15.2 — Ownership & Control Engine. Cambiar de controlador no hace que el permanente deje/reentre al battlefield.
   if (effectToApply.type === 'gain_control' || effectToApply.type === 'gain_control_until_eot') {
@@ -1319,6 +1333,13 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             dispatchGameEvent({type:'damage_dealt',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetPlayerIsLocal:targetObj.isLocal,sourceCard:card,amount:damage.amount,cause:'spell_or_ability'});
             logMsg(gameText('effect.targetDamage', { card: card.name, amount: damage.amount, target: targetName }));
           }
+        } else if (effectToApply.type === 'lose_life') {
+          const amount = Math.max(0,Number(effectToApply.amount) || 0);
+          if (amount === 0) return;
+          if (targetObj.isLocal) state.localHP -= amount; else state.rivalHP -= amount;
+          dispatchGameEvent({type:'life_lost',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,
+            sourceControllerIsLocal:isLocal,targetPlayerIsLocal:targetObj.isLocal,sourceCard:card,amount,cause:'effect'});
+          logMsg(gameText('effect.loseLife',{card:card.name,target:targetName,amount}));
         } else if (effectToApply.type === 'heal') {
           if (targetObj.isLocal) state.localHP += effectToApply.amount; 
           else state.rivalHP += effectToApply.amount;
@@ -1559,8 +1580,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         }
         // LÓGICA NUEVA: TRUCO DE COMBATE — +X/+X hasta el final del turno (ej. Fuerza de Toro)
         else if (effectToApply.type === 'pump') {
-          if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
-          targetUnit.tempEffects.push({ name: card.name, powerMod: effectToApply.powerMod, toughnessMod: effectToApply.toughnessMod, keywords:[...(effectToApply.keywords || (effectToApply.keyword ? [effectToApply.keyword] : []))] });
+          applyTemporaryPump(targetUnit,effectToApply,card.name);
           const pText = `${effectToApply.powerMod >= 0 ? '+' : ''}${effectToApply.powerMod}/${effectToApply.toughnessMod >= 0 ? '+' : ''}${effectToApply.toughnessMod}`;
           logMsg(gameText('effect.pump', { card: card.name, target: targetUnit.card.name, stats: pText }));
         }
@@ -1765,10 +1785,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
                 zone.splice(idx, 1);
                 if (inCombat) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
               }
-              if (wasCreature) {
-                detachEquipmentFrom(targetItem, isTargetLocal);
-                sendAurasToGraveyard(targetItem, isTargetLocal);
-              }
+              if (wasCreature) detachEquipmentFrom(targetItem, isTargetLocal);
+              sendAurasToGraveyard(targetItem, isTargetLocal);
               moveBattlefieldCardToZone(targetItem.card, ownerDestinationZone(targetItem.card, isTargetLocal, zoneTo));
               logMsg(gameText('land.destroy.done', { card: card.name, target: targetItem.card.name }));
               recordTelemetryEvent('land_destroyed', { source: card.name, target: targetItem.card.name, nonbasic: isNonbasicLandPermanent(targetItem), animatedCreature: wasCreature, isTargetLocal, zoneTo });
@@ -1942,8 +1960,32 @@ async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLoca
   return entered.map(e => e.card.name);
 }
 
+function applyTemporaryPump(permanent,effect,name) {
+  (permanent.tempEffects ||= []).push({name,powerMod:effect.powerMod,toughnessMod:effect.toughnessMod,
+    keywords:[...(effect.keywords || (effect.keyword ? [effect.keyword] : []))]});
+}
+
 async function resolveUntargetedGameEffect(effectToApply, context) {
   const { card, item, isLocal } = context;
+
+      if (effectToApply.type === 'pump_team') {
+        const creatures = (isLocal ? state.localCombat : state.rivalCombat).filter(isCreaturePermanent);
+        const amount = effectToApply.amount === 'own_creatures' ? creatures.length : effectToApply.amount;
+        const pump = {...effectToApply,powerMod:amount,toughnessMod:amount};
+        for (const creature of creatures) applyTemporaryPump(creature,pump,card.name);
+        return;
+      }
+      if (effectToApply.type === 'exile_source_until_end_step') {
+        const source = item?.source?.sourceItem || item?.sourceItem;
+        const location = findBattlefieldItemLocation(source);
+        if (location) await resolvePermanentMove({operation:'exile',returnAtNextEndStep:true},
+          {item:source,isLocal:location.isLocal},{card,isLocal});
+        return;
+      }
+      if (effectToApply.type === 'return_exiled_permanent') {
+        resolveExiledPermanentReturn(effectToApply);
+        return;
+      }
 
       // 23.16.4 — forma canónica de "transformate" para ETB/triggers/habilidades de la
       // propia TDFC. No targetea: la fuente debe seguir siendo ese mismo objeto de campo.
@@ -2095,9 +2137,9 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           if (idx === -1) continue;
           zone.splice(idx, 1);
           if (zone === combatZone) repairCombatLinksAfterZoneRemoval({ fromIsLocal:landIsLocal, fromIndex:idx });
+          sendAurasToGraveyard(unit, landIsLocal);
           if (wasCreature) {
             detachEquipmentFrom(unit, landIsLocal);
-            sendAurasToGraveyard(unit, landIsLocal);
             if(zoneTo==='graveyard') deadCreatures.push({ unit, isLocal: landIsLocal });
           }
           moveBattlefieldCardToZone(unit.card, ownerDestinationZone(unit.card,landIsLocal,zoneTo));
@@ -2364,6 +2406,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 // efectos discretos cuya semántica actual ya está definida sin target explícito.
 export function canResolveGameEffectWithoutTarget(effectType) {
   return [
+    'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent',
     'draw', 'draw_then_top', 'loot', 'rummage', 'sacrifice', 'sacrifice_other_or_damage', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'destroy_all_creatures', 'create_tokens',
     'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'exile_top_with_permission', 'animate_land', 'transform', 'destroy_all_lands', 'suspend_remove_time', 'suspend_cast_from_exile', 'add_time_counter_suspended', 'remove_time_counter_suspended'
@@ -2376,6 +2419,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
 // También lo reutilizan las habilidades de Creencia del Punto 9 y el futuro validador JSON.
 export function canResolveGameEffectWithTarget(effectType) {
   return [
+    'lose_life', 'pay_or_optional_draw', 'tap_permanent',
     'damage', 'draw', 'heal', 'prevent_damage', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'move_target_permanent', 'move_target_graveyard_card',
@@ -2392,6 +2436,7 @@ export function getEffectExecutionClass(effectType) {
   if (['team_buff', 'team_keyword'].includes(effectType)) return 'continuous';
   if ([
     'draw', 'draw_then_top', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
+    'lose_life', 'pay_or_optional_draw', 'tap_permanent', 'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent',
     'scry', 'surveil', 'proliferate', 'poison', 'prevent_damage', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'move_target_permanent', 'move_target_graveyard_card', 'sacrifice_other_or_damage',
@@ -2424,6 +2469,22 @@ export async function resolveGameEffect(effect, context) {
   const executionClass = getEffectExecutionClass(effectToApply.type);
   if (executionClass !== 'discrete') {
     return { handled: false, reason: executionClass };
+  }
+
+  if (item.source?.selfTarget && ['pump','grant_keyword_temp','add_counter'].includes(effectToApply.type)) {
+    const subject = item.source.sourceItem;
+    const location = findBattlefieldItemLocation(subject);
+    if (location) {
+      if (effectToApply.type === 'add_counter') applyTargetedCounterMutation(effectToApply,subject,{card,isLocal});
+      else if (isCreaturePermanent(subject)) {
+        await resolveTargetedGameEffect(effectToApply,{type:'creature',item:subject,isLocal:location.isLocal},{card,item,isLocal});
+      }
+    }
+    return {handled:true};
+  }
+  if (effectToApply.type === 'pay_or_optional_draw') {
+    if (targetObj?.type === 'player') await resolvePublicZoneEffect(effectToApply,targetObj,{card,item,isLocal});
+    return {handled:true};
   }
 
   if (['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage'].includes(effectToApply.type)) {
@@ -2595,7 +2656,9 @@ async function executeStackItem(item) {
     return;
   }
 
-  if (type === 'aura' && targetObj && targetObj.item) {
+  if (type === 'aura') {
+    const location = findBattlefieldItemLocation(targetObj?.item);
+    if (card.enchantKind === 'land' && location) targetObj = {...targetObj,isLocal:location.isLocal};
     // Un Aura es un hechizo dirigido mientras está en la Stack. Revalida Intocable,
     // Protección, lado permitido y presencia en battlefield justo antes de anexarse.
     const auraLegality = explainResolvedEffectTargetLegality(targetObj, {
@@ -2664,7 +2727,8 @@ async function executeStackItem(item) {
     // Las habilidades disparadas y las Loyalty conservan el target fijado al entrar a la
     // Stack, pero ese objetivo se revalida al resolver. La fuente NO necesita seguir en
     // mesa: una Loyalty sigue existiendo aunque pagar el costo haya matado al Planeswalker.
-    if (type === 'ability' && ['triggered', 'loyalty'].includes(item.abilityKind) && targetObj && targetObj.type !== 'stack') {
+    if (type === 'ability' && ['triggered', 'loyalty'].includes(item.abilityKind) && targetObj && targetObj.type !== 'stack' &&
+        !item.source?.selfTarget && effectToApply?.type !== 'pay_or_optional_draw') {
       const targetLegality = explainResolvedEffectTargetLegality(targetObj, {
         effect: effectToApply,
         sourceCard: card,

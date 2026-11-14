@@ -1,4 +1,4 @@
-import { isCreaturePermanent } from './permanentTypes.js';
+import { isCreaturePermanent, isLandPermanent } from './permanentTypes.js';
 import { isSagaCard, shouldSacrificeSaga, getSagaFinalChapter, getSagaLoreCount } from './sagaEngine.js';
 // Argentinia 23.15.2.1 — Rules Kernel / State-Based Actions 2.0 hardening
 // ---------------------------------------------------------------------------
@@ -158,6 +158,10 @@ export function collectTokenCeaseActions(state) {
 }
 
 
+export function auraCanEnchant(aura, permanent) {
+  return aura?.enchantKind === 'land' ? isLandPermanent(permanent) : isCreaturePermanent(permanent);
+}
+
 export function collectAttachmentStateActions(state, { getProtectionMatch } = {}) {
   const out = [];
   const allBattlefield = [
@@ -173,7 +177,7 @@ export function collectAttachmentStateActions(state, { getProtectionMatch } = {}
       if (!unit?.card || !Array.isArray(unit.auras) || unit.auras.length === 0) continue;
       for (const auraCard of unit.auras) {
         const illegalColor = getProtectionMatch?.(unit, auraCard?.colors || []);
-        const illegalTargetType = !isCreaturePermanent(unit); // todas las Auras actuales encantan criatura
+        const illegalTargetType = !auraCanEnchant(auraCard, unit);
         if (illegalColor || illegalTargetType) out.push({ kind:'aura', unit, auraCard, isLocal, illegalColor, illegalTargetType, reason:'illegal_attachment' });
       }
     }

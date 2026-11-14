@@ -284,7 +284,7 @@ function serializeStackSource(source, state, myRole) {
   ['type', 'triggerType', 'sourceCardId', 'selfTarget', 'index', 'abilityIndex'].forEach(key => {
     if (hasOwn(source, key)) out[key] = source[key];
   });
-  if (source.eventCard) out.eventCard = source.eventCard;
+  if (source.eventCard && source.triggerType !== 'card_drawn') out.eventCard = discoverySafePublicValue(source.eventCard);
   const sourceItemRef = serializeBoardItemRef(source.sourceItem, state, myRole) || source._sourceItemRef || null;
   const eventItemRef = serializeBoardItemRef(source.eventItem, state, myRole) || source._eventItemRef || null;
   if (sourceItemRef) {
@@ -318,7 +318,9 @@ export function serializeStackForPublic(stack, state, myRole) {
   if (!Array.isArray(stack)) return [];
   return stack.map(item => {
     const effectType = item?.ability?.effect?.type || item?.card?.effect?.type;
-    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage'].includes(effectType);
+    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage'].includes(effectType)
+      || item?.source?.selfTarget === true || effectType === 'exile_source_until_end_step'
+      || (item?.type === 'aura' && item.card?.enchantKind === 'land');
     const liveRef = serializeBoardItemRef(item?.sourceItem, state, myRole);
     const sourceItemRef = liveRef ? {...liveRef,...(strict ? {strict:true} : {})} : item?._sourceItemRef || null;
     const source = serializeStackSource(item?.source, state, myRole);

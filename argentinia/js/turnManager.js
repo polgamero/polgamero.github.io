@@ -3,7 +3,7 @@ import { currentDifficultyObservation } from './difficultyEvidence.js';
 import { guidedMatchPaused, guidedCanPass } from './guidedMatch.js';
 import { consumePriorityBudget } from './decisionClock.js';
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, waitForTriggerOrdering, drawCardsFromLibrary, noteFailedDraw, settleFailedDraws, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
+import { state, queueTriggeredAbilities, waitForTriggerOrdering, drawCardsFromLibrary, noteFailedDraw, settleFailedDraws, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, collectScheduledReturnTriggers, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
 import { takeBotPriorityAction, chooseBotCleanupDiscardIndex, reportBotStrategicTurnAtCleanup } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -498,7 +498,8 @@ export async function advanceStep() {
   }
 
   if (state.phase === 'end_step') {
-    executeEndStep();
+    const queued = executeEndStep();
+    if (queued.length && state.currentMatch) await waitForTriggerOrdering();
     render();
     // En el Paso Final también hay prioridad
   }
@@ -1097,7 +1098,7 @@ function executeEndStep() {
 
   resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
 
-  const entries = [];
+  const entries = collectScheduledReturnTriggers();
   supportZone.forEach(item => {
     const trig = item.card.endStepTrigger;
     if (!trig) return;
@@ -1108,7 +1109,7 @@ function executeEndStep() {
     type:'end_step_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
     activePlayerIsLocal:isLocal, phase:'end_step', metadata:{ attackersDeclaredThisTurn:attackersCount }
   }));
-  queueTriggeredAbilities(entries);
+  return queueTriggeredAbilities(entries);
 }
 
 function executeDrawStep() {
@@ -1145,10 +1146,9 @@ async function executeCleanupStep() {
       if (item.isAnimatedLand) {
         combatZone.splice(i, 1);
         const isLocalLand = landsZone === state.localLands;
-        // Equip solo puede quedar unido a criatura; las Auras actuales también encantan criatura.
-        // Al terminar la animación, el Equipo se desprende y esas Auras van al cementerio.
+        // Al dejar de ser criatura conserva las Auras que encantan tierra.
         detachEquipmentFrom(item, isLocalLand);
-        sendAurasToGraveyard(item, isLocalLand);
+        sendAurasToGraveyard(item, isLocalLand, aura=>aura.enchantKind !== 'land');
         revertAnimatedLandState(item);
         landsZone.push(item);
         continue;

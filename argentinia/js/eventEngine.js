@@ -209,6 +209,7 @@ export function eventFilterMatches(rawFilter = {}, rawEvent = {}, context = {}) 
   if (filter.activePlayer != null && !relationMatches(filter.activePlayer, sourceIsLocal, event.activePlayerIsLocal)) return false;
 
   if (filter.self === true && !sameObject(sourceItem, event.item)) return false;
+  if (filter.attachedToEventItem === true && !sameObject(context.attachmentHost, event.item)) return false;
   if (filter.notSelf === true && sameObject(sourceItem, event.item)) return false;
   if (filter.sourceSelf === true && !sameObject(sourceItem, event.sourceItem)) return false;
   if (filter.targetSelf === true && !sameObject(sourceItem, event.targetItem)) return false;
@@ -284,10 +285,11 @@ export function collectGenericEventMatches({ event: rawEvent, watchers = [], isS
     const sourceItem = watcher?.item || watcher?.unit || null;
     const sourceCard = watcher?.card || sourceItem?.card || null;
     const sourceIsLocal = watcher?.isLocal === true;
-    if (!sourceCard || !sourceItem) continue;
-    if (typeof isSuppressed === 'function' && isSuppressed(sourceItem, sourceIsLocal)) continue;
+    const attachmentHost = watcher?.attachmentHost || null;
+    if (!sourceCard || (!sourceItem && !attachmentHost)) continue;
+    if (sourceItem && typeof isSuppressed === 'function' && isSuppressed(sourceItem, sourceIsLocal)) continue;
     for (const spec of normalizeGenericTriggerSpecs(sourceCard)) {
-      if (!genericTriggerMatchesEvent(spec, event, { sourceItem, sourceCard, sourceIsLocal })) continue;
+      if (!genericTriggerMatchesEvent(spec, event, { sourceItem, sourceCard, sourceIsLocal, attachmentHost })) continue;
       matches.push({ sourceItem, sourceCard, sourceIsLocal, spec, event });
     }
   }

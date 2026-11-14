@@ -16,7 +16,7 @@
 // En multiplayer la mano/mazo rival siguen siendo sólo cantidades/placeholders, exactamente
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
-import { ENGINE_VERSION, ENGINE_BASELINE, RELEASE_DISPLAY_VERSION } from './version.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BASELINE, RELEASE_DISPLAY_VERSION, getLoadedBuildId } from './version.js';
 import { getAudioRuntimeStatus, setQuickMusicLevel, setQuickSfxLevel } from './audioManager.js';
 import { gameText } from './gameTexts.js';
 import { showGamePrompt } from './gameDialogs.js';
@@ -1320,6 +1320,8 @@ export function startTelemetrySession(meta = {}) {
       activeElapsedBaseMs: Math.max(0, Number(meta.activeElapsedBaseMs) || 0),
       engineVersion: ENGINE_VERSION,
       releaseVersion: RELEASE_DISPLAY_VERSION,
+      buildId: getLoadedBuildId(),
+      protocolVersion: ENGINE_PROTOCOL_VERSION,
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       page: typeof location !== 'undefined' ? location.pathname : null,
       localPlayerName: typeof providers.getLocalPlayerName === 'function' ? providers.getLocalPlayerName() : null,
@@ -1913,12 +1915,15 @@ function buildPanel() {
 function updatePanelStatus() {
   if (!statusEl || !bugsEl) return;
   refreshGameplayMusicToggle();
+  const buildId = getLoadedBuildId();
+  const label = `v${RELEASE_DISPLAY_VERSION}${buildId ? ' · '+buildId.slice(0,10) : ''}`;
+  statusEl.title = buildId ? `Build ${buildId}` : label;
   if (!currentSession) {
-    statusEl.textContent = `🧪 v${RELEASE_DISPLAY_VERSION}`;
+    statusEl.textContent = `🧪 ${label}`;
     bugsEl.textContent = '🐞 0';
   } else {
     const ended = !!currentSession.endedAt;
-    statusEl.textContent = ended ? `🧪 v${RELEASE_DISPLAY_VERSION} · ${currentSession.events.length}` : `🔴 v${RELEASE_DISPLAY_VERSION} · ${currentSession.events.length}`;
+    statusEl.textContent = `${ended ? '🧪' : '🔴'} ${label} · ${currentSession.events.length}`;
     bugsEl.textContent = `🐞 ${currentSession.bugCandidates.length}`;
   }
 
