@@ -1,4 +1,6 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
+import { battlefieldEffectTargets, graveyardEffectTargets, lockAuraTarget, lockGraveyardTarget, permanentMoveManaLimit } from './publicZoneEffects.js';
+import { cardManaValue } from './libraryEngine.js';
 import { recordTelemetryEvent, recordTelemetryBugCandidate, summarizeTelemetryTarget } from './telemetry.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { getProliferateCandidates } from './utils.js';
@@ -1085,6 +1087,9 @@ export async function checkRivalCounterOrResponse() {
     // camino reactivo (igual la puede jugar en su propia fase principal, donde SÍ sabe
     // targetear pump/fight/etc.) — mejor no jugarla que jugarla y que fallezca sin efecto.
     if (!c.requiresTarget) return true;
+    if (c.effect?.type === 'draw' && c.effect.target === 'player') {
+      return state.rivalDeck.length >= c.effect.amount || state.localDeck.length < c.effect.amount;
+    }
     if (c.effect?.type === 'damage') return true;
     if (c.effect?.type === 'destroy_creature' || c.effect?.type === 'bounce' || c.effect?.type === 'exile_creature' || c.effect?.type === 'exile_and_return') {
       return legalReactiveRemovalTargets(c).length > 0;
@@ -1109,6 +1114,8 @@ export async function checkRivalCounterOrResponse() {
       const copyable=spellStack.filter(obj=>isStackItemLegalCopyTarget(responseCard.effect.type,obj,responseCard.effect));
       const chosen=copyable.reduce((best,obj)=>!best || Number(obj.card?.cmc||0)>Number(best.card?.cmc||0) ? obj : best,null);
       if(chosen) targetObj={type:'stack',stackId:chosen.id};
+    } else if (responseCard.effect?.type === 'draw' && responseCard.effect.target === 'player') {
+      targetObj = {type:'player',isLocal:state.localDeck.length < responseCard.effect.amount};
     } else if (responseCard.effect?.type === 'damage') {
       // Preferimos rematar una criatura vulnerable, pero nunca duplicamos daño letal sobre
       // una instancia que ya está cubierta por una respuesta propia pendiente. Si no hay
@@ -1424,7 +1431,7 @@ function hasPendingBotActivatedAbility(sourceItem, abilityIndex) {
 
 function botTargetThreatScore(target) {
   const item = target?.item;
-  const card = item?.card || {};
+  const card = target?.card || item?.card || {};
   if (!item) return 0;
   if (target.type === 'creature') {
     let score = (Math.max(0, getEffectivePower(item)) + Math.max(0, getEffectiveToughness(item))) * 2 + Number(card.cmc || 0);
@@ -1442,9 +1449,14 @@ function botTargetThreatScore(target) {
 }
 
 function bestLegalBotEffectTarget(effect, sourceCard) {
-  const candidates = getResolvedEffectTargetCandidates({
+  let candidates = getResolvedEffectTargetCandidates({
     effect, sourceCard, controllerIsLocal:false, chooserIsLocal:false, cardName:sourceCard?.name
   });
+  if (battlefieldEffectTargets(effect)) {
+    candidates = candidates.filter(target => target.isLocal &&
+      cardManaValue(target.card || target.item.card) <= permanentMoveManaLimit(state,effect,false) &&
+      (effect.operation !== 'destroy' || !hasKeyword(target.card || target.item,'indestructible')));
+  }
   if (!candidates.length) return null;
   return [...candidates].sort((a,b) => botTargetThreatScore(b) - botTargetThreatScore(a))[0] || null;
 }
@@ -1619,6 +1631,10 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
           shouldActivate = true;
         }
+      }
+      else if (effect.type === 'loot' && effect.discardAmount != null) {
+        shouldActivate = state.rivalDeck.length >= effect.amount &&
+          state.rivalHand.length > 0 && (state.phase === 'main2' || state.phase === 'end_step');
       }
       else if (['destroy_creature','exile_creature','exile_and_return','bounce','cant_attack_next_turn'].includes(effect.type)) {
         let legalTargets = getResolvedEffectTargetCandidates({
@@ -1851,7 +1867,15 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
         }
       }
 
-      if (effect.type === 'damage') {
+      if (graveyardEffectTargets(effect)) {
+        const target = getResolvedEffectTargetCandidates({effect,sourceCard,controllerIsLocal:false})
+          .filter(candidate => isCreaturePermanent(candidate.card))
+          .sort((a,b)=>Number(b.isLocal)-Number(a.isLocal) || cardManaValue(b.card)-cardManaValue(a.card))[0];
+        if (target) {
+          aiTargetObj = lockGraveyardTarget(target);
+          shouldActivate = true;
+        }
+      } else if (effect.type === 'damage') {
         const vulnerable = state.localCombat.find(c =>
           isValidBotTarget(c, sourceCard.colors) && getEffectiveToughness(c) <= effect.amount
         );
@@ -2024,12 +2048,16 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
 
   if (!card.requiresTarget) return true;
   const effect = card.effect || {};
+  if (battlefieldEffectTargets(effect)) return Boolean(bestLegalBotEffectTarget(effect,card));
 
   if (['copy_spell','copy_ability','copy_stack_object'].includes(effect.type)) {
     return spellStack.some(obj=>isStackItemLegalCopyTarget(effect.type,obj,effect));
   }
   if (effect.type === 'create_token_copy' || effect.type === 'become_copy') {
     return getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name}).length > 0;
+  }
+  if (effect.type === 'draw') {
+    return state.rivalDeck.length >= (effect.amount ?? 1) || state.localDeck.length < (effect.amount ?? 1);
   }
 
   // Efectos cuyo target siempre puede ser un jugador adecuado.
@@ -2740,7 +2768,7 @@ export async function takeBotPriorityAction() {
             logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         }
-        else if (cardToPlay.effect && (cardToPlay.effect.type === 'gain_control' || cardToPlay.effect.type === 'gain_control_until_eot')) {
+        else if (cardToPlay.effect && (cardToPlay.effect.type === 'gain_control' || cardToPlay.effect.type === 'gain_control_until_eot' || battlefieldEffectTargets(cardToPlay.effect))) {
           // 23.22.0 HF1 — la heurística vieja puntuaba primero y validaba nunca: podía
           // elegir La Luz Mala (Intocable), pagar {4}{U}{U} y recién descubrir al resolver
           // que Intervención Federal nunca tuvo un objetivo legal. Enumerar por el target
@@ -2768,6 +2796,9 @@ export async function takeBotPriorityAction() {
         }
         // 23.10.1: Hand/Deck rival se TARGETEA como jugador durante casteo. La
         // identidad de la carta privada se elegirá recién cuando el hechizo resuelva.
+        else if (cardToPlay.effect?.type === 'draw' && cardToPlay.requiresTarget) {
+          aiTargetObj = {type:'player',isLocal:state.localDeck.length < (cardToPlay.effect.amount ?? 1)};
+        }
         else if (cardToPlay.effect && cardToPlay.effect.type === 'private_zone_move') {
           aiTargetObj = { type: 'player', isLocal: true };
         }
@@ -2954,6 +2985,7 @@ export async function takeBotPriorityAction() {
         });
       }
       state.rivalHand.splice(committedHandIndex, 1);
+      if (aiTargetObj?.type === 'aura') lockAuraTarget(aiTargetObj);
 
       // 601.2f-g-h: una única ruta para X/no-X; Cost Engine calcula modifiers y los
       // métodos de pago del Tano antes de activar fuentes.

@@ -35,6 +35,7 @@ import { parseEvolutionVariantId, evolutionStageForProfile } from './evolution.j
 import { normalizeFlasheraCopies } from './flasheraContract.js';
 import { parseCardVariantId } from './cardVariant.js';
 import { assertDeckFlasheraOwnership } from './flasheraDeck.js';
+import { deckCopyLimit } from './deckCopyLimit.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
@@ -1480,7 +1481,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
   // Validate inside the SAME Firestore transaction snapshot as the eventual deck write.
   // Reject forged premium suffixes, unsupported combinations and overdrawn finish counts.
-  assertDeckFlasheraOwnership(data, cardIds, {allowVirtualAdminPool,maxCopiesPerCard:MAX_COPIES_PER_CARD,isBasicLand:id=>cardDb.getById(id)?.type?.includes('básica')});
+  assertDeckFlasheraOwnership(data, cardIds, {allowVirtualAdminPool,copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD)});
   const enhancements = data.enhancements || {};
   const evolutions = data.evolutions || {};
   const requestedCounts = {};
@@ -1502,13 +1503,6 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
     if (!cardDb.isOwnedPlayable(baseId,data)) throw new Error(`La carta ${cardDb.getById(baseId)?.name || baseId} está deshabilitada o no está autorizada para este mazo.`);
     if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
-    // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
-    // (esas no tienen límite, ni acá ni en el contrato canónico de Argentinia).
-    const cardDef = cardDb.getById(baseId);
-    const isBasicLand = cardDef && cardDef.type.includes('básica');
-    if (!isBasicLand && count > MAX_COPIES_PER_CARD) {
-      throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
-    }
   }
   // Cada variante especial representa UNA copia física reservada de la colección. Una
   // mejora y una evolución de la misma base son dos copias distintas si ambas se usan.

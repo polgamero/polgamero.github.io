@@ -18,7 +18,7 @@ for rel in ('argentinia/index.html','argentinia/js/main.js','argentinia/js/share
     if not (root/rel).is_file():fail('missing public runtime '+rel)
 try:
     manifest=json.loads((app/'build-manifest.json').read_text(encoding='utf-8-sig'))
-    if manifest.get('engineProtocolVersion')!='mp-23.19.2-fl40':fail('stale multiplayer protocol in public manifest')
+    if manifest.get('engineProtocolVersion')!='mp-23.19.2-fl41':fail('stale multiplayer protocol in public manifest')
     if not re.fullmatch(r'[a-f0-9]{20}',str(manifest.get('buildId',''))):fail('missing runtime buildId')
     for rel in ('./js/main.js','./js/sharedAssets.js','./assets/images/cards/cards-image-manifest.json','./js/flasheraGameplay.js'):
         if rel not in manifest.get('refreshAssets',[]):fail('refreshAssets lacks '+rel)
@@ -63,4 +63,4 @@ except Exception as ex:fail('portal config invalid: '+str(ex))
 if errors:
     print('\n'.join('::error::FIX5_PAGES '+x for x in errors),file=sys.stderr)
     sys.exit(1)
-print('FIX5_PAGES_RELEASE_GUARD_OK protocol=fl40 siblings=10 retainedPNGs=YES secretDirs=NONE')
+print('FIX5_PAGES_RELEASE_GUARD_OK protocol=fl41 siblings=10 retainedPNGs=YES secretDirs=NONE')

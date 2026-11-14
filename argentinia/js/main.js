@@ -42,7 +42,7 @@ import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, sp
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
 import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
-import { normalizeLibraryEffect, getLibraryWindowEntries, getLibraryEligibleEntries, chooseBotLibraryEntries, libraryCardMatchesFilter, libraryCardCanMoveToDestination } from './libraryEngine.js';
+import { cardManaValue, normalizeLibraryEffect, getLibraryWindowEntries, getLibraryEligibleEntries, chooseBotLibraryEntries, libraryCardMatchesFilter, libraryCardCanMoveToDestination } from './libraryEngine.js';
 import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
 import { canPayXCost, maximumAffordableX } from './xCostPayment.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
@@ -50,6 +50,7 @@ import { evaluateStateBasedActions, hasMechanicalStateActions, SBA_MAX_PASSES } 
 import { buildApnapTriggerGroups, stackPlacementFromResolutionOrders } from './triggerOrdering.js';
 import { controllerRoleForSide, stampPermanentController, permanentControllerRole, makeControlEffect, addControlEffect, expireEndOfTurnControlEffects, removeSourceBoundControlEffects, deriveNextControlEffectSerial } from './controlEngine.js';
 import { normalizeGameEvent, collectGenericEventMatches } from './eventEngine.js';
+import { battlefieldEffectTargets, graveyardEffectTargets, graveyardForSide, graveyardTargets, lockGraveyardTarget, graveyardEntryCard, lockAuraTarget, auraEntryCard, notePermanentExit } from './publicZoneEffects.js';
 import { applySpellCostModifiers, getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, planAutomaticPaymentMethods, parsedManaTotal, costEngineSummary } from './costEngine.js';
 import { resolveReplacementEvent, replacementEngineSummary } from './replacementEngine.js';
 import { normalizeCounterType, changeCounterCount, getCounterCount, counterStatDelta, resolveUntapAttempt, getCounterDefinition } from './counterEngine.js';
@@ -579,7 +580,7 @@ function battlefieldControllerRole(isLocal) {
   return controllerRoleForSide(!!isLocal, state.currentMatch?.myRole || null);
 }
 
-function findBattlefieldItemLocation(item) {
+export function findBattlefieldItemLocation(item) {
   const specs = [
     ['combat', true, state.localCombat], ['combat', false, state.rivalCombat],
     ['support', true, state.localSupport], ['support', false, state.rivalSupport],
@@ -770,6 +771,9 @@ export const state = {
   // 'main2', 'end_step', 'cleanup'
   phase: 'main1', 
   gameOver: false,
+  failedDrawAttempts: {local:0,rival:0},
+  deckedOutRole: null,
+  deckOutReady: false,
   isGuidedLearningMatch: false,
 
   // Dificultad del Tano (Grupo C, Etapa 4): 'hard' (default) usa todo lo construido en las
@@ -871,6 +875,7 @@ export const state = {
   localLands: [],
   localCombat: [],
   localGraveyard: [], 
+  permanentExitTurn: {local:null,rival:null},
   localExile: [], // Zona de Exilio: separada del cementerio — lo que va acá no vuelve
                    // (salvo que algo lo diga explícitamente), y no cuenta como "murió".
   localPlaneswalkers: [], // { card, loyalty, abilityUsedThisTurn } — no son criaturas, no
@@ -1026,6 +1031,7 @@ export const state = {
   // elige cartas de un cementerio público. `resolvingGraveyardChoices` también cubre selecciones
   // encoladas para que dos triggers no abran modales superpuestos.
   pendingGraveyardChoice: null,
+  pendingPublicEffectResolution: null,
   resolvingGraveyardChoices: 0,
   // Punto 7: target de un ETB que nació DURANTE una resolución (hoy, al reanimar). A
   // diferencia de pendingTargetCard normal, acá no hay una carta esperando entrar a la
@@ -1124,6 +1130,7 @@ function resetGameplayStateForNewMatch() {
     if (!GAMEPLAY_STATE_PERSIST_KEYS.has(key)) state[key] = cloneGameplayValue(value);
   });
   Object.assign(state,preserved);
+  privateZoneOfferMemory.clear();
   castTransactionSerial = 1;
   presentationCueSerial = 0;
   replaceSpellStackFromSync([]);
@@ -3313,15 +3320,33 @@ function removePrivateZoneCard(zone, ownerIsLocal, card) {
   return true;
 }
 
-function moveSelectedPrivateCards(cards, { zone, ownerIsLocal, destination }) {
+function moveSelectedPrivateCards(cards, { zone, ownerIsLocal, destination, operation, discards = null }) {
   const grave = ownerIsLocal ? state.localGraveyard : state.rivalGraveyard;
   const exile = ownerIsLocal ? state.localExile : state.rivalExile;
   const hand = ownerIsLocal ? state.localHand : state.rivalHand;
   const deck = ownerIsLocal ? state.localDeck : state.rivalDeck;
   const moved = [];
-  for (const card of cards) {
+  const source = zone === 'hand' ? hand : deck;
+  if (new Set(cards).size !== cards.length || cards.some(card => !source.includes(card))) return moved;
+  const ordered = operation === 'order_top' ? [...cards].reverse() : cards;
+  for (const card of ordered) {
     if (!removePrivateZoneCard(zone, ownerIsLocal, card)) continue;
-    if (destination === 'graveyard') grave.push(card);
+    if (operation === 'discard') {
+      const plan = replacementCardZonePlan(card,ownerIsLocal,'hand','graveyard','effect');
+      plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
+      discards?.push({cardId:card.id,zoneTo:plan.zoneTo,index:plan.destination.length - 1});
+      const event = {controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal:plan.ownerIsLocal,
+        card,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'effect'};
+      const remoteResolution = state.multiplayerResolutionMarker?.kind === 'stack_resolution' &&
+        state.multiplayerResolutionMarker.authorityRole !== state.currentMatch?.myRole;
+      if (remoteResolution) {
+        void queueGameEventAnimation({...event,type:'card_discarded'});
+      } else {
+        dispatchGameEvent({...event,type:'card_discarded'});
+        if (plan.zoneTo === 'exile') dispatchGameEvent({...event,type:'card_exiled'});
+      }
+    }
+    else if (destination === 'graveyard') grave.push(graveyardEntryCard(card));
     else if (destination === 'exile') exile.push(card);
     else if (destination === 'hand') hand.push(card);
     else if (destination === 'bottom') deck.unshift(card);
@@ -3332,21 +3357,24 @@ function moveSelectedPrivateCards(cards, { zone, ownerIsLocal, destination }) {
   return moved;
 }
 
-function choosePrivateZoneOfferLocally(offer, cardName, { optional = false } = {}) {
-  state.pendingPrivateZoneChoice = { requestId: offer.requestId, zone: offer.zone, amount: offer.amount, mandatory: !optional };
+function choosePrivateZoneOfferLocally(offer, cardName, { optional = false, valid = null, action = false } = {}) {
+  const choice = { requestId: offer.requestId, zone: offer.zone, amount: offer.amount, mandatory: !optional };
+  const match = state.currentMatch;
+  const uid = state.currentUser?.uid;
+  const current = () => state.pendingPrivateZoneChoice === choice && state.currentMatch === match &&
+    state.currentUser?.uid === uid && !state.gameOver && !state.multiplayerSessionSuperseded && (!valid || valid());
+  state.pendingPrivateZoneChoice = choice;
   render();
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     const finish = tokens => {
-      state.pendingPrivateZoneChoice = null;
-      render();
-      resolve(tokens);
+      const accepted = current();
+      if (state.pendingPrivateZoneChoice === choice) {
+        state.pendingPrivateZoneChoice = null;
+      }
+      resolve(accepted ? tokens : null);
     };
-    const cancel = optional ? (() => {
-      state.pendingPrivateZoneChoice = null;
-      render();
-      reject(new Error('private_zone_choice_cancelled'));
-    }) : null;
-    showPrivateZoneChoiceModal(offer, cardName, finish, cancel);
+    const cancel = optional ? () => finish(null) : null;
+    showPrivateZoneChoiceModal(offer, cardName, finish, cancel, {valid:current,action,onStale:()=>finish(null)});
   });
 }
 
@@ -3386,8 +3414,18 @@ export async function requestPrivateZoneChoice(options = {}) {
   const filter = PRIVATE_ZONE_FILTERS.includes(options.filter) ? options.filter : 'any';
   const cardName = options.cardName || 'Efecto';
   const optional = options.optional === true;
-  if (visibility === PRIVATE_ZONE_VISIBILITY.OPAQUE && filter !== 'any') {
+  const operation = options.operation || 'move';
+  const maxManaValue = Number.isFinite(options.maxManaValue) ? options.maxManaValue : null;
+  const showIneligible = options.showIneligible === true;
+  const match = state.currentMatch;
+  const uid = state.currentUser?.uid;
+  const valid = () => state.currentMatch === match && state.currentUser?.uid === uid &&
+    !state.gameOver && !state.multiplayerSessionSuperseded && (!options.valid || options.valid());
+  if (visibility === PRIVATE_ZONE_VISIBILITY.OPAQUE && (filter !== 'any' || maxManaValue !== null)) {
     throw new Error('private_zone_opaque_filter_would_leak_information');
+  }
+  if (operation === 'discard' && (zone !== 'hand' || destination !== 'graveyard')) {
+    throw new Error('private_zone_invalid_discard');
   }
 
   // ENTREGA 23.10.1 — BLINDAJE ANTI-PEEK.
@@ -3405,29 +3443,31 @@ export async function requestPrivateZoneChoice(options = {}) {
 
   // Solitario también usa la misma frontera offer/token/commit. `ownerIsLocal` y
   // `chooserIsLocal` permiten reutilizarla cuando la habilidad la controla El Tano.
-  if (!state.currentMatch) {
+  if (!match || options.ownerIsLocal === true) {
     const ownerIsLocal = options.ownerIsLocal === true;
     const chooserIsLocal = options.chooserIsLocal !== false;
     const cards = getPrivateZoneCardsForOffer(zone, range, rangeCount, ownerIsLocal);
-    const eligibleCards = cards.filter(card => privateZoneCardMatchesFilter(card, filter));
+    const eligibleCards = cards.filter(card => privateZoneCardMatchesFilter(card, filter) &&
+      (maxManaValue === null || cardManaValue(card) <= maxManaValue));
     const requestId = `pz_local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const built = buildPrivateZoneOffer({
       requestId,
       ownerRole: ownerIsLocal ? 'local' : 'rival',
       chooserRole: chooserIsLocal ? 'local' : 'rival',
       zone, cards, eligibleCards, visibility, amount,
-      operation: options.operation || 'move',
+      operation,
       range, filter
     });
-    if (built.offer.amount <= 0) {
+    if (built.offer.amount <= 0 && (!showIneligible || !cards.length)) {
       return { completed:true, movedNames:[], selectedCount:0, reason:'no_candidates' };
     }
     const tokens = chooserIsLocal
-      ? await choosePrivateZoneOfferLocally(built.offer, cardName, { optional })
+      ? await choosePrivateZoneOfferLocally(built.offer, cardName, { optional, valid })
       : choosePrivateZoneOfferForBot(built.offer, built.tokenMap);
+    if (!tokens || !valid()) return {completed:false,movedNames:[],selectedCount:0};
     const selected = resolvePrivateZoneSelection(built.tokenMap, built.offer, tokens);
     if (!selected.ok) return { completed:false, movedNames:[], selectedCount:0, reason:selected.reason };
-    const moved = moveSelectedPrivateCards(selected.cards, { zone, ownerIsLocal, destination });
+    const moved = moveSelectedPrivateCards(selected.cards, { zone, ownerIsLocal, destination, operation });
     render();
     return {
       completed:moved.length === built.offer.amount,
@@ -3436,33 +3476,51 @@ export async function requestPrivateZoneChoice(options = {}) {
     };
   }
 
-  const myRole = state.currentMatch.myRole;
+  const myRole = match.myRole;
   const ownerRole = options.ownerRole || otherRole(myRole);
   if (ownerRole === myRole) throw new Error('requestPrivateZoneChoice está pensado para elegir sobre una zona privada del rival.');
 
   const offerAck = await requestRivalDecision('private_zone_offer', ownerRole, {
     zone, amount, visibility, range, rangeCount, filter,
-    operation: options.operation || 'move', destination, cardName,
+    operation, destination, cardName,
+    ...(maxManaValue !== null ? {maxManaValue} : {}),
     chooserRole: myRole, optional
   });
-  if (!offerAck?.completed) return { completed:false, movedNames:[], selectedCount:0, reason:offerAck?.reason || 'offer_failed' };
+  if (!offerAck?.completed || !valid()) return { completed:false, movedNames:[], selectedCount:0, reason:offerAck?.reason || 'offer_failed' };
 
-  const offer = await fetchPrivateSelectionOffer(state.currentMatch.matchId, offerAck.offerId);
-  if (!offer) return { completed:false, movedNames:[], selectedCount:0, reason:'offer_not_found' };
+  const offer = await fetchPrivateSelectionOffer(match.matchId, offerAck.offerId);
+  if (!offer || !valid()) return { completed:false, movedNames:[], selectedCount:0, reason:'offer_not_found' };
   recordTelemetryDecision('private_zone_offer_received', {
     requestId: offer.requestId, zone: offer.zone, visibility: offer.visibility,
     candidateCount: offer.candidateCount, amount: offer.amount, filter:offer.filter || 'any'
     // Deliberadamente NO se registran identidades de candidates.
   });
-  if (Number(offer.amount || 0) <= 0) {
-    try { await deletePrivateSelectionOffer(state.currentMatch.matchId, offerAck.offerId); } catch (_) {}
-    return { completed:true, movedNames:[], selectedCount:0, reason:'no_candidates' };
+  let commit;
+  try {
+    const selectedTokens = offer.amount > 0 || (showIneligible && offer.candidates.length)
+      ? await choosePrivateZoneOfferLocally(offer, cardName, { optional, valid }) : [];
+    if (!selectedTokens || !valid()) return {completed:false,movedNames:[],selectedCount:0};
+    commit = await requestRivalDecision('private_zone_commit', ownerRole, {
+      offerId: offerAck.offerId, selectedTokens, cardName
+    });
+  } finally {
+    if (valid()) {
+      try { await deletePrivateSelectionOffer(match.matchId, offerAck.offerId); } catch (_) {}
+    }
   }
-  const selectedTokens = await choosePrivateZoneOfferLocally(offer, cardName, { optional });
-  const commit = await requestRivalDecision('private_zone_commit', ownerRole, {
-    offerId: offerAck.offerId, selectedTokens, destination, cardName
-  });
-  try { await deletePrivateSelectionOffer(state.currentMatch.matchId, offerAck.offerId); } catch (_) {}
+  if (operation === 'discard' && commit?.completed) {
+    const zones = {graveyard:state.rivalGraveyard,exile:state.rivalExile};
+    for (const moved of commit.discards || []) {
+      const discardedCard = zones[moved.zoneTo]?.[moved.index];
+      if (!discardedCard || discardedCard.id !== moved.cardId) continue;
+      const event = {controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:false,card:discardedCard,
+        zoneFrom:'hand',zoneTo:moved.zoneTo,cause:'effect'};
+      queueGeneratedTriggerEntries(buildGenericEventTriggerEntries({...event,type:'card_discarded'}),'card_discarded');
+      if (moved.zoneTo === 'exile') {
+        queueGeneratedTriggerEntries(buildGenericEventTriggerEntries({...event,type:'card_exiled'}),'card_exiled');
+      }
+    }
+  }
   return {
     completed: commit?.completed !== false,
     movedNames: commit?.movedNames || [],
@@ -3490,7 +3548,7 @@ function landSearchDestinationCopy(destination = 'battlefield') {
   return gameText('land.search.destination.battlefield');
 }
 
-async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, cardName }) {
+async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, cardName, valid = null }) {
   const deck = ownerIsLocal ? state.localDeck : state.rivalDeck;
   const candidates = getLandSearchCandidates(deck, spec.filter);
   const maxCount = Math.min(spec.amount, candidates.length);
@@ -3500,13 +3558,14 @@ async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, car
     return chooseBotLandSearchEntries(deck, spec.filter, maxCount, spec.destination);
   }
 
-  state.pendingLandSearchChoice = {
+  const choice = {
     cardName,
     amount: spec.amount,
     maxCount,
     filter: spec.filter,
     destination: spec.destination
   };
+  state.pendingLandSearchChoice = choice;
   render();
   return new Promise(resolve => {
     showLandSearchModal({
@@ -3517,8 +3576,10 @@ async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, car
       destinationLabel: landSearchDestinationCopy(spec.destination),
       allowFewer: spec.allowFewer
     }, chosenIndexes => {
-      state.pendingLandSearchChoice = null;
-      render();
+      if (state.pendingLandSearchChoice === choice) {
+        state.pendingLandSearchChoice = null;
+        render();
+      }
       const byIndex = new Map(candidates.map(entry => [entry.index, entry]));
       const unique = [...new Set((chosenIndexes || []).map(Number))]
         .filter(Number.isInteger)
@@ -3526,11 +3587,11 @@ async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, car
         .filter(Boolean)
         .slice(0, maxCount);
       resolve(unique);
-    });
+    }, {valid});
   });
 }
 
-async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }) {
+async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName, deferTriggers = false }) {
   const deck = ownerIsLocal ? state.localDeck : state.rivalDeck;
   const hand = ownerIsLocal ? state.localHand : state.rivalHand;
   const lands = ownerIsLocal ? state.localLands : state.rivalLands;
@@ -3546,6 +3607,7 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
   [...valid].sort((a, b) => b.index - a.index).forEach(entry => deck.splice(entry.index, 1));
 
   const movedNames = cardsInSelectionOrder.map(card => card.name);
+  const enteredLands = [];
   if (spec.destination === 'hand') {
     cardsInSelectionOrder.forEach(landCard => hand.push(landCard));
   } else {
@@ -3567,12 +3629,16 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
     entering.forEach(entry => lands.push(entry.item));
     // Cada entrada genera su propio evento Arraigo, pero todos los permanentes del lote ya
     // están presentes cuando se detectan esos triggers.
-    for (const entry of entering) await triggerLandEtb(ownerIsLocal, entry.card, entry.item, 'library');
+    for (const entry of entering) {
+      if (deferTriggers) enteredLands.push(serializeBoardItemRef(entry.item,state,state.currentMatch.myRole));
+      else await triggerLandEtb(ownerIsLocal, entry.card, entry.item, 'library');
+    }
   }
 
   // El efecto dice "buscá ... luego barajá": también se baraja si se eligió encontrar 0.
   shuffleLibraryInPlace(deck);
-  await queueLibraryShuffleAnimation({isLocal:ownerIsLocal});
+  if (deferTriggers) void queueLibraryShuffleAnimation({isLocal:ownerIsLocal},{broadcast:false});
+  else await queueLibraryShuffleAnimation({isLocal:ownerIsLocal});
   const identityIsPublic = spec.reveal || spec.destination !== 'hand';
   const publicMovedNames = identityIsPublic ? movedNames : [];
   recordTelemetryEvent('land_search_resolved', {
@@ -3582,8 +3648,102 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
     selectedCount: movedNames.length,
     selectedNames: publicMovedNames
   });
-  render();
-  return { completed: true, selectedCount: movedNames.length, movedNames: publicMovedNames };
+  if (!deferTriggers) render();
+  return { completed: true, selectedCount: movedNames.length, movedNames: publicMovedNames,
+    ...(deferTriggers ? {enteredLands} : {}) };
+}
+
+export function drawCardsFromLibrary(isLocal, amount, cause = 'effect', {deferTriggers = false} = {}) {
+  const deck = isLocal ? state.localDeck : state.rivalDeck;
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const count = Math.max(0, Math.floor(Number(amount) || 0));
+  let drawn = 0;
+  if (isHiddenRivalZone(isLocal)) throw new Error('draw_requires_library_owner');
+  for (let index = 0; index < count; index++) {
+    const card = deck.pop();
+    if (!card) break;
+    hand.push(card);
+    drawn++;
+    const event = {type:'card_drawn',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+      card,zoneFrom:'library',zoneTo:'hand',cause};
+    if (deferTriggers) {
+      try { void queueGameEventAnimation(event); } catch {}
+    }
+    else dispatchGameEvent(event);
+  }
+  return {drawn,failed:count - drawn};
+}
+
+export function noteFailedDraw(isLocal, failed, cause) {
+  if (!failed) return;
+  const side = isLocal ? 'local' : 'rival';
+  state.failedDrawAttempts[side] += failed;
+  recordTelemetryEvent('library_draw_failed',{side,attempts:failed,cause});
+}
+
+export function settleFailedDraws() {
+  const failed = state.failedDrawAttempts;
+  const loser = failed.local > 0 ? 'local' : failed.rival > 0 ? 'rival' : null;
+  if (!loser || (failed.local > 0 && failed.rival > 0)) return;
+  failed.local = 0;
+  failed.rival = 0;
+  state.deckedOutRole = state.currentMatch
+    ? (loser === 'local' ? state.currentMatch.myRole : otherRole(state.currentMatch.myRole))
+    : loser;
+  state.deckOutReady = true;
+}
+
+export async function resolveDrawCards(isLocal, amount, cause = 'effect') {
+  amount = Math.max(0,Math.floor(Number(amount) || 0));
+  if (amount === 0) return 0;
+  if (!isHiddenRivalZone(isLocal)) {
+    const result = drawCardsFromLibrary(isLocal,amount,cause);
+    noteFailedDraw(isLocal,result.failed,cause);
+    return result.drawn;
+  }
+  const match = state.currentMatch;
+  const response = await requestRivalDecision('self_draw_cards',otherRole(match.myRole),{amount,cause});
+  if (state.currentMatch !== match || state.gameOver || !response?.completed) return 0;
+  const drawn = Math.max(0,Math.floor(Number(response.drawn) || 0));
+  const failed = Math.max(0,Math.floor(Number(response.failed) || 0));
+  if (drawn + failed !== amount) return 0;
+  for (let index = 0; index < drawn; index++) {
+    queueGeneratedTriggerEntries(buildGenericEventTriggerEntries({
+      type:'card_drawn',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:false,
+      zoneFrom:'library',zoneTo:'hand',cause
+    }),'card_drawn');
+  }
+  noteFailedDraw(false,failed,cause);
+  return drawn;
+}
+
+// The room records the failed attempt while the library is still empty. The
+// spell can then put cards back before the normal end-of-resolution check.
+export async function publishFailedDrawBeforeRefill() {
+  const match = state.currentMatch;
+  if (!match || (!state.failedDrawAttempts.local && !state.failedDrawAttempts.rival)) return;
+  if (state.multiplayerResolutionMarker?.authorityRole !== match.myRole) return;
+  const local = state.failedDrawAttempts.local > 0;
+  state.deckedOutRole = local ? match.myRole : otherRole(match.myRole);
+  return publishMatchState({force:true});
+}
+
+export function choosePublicEffectOption(message, cardName, valid) {
+  const match = state.currentMatch;
+  const uid = state.currentUser?.uid;
+  const current = () => !state.gameOver && !state.multiplayerSessionSuperseded &&
+    state.currentMatch === match && state.currentUser?.uid === uid && (!valid || valid());
+  if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return Promise.resolve(current());
+  return showGameDialog(message, {
+    title:cardName,confirm:true,acceptLabel:'Sí',cancelLabel:'No',valid:current,
+    bindDecision:(overlay,finish) => {
+      const choose = timedDecision(overlay,state,finish,()=>[false],{
+        remove:false,action:false,isCurrent:current,clockHost:overlay.querySelector('section'),
+        blocked:()=>state.multiplayerSyncBlocked,notice:'Al vencer se elige No.'
+      });
+      return () => choose(false);
+    }
+  });
 }
 
 // API compartida por `search_land` y por el efecto legacy `ramp`. En multiplayer, si el
@@ -3593,6 +3753,22 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
 export async function searchLibraryForLands({ isLocal = true, effect = {}, cardName = 'Efecto' } = {}) {
   const spec = normalizeLandSearchEffect(effect);
   if (spec.amount <= 0) return { completed: true, selectedCount: 0, movedNames: [] };
+  const resolution = effect.optional ? state.pendingPublicEffectResolution : null;
+  const valid = resolution?.isCurrent || null;
+  if (valid && !valid()) return {completed:false,selectedCount:0,movedNames:[]};
+
+  if (effect.optional && isLocal && globalThis.__ARGENTINIA_HEADLESS_ENGINE__ !== true) {
+    const choice = {cardName,amount:spec.amount,filter:spec.filter,destination:spec.destination};
+    state.pendingLandSearchChoice = choice;
+    render();
+    const accepted = await choosePublicEffectOption('¿Querés buscar una tierra básica en tu mazo?',cardName,
+      ()=>state.pendingLandSearchChoice===choice && (!valid || valid()));
+    if (state.pendingLandSearchChoice === choice) state.pendingLandSearchChoice = null;
+    if (!accepted || state.gameOver || (valid && !valid())) {
+      render();
+      return {completed:true,selectedCount:0,movedNames:[]};
+    }
+  }
 
   if (isHiddenRivalZone(isLocal)) {
     const rivalRole = otherRole(state.currentMatch.myRole);
@@ -3602,8 +3778,18 @@ export async function searchLibraryForLands({ isLocal = true, effect = {}, cardN
       destination: spec.destination,
       allowFewer: spec.allowFewer,
       reveal: spec.reveal,
-      cardName
+      cardName,
+      ...(effect.optional ? {optional:true} : {})
     });
+    if (!valid || valid()) {
+      const seen = new Set();
+      for (const ref of response?.enteredLands || []) {
+        const item = deserializeBoardItemRef(ref,state,state.currentMatch?.myRole,{strict:true});
+        if (!item || seen.has(item) || !state.rivalLands.includes(item)) continue;
+        seen.add(item);
+        await triggerLandEtb(false,item.card,item,'library');
+      }
+    }
     return {
       completed: response?.completed !== false,
       selectedCount: Number(response?.selectedCount || 0),
@@ -3615,8 +3801,9 @@ export async function searchLibraryForLands({ isLocal = true, effect = {}, cardN
     ownerIsLocal: isLocal,
     chooserIsLocal: isLocal,
     spec,
-    cardName
+    cardName, valid
   });
+  if (valid && !valid()) return {completed:false,selectedCount:0,movedNames:[]};
   return commitLandSearchEntries({ ownerIsLocal: isLocal, entries, spec, cardName });
 }
 
@@ -3771,7 +3958,7 @@ function placeCardsAtLibraryBottom(deck,cardsTopFirst){ deck.unshift(...cardsTop
 function moveLibraryCardToPublicZone(card,ownerIsLocal,destination,sourceCardName,sourceIsLocal=ownerIsLocal){
   if(destination==='graveyard'){
     const plan=replacementCardZonePlan(card,ownerIsLocal,'library','graveyard','library_effect',{sourceCard:{name:sourceCardName},sourceIsLocal});
-    plan.destination.push(card);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
     if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'library',zoneTo:'exile',cause:'library_effect'});
     return plan.zoneTo;
   }
@@ -3998,7 +4185,7 @@ async function discardCardsFromHandNow(options) {
   const discardedCards = removed.map(entry => entry.card);
   for (const discardedCard of discardedCards) {
     const plan=replacementCardZonePlan(discardedCard,victimIsLocal,'hand','graveyard',reason);
-    plan.destination.push(discardedCard);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discardedCard) : discardedCard);
     dispatchGameEvent({
       type:'card_discarded', controllerIsLocal:victimIsLocal, actorIsLocal:victimIsLocal,
       ownerIsLocal:plan.ownerIsLocal, card:discardedCard, zoneFrom:'hand', zoneTo:plan.zoneTo, cause:reason
@@ -4039,7 +4226,7 @@ export function payBotActivatedDiscardCost(amount = 1, cardName = 'Habilidad') {
   removed.sort((a,b)=>a.index-b.index);
   for(const {card} of removed){
     const plan=replacementCardZonePlan(card,false,'hand','graveyard','activated_cost');
-    plan.destination.push(card);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
     dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'activated_cost'}, {forceDeferNormalTriggers:true});
     if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'activated_cost'}, {forceDeferNormalTriggers:true});
   }
@@ -4069,6 +4256,7 @@ export function getCastCompositeCostBundle(card, useAlternative = false) {
     additional,
     life: (alternative?.life || 0) + (additional?.life || 0),
     discards: [alternative?.discard, additional?.discard].filter(c => c && c.amount > 0),
+    handExiles: [alternative?.exileFromHand, additional?.exileFromHand].filter(c => c && c.amount > 0),
     sacrifices: [alternative?.sacrifice, additional?.sacrifice].filter(c => c && c.amount > 0),
     graveyardExiles: [alternative?.exileFromGraveyard, additional?.exileFromGraveyard].filter(c => c && c.amount > 0)
   };
@@ -4152,8 +4340,8 @@ export function canPayCastCompositeNonManaCosts(card, isLocal, useAlternative = 
   const hand = isLocal ? state.localHand : state.rivalHand;
   const excludeCard = options.excludeCard || null;
   const handResources = hand.filter(c => c && c !== excludeCard);
-  const discardReqs = expandCostRequirements(bundle.discards);
-  if (!canAssignDistinctResources(handResources, discardReqs, (c, req) => cardMatchesDiscardCost(c, req))) return false;
+  const handReqs = expandCostRequirements([...bundle.discards,...bundle.handExiles]);
+  if (!canAssignDistinctResources(handResources, handReqs, cardMatchesDiscardCost)) return false;
 
   const combat = isLocal ? state.localCombat : state.rivalCombat;
   const support = isLocal ? state.localSupport : state.rivalSupport;
@@ -4171,15 +4359,19 @@ export function canPayCastCompositeNonManaCosts(card, isLocal, useAlternative = 
   return true;
 }
 
-function chooseHandCardsForCompositeCost(isLocal, spec, card, excludeCards = []) {
+function chooseHandCardsForCompositeCost(isLocal, spec, card, excludeCards = [], operation = 'discard', remainingSpecs = []) {
   const hand = isLocal ? state.localHand : state.rivalHand;
   const excluded = new Set(excludeCards.filter(Boolean));
-  const entries = hand.map((c, index) => ({ card: c, index }))
-    .filter(e => !excluded.has(e.card) && cardMatchesDiscardCost(e.card, spec));
   const count = Math.max(0, spec.amount || 0);
+  const available = hand.filter(c=>!excluded.has(c));
+  const remaining = expandCostRequirements(remainingSpecs);
+  const otherRequirements = [...Array.from({length:Math.max(0,count - 1)},()=>spec),...remaining];
+  const entries = hand.map((c, index) => ({ card: c, index }))
+    .filter(e => !excluded.has(e.card) && cardMatchesDiscardCost(e.card, spec) &&
+      canAssignDistinctResources(available.filter(c=>c !== e.card),otherRequirements,cardMatchesDiscardCost));
   if (entries.length < count) return Promise.resolve(null);
   if (count === 0) return Promise.resolve([]);
-  if (entries.length === count) return Promise.resolve(entries.map(e => e.card));
+  if (entries.length === count && (!isLocal || operation !== 'exile_cost')) return Promise.resolve(entries.map(e => e.card));
 
   if (!isLocal) {
     const chosen = spec.selection === 'random'
@@ -4193,6 +4385,18 @@ function chooseHandCardsForCompositeCost(isLocal, spec, card, excludeCards = [])
   }
 
   const snapshot = entries.map(e => e.card);
+  if (operation === 'exile_cost') {
+    const tx = state.pendingCastTransaction;
+    const {offer,tokenMap} = buildPrivateZoneOffer({requestId:tx?.id || 'hand_cost',ownerRole:'local',
+      chooserRole:'local',zone:'hand',cards:snapshot,visibility:PRIVATE_ZONE_VISIBILITY.REVEAL,amount:count,operation});
+    return choosePrivateZoneOfferLocally(offer,card.name,{
+      optional:true,action:true,valid:()=>state.pendingCastTransaction === tx
+    }).then(tokens=>{
+      if (!tokens) return null;
+      const selection = resolvePrivateZoneSelection(tokenMap,offer,tokens);
+      return selection.ok ? selection.cards : null;
+    });
+  }
   const colorNames = { W:'blanca', U:'azul', B:'negra', R:'roja', G:'verde' };
   const colorText = spec.color ? ` ${colorNames[spec.color] || spec.color}` : '';
   state.pendingDiscardChoice = { cardName: card.name, amount: count, reason: 'cast_cost', selection: 'choice' };
@@ -4264,15 +4468,21 @@ function chooseGraveyardCardsForCompositeCost(isLocal, spec, card, excludeCards 
   });
 }
 
-async function prepareCastCompositeNonManaCosts(card, isLocal, useAlternative) {
+async function prepareCastCompositeNonManaCosts(card, isLocal, useAlternative, originalCard = card) {
   const bundle = getCastCompositeCostBundle(card, useAlternative);
-  if (!canPayCastCompositeNonManaCosts(card, isLocal, useAlternative, { excludeCard: isLocal ? card : null })) return null;
+  if (!canPayCastCompositeNonManaCosts(card, isLocal, useAlternative, { excludeCard:originalCard })) return null;
 
   const selectedDiscards = [];
-  for (const spec of bundle.discards) {
-    const chosen = await chooseHandCardsForCompositeCost(isLocal, spec, card, [isLocal ? card : null, ...selectedDiscards]);
+  const selectedHandExiles = [];
+  const handCosts = [
+    ...bundle.discards.map(spec=>({spec,operation:'discard',selected:selectedDiscards})),
+    ...bundle.handExiles.map(spec=>({spec,operation:'exile_cost',selected:selectedHandExiles}))
+  ];
+  for (const [index,cost] of handCosts.entries()) {
+    const chosen = await chooseHandCardsForCompositeCost(isLocal,cost.spec,card,
+      [originalCard,...selectedDiscards,...selectedHandExiles],cost.operation,handCosts.slice(index+1).map(entry=>entry.spec));
     if (!chosen) return null;
-    selectedDiscards.push(...chosen);
+    cost.selected.push(...chosen);
   }
 
   const selectedSacrifices = [];
@@ -4293,18 +4503,20 @@ async function prepareCastCompositeNonManaCosts(card, isLocal, useAlternative) {
   // cambiado por otra consecuencia síncrona, así que se vuelve a comprobar justo antes del commit.
   const hp = isLocal ? state.localHP : state.rivalHP;
   if (hp < bundle.life) return null;
-  return { bundle, selectedDiscards, selectedSacrifices, selectedGraveyard };
+  return { bundle, selectedDiscards, selectedHandExiles, selectedSacrifices, selectedGraveyard, originalCard };
 }
 
 function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative) {
   if (!prepared) return false;
-  const { bundle, selectedDiscards, selectedSacrifices, selectedGraveyard } = prepared;
+  const { bundle, selectedDiscards, selectedHandExiles, selectedSacrifices, selectedGraveyard, originalCard } = prepared;
   const hand = isLocal ? state.localHand : state.rivalHand;
   const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
   const exile = isLocal ? state.localExile : state.rivalExile;
 
   // Revalidamos referencias antes de mutar: costo atómico o nada.
-  if (selectedDiscards.some(c => !hand.includes(c) || (isLocal && c === card))) return false;
+  const handPayment = [...selectedDiscards,...selectedHandExiles];
+  if (new Set(handPayment).size !== handPayment.length ||
+      handPayment.some(c=>!hand.includes(c) || c === originalCard)) return false;
   const allBattlefield = isLocal ? [...state.localCombat, ...state.localSupport, ...state.localLands] : [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands];
   if (selectedSacrifices.some(item => !allBattlefield.includes(item))) return false;
   if (selectedGraveyard.some(c => !grave.includes(c))) return false;
@@ -4323,7 +4535,7 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
     removed.sort((a,b) => a.index-b.index);
     removed.forEach(({card:discardedCard}) => {
       const plan=replacementCardZonePlan(discardedCard,isLocal,'hand','graveyard','cost');
-      plan.destination.push(discardedCard);
+      plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discardedCard) : discardedCard);
       dispatchGameEvent({
         type:'card_discarded',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,
         card:discardedCard,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cost'
@@ -4333,6 +4545,13 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
         card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:'cost'
       },{forceDeferNormalTriggers:true});
     });
+  }
+
+  for (const exiledCard of selectedHandExiles) {
+    hand.splice(hand.indexOf(exiledCard),1);
+    exile.push(exiledCard);
+    dispatchGameEvent({type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+      card:exiledCard,zoneFrom:'hand',zoneTo:'exile',cause:'cost'},{forceDeferNormalTriggers:true});
   }
 
   // Exilio antes que sacrificio: performSacrificeBatch puede disparar triggers de muerte
@@ -4352,11 +4571,12 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
 
   if (selectedSacrifices.length) performSacrificeBatch(selectedSacrifices, isLocal);
 
-  if (bundle.life > 0 || selectedDiscards.length || selectedSacrifices.length || selectedGraveyard.length) {
+  if (bundle.life > 0 || handPayment.length || selectedSacrifices.length || selectedGraveyard.length) {
     if (isLocal) state.pendingSpellCostsIrreversible = true;
     const paid = [];
     if (bundle.life) paid.push(`${bundle.life} de vida`);
     if (selectedDiscards.length) paid.push(`descartó ${selectedDiscards.map(c=>c.name).join(', ')}`);
+    if (selectedHandExiles.length) paid.push(`exilió ${selectedHandExiles.map(c=>c.name).join(', ')} de la mano`);
     if (selectedSacrifices.length) paid.push(`sacrificó ${selectedSacrifices.map(i=>i.card.name).join(', ')}`);
     if (selectedGraveyard.length) paid.push(`exilió ${selectedGraveyard.map(c=>c.name).join(', ')} del cementerio`);
     logMsg(gameText('cost.composite.paid', { card: card.name, route: useAlternative ? 'costo alternativo' : 'costo adicional', details: paid.join('; ') }));
@@ -4395,7 +4615,41 @@ function chooseLocalSacrificeForEffect(permanentType, amount, cardName) {
 // según el tipo. El patrón (aplicar/mostrar lo que corresponda, y al final llamar a
 // respondToDecision) es el mismo para cualquier tipo nuevo.
 function handleIncomingDecisionRequest(decision) {
-  if (decision.type === 'legend_choice') {
+  if (decision.type === 'public_effect_sacrifice' || decision.type === 'public_effect_return') {
+    const valid = incomingPublicDecisionGuard(decision);
+    state.respondingToDecision = true;
+    render();
+    const choose = async () => {
+      const myRole = state.currentMatch.myRole;
+      if (decision.type === 'public_effect_return') {
+        const target = deserializeStackTarget(decision.target,state,myRole);
+        const found = target?.type === 'graveyard' && target.isLocal && target.card;
+        if (!found) return {completed:false};
+        const accepted = !decision.optional || await choosePublicEffectOption(`¿Querés recuperar ${found.name}?`,decision.cardName,valid);
+        if (!accepted || !valid()) return {completed:true,moved:false};
+        const live = deserializeStackTarget(decision.target,state,myRole)?.card;
+        const index = live ? state.localGraveyard.indexOf(live) : -1;
+        if (index < 0) return {completed:false};
+        const [returned] = state.localGraveyard.splice(index,1);
+        state.localHand.push(graveyardEntryCard(returned));
+        return {completed:true,moved:true};
+      }
+      const eligible = () => getSacrificeEffectCandidates(true,'creature')
+        .filter(item => item._syncObjectId && item._syncObjectId !== decision.excludedObjectId);
+      const candidates = eligible().filter(item => decision.candidateIds?.includes(item._syncObjectId));
+      if (!candidates.length) return {completed:true,selectedObjectId:null};
+      const chosen = await new Promise(resolve => {
+        showSacrificeEffectModal(candidates,1,decision.cardName,'creature',resolve,{valid});
+      });
+      const id = chosen?.[0]?._syncObjectId;
+      return {completed:true,selectedObjectId:eligible().some(item=>item._syncObjectId===id) ? id : null};
+    };
+    choose().then(result=>finishIncomingPublicDecision(decision,valid,result))
+      .catch(error=>{
+        console.error('Error en decisión de zona pública:',error);
+        finishIncomingPublicDecision(decision,valid,{completed:false});
+      });
+  } else if (decision.type === 'legend_choice') {
     state.respondingToDecision = true;
     (async()=>{
       try {
@@ -4422,14 +4676,22 @@ function handleIncomingDecisionRequest(decision) {
       }catch(err){ state.respondingToDecision=false; render(); respondToDecision(decision.requestId,{completed:false,order:entries.map(e=>e._remoteIndex)}); }
     })();
   } else if (decision.type === 'private_zone_offer') {
+    const valid = incomingPublicDecisionGuard(decision);
+    const match = state.currentMatch;
     state.respondingToDecision = true;
     render();
     (async () => {
       try {
         const zone = decision.zone === 'deck' ? 'deck' : 'hand';
         const filter = PRIVATE_ZONE_FILTERS.includes(decision.filter) ? decision.filter : 'any';
+        if (decision.visibility !== PRIVATE_ZONE_VISIBILITY.REVEAL &&
+            (filter !== 'any' || Number.isFinite(decision.maxManaValue))) {
+          finishIncomingPublicDecision(decision,valid,{completed:false,reason:'opaque_filter'});
+          return;
+        }
         const cards = getPrivateZoneCardsForOffer(zone, decision.range || 'all', decision.rangeCount, true);
-        const eligibleCards = cards.filter(card => privateZoneCardMatchesFilter(card, filter));
+        const eligibleCards = cards.filter(card => privateZoneCardMatchesFilter(card, filter) &&
+          (!Number.isFinite(decision.maxManaValue) || cardManaValue(card) <= decision.maxManaValue));
         const amount = Math.max(0, Math.floor(Number(decision.amount || 0)));
         const built = buildPrivateZoneOffer({
           requestId: decision.requestId,
@@ -4445,56 +4707,62 @@ function handleIncomingDecisionRequest(decision) {
           filter
         });
         privateZoneOfferMemory.set(decision.requestId, {
+          match,
           offer: built.offer,
           tokenMap: built.tokenMap,
           destination: decision.destination || (zone === 'hand' ? 'graveyard' : 'exile'),
           cardName: decision.cardName || 'Efecto'
         });
-        await publishPrivateSelectionOffer(state.currentMatch.matchId, decision.requestId, built.offer);
+        await publishPrivateSelectionOffer(match.matchId, decision.requestId, built.offer);
+        if (!valid()) {
+          privateZoneOfferMemory.delete(decision.requestId);
+          if (state.currentMatch === match) {
+            try { await deletePrivateSelectionOffer(match.matchId,decision.requestId); } catch (_) {}
+          }
+          return;
+        }
         recordTelemetryDecision('private_zone_offer_published', {
           requestId: decision.requestId, zone, visibility: built.offer.visibility,
           candidateCount: built.offer.candidateCount, amount: built.offer.amount, filter
         });
-        state.respondingToDecision = false;
-        render();
-        respondToDecision(decision.requestId, { completed:true, offerId:decision.requestId, candidateCount:built.offer.candidateCount });
+        finishIncomingPublicDecision(decision,valid,{completed:true,offerId:decision.requestId,candidateCount:built.offer.candidateCount});
       } catch (err) {
         console.error('Error creando oferta privada:', err);
         privateZoneOfferMemory.delete(decision.requestId);
-        state.respondingToDecision = false;
-        render();
-        respondToDecision(decision.requestId, { completed:false, reason:'offer_exception' });
+        finishIncomingPublicDecision(decision,valid,{completed:false,reason:'offer_exception'});
       }
     })();
   } else if (decision.type === 'private_zone_commit') {
+    const valid = incomingPublicDecisionGuard(decision);
+    const match = state.currentMatch;
     state.respondingToDecision = true;
     render();
     (async () => {
       const memory = privateZoneOfferMemory.get(decision.offerId);
       try {
-        if (!memory) throw new Error('stale_offer');
+        if (!valid() || memory?.match !== match) throw new Error('stale_offer');
         const selected = resolvePrivateZoneSelection(memory.tokenMap, memory.offer, decision.selectedTokens || []);
         if (!selected.ok) throw new Error(selected.reason || 'invalid_selection');
-        const destination = decision.destination || memory.destination;
-        const moved = moveSelectedPrivateCards(selected.cards, { zone:memory.offer.zone, ownerIsLocal:true, destination });
+        const destination = memory.destination;
+        const discards = memory.offer.operation === 'discard' ? [] : null;
+        const moved = moveSelectedPrivateCards(selected.cards, {
+          zone:memory.offer.zone, ownerIsLocal:true, destination, operation:memory.offer.operation,discards
+        });
         if (moved.length !== memory.offer.amount) throw new Error('zone_changed_before_commit');
         privateZoneOfferMemory.delete(decision.offerId);
-        try { await deletePrivateSelectionOffer(state.currentMatch.matchId, decision.offerId); } catch (_) {}
-        state.respondingToDecision = false;
-        render();
         const publicNames = ['graveyard','exile'].includes(destination) ? moved.map(c=>c.name) : [];
         recordTelemetryDecision('private_zone_commit', {
           requestId: decision.offerId, zone:memory.offer.zone, destination,
           selectedCount:moved.length, identitiesBecamePublic:publicNames.length
         });
-        respondToDecision(decision.requestId, { completed:true, selectedCount:moved.length, movedNames:publicNames });
+        finishIncomingPublicDecision(decision,valid,{completed:true,selectedCount:moved.length,movedNames:publicNames,
+          ...(discards ? {discards} : {})});
+        try { await deletePrivateSelectionOffer(match.matchId,decision.offerId); } catch (_) {}
       } catch (err) {
         console.error('Error confirmando selección privada:', err);
         privateZoneOfferMemory.delete(decision.offerId);
-        try { if (state.currentMatch) await deletePrivateSelectionOffer(state.currentMatch.matchId, decision.offerId); } catch (_) {}
-        state.respondingToDecision = false;
-        render();
-        respondToDecision(decision.requestId, { completed:false, selectedCount:0, movedNames:[], reason:String(err?.message || err) });
+        finishIncomingPublicDecision(decision,valid,{completed:false,selectedCount:0,movedNames:[],reason:String(err?.message || err)});
+        try { if (memory?.match === match) await deletePrivateSelectionOffer(match.matchId,decision.offerId); } catch (_) {}
       }
     })();
   } else if (decision.type === 'typal_choose_creature_type') {
@@ -4540,25 +4808,50 @@ function handleIncomingDecisionRequest(decision) {
         respondToDecision(decision.requestId, { paid: false });
       }
     );
+  } else if (decision.type === 'self_draw_cards') {
+    const valid = incomingPublicDecisionGuard(decision);
+    if (!valid()) return;
+    if (state.multiplayerResolutionMarker?.authorityRole !== otherRole(state.currentMatch.myRole) ||
+        state.multiplayerResolutionMarker.kind !== 'stack_resolution') {
+      finishIncomingPublicDecision(decision,valid,{completed:false});
+      return;
+    }
+    const result = drawCardsFromLibrary(true,decision.amount,decision.cause,{deferTriggers:true});
+    finishIncomingPublicDecision(decision,valid,{completed:true,...result});
+  } else if (decision.type === 'self_order_hand_top') {
+    const valid = incomingPublicDecisionGuard(decision);
+    if (state.multiplayerResolutionMarker?.kind !== 'stack_resolution' ||
+        state.multiplayerResolutionMarker.authorityRole !== otherRole(state.currentMatch.myRole)) {
+      finishIncomingPublicDecision(decision,valid,{completed:false});
+      return;
+    }
+    state.respondingToDecision = true;
+    requestPrivateZoneChoice({zone:'hand',visibility:'reveal_candidates',operation:'order_top',
+      destination:'top',amount:decision.amount,ownerIsLocal:true,cardName:decision.cardName,valid})
+      .then(result=>finishIncomingPublicDecision(decision,valid,{completed:result.completed}))
+      .catch(()=>finishIncomingPublicDecision(decision,valid,{completed:false}));
   } else if (decision.type === 'self_card_filter') {
     // Punto 4: una carta del rival necesita Loot/Rummage sobre SU PROPIA mano/mazo.
     // Esas zonas son privadas, así que el cliente dueño ejecuta el efecto completo sobre
     // sus datos reales y sólo confirma al solicitante cuando terminó. Si es Loot/Rummage
     // humano, resolveGameEffect abre acá mismo el modal local de selección.
+    const valid = incomingPublicDecisionGuard(decision);
+    const failedBefore = state.failedDrawAttempts.local;
     state.respondingToDecision = true;
     render();
-    resolveGameEffect({ type: decision.filterType, amount: decision.amount }, {
+    resolveGameEffect({ type: decision.filterType, amount: decision.amount, discardAmount:decision.discardAmount }, {
       sourceCard: { name: decision.cardName || 'Efecto rival', colors: [] },
       cardName: decision.cardName || 'Efecto rival',
       isLocal: true,
       targetObj: null
     }).then(() => {
-      state.respondingToDecision = false;
-      respondToDecision(decision.requestId, { completed: true });
+      if (!valid()) return;
+      const failed = state.failedDrawAttempts.local - failedBefore;
+      state.failedDrawAttempts.local = failedBefore;
+      finishIncomingPublicDecision(decision,valid,{completed:true,failed});
     }).catch(err => {
       console.error('Error resolviendo Loot/Rummage remoto:', err);
-      state.respondingToDecision = false;
-      respondToDecision(decision.requestId, { completed: false });
+      finishIncomingPublicDecision(decision,valid,{completed:false});
     });
   } else if (decision.type === 'self_sacrifice') {
     // Punto 5: el dueño REAL de los permanentes hace su propia elección. En multiplayer
@@ -4674,22 +4967,24 @@ function handleIncomingDecisionRequest(decision) {
       allowFewer: decision.allowFewer,
       reveal: decision.reveal
     });
-    chooseLandSearchEntries({
-      ownerIsLocal: true,
-      chooserIsLocal: true,
-      spec,
-      cardName: decision.cardName || 'Efecto rival'
-    }).then(entries => commitLandSearchEntries({
-      ownerIsLocal: true,
-      entries,
-      spec,
-      cardName: decision.cardName || 'Efecto rival'
-    })).then(result => {
+    const valid = decision.optional ? incomingPublicDecisionGuard(decision) : null;
+    const cardName = decision.cardName || 'Efecto rival';
+    const search = async () => {
+      if (valid && !await choosePublicEffectOption('¿Querés buscar una tierra básica en tu mazo?',cardName,valid)) {
+        return {completed:true,selectedCount:0,movedNames:[]};
+      }
+      const entries = await chooseLandSearchEntries({ownerIsLocal:true,chooserIsLocal:true,spec,cardName,valid});
+      if (valid && !valid()) return null;
+      return commitLandSearchEntries({ownerIsLocal:true,entries,spec,cardName,deferTriggers:!!decision.optional});
+    };
+    search().then(result => {
+      if (valid) return finishIncomingPublicDecision(decision,valid,result);
       state.respondingToDecision = false;
       render();
       respondToDecision(decision.requestId, result);
     }).catch(err => {
       console.error('Error buscando Tierra remota en biblioteca:', err);
+      if (valid) return finishIncomingPublicDecision(decision,valid,{completed:false,selectedCount:0,movedNames:[]});
       state.pendingLandSearchChoice = null;
       state.respondingToDecision = false;
       render();
@@ -4768,17 +5063,21 @@ function handleIncomingDecisionRequest(decision) {
     // real elige en SU pantalla; la respuesta vuelve como descriptor público de zona/slot.
     state.respondingToDecision = true;
     render();
-    chooseResolvedEffectTarget({
+    const valid = graveyardEffectTargets(decision.effect) ? incomingPublicDecisionGuard(decision) : null;
+    const choose = valid ? choosePublicGraveyardTarget(decision.effect,decision.sourceCard,true,{valid}) : chooseResolvedEffectTarget({
       effect: decision.effect,
       sourceCard: decision.sourceCard || { name: decision.cardName || 'ETB rival', colors: [] },
       cardName: decision.cardName || 'ETB rival',
       controllerIsLocal: true,
       chooserIsLocal: true
-    }).then(target => {
+    });
+    choose.then(target => {
+      if (valid) return finishIncomingPublicDecision(decision,valid,{completed:!!target,target:serializeResolvedEffectTarget(target)});
       state.respondingToDecision = false;
-      respondToDecision(decision.requestId, { completed: !!target, target: serializeResolvedEffectTarget(target) });
+      respondToDecision(decision.requestId, { completed: !!target, target: serializeResolvedEffectTarget(target,decision.effect) });
     }).catch(err => {
       console.error('Error eligiendo target remoto de ETB reanimado:', err);
+      if (valid) return finishIncomingPublicDecision(decision,valid,{completed:false,target:null});
       pendingResolvedEffectTargetResolver = null;
       state.pendingResolvedEffectTargetChoice = null;
       state.pendingTargetCard = null;
@@ -4826,7 +5125,7 @@ function handleIncomingDecisionRequest(decision) {
     const discardedNames = [];
     discarded.forEach(card => {
       const plan=replacementCardZonePlan(card,true,'hand','graveyard','forced_discard');
-      plan.destination.push(card);
+      plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
       discardedNames.push(card.name);
       dispatchGameEvent({type:'card_discarded',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'forced_discard'});
       if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'forced_discard'});
@@ -4848,6 +5147,20 @@ function respondToDecision(requestId, responseData) {
   });
   state.decisionResponse = { requestId, ...responseData };
   render();
+}
+
+function incomingPublicDecisionGuard(decision) {
+  const match = state.currentMatch;
+  const uid = state.currentUser?.uid;
+  return () => !!match && state.currentMatch === match && state.currentUser?.uid === uid && !state.gameOver &&
+    !state.multiplayerSessionSuperseded && state.pendingDecision?.requestId === decision.requestId &&
+    state.decisionResponse?.requestId !== decision.requestId;
+}
+
+function finishIncomingPublicDecision(decision, valid, result) {
+  if (!valid()) return;
+  state.respondingToDecision = false;
+  respondToDecision(decision.requestId, result);
 }
 
 export function startListeningToMatch(matchId, myRole) {
@@ -5094,6 +5407,9 @@ export function startListeningToMatch(matchId, myRole) {
       return playback;
     }).filter(Boolean);
 
+    if (incoming.permanentExitTurn) {
+      incoming.permanentExitTurn = {...state.permanentExitTurn,...incoming.permanentExitTurn};
+    }
     const changedKeys = Object.keys(incoming).filter(key => !wireEqual(state[key], incoming[key]));
     if (stackChanged) changedKeys.push('spellStack');
     // El documento completo recién observado pasa a ser el baseline de deltas incluso si
@@ -5199,7 +5515,8 @@ export function startListeningToMatch(matchId, myRole) {
       remoteDecisionQueue.resolveResponse(state.decisionResponse);
     }
 
-    if (state.pendingDecision && state.pendingDecision.forRole === myRole && !handledDecisionIds.has(state.pendingDecision.requestId)) {
+    if (!state.gameOver && state.pendingDecision && state.pendingDecision.forRole === myRole &&
+      state.decisionResponse?.requestId !== state.pendingDecision.requestId && !handledDecisionIds.has(state.pendingDecision.requestId)) {
       handledDecisionIds.add(state.pendingDecision.requestId);
       recordTelemetryDecision('remote_decision_request_received', {
         type: state.pendingDecision.type,
@@ -5256,6 +5573,9 @@ export function startListeningToMatch(matchId, myRole) {
 // documento PRIVADO (nunca del público, por diseño — ver Etapa 5). No arranca la escucha en
 // tiempo real ni prepara el tablero — eso es responsabilidad de quien llama a esto.
 export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
+  state.deckedOutRole = null;
+  state.deckOutReady = false;
+  state.failedDrawAttempts = {local:0,rival:0};
   Object.assign(
     state,
     extractMyStateFromPublicDoc(publicDoc, myRole),
@@ -5644,6 +5964,54 @@ export function chooseGraveyardCards(options) {
 let pendingResolvedEffectTargetResolver = null;
 let resolvedEffectTargetChoiceChain = Promise.resolve();
 
+async function choosePublicGraveyardTarget(effect, sourceCard, controllerIsLocal, {action = false, valid = null} = {}) {
+  const candidates = graveyardTargets(state,controllerIsLocal,effect);
+  if (!candidates.length) return null;
+  if (!controllerIsLocal) {
+    if (state.currentMatch) {
+      const match = state.currentMatch;
+      const response = await requestRivalDecision('resolved_effect_target',otherRole(match.myRole),{
+        effect,sourceCard:{id:sourceCard.id || null,name:sourceCard.name,colors:sourceCard.colors || []},cardName:sourceCard.name
+      });
+      const target = deserializeResolvedEffectTarget(response?.target);
+      return state.currentMatch === match && !state.gameOver &&
+        isResolvedEffectTargetLegal(target,{effect,sourceCard,controllerIsLocal}) ? lockGraveyardTarget(target) : null;
+    }
+    const preferred = effect.destination === 'exile' ? candidates.filter(target => isCreaturePermanent(target.card)) : candidates;
+    const choices = preferred.length ? preferred : candidates;
+    return lockGraveyardTarget(choices.reduce((best,target) => (target.card.cmc || 0) > (best.card.cmc || 0) ? target : best));
+  }
+
+  const choice = {amount:1,cardName:sourceCard.name,reason:'public_zone_target'};
+  const abilitySource = action ? state.pendingAbilitySource : null;
+  const match = state.currentMatch;
+  const uid = state.currentUser?.uid;
+  if (match) {
+    for (const candidate of candidates) serializeStackTarget(candidate,state,match.myRole);
+  }
+  const current = () => !state.gameOver && !state.multiplayerSessionSuperseded && state.currentMatch === match &&
+    state.currentUser?.uid === uid && state.pendingGraveyardChoice === choice &&
+    (!action || state.pendingAbilitySource === abilitySource) && (!valid || valid());
+  state.pendingGraveyardChoice = choice;
+  render();
+  const indexes = await new Promise(resolve => {
+    showGraveyardChoiceModal(candidates.map((target,index) => ({card:target.card,index,
+      sideLabel:target.isLocal ? 'Tu cementerio' : 'Cementerio rival'})),
+      1,sourceCard.name,'','Elegí el objetivo en el cementerio',resolve,{
+        allowCancel:action,valid:current
+      });
+  });
+  if (state.pendingGraveyardChoice !== choice) return null;
+  const accepted = current();
+  state.pendingGraveyardChoice = null;
+  if (!action) render();
+  let target = candidates[indexes?.[0]];
+  if (target && match) target = deserializeStackTarget(target._syncDescriptor,state,match.myRole);
+  if (!accepted || (action && state.priorityPlayer !== 'local') || !target ||
+    !isResolvedEffectTargetLegal(target,{effect,sourceCard,controllerIsLocal})) return null;
+  return lockGraveyardTarget(target);
+}
+
 function resolvedEffectTargetCard(sourceCard, effect, cardName) {
   return {
     id: sourceCard?.id || `resolved_effect_${Date.now()}`,
@@ -5661,21 +6029,58 @@ function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controller
   return !!rules[`allow${sameSide ? 'Local' : 'Rival'}${suffix}`];
 }
 
+export function refreshPublicEffectTarget(target, effect) {
+  const allowed = battlefieldEffectTargets(effect);
+  if (!allowed || !target) return target;
+  if (target.type === 'aura') {
+    const host = [state.localCombat,state.rivalCombat,state.localLands,state.rivalLands,state.localSupport,state.rivalSupport]
+      .flat().find(item => item.auras?.includes(target.card));
+    const location = host && findBattlefieldItemLocation(host);
+    return location ? {...target,item:host,isLocal:cardOwnerIsLocal(target.card,location.isLocal,state.currentMatch?.myRole || null)} : {...target,item:null};
+  }
+  if (!target.item) return target;
+  const location = findBattlefieldItemLocation(target.item);
+  if (!location) return target;
+  const zoneType = {combat:'creature',support:'permanent',land:'land',planeswalker:'planeswalker'}[location.zoneName];
+  const type = allowed.includes('creature') && isCreaturePermanent(target.item) ? 'creature' : zoneType;
+  return {...target,type,isLocal:location.isLocal,index:location.index};
+}
+
 export function explainResolvedEffectTargetLegality(targetObj, options) {
   if (!targetObj || (!options?.effect && !options?.cardLike)) return { legal:false, reason:'missing_target_or_effect' };
   const controllerIsLocal = options.controllerIsLocal !== false;
   const sourceCard = options.sourceCard || options.cardLike || { name: options.cardName || 'Efecto', colors: [] };
+  if (graveyardEffectTargets(options.effect)) {
+    const withinScope = options.effect.graveyard !== 'own' || targetObj.isLocal === controllerIsLocal;
+    const legal = targetObj.type === 'graveyard' && !!targetObj.card && !targetObj.card.isToken && withinScope && graveyardForSide(state,targetObj.isLocal).includes(targetObj.card);
+    return {legal, reason:legal ? 'ok' : 'graveyard_target_missing'};
+  }
+  const battlefieldTypes = battlefieldEffectTargets(options.effect);
+  if (battlefieldTypes) {
+    targetObj = refreshPublicEffectTarget(targetObj, options.effect);
+    if (!battlefieldTypes.includes(targetObj.type)) return {legal:false,reason:'unsupported_target_type'};
+    if (targetObj.type === 'aura') {
+      const legal = !!targetObj.item && !getProtectionMatch(targetObj.card,sourceCard.colors || []) &&
+        (targetObj.isLocal === controllerIsLocal || !hasKeyword(targetObj.card,'hexproof'));
+      return {legal:!!legal,reason:legal ? 'ok' : 'left_battlefield_or_zone'};
+    }
+    if (!targetObj.item || !findBattlefieldItemLocation(targetObj.item)) return {legal:false,reason:'left_battlefield_or_zone'};
+  }
   const cardLike = options.cardLike || resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
   const rules = getTargetRules(cardLike);
 
   if (!controllerAllowsTargetSide(rules, targetObj.type, targetObj.isLocal, controllerIsLocal)) return { legal:false, reason:'controller_scope' };
   if (targetObj.type === 'player' && options.effect?.target === 'opponent_player' && targetObj.isLocal === controllerIsLocal) return { legal:false, reason:'opponent_player_scope' };
+  if (battlefieldTypes && targetObj.type === 'land' && targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item,'hexproof')) {
+    return {legal:false,reason:'hexproof'};
+  }
 
   if (targetObj.type === 'creature') {
     const unit = targetObj.item;
     if (!unit) return { legal:false, reason:'missing_item' };
     const board = targetObj.isLocal ? state.localCombat : state.rivalCombat;
-    if (!board.includes(unit)) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (!board.includes(unit) && !(battlefieldTypes && isCreaturePermanent(unit) && findBattlefieldItemLocation(unit)?.isLocal === targetObj.isLocal)) return { legal:false, reason:'left_battlefield_or_zone' };
+    if (battlefieldTypes && !isCreaturePermanent(unit)) return {legal:false,reason:'creature_filter'};
     if (targetObj.isLocal !== controllerIsLocal && hasKeyword(unit, 'hexproof')) return { legal:false, reason:'hexproof' };
     if (getProtectionMatch(unit, sourceCard.colors || [])) return { legal:false, reason:'protection' };
     if (rules.creatureFilter && !unit.card.type.includes(rules.creatureFilter)) return { legal:false, reason:'creature_filter' };
@@ -5731,6 +6136,9 @@ export function isResolvedEffectTargetLegal(targetObj, options) {
 }
 
 export function getResolvedEffectTargetCandidates(options) {
+  if (graveyardEffectTargets(options?.effect)) {
+    return graveyardTargets(state,options.controllerIsLocal !== false,options.effect);
+  }
   const controllerIsLocal = options?.controllerIsLocal !== false;
   const sourceCard = options?.sourceCard || { name: options?.cardName || 'Efecto', colors: [] };
   const effect = options?.effect;
@@ -5772,6 +6180,14 @@ export function getResolvedEffectTargetCandidates(options) {
       const target = { type: 'planeswalker', isLocal, index, item };
       if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
     });
+  }
+  if (battlefieldEffectTargets(options.effect)?.includes('aura')) {
+    for (const {item,isLocal} of genericBattlefieldWatchers()) {
+      for (const card of item.auras || []) {
+        const target = {type:'aura',item,card,isLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole || null)};
+        if (isResolvedEffectTargetLegal(target,options)) candidates.push(target);
+      }
+    }
   }
   return candidates;
 }
@@ -5832,9 +6248,12 @@ function chooseBotResolvedEffectTarget(candidates, options) {
   return candidates.find(opponent) || candidates[0];
 }
 
-function serializeResolvedEffectTarget(targetObj) {
+function serializeResolvedEffectTarget(targetObj, effect = null) {
   if (!targetObj || !state.currentMatch) return null;
   const myRole = state.currentMatch.myRole;
+  if (targetObj.type === 'graveyard' || targetObj.type === 'aura' || battlefieldEffectTargets(effect)) {
+    return serializeStackTarget(targetObj,state,myRole,{strict:true});
+  }
   if (targetObj.type === 'player') {
     return { type:'player', ownerRole: targetObj.isLocal ? myRole : otherRole(myRole) };
   }
@@ -5846,6 +6265,7 @@ function serializeResolvedEffectTarget(targetObj) {
 function deserializeResolvedEffectTarget(descriptor) {
   if (!descriptor || !state.currentMatch) return null;
   const myRole = state.currentMatch.myRole;
+  if (descriptor.type === 'graveyard' || descriptor.type === 'aura' || descriptor.strict) return deserializeStackTarget(descriptor,state,myRole);
   if (descriptor.type === 'player') return { type:'player', isLocal: descriptor.ownerRole === myRole };
 
   // Compatibilidad con descriptors 23.15.2 que todavía omitían `zone` salvo en Tierras.
@@ -5934,7 +6354,7 @@ async function chooseResolvedEffectTargetNow(options) {
       sourceCard: { id: sourceCard.id || null, name: sourceCard.name, colors: sourceCard.colors || [] },
       cardName
     });
-    const target = deserializeResolvedEffectTarget(response.target || null);
+    const target = deserializeResolvedEffectTarget(response?.target || null);
     if (!target || !isResolvedEffectTargetLegal(target, { ...options, sourceCard, controllerIsLocal })) {
       logMsg(gameText('target.remoteBecameIllegal', { source: cardName }));
       return null;
@@ -6254,6 +6674,11 @@ async function prepareTriggeredEntry(entry){
   if(!entry?.effect || !entry?.sourceCard) return null;
   if(entry.triggerType==='saga_chapter') markSagaChapterPending(entry);
   if(entry.targetObj) return entry;
+  if (graveyardEffectTargets(entry.effect)) {
+    entry.targetObj = await choosePublicGraveyardTarget(entry.effect,entry.sourceCard,entry.isLocal !== false);
+    if (!entry.targetObj) return null;
+    return entry;
+  }
   const relation=String(typeof entry.target==='string' ? entry.target : entry.target?.relation || '').trim().toLowerCase().replace(/[\s-]+/g,'_');
   if(['self','source','this'].includes(relation)) entry.targetObj=genericItemTarget(entry.sourceItem);
   else if(['controller','you','your_player','controller_player'].includes(relation)) entry.targetObj={type:'player',isLocal:entry.isLocal!==false};
@@ -6301,6 +6726,10 @@ export function waitForTriggerOrdering() { return triggerOrderingChain; }
 
 export function queueTriggeredAbility(entry = {}) {
   if (!entry.effect || !entry.effect.type || !entry.sourceCard) return null;
+  if (state.pendingPublicEffectResolution) {
+    state.pendingPublicEffectResolution.triggers.push(entry);
+    return {held:true,sourceCard:entry.sourceCard};
+  }
   if (state.sbaKernelRunning) {
     state.sbaHeldTriggerBatches.push([entry]);
     return { held:true, sourceCard:entry.sourceCard };
@@ -6312,6 +6741,10 @@ export function queueTriggeredAbility(entry = {}) {
 export function queueTriggeredAbilities(entries = []) {
   const valid=entries.filter(e=>e?.effect && e?.sourceCard);
   if (!valid.length) return [];
+  if (state.pendingPublicEffectResolution) {
+    state.pendingPublicEffectResolution.triggers.push(...valid);
+    return valid;
+  }
   if (state.sbaKernelRunning) {
     state.sbaHeldTriggerBatches.push(valid);
     return valid.map(entry=>({held:true,sourceCard:entry.sourceCard}));
@@ -6406,6 +6839,12 @@ export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapsho
     phase: rawEvent.phase || state.phase,
     turnCount: rawEvent.turnCount ?? state.turnCount
   });
+  if (event.zoneFrom === 'battlefield' && event.zoneTo && event.zoneTo !== 'battlefield' &&
+    (event.type === 'permanent_left_battlefield' || event.type === 'card_exiled' ||
+     event.aliases.includes('permanent_left_battlefield'))) {
+    const speculativeMana = state.paymentManaSourceRollbacks.some(entry=>entry.item===event.item);
+    if (!speculativeMana) notePermanentExit(state,event.controllerIsLocal);
+  }
   const matches=collectGenericEventMatches({
     event,
     watchers:genericBattlefieldWatchers(watchersSnapshot),
@@ -6416,7 +6855,7 @@ export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapsho
     const effect=match.spec.effect;
     const hasTargetDeclaration=match.spec.target!=null || match.spec.selfTarget===true;
     const targetObj=genericDeclaredTarget(match,event);
-    if(!targetObj && !canResolveGameEffectWithoutTarget(effect.type)){
+    if(!targetObj && !graveyardEffectTargets(effect) && !canResolveGameEffectWithoutTarget(effect.type)){
       // 23.15.3 auto-liga self/event/player cuando el schema lo declara. No inventa una
       // elección para "cualquier objetivo": eso debe seguir pasando por la UX legal existente.
       const reason=hasTargetDeclaration ? 'no pudo resolver el objetivo declarado' : 'necesita un objetivo no declarado';
@@ -6623,7 +7062,9 @@ export function hasStateBasedActionsToProcess() {
 }
 
 export async function runStateBasedActions({ reason='rules_check' }={}) {
-  if(state.sbaKernelRunning) return false;
+  const marker = state.multiplayerResolutionMarker;
+  if (marker?.kind === 'stack_resolution' && marker.authorityRole !== state.currentMatch?.myRole) return false;
+  if(state.sbaKernelRunning || state.pendingPublicEffectResolution) return false;
   state.sbaKernelRunning=true;
   let changed=false;
   try {
@@ -7124,7 +7565,8 @@ export function sendAurasToGraveyard(unit, isLocal) {
     if (auraCard?._controlEffectId) removeControlEffectFromPermanent(unit, auraCard._controlEffectId, { silent:true });
     const plan=replacementCardZonePlan(auraCard,isLocal,'battlefield','graveyard','aura_detached',{item:null});
     logMsg(gameText('attachment.aura.detached', { aura: auraCard.name, creature: unit.card.name }));
-    plan.destination.push(auraCard);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(auraCard) : auraCard);
+    notePermanentExit(state,plan.ownerIsLocal);
     if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,card:auraCard,zoneFrom:'battlefield',zoneTo:'exile',cause:'aura_detached'});
   });
   unit.auras = [];
@@ -7152,7 +7594,8 @@ export function checkAuraLegality() {
           if(illegalColor) logMsg(gameText('attachment.aura.protection', { creature: unit.card.name, color: illegalColor, aura: auraCard.name }));
           else logMsg(gameText('attachment.aura.detached', { aura:auraCard.name, creature:unit.card.name }));
           const plan=replacementCardZonePlan(auraCard,hostIsLocal,'battlefield','graveyard','illegal_attachment');
-          plan.destination.push(auraCard);
+          plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(auraCard) : auraCard);
+          notePermanentExit(state,plan.ownerIsLocal);
           if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:hostIsLocal,actorIsLocal:hostIsLocal,ownerIsLocal:plan.ownerIsLocal,card:auraCard,zoneFrom:'battlefield',zoneTo:'exile',cause:'illegal_attachment'});
           changed++;
         } else stillLegal.push(auraCard);
@@ -7559,6 +8002,7 @@ export function resolveScheduledReturns(isLocal) {
 }
 
 export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
+  auraCard = auraEntryCard(auraCard);
   if (ownerIsLocal !== null) stampCardOwner(auraCard, !!ownerIsLocal, state.currentMatch?.myRole || null);
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
@@ -7740,8 +8184,18 @@ function requestRedundantAuraConfirmation(item, isLocal, keywords) {
   render();
 }
 
-export function handleCombatClick(item, isLocal, index, approvedAura = null) {
+export function handleCombatClick(item, isLocal, index, approvedAura = null, attachedAura = null) {
   if (isMultiplayerInteractionBlocked()) return;
+  if (attachedAura) {
+    const card = state.pendingTargetCard;
+    const target = refreshPublicEffectTarget({type:'aura',card:attachedAura,item,isLocal},card?.effect);
+    if (battlefieldEffectTargets(card?.effect)?.includes('aura') && isResolvedEffectTargetLegal(target,{effect:card.effect,sourceCard:card,controllerIsLocal:true})) {
+      lockAuraTarget(target);
+      if (state.pendingResolvedEffectTargetChoice) finishPendingResolvedEffectTarget(target);
+      else void executeSpellOnTarget(target);
+    }
+    return;
+  }
   if (state.damageModalOpen) return;
   if (state.pendingActionConfirmation) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
@@ -7859,7 +8313,8 @@ export function handleCombatClick(item, isLocal, index, approvedAura = null) {
       requestRedundantAuraConfirmation(item,isLocal,redundant);
       return;
     }
-    if (redundant.length && !state.pendingTargetCard.adjunta) {
+    const equipping = state.pendingTargetCard.effect?.type === 'attach_equipment';
+    if (redundant.length && !state.pendingTargetCard.adjunta && !equipping) {
       logMsg(gameText('ability.keyword.already', { card: item.card.name }));
       return;
     }
@@ -8022,6 +8477,7 @@ export function handleCombatClick(item, isLocal, index, approvedAura = null) {
 // o 'instant' (cualquier ventana donde su controlador tenga prioridad).
 export function canActivateActivatedAbilityNow(ability, isLocal = true) {
   if (!ability || state.gameOver) return false;
+  if (state.multiplayerResolutionMarker?.kind === 'stack_resolution') return false;
   const controller = isLocal ? 'local' : 'rival';
   if (state.priorityPlayer !== controller) return false;
 
@@ -8109,6 +8565,7 @@ function buildPermanentActivatedAbilityOptions(item, isLocal, index) {
 }
 
 function beginActivatedAbility(source, displayName = source.sourceName || source.item.card.name) {
+  if (state.pendingPublicEffectResolution || state.pendingGraveyardChoice?.reason === 'public_zone_target') return true;
   const ability = source.ability;
   if (!ability) return false;
 
@@ -8208,6 +8665,20 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
 
   if (ability.requiresTarget) {
     const card = source.item.card;
+    if (graveyardEffectTargets(ability.effect)) {
+      void choosePublicGraveyardTarget(ability.effect,card,source.isLocal,{action:true}).then(target => {
+        if (state.pendingAbilitySource !== source) return;
+        if (!target || !canActivateActivatedAbilityNow(ability,source.isLocal) ||
+          findBattlefieldItemLocation(source.item)?.isLocal !== source.isLocal) {
+          state.pendingAbilitySource = null;
+          render();
+          return;
+        }
+        source.chosenTarget = target;
+        beginActivatedAbilityPayment(source);
+      });
+      return true;
+    }
     state.pendingTargetCard = { ...card, _chosenCreatureType:source.item._chosenCreatureType || null, effect: ability.effect, requiresTarget: true };
     state.pendingTargetSource = source;
     state.pendingCost = null;
@@ -8982,6 +9453,8 @@ export async function resolveSuspendCastFromExile(effect,isLocal) {
 }
 
 export function canPlayCard(card) {
+  if (state.pendingPublicEffectResolution || state.pendingGraveyardChoice?.reason === 'public_zone_target') return false;
+  if (state.multiplayerResolutionMarker?.kind === 'stack_resolution') return false;
   if(state.pendingActionConfirmation||state.pendingActionTimeoutPass)return false;
   if (isMultiplayerInteractionBlocked()) return false;
   if (state.gameOver || state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
@@ -9151,7 +9624,8 @@ function advanceCastAnnouncement() {
   // 601.2b — vía alternativa/adicional antes de fijar X y antes de targets.
   if (!tx.disableAlternative && card.alternativeCost && tx.useAlternative === null) {
     state.pendingAlternativeCostChoice = { transactionId:tx.id, card };
-    showAlternativeCostModal(card, describeCompositeCost(card.alternativeCost), confirmAlternativeCostChoice, cancelAlternativeCostChoice);
+    const canPay = canPayCastCompositeNonManaCosts(card,true,true,{excludeCard:tx.originalCard});
+    showAlternativeCostModal(card, describeCompositeCost(card.alternativeCost), confirmAlternativeCostChoice, cancelAlternativeCostChoice, {canPay});
     render();
     return;
   }
@@ -9179,7 +9653,7 @@ function advanceCastAnnouncement() {
 export function confirmAlternativeCostChoice(useAlternative) {
   const tx = state.pendingCastTransaction;
   if (!tx || !state.pendingAlternativeCostChoice) return;
-  if (useAlternative && !canPayCastCompositeNonManaCosts(tx.card, true, true, { excludeCard:tx.card })) {
+  if (useAlternative && !canPayCastCompositeNonManaCosts(tx.card, true, true, { excludeCard:tx.originalCard })) {
     logMsg(gameText('cast.altNonManaUnavailable', { card: tx.card.name }));
     return;
   }
@@ -9238,7 +9712,7 @@ function collectWardsForDeclaredTarget(card, targetObj, sourceIsLocal = true) {
   const wards=[];
   for (const declared of flattenDeclaredTargets(targetObj)) {
     if (!declared?.item || declared.isLocal === !!sourceIsLocal) continue;
-    const item=declared.item;
+    const item=declared.type === 'aura' ? {card:declared.card} : declared.item;
     const wardKw=(getEffectiveKeywords(item)||[]).find(k=>k.startsWith('ward_'));
     if(!wardKw) continue;
     const wardCost=parseInt(wardKw.split('_')[1],10);
@@ -9428,10 +9902,10 @@ function commitPreparedCastPaymentMethods(card, plan) {
 
 async function prepareCastTransactionCosts(tx, determinedCost) {
   const useAlternative = !!tx.useAlternative;
-  if (!canPayCastCompositeNonManaCosts(tx.card, true, useAlternative, { excludeCard:tx.card })) return false;
+  if (!canPayCastCompositeNonManaCosts(tx.card, true, useAlternative, { excludeCard:tx.originalCard })) return false;
   state.pendingCompositeCostPayment = true;
   render();
-  const preparedComposite = await prepareCastCompositeNonManaCosts(tx.card, true, useAlternative);
+  const preparedComposite = await prepareCastCompositeNonManaCosts(tx.card, true, useAlternative, tx.originalCard);
   if (state.pendingCastTransaction !== tx || state.gameOver) return false;
   if (!preparedComposite) { state.pendingCompositeCostPayment = false; return false; }
 
@@ -9459,6 +9933,11 @@ async function prepareCastTransactionCosts(tx, determinedCost) {
 export async function completeCastTargetDeclaration(targetObj) {
   const tx = state.pendingCastTransaction;
   if (!tx || tx.stage !== 'targets') return false;
+  if (battlefieldEffectTargets(tx.card.effect) &&
+    !isResolvedEffectTargetLegal(targetObj,{effect:tx.card.effect,sourceCard:tx.card,controllerIsLocal:true})) {
+    logMsg(gameText('target.invalid.generic',{source:tx.card.name}));
+    return false;
+  }
   tx.targetObj = targetObj;
   tx.ward = null; // Impuesto se calcula al comprometer el objeto en Stack (incluye multi-target).
   state.pendingTargetCard = null;
@@ -9557,6 +10036,10 @@ async function commitCastTransactionAfterMana() {
       return false;
     }
     exileCommitContext={originExile,physicalCard,permission};
+  } else if (!state.localHand.includes(tx.card)) {
+    logMsg(gameText('cast.originMissing', { card: tx.card.name }));
+    abortCastTransaction();
+    return false;
   }
 
   // 601.2h — commit atómico de costos no-maná preparados. No hubo ninguna mutación antes
@@ -9614,6 +10097,7 @@ async function commitCastTransactionAfterMana() {
     state.localHand.splice(cardIndex, 1);
   }
   const stackItem = { ...tx.proposedStackItem, card:tx.card };
+  recordCommittedManaSacrifices();
   addToStack(stackItem);
   flushDeferredLandManaTriggers();
   state.consecutivePasses = 0;
@@ -9645,6 +10129,11 @@ export function playCard(index, confirmedWarningCard = null) {
   
   if (!canPlayCard(card)) {
     logMsg(gameText('cast.cantPlay', { card: card.name }));
+    return;
+  }
+  if (battlefieldEffectTargets(card.effect) &&
+    !getResolvedEffectTargetCandidates({effect:card.effect,sourceCard:card,controllerIsLocal:true}).length) {
+    logMsg(gameText('target.noneLegal',{source:card.name}));
     return;
   }
 
@@ -9916,6 +10405,10 @@ function restoreManaPaymentSnapshot() {
   if (Array.isArray(state.deferredLandManaTriggers)) state.deferredLandManaTriggers.splice(0);
 }
 
+function recordCommittedManaSacrifices() {
+  for (const entry of state.paymentManaSourceRollbacks) notePermanentExit(state,entry.isLocal);
+}
+
 function commitManaPaymentSnapshot() {
   state.paymentManaPoolSnapshot = null;
 }
@@ -9947,6 +10440,8 @@ function manaSourceSacrificesEffective(source, isLocal = true) {
 }
 
 export function canActivateLocalManaAbility(item) {
+  if (state.multiplayerResolutionMarker?.kind === 'stack_resolution' &&
+      !state.pendingCounterUnlessPay && !state.pendingWardChoice) return false;
   if (!item?.card || state.gameOver) return false;
   if (state.pendingCastTransaction?.preparedPaymentMethods?.convoke?.includes(item)) return false;
   if (!canActivateManaSourcePermanent(item, { hasHaste: getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste'), ability: effectiveManaAbilityForItem(item, true) })) return false;
@@ -10130,7 +10625,11 @@ function rememberManaSourceRollback(item, isLocal, originalTapped = false, effec
 function restorePaymentManaSources({ preserveIrreversible = false } = {}) {
   // Deadline cancellation refunds reversible mana/taps, never a sacrificed source.
   // Voluntary cancellation retains its previous rollback behavior.
-  if (preserveIrreversible) { state.paymentManaSourceRollbacks = []; return; }
+  if (preserveIrreversible) {
+    recordCommittedManaSacrifices();
+    state.paymentManaSourceRollbacks = [];
+    return;
+  }
   const rollbacks = Array.isArray(state.paymentManaSourceRollbacks) ? [...state.paymentManaSourceRollbacks] : [];
   // Restauramos en orden inverso para preservar índices si alguna vez se sacrifican varias
   // fuentes de la misma zona durante un único pago.
@@ -10360,7 +10859,7 @@ function sendCounterspellAway(pc) {
     dispatchGameEvent({type:'card_exiled',controllerIsLocal:!!pc.counterIsLocal,actorIsLocal:!!pc.counterIsLocal,ownerIsLocal:cardOwnerIsLocal(pc.counterCard,!!pc.counterIsLocal,state.currentMatch?.myRole||null),card:pc.counterCard,zoneFrom:'stack',zoneTo:'exile',cause:'flashback'});
   } else {
     const plan=replacementCardZonePlan(pc.counterCard,!!pc.counterIsLocal,'stack','graveyard','resolved_counterspell');
-    plan.destination.push(pc.counterCard);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(pc.counterCard) : pc.counterCard);
     if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:!!pc.counterIsLocal,actorIsLocal:!!pc.counterIsLocal,ownerIsLocal:plan.ownerIsLocal,card:pc.counterCard,zoneFrom:'stack',zoneTo:'exile',cause:'resolved_counterspell'});
   }
 }
@@ -10785,7 +11284,8 @@ function checkPaymentComplete() {
       if (state.pendingCompositeCostPayment) return;
       const useAlternative = !!state.pendingAlternativeCostChosen;
       const bundle = getCastCompositeCostBundle(card, useAlternative);
-      const hasNonMana = bundle.life > 0 || bundle.discards.length > 0 || bundle.sacrifices.length > 0 || bundle.graveyardExiles.length > 0;
+      const hasNonMana = bundle.life > 0 || bundle.discards.length > 0 || bundle.handExiles.length > 0 ||
+        bundle.sacrifices.length > 0 || bundle.graveyardExiles.length > 0;
       if (hasNonMana) {
         state.pendingCompositeCostPayment = true;
         render();
@@ -10897,6 +11397,7 @@ function finalizeAbilityActivation(source, ability, card) {
     sourceItem: source.item,
     ability
   };
+  recordCommittedManaSacrifices();
   addToStack(stackItem);
   flushDeferredLandManaTriggers();
 
@@ -11182,7 +11683,7 @@ export function declineWard() {
         dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(card,true,state.currentMatch?.myRole||null),card,zoneFrom:'hand',zoneTo:'exile',cause:'ward_flashback'});
       } else {
         const plan=replacementCardZonePlan(card,true,'hand','graveyard','ward');
-        plan.destination.push(card);
+        plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
         if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'ward_replacement'});
       }
     }
@@ -11358,6 +11859,8 @@ export async function resumeAfterInteractiveEffect() {
         sourceCard: pending.card, isLocal: pending.isLocal, targetObj: null,
         stackItem: pending.stackItem || null, xValue: pending.xValue || 0
       });
+      settleFailedDraws();
+      if (state.deckOutReady) { render(); return; }
       await runStateBasedActions({ reason:'kicker_bonus_resolved' });
       await waitForStateBasedActions();
       // El propio bonus puede abrir otra decisión interactiva. En ese caso ese modal volverá

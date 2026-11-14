@@ -3,8 +3,8 @@
   "releaseHotfix": "HF7",
   "releaseDisplayVersion": "23.22.0 HF7",
   "engineVersion": "23.21.6",
-  "engineProtocolVersion": "mp-23.19.2-fl40",
-  "protocolVersion": "mp-23.19.2-fl40",
+  "engineProtocolVersion": "mp-23.19.2-fl42",
+  "protocolVersion": "mp-23.19.2-fl42",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -99,6 +99,7 @@
     "./js/decisionClock.js",
     "./js/deckBuilderLayout.js",
     "./js/deckComposition.js",
+    "./js/deckCopyLimit.js",
     "./js/deckIntelligence.js",
     "./js/deckStatistics.js",
     "./js/deckStatisticsUI.js",
@@ -185,6 +186,7 @@
     "./js/priorityStops.js",
     "./js/priorityUX.js",
     "./js/privateZoneProtocol.js",
+    "./js/publicZoneEffects.js",
     "./js/publicProfileUI.js",
     "./js/publicTerminology.js",
     "./js/publishedCardBaseline.js",
@@ -279,6 +281,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "d103859df6adc8918da4",
+  "buildId": "9e6ea0c9d32a45bd7549",
   "serviceUsageSchema": "arg-service-usage-v1"
 }

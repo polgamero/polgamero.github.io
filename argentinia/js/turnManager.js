@@ -1,8 +1,9 @@
+import { graveyardEntryCard } from './publicZoneEffects.js';
 import { currentDifficultyObservation } from './difficultyEvidence.js';
 import { guidedMatchPaused, guidedCanPass } from './guidedMatch.js';
 import { consumePriorityBudget } from './decisionClock.js';
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
+import { state, queueTriggeredAbilities, waitForTriggerOrdering, drawCardsFromLibrary, noteFailedDraw, settleFailedDraws, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked, clearTerminalInteractions, expireUncommittedAction } from './main.js';
 import { takeBotPriorityAction, chooseBotCleanupDiscardIndex, reportBotStrategicTurnAtCleanup } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -470,13 +471,16 @@ export async function advanceStep() {
   }
 
   if (state.phase === 'upkeep') {
-    executeUpkeepStep();
+    const upkeepEntries = executeUpkeepStep();
+    // En PvP, la publicación de mantenimiento debe incluir sus disparos ya apilados.
+    if (state.currentMatch && upkeepEntries.length) await waitForTriggerOrdering();
     render();
     // En Mantenimiento sí hay prioridad
   }
 
   if (state.phase === 'draw') {
     executeDrawStep();
+    if (!state.deckOutReady && state.currentMatch) await waitForTriggerOrdering();
     render();
     // En Robo sí hay prioridad
   }
@@ -710,7 +714,8 @@ const priorityClockInterval = setInterval(() => { priorityClockTick().catch(err 
 if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') priorityClockInterval.unref();
 
 function hasSoloInteractiveResolutionPending() {
-  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingSuspendCastChoice);
+  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingSuspendCastChoice ||
+    state.pendingGraveyardChoice?.reason === 'public_zone_target' || state.pendingPublicEffectResolution);
 }
 
 function soloRuntimeIsHidden() {
@@ -778,6 +783,9 @@ export async function passPriority(player) {
   // que cualquier jugador reciba prioridad. No aceptar pases mientras el kernel/los
   // selectores de Leyenda/orden de triggers estén estabilizando el estado.
   if (state.pendingLegendChoice || state.pendingTriggerOrderChoice || state.sbaKernelRunning) return;
+  if (state.pendingGraveyardChoice?.reason === 'public_zone_target' || state.pendingPublicEffectResolution ||
+      state.pendingPrivateZoneChoice) return;
+  if (state.multiplayerResolutionMarker?.kind === 'stack_resolution') return;
 
   // NUEVO: Bloqueo de seguridad si hay que descartar
   if (state.isDiscarding) {
@@ -866,7 +874,7 @@ export async function passPriority(player) {
 // El cliente sin autoridad sólo publica su pase y espera el snapshot resultante. En Solitario
 // no cambia nada: el único cliente siempre tiene autoridad.
 export async function resolveBothPassed() {
-  if (isResolvingBothPassed) return;
+  if (isResolvingBothPassed || state.multiplayerResolutionMarker?.kind === 'stack_resolution') return;
   const topStackItem = spellStack.length > 0 ? spellStack[spellStack.length - 1] : null;
   // ENTREGA 23.6: con Stack no vacía, la autoridad es el CONTROLADOR del objeto superior.
   // Así cada cliente resuelve sus propios efectos privados (robar, descartar, pagar costos)
@@ -1056,9 +1064,7 @@ async function executeUntapStep() {
   logMsg(gameText('game.untap', { player: isLocal ? getLocalPlayerName() : getRivalName() }));
 }
 
-// Habilidad Disparada por fase (ej. "Al comienzo de tu mantenimiento, ganás 1 vida").
-// Simplificación deliberada: se resuelve directo, sin pasar por la pila (igual que
-// ya hacían las habilidades activadas sin objetivo antes de esta etapa).
+// Habilidades disparadas al comienzo del mantenimiento.
 function executeUpkeepStep() {
   const isLocal = state.activePlayer === 'local';
   const combat = isLocal ? state.localCombat : state.rivalCombat;
@@ -1078,7 +1084,7 @@ function executeUpkeepStep() {
     type:'upkeep_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
     activePlayerIsLocal:isLocal, phase:'upkeep'
   }));
-  queueTriggeredAbilities(entries);
+  return queueTriggeredAbilities(entries);
 }
 
 // Habilidad Disparada por fase con condición opcional (ej. Hinchada Fervorosa: "si atacaste con
@@ -1107,27 +1113,10 @@ function executeEndStep() {
 
 function executeDrawStep() {
   const isLocal = state.activePlayer === 'local';
-  if (isLocal) {
-    if (state.localDeck.length > 0) {
-      const drawnCard=state.localDeck.pop(); state.localHand.push(drawnCard);
-      dispatchGameEvent({type:'card_drawn',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
-      logMsg(gameText('game.draw.local'));
-    } else {
-      // Regla real de Argentinia: intentar robar de una biblioteca vacía es una forma legítima
-      // de perder la partida, no un "no pasa nada".
-      state.gameOver = true;
-      checkGameOver();
-    }
-  } else {
-    if (state.rivalDeck.length > 0) {
-      const drawnCard=state.rivalDeck.pop(); state.rivalHand.push(drawnCard);
-      dispatchGameEvent({type:'card_drawn',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:false,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
-      logMsg(gameText('game.draw.rival'));
-    } else {
-      state.gameOver = true;
-      checkGameOver();
-    }
-  }
+  const result = drawCardsFromLibrary(isLocal,1,'draw_step');
+  noteFailedDraw(isLocal,result.failed,'draw_step');
+  if (result.drawn) logMsg(gameText(isLocal ? 'game.draw.local' : 'game.draw.rival'));
+  settleFailedDraws();
 }
 
 async function executeCleanupStep() {
@@ -1208,7 +1197,7 @@ async function executeCleanupStep() {
         : Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
       const discarded = state.rivalHand.splice(randomIndex,1)[0];
       const plan=cleanupDiscardDestination(discarded,false);
-      plan.destination.push(discarded);
+      plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discarded) : discarded);
       dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
       if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
       logMsg(gameText('game.handLimit.botDiscard', { card: discarded.name }));
@@ -1228,7 +1217,7 @@ async function executeCleanupStep() {
 export async function handleDiscardClick(index) {
   const discardedCard=state.localHand.splice(index,1)[0];
   const plan=cleanupDiscardDestination(discardedCard,true);
-  plan.destination.push(discardedCard);
+  plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discardedCard) : discardedCard);
   dispatchGameEvent({type:'card_discarded',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card:discardedCard,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
   if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
   state.cardsToDiscard--;

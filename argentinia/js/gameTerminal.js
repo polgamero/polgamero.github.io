@@ -18,6 +18,12 @@ export function derivePerspectiveTerminalOutcome(state={}) {
   if (localPoison !== null && localPoison >= 10) return { won:false, reason:'poison_loss' };
   if (rivalPoison !== null && rivalPoison >= 10) return { won:true, reason:'poison_win' };
 
+  const deckedOut = state.deckedOutRole;
+  if (deckedOut && (state.deckOutReady || state.gameOver)) {
+    const lost = deckedOut === (state.currentMatch?.myRole || 'local');
+    return {won:!lost,reason:lost ? 'deckout_loss' : 'deckout_win'};
+  }
+
   // A library merely being empty is not terminal until a draw was attempted. Therefore this
   // fallback is only legal once the synchronized state already says gameOver=true. It lets the
   // peer that did NOT execute the draw step still classify a remote deck-out.

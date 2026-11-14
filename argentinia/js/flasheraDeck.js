@@ -2,6 +2,20 @@
 // Physical state and cosmetic finish remain orthogonal. Never mint cards in this module.
 import { parseCardVariantId, cardVariantId } from './cardVariant.js';
 import { reconcileFlasheraCopies } from './flasheraContract.js';
+import { cardHasDeckCopyLimit, deckCopyLimit } from './deckCopyLimit.js';
+
+export function assertIndividualDeckCopyLimits(cardIds, getCard, generalLimit) {
+  const counts = new Map();
+  for (const id of cardIds || []) {
+    const {baseId} = parseCardVariantId(id);
+    const card = getCard(baseId);
+    if (!cardHasDeckCopyLimit(card)) continue;
+    const count = (counts.get(baseId) || 0) + 1;
+    const limit = deckCopyLimit(card,generalLimit);
+    if (count > limit) throw new Error(`${card.name} admite hasta ${limit} copias por mazo. Editá el mazo antes de jugar.`);
+    counts.set(baseId,count);
+  }
+}
 
 export function flasheraTotalForBase(profile = {}, baseId = '') {
   return physicalCardVariants(profile,baseId).reduce((n,row)=>n+(row.flashera?row.count:0),0);
@@ -45,7 +59,7 @@ export function countDeckBaseCopies(deckCounts = {}, baseId = '') {
   }
   return result;
 }
-export function assertDeckFlasheraOwnership(profile = {}, cardIds = [], {allowVirtualAdminPool = false, maxCopiesPerCard = 4, isBasicLand = () => false} = {}) {
+export function assertDeckFlasheraOwnership(profile = {}, cardIds = [], {allowVirtualAdminPool = false, maxCopiesPerCard = 4, isBasicLand = () => false, copyLimitForBase = null} = {}) {
   if (!Array.isArray(cardIds)) throw new Error('Las cartas del mazo deben ser una lista.');
   const requested = new Map();
   const perBase = new Map();
@@ -55,10 +69,11 @@ export function assertDeckFlasheraOwnership(profile = {}, cardIds = [], {allowVi
     requested.set(id, (requested.get(id) || 0) + 1);
     perBase.set(parsed.baseId, (perBase.get(parsed.baseId) || 0) + 1);
   }
-  // The cosmetic finish does not reset the four-copy rule (except basic lands).
+  // The limit belongs to the base card across all its physical variants.
   for (const [baseId, count] of perBase) {
-    if (!isBasicLand(baseId) && count > maxCopiesPerCard) {
-      throw new Error(`No podés incluir más de ${maxCopiesPerCard} copias combinadas de ${baseId} (normal y Flashera).`);
+    const limit = copyLimitForBase?.(baseId) ?? (isBasicLand(baseId) ? Infinity : maxCopiesPerCard);
+    if (count > limit) {
+      throw new Error(`No podés incluir más de ${limit} copias combinadas de ${baseId}.`);
     }
   }
   for (const [id, count] of requested) {

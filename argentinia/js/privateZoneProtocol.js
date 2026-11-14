@@ -125,7 +125,9 @@ export function validatePrivateZoneSelection(offer, selectedTokens) {
   const tokens = Array.isArray(selectedTokens) ? selectedTokens : [];
   const unique = [...new Set(tokens)];
   const legal = new Map((offer?.candidates || []).map(c => [c.token, c]));
-  if (unique.length !== Number(offer?.amount || 0)) return { ok: false, reason: 'wrong_amount', tokens: [] };
+  if (tokens.length !== unique.length || unique.length !== Number(offer?.amount || 0)) {
+    return { ok: false, reason: 'wrong_amount', tokens: [] };
+  }
   if (unique.some(token => !legal.has(token))) return { ok: false, reason: 'unknown_token', tokens: [] };
   if (unique.some(token => legal.get(token)?.selectable === false)) return { ok: false, reason: 'ineligible_token', tokens: [] };
   return { ok: true, reason: null, tokens: unique };

@@ -5,6 +5,7 @@
 import { ENGINE_VERSION } from './version.js';
 import { serializeStackForPublic, deserializeStackFromPublic } from './matchSync.js';
 import { getGameRngSnapshot, restoreGameRngSession } from './gameRng.js';
+import { graveyardForSide, lockAuraTarget, lockGraveyardTarget } from './publicZoneEffects.js';
 
 export const SOLO_RECOVERY_SCHEMA_VERSION = 2;
 export const SOLO_RECOVERY_STORAGE_KEY = 'argentinia.solo.activeGame.v1';
@@ -24,7 +25,7 @@ const TRANSIENT_KEYS = new Set([
   'pendingHybridLifePayment','pendingCompositeCostPayment','pendingSpellCostsIrreversible','pendingFightChoice',
   'pendingLegendChoice','pendingTriggerOrderChoice','pendingXChoice','pendingModeChoice','pendingLoyaltyTargetChoice','pendingMultiTargetChoice',
   'pendingScrySurveilChoice','pendingProliferateChoice','pendingHandFilterChoice','pendingDiscardChoice',
-  'pendingSacrificeEffectChoice','pendingGraveyardChoice','pendingResolvedEffectTargetChoice',
+  'pendingSacrificeEffectChoice','pendingGraveyardChoice','pendingResolvedEffectTargetChoice','pendingPublicEffectResolution',
   'pendingEscapeExileChoice','pendingKickerChoice','pendingRampChoice','pendingLandSearchChoice','pendingLibraryChoice','damageModalOpen','awaitingRivalDecision',
   'respondingToDecision','pendingDecision','decisionResponse','isDiscarding','cardsToDiscard',
   'resolvingDiscardEffects','resolvingSacrificeEffects','resolvingCardFilterEffects','resolvingGraveyardChoices','resolvingResolvedEffectTargetChoices'
@@ -109,6 +110,42 @@ export function getSoloEffectiveElapsedMs(atMs = nowMs()) {
 export function getActiveSoloGameId() { return active?.soloGameId || null; }
 export function hasActiveSoloRecovery() { return !!active; }
 
+function serializeSoloStack(stack, state) {
+  const entries = stack || [];
+  const wire = serializeStackForPublic(entries,state,'host');
+  entries.forEach((entry,index) => {
+    const target = entry.targetObj;
+    if (target?.type === 'graveyard') {
+      const slot = graveyardForSide(state,target.isLocal).indexOf(target.card);
+      wire[index].soloTarget = {type:'graveyard',isLocal:target.isLocal,slot};
+    } else if (target?.type === 'aura') {
+      const sides = [[true,state.localCombat],[false,state.rivalCombat]];
+      const host = sides.flatMap(([isLocal,items])=>(items||[]).map((item,slot)=>({item,slot,isLocal})))
+        .find(({item})=>item.auras?.includes(target.card));
+      wire[index].soloTarget = {type:'aura',isLocal:host?.isLocal ?? false,slot:host?.slot ?? -1,
+        auraSlot:host?.item.auras.indexOf(target.card) ?? -1};
+    }
+  });
+  return wire;
+}
+
+function restoreSoloStack(entries,state) {
+  const stack = deserializeStackFromPublic(entries,state,'host');
+  entries.forEach(({soloTarget},index) => {
+    if (!soloTarget || !stack[index]) return;
+    const {type,isLocal,slot,auraSlot} = soloTarget;
+    if (type === 'graveyard') {
+      const card = graveyardForSide(state,isLocal)[slot];
+      stack[index].targetObj = card ? lockGraveyardTarget({type,isLocal,card}) : null;
+    } else if (type === 'aura') {
+      const item = (isLocal ? state.localCombat : state.rivalCombat)[slot];
+      const card = item?.auras?.[auraSlot];
+      stack[index].targetObj = card ? lockAuraTarget({type,isLocal,item,card}) : null;
+    }
+  });
+  return stack;
+}
+
 function persist(payload) {
   try {
     localStorage.setItem(SOLO_RECOVERY_STORAGE_KEY, JSON.stringify(payload));
@@ -123,6 +160,9 @@ export function checkpointSoloRecovery(state, stack, options = {}) {
   if (!active || state?.currentMatch || state?.gameOver) return false;
   if (!options.force && !isSoloRecoveryStable(state)) return false;
   const checkpointAtMs = nowMs();
+  // The stack serializer can assign IDs to live permanents. Capture the board
+  // afterwards so every strict reference can find its object in this checkpoint.
+  const stackState = serializeSoloStack(stack, state);
   const payload = {
     schemaVersion: SOLO_RECOVERY_SCHEMA_VERSION,
     engineVersion: ENGINE_VERSION,
@@ -140,7 +180,7 @@ export function checkpointSoloRecovery(state, stack, options = {}) {
     telemetrySessionId: options.telemetrySessionId || active.telemetrySessionId || null,
     rngState: getGameRngSnapshot(),
     state: serializableGameState(state),
-    stackState: serializeStackForPublic(stack || [], state, 'host')
+    stackState
   };
   if (persist(payload)) {
     active.lastCheckpointAtMs = checkpointAtMs;
@@ -321,7 +361,7 @@ export function restoreSoloRecoveryState(candidate, state) {
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = 'solo_recovery';
   if (candidate.rngState) restoreGameRngSession(candidate.rngState);
-  return deserializeStackFromPublic(candidate.stackState || [], state, 'host');
+  return restoreSoloStack(candidate.stackState || [],state);
 }
 
 export function clearSoloRecovery() {

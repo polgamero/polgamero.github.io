@@ -24,6 +24,16 @@ export const POINTS = {
   abandonPenalty: -30
 };
 
+const DEFAULT_DRAW_REWARDS = {
+  soloDrawLongGameMinutes: 20,
+  soloDrawShortRewardPercent: 50,
+  soloDrawLongRewardPercent: 80,
+  tournamentDrawRewardPercent: 20,
+  pvpDrawRewardPoints: 30
+};
+
+export const DRAW_REWARDS = { ...DEFAULT_DRAW_REWARDS };
+
 
 // --- PvP anti-farming (admin-editable) ---
 // Estos cuatro valores se cargan desde gameConfig/settings y son la política económica
@@ -208,6 +218,7 @@ export function getDefaultGameConfig() {
     winVsHumano: 120,
     lossVsHumano: 20,
     abandonPenalty: -30,
+    ...DEFAULT_DRAW_REWARDS,
     pvpMinRewardMinutes: 3,
     pvpMinCompletedTurns: 4,
     pvpMaxRewardedMatchesPerPairDaily: 5,
@@ -320,6 +331,11 @@ export function applyGameConfig(config) {
   if (typeof config.winVsHumano === 'number') POINTS.winVsHumano = config.winVsHumano;
   if (typeof config.lossVsHumano === 'number') POINTS.lossVsHumano = config.lossVsHumano;
   if (typeof config.abandonPenalty === 'number') POINTS.abandonPenalty = config.abandonPenalty;
+  for (const [key, fallback] of Object.entries(DEFAULT_DRAW_REWARDS)) {
+    const value = config[key];
+    const max = key.endsWith('Percent') ? 100 : Number.MAX_SAFE_INTEGER;
+    DRAW_REWARDS[key] = Number.isSafeInteger(value) && value >= 0 && value <= max ? value : fallback;
+  }
   if (typeof config.pvpMinRewardMinutes === 'number') PVP_LIMITS.minRewardMinutes = Math.max(0, Math.floor(config.pvpMinRewardMinutes));
   if (typeof config.pvpMinCompletedTurns === 'number') PVP_LIMITS.minCompletedTurns = Math.max(0, Math.floor(config.pvpMinCompletedTurns));
   if (typeof config.pvpMaxRewardedMatchesPerPairDaily === 'number') PVP_LIMITS.maxRewardedMatchesPerPairDaily = Math.max(0, Math.floor(config.pvpMaxRewardedMatchesPerPairDaily));

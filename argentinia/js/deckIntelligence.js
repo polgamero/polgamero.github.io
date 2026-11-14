@@ -5,6 +5,8 @@ import { BOT_AI_VERSION } from './botDifficulty.js';
 
 import {entryLoyaltyAbilities,planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
 import {getManaSourceOptions} from './manaSources.js';
+import { deckCopyLimit } from './deckCopyLimit.js';
+
 const COLORS = ['W','U','B','R','G'];
 const MANA_LANES = [...COLORS, 'C'];
 const COLORLESS_BASIC_ID = 'tier_069';
@@ -506,8 +508,8 @@ function buildArchetypeContext(cards, identity, archetypeId, meta, quality, pref
   return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus,splash,...(meta.bot3?{bot3:true,archetypeId}:{})};
 }
 function availableCopies(eligible, predicate, spellCount) {
-  const unique=eligible.reduce((n,x)=>n+(predicate(x.profile,x.card)?1:0),0);
-  return Math.min(spellCount,unique*4);
+  const copies=eligible.reduce((n,x)=>n+(predicate(x.profile,x.card)?deckCopyLimit(x.card):0),0);
+  return Math.min(spellCount,copies);
 }
 function buildCompositionRequirements(arch, quality, spellCount, context) {
   const qp=DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive;
@@ -717,7 +719,7 @@ function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archCont
     const target=deficits[0];
     const counts=new Map(); cards.forEach(c=>counts.set(c.id,(counts.get(c.id)||0)+1));
     const candidatePool=eligible
-      .filter(({card,profile})=>(counts.get(card.id)||0)<(profile.isPlaneswalker&&archContext.bot3?req.maxPlaneswalkerCopies:colorlessSpellCopyLimit(profile,arch)) && profileMatchesDeficit(profile,target.key,arch,archContext))
+      .filter(({card,profile})=>(counts.get(card.id)||0)<deckCopyLimit(card,profile.isPlaneswalker&&archContext.bot3?req.maxPlaneswalkerCopies:colorlessSpellCopyLimit(profile,arch)) && profileMatchesDeficit(profile,target.key,arch,archContext))
       .map(({card,profile})=>({card,profile,base:profile.power*0.25+synergyScore(profile,arch,archContext)}))
       .sort((a,b)=>b.base-a.base)
       .slice(0,72);
@@ -767,7 +769,7 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
     for (const card of eligible) {
       const count=copies.get(card.id)||0;
       const profile=meta.get(card.id);
-      if (count>=colorlessSpellCopyLimit(profile,arch)) continue;
+      if (count>=deckCopyLimit(card,colorlessSpellCopyLimit(profile,arch))) continue;
       const rarityBudget=(DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive).rarityBudget;
       if (rarityBudget && exceedsRarityBudget([...chosen,card],rarityBudget)) continue;
       if (forceCreature && !profile.isCreature) continue;
@@ -831,13 +833,13 @@ function buildLandCandidate(cards, identity, spells, landCount, rng) {
   const picks=[], copies=new Map();
   const dualBudget=identity.length===2 ? Math.min(8,Math.max(4,Math.round(landCount*0.28))) : 0;
   for (let i=0;i<dualBudget && duals.length;i++) {
-    const eligible=duals.filter(c=>(copies.get(c.id)||0)<2);
+    const eligible=duals.filter(c=>(copies.get(c.id)||0)<deckCopyLimit(c,2));
     if (!eligible.length) break;
     const c=eligible[Math.floor(rng()*eligible.length)]; picks.push({...c}); copies.set(c.id,(copies.get(c.id)||0)+1);
   }
   const utilityBudget=Math.min(identity.length===1?3:2, Math.max(0,landCount-picks.length-identity.length*6));
   for (let i=0;i<utilityBudget && monoUtility.length;i++) {
-    const eligible=monoUtility.filter(c=>(copies.get(c.id)||0)<2);
+    const eligible=monoUtility.filter(c=>(copies.get(c.id)||0)<deckCopyLimit(c,2));
     if (!eligible.length) break;
     const c=eligible[Math.floor(rng()*eligible.length)]; picks.push({...c}); copies.set(c.id,(copies.get(c.id)||0)+1);
   }
@@ -1124,7 +1126,7 @@ export function validateCompetitiveDeck(deck, identity) {
     if (!identityMatches(card,identity)) errors.push(`off-color:${card?.id}`);
     if (!isLand(card) || !norm(card.type).includes('basica')) {
       copies.set(card.id,(copies.get(card.id)||0)+1);
-      const limit=isLand(card)?2:4;
+      const limit=deckCopyLimit(card,isLand(card)?2:4);
       if (copies.get(card.id)>limit) errors.push(`copies:${card.id}:${copies.get(card.id)}`);
     }
   }

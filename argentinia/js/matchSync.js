@@ -16,7 +16,7 @@ export const PER_PLAYER_FIELDS = [
 ];
 
 export const SHARED_FIELDS = [
-  'turnCount', 'phase', 'gameOver', 'consecutivePasses', 'combatDamagePrevented',
+  'turnCount', 'phase', 'gameOver', 'deckedOutRole', 'consecutivePasses', 'combatDamagePrevented',
   'activeEffects', 'scheduledReturns',
   'pendingDecision', 'decisionResponse', 'multiplayerResolutionMarker',
   'priorityClockSerial', 'priorityClockDurationMs', 'priorityActivity'
@@ -61,6 +61,14 @@ function ensureItemSyncId(item, ownerRole) {
   if (!item || typeof item !== 'object') return null;
   if (!item._syncObjectId) item._syncObjectId = makeSyncObjectId(ownerRole);
   return item._syncObjectId;
+}
+
+function findPublicBattlefieldItem(state, predicate) {
+  for (const [, local, rival] of BOARD_ZONE_SPECS) {
+    const item = state[local]?.find(predicate) || state[rival]?.find(predicate);
+    if (item) return item;
+  }
+  return null;
 }
 
 export function ensureBoardItemSyncIds(state, myRole) {
@@ -110,8 +118,13 @@ export function serializeBoardItemRef(item, state, myRole) {
   return null;
 }
 
-export function deserializeBoardItemRef(ref, state, myRole) {
+export function deserializeBoardItemRef(ref, state, myRole, {strict = false} = {}) {
   if (!ref || !state) return null;
+  if (strict && ref.syncObjectId) {
+    // A permanent can change side, face or battlefield row without changing identity.
+    return findPublicBattlefieldItem(state,item=>item?._syncObjectId === ref.syncObjectId);
+  }
+  if (strict) return null;
   const descriptorControllerRole = ref.controllerRole || ref.ownerRole;
   let isLocal = descriptorControllerRole === myRole;
   let zone = zoneArray(state, ref.zone, isLocal);
@@ -139,14 +152,32 @@ function targetZoneName(type) {
   return null;
 }
 
-export function serializeStackTarget(targetObj, state, myRole) {
+export function serializeStackTarget(targetObj, state, myRole, {strict = false} = {}) {
   if (!targetObj) return null;
   if (targetObj.type === 'stack') return { type: 'stack', stackId: targetObj.stackId };
   if (targetObj.type === 'multi') {
-    return { type: 'multi', targets: (targetObj.targets || []).map(t => serializeStackTarget(t, state, myRole)) };
+    return { type: 'multi', targets: (targetObj.targets || []).map(t => serializeStackTarget(t, state, myRole, {strict})) };
   }
   if (targetObj.type === 'player') {
     return { type: 'player', ownerRole: targetObj.isLocal ? myRole : otherRole(myRole) };
+  }
+
+  if (targetObj.type === 'graveyard' || targetObj.type === 'aura') {
+    if (targetObj._syncDescriptor) return targetObj._syncDescriptor;
+    const card = targetObj.card;
+    const ownerRole = targetObj.isLocal ? myRole : otherRole(myRole);
+    const attached = targetObj.type === 'aura';
+    const cards = attached ? targetObj.item?.auras : state[targetObj.isLocal ? 'localGraveyard' : 'rivalGraveyard'];
+    if (!card || !cards?.includes(card)) return null;
+    const key = attached ? '_auraObjectId' : '_graveyardObjectId';
+    card[key] ||= makeSyncObjectId(ownerRole);
+    return targetObj._syncDescriptor = {type:targetObj.type,ownerRole,objectId:card[key],cardName:card.name || null};
+  }
+
+  if (strict) {
+    if (targetObj._syncDescriptor?.strict) return targetObj._syncDescriptor;
+    const ref = serializeBoardItemRef(targetObj.item, state, myRole);
+    return ref ? (targetObj._syncDescriptor = {...ref,type:targetObj.type,strict:true}) : null;
   }
 
   let zoneName = targetZoneName(targetObj.type);
@@ -196,6 +227,22 @@ export function deserializeStackTarget(descriptor, state, myRole) {
   }
   let isLocal = (descriptor.controllerRole || descriptor.ownerRole) === myRole;
   if (descriptor.type === 'player') return { type: 'player', isLocal };
+
+  if (descriptor.type === 'graveyard' || descriptor.type === 'aura') {
+    const attached = descriptor.type === 'aura';
+    const item = attached && descriptor.objectId
+      ? findPublicBattlefieldItem(state,unit=>unit.auras?.some(card=>card._auraObjectId === descriptor.objectId))
+      : null;
+    const cards = attached ? item?.auras : state[isLocal ? 'localGraveyard' : 'rivalGraveyard'];
+    const key = attached ? '_auraObjectId' : '_graveyardObjectId';
+    const card = descriptor.objectId ? cards?.find(candidate => candidate?.[key] === descriptor.objectId) : null;
+    return {type:descriptor.type,isLocal,item,card:card || null,_syncDescriptor:descriptor};
+  }
+
+  if (descriptor.strict) {
+    const item = deserializeBoardItemRef(descriptor, state, myRole, {strict:true});
+    return {type:descriptor.type,isLocal,item,_syncDescriptor:descriptor};
+  }
 
   const zoneName = descriptor.zone || targetZoneName(descriptor.type);
   let zone = zoneArray(state, zoneName, isLocal) || [];
@@ -256,7 +303,7 @@ function deserializeStackSource(source, state, myRole) {
   const out = { ...source };
   if (source.sourceItemRef) {
     out._sourceItemRef = source.sourceItemRef;
-    out.sourceItem = deserializeBoardItemRef(source.sourceItemRef, state, myRole);
+    out.sourceItem = deserializeBoardItemRef(source.sourceItemRef, state, myRole, {strict:source.sourceItemRef.strict === true});
   }
   if (source.eventItemRef) {
     out._eventItemRef = source.eventItemRef;
@@ -270,13 +317,21 @@ function deserializeStackSource(source, state, myRole) {
 export function serializeStackForPublic(stack, state, myRole) {
   if (!Array.isArray(stack)) return [];
   return stack.map(item => {
-    const sourceItemRef = serializeBoardItemRef(item?.sourceItem, state, myRole) || item?._sourceItemRef || null;
+    const effectType = item?.ability?.effect?.type || item?.card?.effect?.type;
+    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage'].includes(effectType);
+    const liveRef = serializeBoardItemRef(item?.sourceItem, state, myRole);
+    const sourceItemRef = liveRef ? {...liveRef,...(strict ? {strict:true} : {})} : item?._sourceItemRef || null;
+    const source = serializeStackSource(item?.source, state, myRole);
+    if (strict && source?.sourceItemRef) {
+      source.sourceItemRef = {...source.sourceItemRef,strict:true};
+      item.source._sourceItemRef = source.sourceItemRef;
+    }
     const wire = {
       id: item?.id ?? null,
       controllerRole: item?.isLocal ? myRole : otherRole(myRole),
       type: item?.type || null,
       card: discoverySafePublicValue(item?.card || null),
-      target: serializeStackTarget(item?.targetObj, state, myRole),
+      target: serializeStackTarget(item?.targetObj, state, myRole, {strict}),
       xValue: item?.xValue ?? null,
       castFrom: item?.castFrom ?? null,
       exilePermissionId: item?.exilePermissionId ?? null,
@@ -300,7 +355,7 @@ export function serializeStackForPublic(stack, state, myRole) {
       sagaLoreBefore: item?.sagaLoreBefore ?? null,
       sagaLoreAfter: item?.sagaLoreAfter ?? null,
       sagaPendingKey: item?.sagaPendingKey ?? null,
-      source: serializeStackSource(item?.source, state, myRole)
+      source
     };
     if (sourceItemRef) {
       wire.sourceItemRef = sourceItemRef;
@@ -349,7 +404,7 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
     };
     if (wire?.sourceItemRef) {
       item._sourceItemRef = wire.sourceItemRef;
-      item.sourceItem = deserializeBoardItemRef(wire.sourceItemRef, state, myRole);
+      item.sourceItem = deserializeBoardItemRef(wire.sourceItemRef, state, myRole, {strict:wire.sourceItemRef.strict === true});
     }
     return item;
   });
@@ -358,9 +413,26 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
 export function buildMyPublicPatch(state, myRole, stack = []) {
   const rivalRole = otherRole(myRole);
   const patch = {};
-  const hasAuthority = state.activePlayer === 'local' || state.stackResolutionAuthority === true;
+  const resolutionRole = state.multiplayerResolutionMarker?.kind === 'stack_resolution'
+    ? state.multiplayerResolutionMarker.authorityRole : null;
+  const hasAuthority = state.stackResolutionAuthority === true ||
+    (state.activePlayer === 'local' && (!resolutionRole || resolutionRole === myRole));
 
   ensureBoardItemSyncIds(state, myRole);
+  // IDs belong to public zone entries and survive round trips, even with identical cards.
+  const publicSides = hasAuthority ? [['local',myRole],['rival',rivalRole]] : [['local',myRole]];
+  for (const [side, role] of publicSides) {
+    for (const card of state[`${side}Graveyard`] || []) {
+      if (card) card._graveyardObjectId ||= makeSyncObjectId(role);
+    }
+    for (const [,local,rival] of BOARD_ZONE_SPECS) {
+      for (const item of state[side === 'local' ? local : rival] || []) {
+        for (const card of item.auras || []) card._auraObjectId ||= makeSyncObjectId(role);
+      }
+    }
+  }
+  patch[`${myRole}PermanentExitTurn`] = state.permanentExitTurn?.local ?? null;
+  if (hasAuthority) patch[`${rivalRole}PermanentExitTurn`] = state.permanentExitTurn?.rival ?? null;
 
   PER_PLAYER_FIELDS.forEach(field => {
     const value = state[`local${field}`];
@@ -449,6 +521,12 @@ export function extractMyStateFromPublicDoc(publicDoc, myRole, touchedKeys = nul
 
 export function extractSharedStateFromPublicDoc(publicDoc, myRole, touchedKeys = null) {
   const result = {};
+  const permanentExitTurn = {};
+  for (const [side,role] of [['local',myRole],['rival',otherRole(myRole)]]) {
+    const key = `${role}PermanentExitTurn`;
+    if (touchedAllows(touchedKeys,key) && hasOwn(publicDoc,key)) permanentExitTurn[side] = publicDoc[key];
+  }
+  if (Object.keys(permanentExitTurn).length) result.permanentExitTurn = permanentExitTurn;
   SHARED_FIELDS.forEach(field => {
     if (!touchedAllows(touchedKeys, field) || !hasOwn(publicDoc, field) || publicDoc[field] === undefined) return;
     if (field === 'activeEffects') {
@@ -483,8 +561,8 @@ export function buildMyPrivatePatch(state) {
 // que el objeto JS original siga siendo el mismo.
 export function refreshStackItemBoardRefs(item, state, myRole) {
   if (!item || !state || !myRole) return item;
-  if (item._sourceItemRef) item.sourceItem = deserializeBoardItemRef(item._sourceItemRef, state, myRole);
-  if (item.source?._sourceItemRef) item.source.sourceItem = deserializeBoardItemRef(item.source._sourceItemRef, state, myRole);
+  if (item._sourceItemRef) item.sourceItem = deserializeBoardItemRef(item._sourceItemRef, state, myRole, {strict:item._sourceItemRef.strict === true});
+  if (item.source?._sourceItemRef) item.source.sourceItem = deserializeBoardItemRef(item.source._sourceItemRef, state, myRole, {strict:item.source._sourceItemRef.strict === true});
   if (item.source?._eventItemRef) item.source.eventItem = deserializeBoardItemRef(item.source._eventItemRef, state, myRole);
   if (item.targetObj?._syncDescriptor) item.targetObj = deserializeStackTarget(item.targetObj._syncDescriptor, state, myRole);
   if (item.targetObj?.type === 'multi' && Array.isArray(item.targetObj.targets)) {

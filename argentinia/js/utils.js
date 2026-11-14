@@ -3,12 +3,14 @@ import { cardDb } from './cardLoader.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner } from './zoneOwnership.js';
 import { cardForNonBattlefieldZone } from './transformEngine.js';
-import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { graveyardEntryCard } from './publicZoneEffects.js';
+import { deckCopyLimit } from './deckCopyLimit.js';
+import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, MAX_COPIES_PER_CARD, isEnhancementEligibleCard } from './store.js';
 import { buildCompetitiveDeck, buildOpponentDeck } from './deckIntelligence.js';
 import { parseEvolutionVariantId, evolutionStageForProfile, applyEvolutionStage } from './evolution.js';
 import { gameRandom } from './gameRng.js';
 import { parseCardVariantId } from './cardVariant.js';
-import { assertDeckFlasheraOwnership, isFlasheraDeck } from './flasheraDeck.js';
+import { assertDeckFlasheraOwnership, assertIndividualDeckCopyLimits, isFlasheraDeck } from './flasheraDeck.js';
 import { putPhysicalFlashera } from './flasheraGameplay.js';
 import {discoveryCardForPlay} from './discoveryPlayability.js';
 
@@ -64,7 +66,7 @@ export function moveBattlefieldCardToZone(card, destinationZone) {
   // 23.16.4 — una TDFC que abandona el battlefield vuelve a existir como su cara frontal.
   // Esto además elimina el estado de cara/copy-overlay runtime antes de entrar a mano,
   // cementerio o Exilio, sin obligar a cada removal/blink/SBA a conocer Transform Engine.
-  destinationZone.push(cardForNonBattlefieldZone(card));
+  destinationZone.push(graveyardEntryCard(cardForNonBattlefieldZone(card)));
   return true;
 }
 
@@ -129,7 +131,7 @@ export function moveCounteredStackItemToDestination(stackItem, gameState) {
   const destination = zoneTo === 'exile'
     ? zoneForCardOwner(stackItem.card, gameState.localExile, gameState.rivalExile, isLocal, gameState.currentMatch?.myRole || null)
     : zoneForCardOwner(stackItem.card, gameState.localGraveyard, gameState.rivalGraveyard, isLocal, gameState.currentMatch?.myRole || null);
-  destination.push(stackItem.card);
+  destination.push(zoneTo === 'graveyard' ? graveyardEntryCard(stackItem.card) : stackItem.card);
   return zoneTo;
 }
 
@@ -254,13 +256,14 @@ export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, pro
   // premium copies before shuffle/hand split (also used by Solo/Tournament/PvP).
   if (!Array.isArray(cardIds)) throw new Error('El mazo debe ser una lista de variantes canónicas.');
   cardDb.assertOwnedDiscoveryDeck(cardIds,profile);
+  assertIndividualDeckCopyLimits(cardIds,id=>cardDb.getById(id),MAX_COPIES_PER_CARD);
   if (isFlasheraDeck(cardIds)) {
     if (!profile || !Array.isArray(profile.collection)) {
       const error = new Error('No se pudo verificar la propiedad de las cartas Flasheras antes de jugar.');
       error.code = 'FLASHERA_GAMEPLAY_OWNERSHIP_REQUIRED'; throw error;
     }
     assertDeckFlasheraOwnership(profile, cardIds, {
-      isBasicLand: baseId => !!cardDb.getById(baseId)?.type?.includes('básica')
+      copyLimitForBase:baseId=>deckCopyLimit(cardDb.getById(baseId),MAX_COPIES_PER_CARD)
     });
   }
   const cards = cardIds
@@ -466,19 +469,25 @@ export function normalizeCompositeCost(cost) {
     amount: Math.max(0, Math.floor(Number(cost.exileFromGraveyard.amount ?? 1) || 0)),
     filter: cost.exileFromGraveyard.filter || 'any'
   } : null;
+  const exileFromHand = cost.exileFromHand && typeof cost.exileFromHand === 'object' ? {
+    amount: Math.max(0,Math.floor(Number(cost.exileFromHand.amount ?? 1) || 0)),
+    color:cost.exileFromHand.color || null
+  } : null;
 
   return {
     manaCost: typeof cost.manaCost === 'string' && cost.manaCost.trim() ? cost.manaCost : null,
     life: Math.max(0, Number(cost.life) || 0),
     discard,
     sacrifice,
-    exileFromGraveyard
+    exileFromGraveyard,
+    ...(exileFromHand ? {exileFromHand} : {})
   };
 }
 
 export function compositeCostHasNonMana(cost) {
   const c = normalizeCompositeCost(cost);
-  return !!(c && (c.life > 0 || (c.discard && c.discard.amount > 0) || (c.sacrifice && c.sacrifice.amount > 0) || (c.exileFromGraveyard && c.exileFromGraveyard.amount > 0)));
+  return !!(c && (c.life > 0 || c.discard?.amount > 0 || c.sacrifice?.amount > 0 ||
+    c.exileFromGraveyard?.amount > 0 || c.exileFromHand?.amount > 0));
 }
 
 export function getCompositeCostManaString(cost) {
@@ -508,6 +517,12 @@ export function describeCompositeCost(cost) {
   }
   if (c.exileFromGraveyard && c.exileFromGraveyard.amount > 0) {
     parts.push(`exiliar ${c.exileFromGraveyard.amount} carta${c.exileFromGraveyard.amount > 1 ? 's' : ''} del cementerio`);
+  }
+  if (c.exileFromHand?.amount > 0) {
+    const colorNames = {W:'blanca',U:'azul',B:'negra',R:'roja',G:'verde',C:'incolora'};
+    const {amount,color} = c.exileFromHand;
+    const plural = amount > 1 ? 's' : '';
+    parts.push(`exiliar ${amount} carta${plural}${color ? ' ' + (colorNames[color] || color) + plural : ''} de tu mano`);
   }
   return parts.length ? parts.join(' + ') : '0';
 }

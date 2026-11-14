@@ -85,7 +85,7 @@ export function deriveLocalPriorityActivity(state) {
   if (!state || state.gameOver) return null;
   if (state.multiplayerWaitingForReady) return 'ready';
   if (state.pendingActionConfirmation) return state.pendingActionConfirmation.kind === 'redundant_aura' ? 'resolution_choice' : 'choosing_mode';
-  if ((state.consecutivePasses || 0) >= 2) return 'resolving';
+  if ((state.consecutivePasses || 0) >= 2 || state.multiplayerResolutionMarker?.kind === 'stack_resolution') return 'resolving';
   if (state.isDiscarding) return 'discarding';
   if (state.damageModalOpen) return 'assigning_damage';
   if (state.awaitingRivalDecision || state.respondingToDecision || state.pendingDecision || state.decisionResponse) return 'remote_decision';
@@ -129,7 +129,7 @@ const PRIORITY_ACTIVITY_CLOCK_CONTINUES = new Set(['choosing_attackers', 'choosi
 export function canPriorityClockRun(state) {
   if (!state?.currentMatch || state.gameOver || state.multiplayerWaitingForReady) return false;
   if (!['local', 'rival'].includes(state.priorityPlayer)) return false;
-  if ((state.consecutivePasses || 0) >= 2) return false;
+  if ((state.consecutivePasses || 0) >= 2 || state.multiplayerResolutionMarker?.kind === 'stack_resolution') return false;
   const activity = getEffectivePriorityActivity(state);
   return !activity || PRIORITY_ACTIVITY_CLOCK_CONTINUES.has(activity);
 }

@@ -15,6 +15,8 @@ import { installMenuTutorials, requestMenuGuideReplay } from './tutorials.js';
 import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decisionClock.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { showGameDialog } from './gameDialogs.js';
+import { battlefieldEffectTargets } from './publicZoneEffects.js';
+import { deckCopyLimit } from './deckCopyLimit.js';
 import {
   state,
   getLocalPlayerName,
@@ -77,7 +79,7 @@ import { listCounters, compactCounterText, counterTooltipLines, normalizeCounter
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { fetchAdminServiceUsage, signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, acknowledgeAchievementNotice, convertEssence, evolveCard, mixCards, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, getModerationCaseThread, markModerationCaseRead, replyModerationCase, closeModerationCase, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetModerationPendingCount, adminGetModerationCases, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminReplyModerationCase, adminResolveCommunityCase, adminReopenModerationCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots, getSanctuaryStatus, resolveSanctuaryBarcode, claimSanctuaryBarcode, resolveSanctuaryResonance, claimSanctuaryResonance, loadAuthorizedDiscoveryCards, adminUploadDiscoveryArt, adminSaveDiscoveryPresentation } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, DRAW_REWARDS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -162,7 +164,7 @@ import * as headlessChoice from './headlessChoiceEngine.js';
 import { decorateFlasheraCard, inferFlasheraModeForZone, installFlasheraRenderer, setFlasheraVisualEnabled } from './flasheraRenderer.js';
 import { normalizeFlasheraSettings, availableCopiesForVariant } from './flasheraContract.js';
 import { cardVariantId, parseCardVariantId } from './cardVariant.js';
-import { physicalCardVariants, flasheraTotalForBase, countDeckBaseCopies, assertDeckFlasheraOwnership, isFlasheraDeck } from './flasheraDeck.js';
+import { physicalCardVariants, flasheraTotalForBase, countDeckBaseCopies, assertDeckFlasheraOwnership, assertIndividualDeckCopyLimits, isFlasheraDeck } from './flasheraDeck.js';
 
 const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
 if (!HEADLESS_ENGINE) {
@@ -651,7 +653,7 @@ export function showWardDecisionModal(amount, targetCardName, sourceCardName, on
 }
 
 
-export function showLandSearchModal(options, onConfirm) {
+export function showLandSearchModal(options, onConfirm, {valid = null} = {}) {
   if (HEADLESS_ENGINE) { const c=Array.isArray(options?.candidates)?options.candidates:[]; onConfirm?.(headlessChoice.chooseLandSearchIndexes(c,options?.maxCount,{allowFewer:options?.allowFewer!==false})); return; }
   injectMulliganStyles();
   const candidates = Array.isArray(options?.candidates) ? options.candidates : [];
@@ -710,10 +712,17 @@ export function showLandSearchModal(options, onConfirm) {
   onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates,maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se buscará ninguna carta.':undefined});
   confirmButton().disabled = !allowFewer && maxCount > 0;
   confirmButton().textContent = gameText('land.search.failToFind');
+  const watch = valid ? setInterval(() => {
+    if (!overlay.isConnected || !valid()) finish([]);
+  },125) : null;
+  const finish = indexes => {
+    if (watch !== null) clearInterval(watch);
+    overlay.remove();
+    onConfirm(indexes);
+  };
   confirmButton().addEventListener('click', () => {
     if (!allowFewer && chosen.size !== maxCount) return;
-    overlay.remove();
-    onConfirm([...chosen]);
+    finish([...chosen]);
   });
 }
 
@@ -865,8 +874,8 @@ export function showKickerModal(card, onConfirm, onCancel) {
 
 // ENTREGA 23.10 — elegir VÍA de casteo antes de targets/pago. Una alternativa es una
 // decisión de 601.2b, no un botón que aparece cuando ya empezaste a girar tierras.
-export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCancel) {
-  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseAlternativeCost(card)); return; }
+export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCancel, {canPay = true} = {}) {
+  if (HEADLESS_ENGINE) { onConfirm?.(canPay && headlessChoice.chooseAlternativeCost(card)); return; }
   injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -876,7 +885,7 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
       <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
         <p style="color:#cfe0d4;font-size:13px;margin:0 0 4px;">${gameTextHtml('modal.castRoute.description')}</p>
         <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">${gameTextManaHtml('modal.castRoute.normal', { cost: card.manaCost || '{0}' })}</span></button>
-        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">${gameTextManaHtml('modal.castRoute.alternative', { cost: alternativeLabel })}</span></button>
+        <button class="loyalty-ability-btn" id="cast-alt" ${canPay ? '' : 'disabled'}><span class="loyalty-ability-text">${gameTextManaHtml('modal.castRoute.alternative', { cost: alternativeLabel })}</span></button>
         <button id="cast-route-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.mode.cancel')}</button>
       </div>
     </div>`;
@@ -892,7 +901,7 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
 // recibe únicamente tokens y posiciones: no existe card.name/id en este cliente. Si una
 // regla futura dice explícitamente "mirá/revelá", reveal_candidates puede mostrar sólo los
 // descriptores temporales autorizados sin materializar rivalHand/rivalDeck.
-export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel = null) {
+export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel = null, {valid = null, action = false, onStale = null} = {}) {
   if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.choosePrivateZoneTokens(offer)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -904,7 +913,9 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
 
   overlay.innerHTML = `
     <div class="mulligan-panel private-zone-selection-panel">
-      <div class="mulligan-title">${gameTextHtml('selection.private.title', { card: cardName || gameText('selection.private.effectFallback'), zone: zoneLabel })}</div>
+      <div class="mulligan-title">${offer.operation === 'order_top' ? gameTextHtml('selection.private.orderTop')
+        : offer.operation === 'exile_cost' ? gameTextHtml('selection.private.exileCost')
+        : gameTextHtml('selection.private.title', { card: cardName || gameText('selection.private.effectFallback'), zone: zoneLabel })}</div>
       <div class="mulligan-subtitle" id="private-zone-hint">${gameTextHtml('selection.chooseCount', { total: amount, selected: 0 })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
@@ -919,7 +930,21 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   row.className = 'mulligan-hand-row private-zone-card-row';
 
   const update = () => {
-    hint().textContent = gameText('selection.chooseCount', { total: amount, selected: chosen.size });
+    hint().textContent = amount === 0 ? gameText('selection.private.noEligible') :
+      gameText('selection.chooseCount', { total: amount, selected: chosen.size });
+    if (offer.operation === 'order_top') {
+      const selected = [...chosen];
+      row.querySelectorAll('[data-token]').forEach(el => {
+        const index = selected.indexOf(el.dataset.token);
+        el.querySelector('.private-zone-order')?.remove();
+        if (index < 0) return;
+        const badge = document.createElement('span');
+        badge.className = 'private-zone-order';
+        badge.style.cssText = 'position:absolute;top:25px;left:5px;z-index:2;background:#161610;color:#ffe6a2;border:1px solid #b99845;border-radius:50%;padding:2px 7px';
+        badge.textContent = String(index + 1);
+        el.appendChild(badge);
+      });
+    }
     confirmButton().disabled = chosen.size !== amount;
   };
 
@@ -988,7 +1013,20 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   trackDiscoveryRevealOffer(offer,overlay);
   void refreshDiscoveryPlayAssets(state,spellStack);
   const confirmPrivate=onConfirm;
-  onConfirm=timedModalChoice(overlay,tokens=>tokens===null?onCancel?.():confirmPrivate(tokens),()=>[onCancel?null:randomLegalSubset((offer?.candidates||[]).filter(e=>e.selectable!==false),amount).map(e=>e.token)],{action:false,notice:onCancel?'Al vencer se cancela la selección opcional.':undefined});
+  const finish = tokens => {
+    if (watch !== null) clearInterval(watch);
+    if (tokens === null && onCancel) onCancel();
+    else confirmPrivate(tokens);
+  };
+  const watch = valid ? setInterval(() => {
+    if (overlay.isConnected && valid()) return;
+    clearInterval(watch);
+    overlay.remove();
+    onStale?.();
+  },125) : null;
+  onConfirm=timedModalChoice(overlay,finish,
+    ()=>[onCancel?null:randomLegalSubset((offer?.candidates||[]).filter(e=>e.selectable!==false),amount).map(e=>e.token)],
+    {action,isCurrent:valid || undefined,abortArgs:()=>[null],notice:onCancel&&!action?'Al vencer se cancela la selección opcional.':undefined});
   update();
 
   confirmButton().addEventListener('click', () => {
@@ -1549,6 +1587,17 @@ export function getTargetRules(card) {
   const effectType = card.effect?.type || card.etbEffect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
 
   const effect = card.effect || card.etbEffect || firstActivated?.effect || firstGranted?.effect || {};
+  const publicTargets = battlefieldEffectTargets(effect);
+  if (publicTargets) {
+    const allows = type => publicTargets.includes(type);
+    return {
+      allowPlayer:false,
+      allowLocalCreature:allows('creature'),allowRivalCreature:allows('creature'),
+      allowLocalPermanent:allows('permanent'),allowRivalPermanent:allows('permanent'),
+      allowLocalLand:allows('land'),allowRivalLand:allows('land'),
+      allowLocalPlaneswalker:allows('planeswalker'),allowRivalPlaneswalker:allows('planeswalker')
+    };
+  }
   // 23.16.5 Typal: cualquier efecto puede acotar su target por subtipo exacto o por
   // compartir tipo de criatura con la fuente sin inventar una rama por effect.type.
   if (effect.targetSubtype || effect.targetSubtypes || effect.sharedCreatureTypeWithSource || effect.sharesCreatureTypeWithSource) {
@@ -1695,7 +1744,7 @@ export function getTargetRules(card) {
   if (effectType === 'discard') {
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
-  if (effectType === 'private_zone_move') {
+  if (effectType === 'private_zone_move' || (effectType === 'draw' && effect.target === 'player')) {
     // El objeto elegido durante CR 601/602 es el JUGADOR; la carta concreta de Hand/Deck
     // se conoce recién durante resolución a través del protocolo privado.
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
@@ -2374,6 +2423,25 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   if (customClick) {
     el.addEventListener('click', customClick);
   } else {
+    if (zone === 'combat' && !state.currentMatch && attachedAuras.length &&
+      battlefieldEffectTargets(state.pendingTargetCard?.effect)?.includes('aura')) {
+      const targets = document.createElement('div');
+      targets.style.cssText = 'position:absolute;left:0;right:0;bottom:18%;z-index:12;display:flex;flex-direction:column;gap:2px';
+      for (const aura of attachedAuras) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'arg-game-button';
+        button.textContent = aura.name;
+        button.setAttribute('aria-label',`Elegir aura ${aura.name}`);
+        button.style.cssText = 'min-height:24px;padding:2px 4px;font-size:10px';
+        button.addEventListener('click',event => {
+          event.stopPropagation();
+          handleCombatClick(itemObj,isLocal,index,null,aura);
+        });
+        targets.append(button);
+      }
+      el.append(targets);
+    }
 // Antes acá se reimplementaba una versión más estricta de "¿puedo jugar esto?" (solo tu
 // fase principal, o responder algo que ya está en la pila), lo que dejaba a los instantáneos
 // sin poder jugarse fuera de esos dos casos — por ejemplo, como truco de combate en el turno
@@ -5333,8 +5401,9 @@ function injectStoreStyles() {
     }
     .classifieds-land-pack-slot { --card-w:min(156px,100%); }
     .classifieds-land-pack-title { color:#d8edf5; font-size:11px; font-weight:850; text-align:center; min-height:16px; }
+    .classifieds-land-pack-quantity-row { display:flex; justify-content:flex-end; width:var(--card-w); }
     .classifieds-land-pack-quantity-badge {
-      position:absolute; z-index:5; top:4px; left:4px; min-width:44px; padding:5px 8px; border-radius:999px;
+      min-width:44px; padding:5px 8px; border-radius:999px;
       background:rgba(8,14,18,.95); border:1px solid rgba(240,224,176,.76);
       color:#fff3c9; font-size:15px; font-weight:950; letter-spacing:.025em; text-align:center;
       box-shadow:0 3px 10px rgba(0,0,0,.48);
@@ -6227,11 +6296,6 @@ export function showStoreScreen(onBack, options = {}) {
       const slot = document.createElement('div');
       slot.className = `classifieds-card-slot classifieds-land-pack-slot classifieds-rarity-Common${entry.purchased ? ' classifieds-purchased' : ''}`;
 
-      const quantityBadge = document.createElement('div');
-      quantityBadge.className = 'classifieds-land-pack-quantity-badge';
-      quantityBadge.textContent = `×${Math.max(1, Math.floor(Number(entry.quantity) || 1))}`;
-      slot.appendChild(quantityBadge);
-
       if (entry.purchased) {
         const badge = document.createElement('div');
         badge.className = 'classifieds-purchased-badge';
@@ -6256,6 +6320,14 @@ export function showStoreScreen(onBack, options = {}) {
         }
       });
       slot.appendChild(cardEl);
+
+      const quantityRow = document.createElement('div');
+      quantityRow.className = 'classifieds-land-pack-quantity-row';
+      const quantityBadge = document.createElement('div');
+      quantityBadge.className = 'classifieds-land-pack-quantity-badge';
+      quantityBadge.textContent = `×${Math.max(1, Math.floor(Number(entry.quantity) || 1))}`;
+      quantityRow.appendChild(quantityBadge);
+      slot.appendChild(quantityRow);
 
       const owned = document.createElement('div');
       owned.className = 'classifieds-owned';
@@ -9134,8 +9206,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const evolvedDeckCapReached = isEvolvedTile && inDeck === 0 && totalEvolvedInDeck() >= MAX_EVOLVED_CARDS_PER_DECK;
     const variant = parseCardVariantId(trackingKey);
     const card = cardDb.getById(variant.baseId);
-    const sharedFourCardCap = !!card && !card.type?.includes('básica') && countDeckBaseCopies(deckCounts, variant.baseId) >= MAX_COPIES_PER_CARD;
-    return inDeck >= cap || deckFull || enhancedDeckCapReached || evolvedDeckCapReached || sharedFourCardCap;
+    const sharedCopyCap = !!card && countDeckBaseCopies(deckCounts, variant.baseId) >= deckCopyLimit(card,MAX_COPIES_PER_CARD);
+    return inDeck >= cap || deckFull || enhancedDeckCapReached || evolvedDeckCapReached || sharedCopyCap;
   }
 
   // 23.12.0 — agregar/quitar una carta ya NO destruye y reconstruye toda la grilla.
@@ -9170,8 +9242,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const fragment = document.createDocumentFragment();
 
     function createPoolRecord(baseCard, displayCard, trackingKey, ownedForThisSlot, isEnhancedTile, isEvolvedTile=false) {
-      const isBasicLand = displayCard.type.includes('básica');
-      const cap = isBasicLand ? ownedForThisSlot : Math.min(ownedForThisSlot, MAX_COPIES_PER_CARD);
+      const cap = Math.min(ownedForThisSlot,deckCopyLimit(baseCard,MAX_COPIES_PER_CARD));
       const inDeck = deckCounts[trackingKey] || 0;
       const maxed = isTileMaxed(trackingKey, cap, isEnhancedTile, isEvolvedTile);
 
@@ -9577,7 +9648,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       errorBox.textContent = `El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds.length}).`;
       return;
     }
-    try { assertDeckFlasheraOwnership(state.userProfile || {}, cardIds, {allowVirtualAdminPool:isAdminUser(),maxCopiesPerCard:MAX_COPIES_PER_CARD,isBasicLand:id=>cardDb.getById(id)?.type?.includes('básica')}); }
+    try { assertDeckFlasheraOwnership(state.userProfile || {}, cardIds, {allowVirtualAdminPool:isAdminUser(),copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD)}); }
     catch (error) { errorBox.textContent=error?.message || 'Inventario insuficiente para estas variantes.'; return; }
     errorBox.textContent = '';
     const saveBtn = overlay.querySelector('#deckbuilder-save');
@@ -9669,15 +9740,16 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, op
         // Stage31: preflight the physical premium overlay before leaving the picker.
         // The gameplay builder independently validates again on boot. This client
         // verification is NOT a substitute for server admission (Stage40).
-        if (isFlasheraDeck(deck.cardIds)) {
-          try {
+        try {
+          assertIndividualDeckCopyLimits(deck.cardIds,id=>cardDb.getById(id),MAX_COPIES_PER_CARD);
+          if (isFlasheraDeck(deck.cardIds)) {
             assertDeckFlasheraOwnership(state.userProfile || {}, deck.cardIds, {
-              isBasicLand: id => !!cardDb.getById(id)?.type?.includes('básica')
+              copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD)
             });
-          } catch (error) {
-            showSimpleAlertModal(error?.message || 'No se pudo validar el inventario FLASHERA de este mazo.');
-            return;
           }
+        } catch (error) {
+          showSimpleAlertModal(error?.message || 'No se pudo validar este mazo.');
+          return;
         }
         showMatchLoadingBeforeGameplayCommit();
         overlay.remove();
@@ -10897,6 +10969,13 @@ export function showAdminPanel(onBack) {
   const overlay = document.createElement('div');
   overlay.id = 'admin-panel-overlay';
 
+  const drawRewardFields = [
+    { id: 'soloDrawLongGameMinutes', label: 'Solo · minutos desde los que aplica el premio largo', max: Number.MAX_SAFE_INTEGER },
+    { id: 'soloDrawShortRewardPercent', label: 'Solo · % de victoria debajo del umbral', max: 100 },
+    { id: 'soloDrawLongRewardPercent', label: 'Solo · % de victoria desde el umbral', max: 100 },
+    { id: 'tournamentDrawRewardPercent', label: 'Torneo · % de victoria de la etapa', max: 100 },
+    { id: 'pvpDrawRewardPoints', label: 'PvP · puntos por jugador', max: Number.MAX_SAFE_INTEGER }
+  ];
   const fields = [
     { section: 'Puntos', id: 'winVsTanoFacil', label: 'Victoria vs Tano (Fácil)', value: POINTS.winVsTanoFacil, step: '1' },
     { section: 'Puntos', id: 'winVsTanoMedio', label: 'Victoria vs Tano (Medio)', value: POINTS.winVsTanoMedio, step: '1' },
@@ -10905,6 +10984,7 @@ export function showAdminPanel(onBack) {
     { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP)', value: POINTS.winVsHumano, step: '1' },
     { section: 'Puntos', id: 'lossVsHumano', label: 'Derrota vs Humano (PvP)', value: POINTS.lossVsHumano, step: '1' },
     { section: 'Puntos', id: 'abandonPenalty', label: 'Penalidad por abandonar', value: POINTS.abandonPenalty, step: '1' },
+    ...drawRewardFields.map(field => ({ ...field, section: 'Premios por empate', value: DRAW_REWARDS[field.id], step: '1' })),
     { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMinRewardMinutes', label: 'PvP · minutos mínimos para puntuar por abandono', value: PVP_LIMITS.minRewardMinutes, step: '1' },
     { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMinCompletedTurns', label: 'PvP · turnos completos mínimos para puntuar por abandono', value: PVP_LIMITS.minCompletedTurns, step: '1' },
     { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMaxRewardedMatchesPerPairDaily', label: 'PvP · máximo de partidas puntuadas por pareja de UID / día', value: PVP_LIMITS.maxRewardedMatchesPerPairDaily, step: '1' },
@@ -10952,11 +11032,13 @@ export function showAdminPanel(onBack) {
   const sectionsHTML = sections.map(sectionName => {
     const rowsHTML = fields.filter(f => f.section === sectionName).map(f => `
       <div class="admin-field-row">
-        <span class="admin-field-label">${f.label}</span>
-        <input type="number" class="admin-field-input" id="cfg-${f.id}" value="${f.value}" step="${f.step}">
+        ${f.max == null ? `<span class="admin-field-label">${f.label}</span>` : `<label class="admin-field-label" for="cfg-${f.id}">${f.label}</label>`}
+        <input type="number" class="admin-field-input" id="cfg-${f.id}" value="${f.value}" step="${f.step}"${f.max == null ? '' : ` min="0" max="${f.max}"`}>
       </div>
     `).join('');
-    return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
+    const drawNote = sectionName === 'Premios por empate'
+      ? '<div class="admin-debug-summary">Estos valores se aplicarán cuando esté activa la liquidación de empates.</div>' : '';
+    return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${drawNote}${rowsHTML}</div>`;
   }).join('');
 
   const tournamentDifficultyHTML = `
@@ -13332,6 +13414,7 @@ Receipt: ${receiptId}
       winVsHumano: readNumber('winVsHumano'),
       lossVsHumano: readNumber('lossVsHumano'),
       abandonPenalty: readNumber('abandonPenalty'),
+      ...Object.fromEntries(drawRewardFields.map(({id}) => [id, readNumber(id)])),
       pvpMinRewardMinutes: readNumber('pvpMinRewardMinutes'),
       pvpMinCompletedTurns: readNumber('pvpMinCompletedTurns'),
       pvpMaxRewardedMatchesPerPairDaily: readNumber('pvpMaxRewardedMatchesPerPairDaily'),
@@ -13396,6 +13479,9 @@ Receipt: ${receiptId}
     const pointsAreValidIntegers = pointIntegerFields.every(value => Number.isInteger(value))
       && [newConfig.winVsTanoFacil, newConfig.winVsTanoMedio, newConfig.winVsTanoDificil,
           newConfig.lossVsTano, newConfig.winVsHumano, newConfig.lossVsHumano].every(value => value >= 0);
+    const drawRewardsValid = drawRewardFields.every(({id, max}) =>
+      Number.isSafeInteger(newConfig[id]) && newConfig[id] >= 0 && newConfig[id] <= max
+    );
     const pvpIntegerFields = [
       newConfig.pvpMinRewardMinutes, newConfig.pvpMinCompletedTurns,
       newConfig.pvpMaxRewardedMatchesPerPairDaily, newConfig.pvpMaxPointsPerDay
@@ -13427,7 +13513,7 @@ Receipt: ${receiptId}
     if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.maxSavedDecks <= 0
       || !Number.isInteger(newConfig.maxSavedDecks) || newConfig.prebuiltDeckPoints < 0 || newConfig.prebuiltDeckFichas < 0
       || !Number.isInteger(newConfig.prebuiltDeckPoints) || !Number.isInteger(newConfig.prebuiltDeckFichas)
-      || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0 || !pointsAreValidIntegers
+      || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0 || !pointsAreValidIntegers || !drawRewardsValid
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1
@@ -16244,7 +16330,7 @@ export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
 // copias idénticas sigan siendo distinguibles por slot. `filterLabel` y `actionLabel` son
 // puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
 // cuando se abre, la selección forma parte de una instrucción que ya está resolviéndose.
-export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm) {
+export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm, {allowCancel = false,valid = null} = {}) {
   if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseGraveyardIndexes(entries,countToChoose)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -16260,6 +16346,7 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
       <div class="mulligan-subtitle" id="graveyard-choice-count-hint">${filterLabel ? `${escapeHtml(filterLabel)} · ` : ''}${gameTextHtml('selection.count', { selected: 0, total: count })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
+        ${allowCancel ? '<button type="button" class="mulligan-btn" id="btn-cancel-graveyard-choice">Cancelar</button>' : ''}
         <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-graveyard-choice" disabled>${gameTextHtml('graveyard.choice.confirm')}</button>
       </div>
     </div>
@@ -16285,17 +16372,32 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
     };
     cardEl = createCardElement({ card: entry.card }, false, true, null, 'graveyard', toggle);
     cardEl.classList.add('mulligan-card-slot', 'selectable');
-    row.appendChild(cardEl);
+    if (entry.sideLabel) {
+      const group = document.createElement('div');
+      const label = document.createElement('div');
+      label.textContent = entry.sideLabel;
+      label.className = 'mulligan-subtitle';
+      group.append(label,cardEl);
+      row.appendChild(group);
+    } else row.appendChild(cardEl);
   });
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
   onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(entries,count).map(e=>e.index).sort((a,b)=>a-b)]);
+  const watch = valid ? setInterval(() => {
+    if (!overlay.isConnected || !valid()) finish([]);
+  },125) : null;
+  const finish = indexes => {
+    if (watch !== null) clearInterval(watch);
+    overlay.remove();
+    onConfirm(indexes);
+  };
+  overlay.querySelector('#btn-cancel-graveyard-choice')?.addEventListener('click', () => finish([]));
 
   overlay.querySelector('#btn-confirm-graveyard-choice').addEventListener('click', () => {
     if (chosenIndexes.size !== count) return;
-    overlay.remove();
-    onConfirm([...chosenIndexes].sort((a, b) => a - b));
+    finish([...chosenIndexes].sort((a, b) => a - b));
   });
 }
 
@@ -16319,7 +16421,7 @@ export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
 // Punto 5: el dueño elige exactamente N permanentes propios para sacrificar como EFECTO.
 // No hay Cancelar: el efecto ya está resolviéndose. Recibe items de battlefield reales,
 // por eso varias copias idénticas siguen siendo seleccionables como objetos distintos.
-export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm) {
+export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm, {valid = null} = {}) {
   if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseSacrificeEntries(candidates,countToSacrifice)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -16369,11 +16471,18 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
   onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(candidates.filter(item=>[...state.localCombat,...state.localSupport,...state.localLands].includes(item)),countToSacrifice)]);
+  const watch = valid ? setInterval(() => {
+    if (!overlay.isConnected || !valid()) finish([]);
+  },125) : null;
+  const finish = items => {
+    if (watch !== null) clearInterval(watch);
+    overlay.remove();
+    onConfirm(items);
+  };
 
   overlay.querySelector('#btn-confirm-sacrifice-effect').addEventListener('click', () => {
     if (chosen.size !== countToSacrifice) return;
-    overlay.remove();
-    onConfirm([...chosen]);
+    finish([...chosen]);
   });
 }
 
