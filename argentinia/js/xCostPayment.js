@@ -1,9 +1,9 @@
 // Observational payment planning. Uses the same source abilities, land bonuses and
 // pool matcher as payment; never taps, sacrifices, spends or chooses for a human.
-import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, canPoolPayCost } from './manaPool.js';
-import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
+import { MANA_TYPES, emptyManaPool, manaAvailableForPayment, addMana, manaPoolTotal, canPoolPayCost } from './manaPool.js';
+import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana } from './manaSources.js';
 import { isLandPermanent } from './permanentTypes.js';
-import { getEffectiveLandManaAbility } from './landCharacteristics.js';
+import { getEffectiveLandManaAbilities } from './landCharacteristics.js';
 import { getLandManaBonuses } from './landStax.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost } from './costEngine.js';
 
@@ -16,18 +16,22 @@ export function readPaymentSources(state, isLocal, { excludeItems = [], hasHaste
       if (!item?.card || excluded.has(item) || seen.has(item)) continue;
       seen.add(item);
       const land = isLandPermanent(item);
-      const printed = normalizeManaAbility(item.card);
-      const ability = land ? getEffectiveLandManaAbility(state, item, isLocal, printed) : printed;
-      if (!canActivateManaSourcePermanent(item, { ability, hasHaste:hasHaste(item) })) continue;
-      const choices = ability.options.map(type => {
-        const pool = cloneManaPool();
-        addMana(pool, type, ability.amount);
-        if (land && ability.requiresTap) {
-          for (const bonus of getLandManaBonuses(state, isLocal, item, type)) addMana(pool, bonus.type, bonus.amount);
+      const abilities = land ? getEffectiveLandManaAbilities(state, item, isLocal) : [normalizeManaAbility(item.card)];
+      const choices = [];
+      for (const ability of abilities) {
+        if (!canActivateManaSourcePermanent(item, { ability, hasHaste:hasHaste(item) })) continue;
+        const amount = manaProductionAmount(state, isLocal, ability);
+        if (!amount) continue;
+        for (const type of ability.options) {
+          const pool = emptyManaPool();
+          addMana(pool, type, amount, ability.spendOnly);
+          if (land && ability.requiresTap) {
+            for (const bonus of getLandManaBonuses(state, isLocal, item, type)) addMana(pool, bonus.type, bonus.amount);
+          }
+          choices.push({ item, type, ability, pool });
         }
-        return { item, type, ability, pool };
-      });
-      sources.push({ item, choices });
+      }
+      if (choices.length) sources.push({ item, choices });
     }
   }
   return sources;
@@ -35,11 +39,16 @@ export function readPaymentSources(state, isLocal, { excludeItems = [], hasHaste
 
 // A flexible source produces ONE chosen color per activation, including rocks
 // that produce several mana. Do not treat its color options as separate sources.
-export function planManaSources(pool, cost, sources) {
-  const available = cloneManaPool(pool), chosen = [], failed = new Set();
-  const ordered = [...sources].sort((a,b) => a.choices.length - b.choices.length);
+export function planManaSources(pool, cost, sources, allowArtifactSpellMana = false) {
+  const available = manaAvailableForPayment(pool, allowArtifactSpellMana), chosen = [], failed = new Set();
+  const ordered = sources.map(source => ({ ...source, choices:source.choices.map(choice => ({
+    ...choice, pool:manaAvailableForPayment(choice.pool, allowArtifactSpellMana)
+  })).filter(choice=>manaPoolTotal(choice.pool)>0) })).filter(source=>source.choices.length);
+  // Activate counting sources before other sources can sacrifice a creature for mana.
+  const countsCreatures = source => source.choices.some(choice => choice.ability?.amountFrom === 'controlledCreatures');
+  ordered.sort((a,b) => Number(countsCreatures(b))-Number(countsCreatures(a)) || a.choices.length-b.choices.length);
   const upper = Array(ordered.length + 1).fill(0);
-  const colorUpper = Array.from({length:ordered.length+1},()=>cloneManaPool());
+  const colorUpper = Array.from({length:ordered.length+1},()=>emptyManaPool());
   for (let i=ordered.length-1; i>=0; i--) upper[i] = upper[i+1] + Math.max(0, ...ordered[i].choices.map(c=>manaPoolTotal(c.pool)));
   for (let i=ordered.length-1; i>=0; i--) for (const c of MANA_TYPES) colorUpper[i][c]=colorUpper[i+1][c]+Math.max(0,...ordered[i].choices.map(option=>option.pool[c]));
   const needed = MANA_TYPES.reduce((sum,c)=>sum+(cost[c]||0),cost.generic||0) + (cost.hybrid?.length||0) + (cost.phyrexian?.length||0);
@@ -79,7 +88,7 @@ export function canPayXCost(state, card, cost, { isLocal = true, excludeItems = 
     const afterDelve = applyDelveToCost(remaining,delve).cost;
     const usable = sources.filter(s=>!used.includes(s.item));
     function phyrexian(c, index, paidLife) {
-      if (planManaSources(state[prefix+'ManaPool'],c,usable)) return true;
+      if (planManaSources(state[prefix+'ManaPool'],c,usable,canSpendArtifactSpellMana(card))) return true;
       if (index >= (c.phyrexian?.length||0) || paidLife+2>life) return false;
       const paid = applyPhyrexianLifeToCost(c,[index]).cost;
       return phyrexian(paid,index,paidLife+2) || phyrexian(c,index+1,paidLife);

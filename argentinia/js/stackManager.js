@@ -16,36 +16,44 @@ import { hasKeyword, getProtectionMatch } from './keywords.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority, checkGameOver, resetPriorityClock } from './turnManager.js';
+import { endTurnFromStack } from './turnManager.js';
+import { scheduleExtraTurn } from './turnSchedule.js';
+import { getLocalPlayerName } from './main.js';
 import { recordTelemetryEvent, summarizeTelemetryTarget } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
+import { initializeEntryCounters, applyDamageToPlayer, applyDamagePreventionCounters } from './main.js';
+import { protectsController } from './terminalRules.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { gameRandom, gameDeterministicId } from './gameRng.js';
 import { queuePermanentExitAnimation, queueReanimateAnimation, queueGameEventAnimation, queueFightAnimation, queueTokenBatchAnimation, queueMassWipeAnimation, queueGraveyardPurgeAnimation, queueMassLandReturnAnimation, queueGlobalBoardEffectAnimation, captureCardVisual } from './animationDirector.js';
 import { resolveSubtypeReference } from './typalEngine.js';
 import { battlefieldEffectTargets, graveyardEntryCard, graveyardForSide, permanentMoveManaLimit } from './publicZoneEffects.js';
 import { cardManaValue } from './libraryEngine.js';
-import { findBattlefieldItemLocation, refreshPublicEffectTarget, removeControlEffectFromPermanent, choosePublicEffectOption, chooseTriggeredEffectOption, tapPermanentForEffect, scheduleExiledPermanentReturn, resolveExiledPermanentReturn, waitForTriggerOrdering } from './main.js';
+import { findBattlefieldItemLocation, refreshPublicEffectTarget, removeControlEffectFromPermanent, choosePublicEffectOption, chooseTriggeredEffectOption, tapPermanentForEffect, scheduleExiledPermanentReturn, resolveExiledPermanentReturn } from './main.js';
 
 
-function replacementDamageAmount({ amount, targetItem = null, targetIsLocal, sourceCard = null, sourceIsLocal = true, combat = false, cause = 'effect' }) {
+function replacementDamageAmount({ amount, targetItem = null, targetIsLocal, sourceCard = null, sourceIsLocal = true, combat = false, cause = 'effect', cannotPreventDamage = false }) {
   const result = resolveReplacementEvent(state, {
     type:'damage', amount:Math.max(0,Number(amount)||0),
     affectedIsLocal:!!targetIsLocal, targetIsLocal:!!targetIsLocal,
     card:targetItem?.card || null, targetCard:targetItem?.card || null,
     item:targetItem, targetItem, sourceCard,
-    sourceIsLocal:!!sourceIsLocal, combat:!!combat, cause
+    sourceIsLocal:!!sourceIsLocal, combat:!!combat, cause, cannotPreventDamage,
+    targetKind:targetItem ? 'permanent' : 'player'
   });
   if(targetItem) dispatchReplacementCounterRemoval(result,targetItem,{controllerIsLocal:!!targetIsLocal,actorIsLocal:!!targetIsLocal});
+  applyDamagePreventionCounters(result);
   return { amount:Math.max(0,Number(result.event.amount)||0), result };
 }
 
-function replacementDestroyOutcome(targetItem, targetIsLocal, sourceCard, sourceIsLocal, cause='destroy') {
+function replacementDestroyOutcome(targetItem, targetIsLocal, sourceCard, sourceIsLocal, {cannotRegenerate=false} = {}) {
+  const cause='destroy';
   const destroyResult=resolveReplacementEvent(state, {
     type:'destroy', affectedIsLocal:!!targetIsLocal, targetIsLocal:!!targetIsLocal,
     card:targetItem?.card || null, targetCard:targetItem?.card || null,
     item:targetItem, targetItem, sourceCard,
-    sourceIsLocal:!!sourceIsLocal, zoneFrom:'battlefield', zoneTo:'graveyard', cause
+    sourceIsLocal:!!sourceIsLocal, zoneFrom:'battlefield', zoneTo:'graveyard', cause, cannotRegenerate
   });
   dispatchReplacementCounterRemoval(destroyResult,targetItem,{controllerIsLocal:!!targetIsLocal,actorIsLocal:!!targetIsLocal});
   if(destroyResult.prevented) return destroyResult;
@@ -399,7 +407,21 @@ export function addToStack(item) {
 
 export async function resolveTopStackItem() {
   if (spellStack.length === 0) return;
+  const top=spellStack.at(-1);
+  const effectType=top.ability?.effect?.type || top.card?.effect?.type;
+  if (state.currentMatch && ['declare_match_draw','declare_match_loss'].includes(effectType)) {
+    state.pendingTerminalStackEvidence=top;
+  }
+  state.terminalCheckDepth++;
+  try { await resolveStackItem(); }
+  finally {
+    state.terminalCheckDepth--;
+    state.pendingTerminalStackEvidence=null;
+  }
+  if (checkGameOver() || effectType==='grant_extra_turn' || effectType==='end_turn') render();
+}
 
+async function resolveStackItem() {
   const item = spellStack.pop();
   if (state.currentMatch?.myRole) refreshStackItemBoardRefs(item, state, state.currentMatch.myRole);
   const telemetryStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -414,12 +436,12 @@ export async function resolveTopStackItem() {
   logMsg(gameText('stack.resolve', { card: item.card.name }));
   
   await executeStackItem(item);
-  // Without an additional resolving instruction, check the failed draw before
-  // state-based actions can put draw triggers on the stack.
-  if (!item.kicked || !item.card.kicker?.bonusEffect) {
-    settleFailedDraws();
-    if (state.deckOutReady) { render(); return; }
+  if (state.pendingEndTurnResolution) {
+    state.pendingEndTurnResolution=false;
+    await endTurnFromStack(() => exileStackAtEndTurn(item));
+    return;
   }
+  if (state.terminalEffect?.kind==='draw') return;
   await runStateBasedActions({ reason:'stack_item_resolved' });
   await waitForStateBasedActions();
 
@@ -444,7 +466,10 @@ export async function resolveTopStackItem() {
     await runStateBasedActions({ reason:'kicker_bonus_resolved' });
     await waitForStateBasedActions();
   }
-  if (!basePendingInteractive) settleFailedDraws();
+  if (!basePendingInteractive) {
+    settleFailedDraws();
+    if (state.deckOutReady || state.terminalEffect) return;
+  }
 
   // Si quedó pausado esperando que alguien decida pagar "contrarresta a menos que...", no
   // terminamos de resolver todavía — la prioridad NO se resetea hasta que se decida
@@ -477,7 +502,6 @@ export async function resolveTopStackItem() {
   // el objeto que acaba de resolverse. Con Trigger Stack los disparos ya no resuelven de
   // costado, pero mantenemos la garantía de no devolver prioridad con un descarte a medias.
   await waitForDiscardEffects();
-  await waitForTriggerOrdering();
 
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
@@ -497,6 +521,26 @@ export async function resolveTopStackItem() {
   
   if (typeof render === 'function') {
     render();
+  }
+}
+
+function exileStackAtEndTurn(resolvingItem) {
+  const remaining=spellStack.splice(0);
+  if (resolvingItem.type!=='ability') remaining.push(resolvingItem);
+  const myRole=state.currentMatch?.myRole || null;
+  for (const entry of remaining) {
+    if (entry.type==='ability') {
+      handleCounteredSuspendTrigger(entry,{renderAfter:false});
+      continue;
+    }
+    if (entry.isCopy) continue;
+    const controller=entry.isLocal!==false;
+    stampCardOwner(entry.card,controller,myRole);
+    const exile=ownerDestinationZone(entry.card,controller,'exile');
+    exile.push(entry.card);
+    dispatchGameEvent({type:'card_exiled',controllerIsLocal:controller,actorIsLocal:state.activePlayer==='local',
+      ownerIsLocal:cardOwnerIsLocal(entry.card,controller,myRole),card:entry.card,item:entry,
+      zoneFrom:'stack',zoneTo:'exile',cause:'end_turn'});
   }
 }
 
@@ -739,10 +783,21 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
           destination:'top',amount:effect.putBack,ownerIsLocal:isLocal,chooserIsLocal:isLocal,cardName});
       }
     }
+  } else if (effect.type === 'draw_each_player') {
+    const active=state.activePlayer==='local';
+    await resolveDrawCards(active,effect.amount ?? 1);
+    await resolveDrawCards(!active,effect.amount ?? 1);
   } else if (effect.type === 'loot' || effect.type === 'rummage') {
     await resolveCardFilterEffect(effect, cardName, isLocal);
   } else if (effect.type === 'sacrifice') {
     await resolveSacrificeEffect(effect, cardName, isLocal);
+  } else if (effect.type === 'set_minimum_life') {
+    const key=isLocal?'localHP':'rivalHP';
+    const gained=Math.max(0,Number(effect.amount)-state[key]);
+    if (gained>0) {
+      state[key]+=gained;
+      dispatchGameEvent({type:'life_gained',controllerIsLocal:isLocal,actorIsLocal:isLocal,sourceCard:card,amount:gained,cause:'set_life'});
+    }
   } else if (effect.type === 'heal') {
     if (isLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
     dispatchGameEvent({type:'life_gained',controllerIsLocal:isLocal,actorIsLocal:isLocal,amount:effect.amount,cause:'effect'});
@@ -752,12 +807,11 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
     // pasa por el MISMO pipeline Replacement/Prevention que el daño dirigido. Antes esta
     // ruta restaba HP directo y podía ignorar shields/prevention estáticos.
     const victimIsLocal=!isLocal;
-    const damage = replacementDamageAmount({ amount:effect.amount, targetIsLocal:victimIsLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability' });
+    const damage = replacementDamageAmount({ amount:effect.amount, targetIsLocal:victimIsLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability', cannotPreventDamage:effect.cannotPreventDamage===true });
     if (damage.amount <= 0) {
       logReplacementPrevented('damage', victimIsLocal ? 'vos' : getRivalName());
     } else {
-      if (isLocal) state.rivalHP -= damage.amount; else state.localHP -= damage.amount;
-      dispatchGameEvent({type:'life_lost',controllerIsLocal:victimIsLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetPlayerIsLocal:victimIsLocal,sourceCard:card,amount:damage.amount,cause:'damage'});
+      applyDamageToPlayer(damage.amount,victimIsLocal,{sourceCard:card,sourceIsLocal:isLocal});
       dispatchGameEvent({type:'damage_dealt',controllerIsLocal:victimIsLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetPlayerIsLocal:victimIsLocal,sourceCard:card,amount:damage.amount,cause:'spell_or_ability'});
       logMsg(gameText('effect.damage', { card: cardName, target: victimIsLocal ? 'vos' : getRivalName(), amount: damage.amount }));
     }
@@ -937,7 +991,7 @@ async function resolvePermanentMove(effect, target, {card,isLocal}) {
 
   const destroy = effect.operation === 'destroy';
   const plan = destroy
-    ? (hasKeyword(targetItem,'indestructible') ? {prevented:true} : replacementDestroyOutcome(targetItem,controller,card,isLocal))
+    ? (hasKeyword(targetItem,'indestructible') ? {prevented:true} : replacementDestroyOutcome(targetItem,controller,card,isLocal,effect))
     : replacementCardZoneOutcome(targetCard,controller,'battlefield','exile','exile',{item:targetItem,sourceCard:card,sourceIsLocal:isLocal}).result;
   if (!plan.prevented) {
     const zoneTo = plan.event.zoneTo;
@@ -965,7 +1019,8 @@ async function resolvePermanentMove(effect, target, {card,isLocal}) {
     } else {
       dispatchGameEvent({type:zoneTo === 'exile' ? 'card_exiled' : 'permanent_left_battlefield',
         aliases:['permanent_left_battlefield'],controllerIsLocal:controller,actorIsLocal:isLocal,ownerIsLocal:owner,
-        card:targetCard,item:targetItem,sourceCard:card,zoneFrom:'battlefield',zoneTo,cause:effect.operation});
+        card:targetCard,item:targetItem,sourceCard:card,zoneFrom:'battlefield',zoneTo,cause:effect.operation},
+        {watchersSnapshot:[{item:targetItem,isLocal:controller}]});
     }
   } else if (destroy) {
     logReplacementPrevented('destroy', targetCard.name);
@@ -1243,6 +1298,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
       built.item.tapped=tapped;
       stampPermanentController(built.item,isLocal,state.currentMatch?.myRole||null);
       if(built.kind==='creature' && hasKeyword(built.item,'haste')) built.item.summoningSickness=false;
+      initializeEntryCounters(built.item,isLocal);
       copyBattlefieldZone(built.kind,isLocal).push(built.item);
       created.push(built);
     }
@@ -1324,12 +1380,11 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         if (effectToApply.type === 'draw') {
           await resolveSimpleDirectEffect(effectToApply,card,targetObj.isLocal);
         } else if (effectToApply.type === 'damage') {
-          const damage = replacementDamageAmount({ amount:effectToApply.amount, targetIsLocal:targetObj.isLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability' });
+          const damage = replacementDamageAmount({ amount:effectToApply.amount, targetIsLocal:targetObj.isLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability', cannotPreventDamage:effectToApply.cannotPreventDamage===true });
           if (damage.amount <= 0) {
             logReplacementPrevented('damage', targetName);
           } else {
-            if (targetObj.isLocal) state.localHP -= damage.amount; else state.rivalHP -= damage.amount;
-            dispatchGameEvent({type:'life_lost',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetPlayerIsLocal:targetObj.isLocal,sourceCard:card,amount:damage.amount,cause:'damage'});
+            applyDamageToPlayer(damage.amount,targetObj.isLocal,{sourceCard:card,sourceIsLocal:isLocal});
             dispatchGameEvent({type:'damage_dealt',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetPlayerIsLocal:targetObj.isLocal,sourceCard:card,amount:damage.amount,cause:'spell_or_ability'});
             logMsg(gameText('effect.targetDamage', { card: card.name, amount: damage.amount, target: targetName }));
           }
@@ -1448,10 +1503,12 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           if (protectedColor) {
             logMsg(gameText('effect.damagePrevented', { target: targetUnit.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
           } else {
-            const damage = replacementDamageAmount({ amount:effectToApply.amount, targetItem:targetUnit, targetIsLocal:targetObj.isLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability' });
+            const damage = replacementDamageAmount({ amount:effectToApply.amount, targetItem:targetUnit, targetIsLocal:targetObj.isLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability',cannotPreventDamage:effectToApply.cannotPreventDamage===true });
             if (damage.amount <= 0) logReplacementPrevented('damage', targetUnit.card.name);
             else {
               targetUnit.damageTaken += damage.amount;
+              if (damage.result.event.cannotPreventDamage && damage.result.event.shieldCounterConsumed &&
+                targetUnit.damageTaken>=getEffectiveToughness(targetUnit)) targetUnit.lethalThroughShield=true;
               dispatchGameEvent({type:'damage_dealt',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetControllerIsLocal:targetObj.isLocal,card:targetUnit.card,item:targetUnit,sourceCard:card,targetCard:targetUnit.card,targetItem:targetUnit,amount:damage.amount,combat:false,cause:'spell_or_ability'});
               logMsg(gameText('effect.targetDamage', { card: card.name, amount: damage.amount, target: targetUnit.card.name }));
               checkAllDeaths();
@@ -1611,7 +1668,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             } else if (hasKeyword(targetUnit, 'indestructible')) {
               logMsg(gameText('effect.indestructible', { target: targetUnit.card.name, card: card.name }));
             } else {
-              const replacement = replacementDestroyOutcome(targetUnit, isTargetLocal, card, isLocal);
+              const replacement = replacementDestroyOutcome(targetUnit, isTargetLocal, card, isLocal, effectToApply);
               if (replacement.prevented) {
                 logReplacementPrevented('destroy', targetUnit.card.name);
               } else {
@@ -1846,7 +1903,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         } else if (effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') {
           applyTargetedCounterMutation(effectToApply,pwItem,{card,isLocal});
         } else if (effectToApply.type === 'damage') {
-          const damage = replacementDamageAmount({ amount:effectToApply.amount, targetItem:pwItem, targetIsLocal:isTargetLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability' });
+          const damage = replacementDamageAmount({ amount:effectToApply.amount, targetItem:pwItem, targetIsLocal:isTargetLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability',cannotPreventDamage:effectToApply.cannotPreventDamage===true });
           if (damage.amount <= 0) logReplacementPrevented('damage', pwItem.card.name);
           else {
             pwItem.loyalty -= damage.amount;
@@ -2203,6 +2260,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
             : kind==='land' ? (isLocal?state.localLands:state.rivalLands)
             : kind==='planeswalker' ? (isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers)
             : (isLocal?state.localSupport:state.rivalSupport);
+          initializeEntryCounters(item,isLocal);
           zone.push(item);
           created.push({card:tokenCard,item,kind});
         }
@@ -2273,6 +2331,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           initializeTransformPermanentItem(newUnit,revivedCard,{face:effectToApply.transformed===true?'back':'front'});
           if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
           stampPermanentController(newUnit, isLocal, state.currentMatch?.myRole || null);
+          initializeEntryCounters(newUnit,isLocal);
           board.push(newUnit);
           triggerCreatureEtb(isLocal, revivedCard, newUnit);
 
@@ -2406,8 +2465,9 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 // efectos discretos cuya semántica actual ya está definida sin target explícito.
 export function canResolveGameEffectWithoutTarget(effectType) {
   return [
-    'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent',
-    'draw', 'draw_then_top', 'loot', 'rummage', 'sacrifice', 'sacrifice_other_or_damage', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
+    'grant_extra_turn', 'end_turn',
+    'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent', 'set_minimum_life', 'declare_match_draw', 'declare_match_loss', 'destroy_damaged_creature', 'exile_source',
+    'draw', 'draw_then_top', 'draw_each_player', 'loot', 'rummage', 'sacrifice', 'sacrifice_other_or_damage', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'destroy_all_creatures', 'create_tokens',
     'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'exile_top_with_permission', 'animate_land', 'transform', 'destroy_all_lands', 'suspend_remove_time', 'suspend_cast_from_exile', 'add_time_counter_suspended', 'remove_time_counter_suspended'
   ].includes(effectType);
@@ -2419,7 +2479,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
 // También lo reutilizan las habilidades de Creencia del Punto 9 y el futuro validador JSON.
 export function canResolveGameEffectWithTarget(effectType) {
   return [
-    'lose_life', 'pay_or_optional_draw', 'tap_permanent',
+    'lose_life', 'pay_or_optional_draw', 'tap_permanent', 'declare_match_loss',
     'damage', 'draw', 'heal', 'prevent_damage', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'move_target_permanent', 'move_target_graveyard_card',
@@ -2435,8 +2495,9 @@ export function getEffectExecutionClass(effectType) {
   ].includes(effectType)) return 'stack_control';
   if (['team_buff', 'team_keyword'].includes(effectType)) return 'continuous';
   if ([
-    'draw', 'draw_then_top', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
-    'lose_life', 'pay_or_optional_draw', 'tap_permanent', 'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent',
+    'grant_extra_turn', 'end_turn',
+    'draw', 'draw_then_top', 'draw_each_player', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
+    'lose_life', 'pay_or_optional_draw', 'tap_permanent', 'pump_team', 'exile_source_until_end_step', 'return_exiled_permanent', 'set_minimum_life', 'declare_match_draw', 'declare_match_loss', 'destroy_damaged_creature', 'exile_source',
     'scry', 'surveil', 'proliferate', 'poison', 'prevent_damage', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'move_target_permanent', 'move_target_graveyard_card', 'sacrifice_other_or_damage',
@@ -2471,11 +2532,53 @@ export async function resolveGameEffect(effect, context) {
     return { handled: false, reason: executionClass };
   }
 
-  if (item.source?.selfTarget && ['pump','grant_keyword_temp','add_counter'].includes(effectToApply.type)) {
+  if (effectToApply.type==='grant_extra_turn') {
+    scheduleExtraTurn(state,isLocal);
+    logMsg(gameText('game.turn.extraScheduled',{player:isLocal?getLocalPlayerName():getRivalName()}));
+    return {handled:true};
+  }
+  if (effectToApply.type==='end_turn') {
+    if (!spellStack.includes(item) && item.id!=null && state.activePlayer===(isLocal?'local':'rival')) {
+      state.pendingEndTurnResolution=true;
+    }
+    return {handled:true};
+  }
+
+  if (['declare_match_draw','declare_match_loss'].includes(effectToApply.type)) {
+    const marker=state.multiplayerResolutionMarker;
+    if (state.currentMatch && (!item.id || marker?.stackId!==item.id || marker.authorityRole!==state.currentMatch.myRole)) {
+      return {handled:false,reason:'terminal_effect_requires_stack_authority'};
+    }
+    const cardId=card.copyOfCardId || card.id;
+    if (effectToApply.type === 'declare_match_draw') {
+      state.terminalEffect={kind:'draw',stackId:item.id??null,loserRole:null,cardId};
+    } else {
+      const victim=targetObj?.type==='player'?targetObj.isLocal:isLocal;
+      if (!protectsController(state,victim?'local':'rival')) {
+        const role=state.currentMatch?.myRole;
+        const loserRole=role ? (victim?role:role==='host'?'guest':'host') : victim?'local':'rival';
+        state.terminalEffect={kind:'loss',stackId:item.id??null,loserRole,cardId};
+      }
+    }
+    return {handled:true};
+  }
+
+  if (effectToApply.type==='destroy_damaged_creature' || effectToApply.type==='exile_source') {
+    const destroy=effectToApply.type==='destroy_damaged_creature';
+    const subject=destroy ? item.source?.eventItem : item.source?.sourceItem || item.sourceItem;
+    const location=findBattlefieldItemLocation(subject);
+    if (location && (!destroy || isCreaturePermanent(subject))) {
+      await resolvePermanentMove({...effectToApply,operation:destroy?'destroy':'exile'},
+        {item:subject,isLocal:location.isLocal},{card,isLocal});
+    }
+    return {handled:true};
+  }
+
+  if (item.source?.selfTarget && ['pump','grant_keyword_temp','add_counter','remove_counter'].includes(effectToApply.type)) {
     const subject = item.source.sourceItem;
     const location = findBattlefieldItemLocation(subject);
     if (location) {
-      if (effectToApply.type === 'add_counter') applyTargetedCounterMutation(effectToApply,subject,{card,isLocal});
+      if (['add_counter','remove_counter'].includes(effectToApply.type)) applyTargetedCounterMutation(effectToApply,subject,{card,isLocal});
       else if (isCreaturePermanent(subject)) {
         await resolveTargetedGameEffect(effectToApply,{type:'creature',item:subject,isLocal:location.isLocal},{card,item,isLocal});
       }
@@ -2576,9 +2679,10 @@ async function executeStackItem(item) {
     const newPw = { card, loyalty: card.loyalty, abilityUsedThisTurn: false };
     initializeTransformPermanentItem(newPw,card,{face:'front'});
     stampPermanentController(newPw, isLocal, state.currentMatch?.myRole || null);
+    initializeEntryCounters(newPw,isLocal);
     pwZone.push(newPw);
     dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPw,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'planeswalker'}});
-    logMsg(gameText('permanent.pw.enter', { card: card.name, loyalty: card.loyalty }));
+    logMsg(gameText('permanent.pw.enter', { card: card.name, loyalty: newPw.loyalty }));
     return;
   }
 
@@ -2600,6 +2704,7 @@ async function executeStackItem(item) {
       
       stampPermanentController(newPermanentItem, isLocal, state.currentMatch?.myRole || null);
       const board = isLocal ? state.localCombat : state.rivalCombat;
+      initializeEntryCounters(newPermanentItem,isLocal);
       board.push(newPermanentItem);
       logMsg(gameText('permanent.creature.enter', { card: card.name }));
       try { void queueGameEventAnimation({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPermanentItem,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'creature'}}); } catch {}
@@ -2608,7 +2713,9 @@ async function executeStackItem(item) {
       // entrada deben llegar juntas al ordenamiento AP/NAP. Antes `triggerCreatureEtb()`
       // encolaba los watchers y, unas líneas después, el ETB propio se encolaba aparte;
       // el jugador nunca veía el modal aunque controlara ambas.
-      const simultaneousCreatureEtb = collectCreatureEtbBatchEntries(isLocal, [{ card, item:newPermanentItem }]);
+      const simultaneousCreatureEtb = collectCreatureEtbBatchEntries(isLocal,[{
+        card,item:newPermanentItem,zoneFrom:'stack',castFromHand:!item.isCopy && !item.castFrom
+      }]);
       if (card.etbEffect) {
         simultaneousCreatureEtb.push({
           effect: card.etbEffect,
@@ -2631,6 +2738,7 @@ async function executeStackItem(item) {
       if (card.equipment) newPermanentItem.attachedTo = null;
       stampPermanentController(newPermanentItem, isLocal, state.currentMatch?.myRole || null);
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+      initializeEntryCounters(newPermanentItem,isLocal);
       supportZone.push(newPermanentItem);
       dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPermanentItem,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'support'}});
       logMsg(gameText('permanent.support.enter', { card: card.name }));
@@ -2657,8 +2765,10 @@ async function executeStackItem(item) {
   }
 
   if (type === 'aura') {
-    const location = findBattlefieldItemLocation(targetObj?.item);
-    if (card.enchantKind === 'land' && location) targetObj = {...targetObj,isLocal:location.isLocal};
+    if (card.enchantKind === 'land') {
+      const location = findBattlefieldItemLocation(targetObj?.item);
+      if (location) targetObj = {...targetObj,isLocal:location.isLocal};
+    }
     // Un Aura es un hechizo dirigido mientras está en la Stack. Revalida Intocable,
     // Protección, lado permitido y presencia en battlefield justo antes de anexarse.
     const auraLegality = explainResolvedEffectTargetLegality(targetObj, {
@@ -2877,7 +2987,7 @@ async function executeStackItem(item) {
       });
     }
     
-    if (type !== 'ability') {
+    if (type !== 'ability' && !state.pendingEndTurnResolution) {
       // Otra vuelta: al resolver, se exilía en vez de volver al cementerio (regla real de
       // Otra vuelta — "úsala una vez, después se va del todo"). Cualquier otro casteo normal
       // sigue yendo al cementerio como siempre.
@@ -3087,7 +3197,8 @@ export function renderStack() {
     let targetText = 'Sin objetivo';
     if (item.targetObj) {
       if (item.targetObj.type === 'player') {
-        targetText = `Objetivo: ${item.targetObj.isLocal ? 'Vos' : 'Rival'}`;
+        const label = item.ability?.effect?.type === 'pay_or_optional_draw' ? 'Lanzador' : 'Objetivo';
+        targetText = `${label}: ${item.targetObj.isLocal ? 'Vos' : 'Rival'}`;
       } else if (item.targetObj.type === 'creature') {
         targetText = `Objetivo: ${item.targetObj.card?.name || item.targetObj.item?.card?.name || 'objetivo ausente'}`;
       } else if (['permanent','land','planeswalker','aura','graveyard'].includes(item.targetObj.type)) {

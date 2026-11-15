@@ -3,7 +3,7 @@
 // No toca economía ni Firestore: conserva estado de juego + Stack en localStorage.
 
 import { ENGINE_VERSION } from './version.js';
-import { serializeStackForPublic, deserializeStackFromPublic } from './matchSync.js';
+import { serializeStackForPublic, deserializeStackFromPublic, serializeCleanupTriggers, deserializeCleanupTriggers } from './matchSync.js';
 import { getGameRngSnapshot, restoreGameRngSession } from './gameRng.js';
 import { graveyardForSide, lockAuraTarget, lockGraveyardTarget } from './publicZoneEffects.js';
 
@@ -17,6 +17,7 @@ const TRANSIENT_KEYS = new Set([
   'currentUser','userProfile','currentMatch','authInitialResolved','authIdentityReady',
   'soloRuntimeSuspended','soloLifecycleSuspendedAtMs','soloLifecycleResumeGraceUntilMs','soloLifecycleReloading',
   'matchSyncBusy','multiplayerWaitingForReady','stackResolutionAuthority','autoZeroBlockersQueued',
+  'endTurnTriggerEntries','pendingEndTurnResolution',
   'priorityClockDeadlineLocalMs','priorityClockRemainingMs','priorityClockPausedLocal','priorityClockPauseReasonLocal',
   'pendingCastTransaction','pendingSuspendCastChoice','pendingPreparedCastCosts','pendingAlternativeCostChoice','pendingPrivateZoneChoice',
   'pendingSpellIndex','pendingCost','tappedLandsThisSpell','paymentManaSourceRollbacks','pendingTargetCard',
@@ -84,12 +85,18 @@ function serializableGameState(state) {
   out.abandonedBy = null;
   out.abandonProcessedLocally = false;
   out.terminalProcessedLocally = false;
+  if (state.endTurnCleanup==='discard') {
+    out.endTurnDeferredTriggers=serializeCleanupTriggers(state.endTurnTriggerEntries || [],state,'host');
+  }
   return out;
 }
 
 export function isSoloRecoveryStable(state) {
   if (!state || state.currentMatch || state.gameOver) return false;
+  const cleanupDiscard=state.phase==='cleanup' && state.endTurnCleanup==='discard' && state.isDiscarding;
+  if (state.terminalCheckDepth || (state.endTurnTriggerEntries && !cleanupDiscard)) return false;
   return !PENDING_KEYS.some(key => {
+    if (cleanupDiscard && (key==='isDiscarding' || key==='cardsToDiscard')) return false;
     const value = state[key];
     if (typeof value === 'number') {
       if (key.startsWith('pending')) return true; // índice 0 también significa elección activa
@@ -119,10 +126,10 @@ function serializeSoloStack(stack, state) {
       const slot = graveyardForSide(state,target.isLocal).indexOf(target.card);
       wire[index].soloTarget = {type:'graveyard',isLocal:target.isLocal,slot};
     } else if (target?.type === 'aura') {
-      const sides = [[true,state.localCombat],[false,state.rivalCombat]];
-      const host = sides.flatMap(([isLocal,items])=>(items||[]).map((item,slot)=>({item,slot,isLocal})))
+      const zones = ['localCombat','rivalCombat','localLands','rivalLands'];
+      const host = zones.flatMap(zone=>(state[zone]||[]).map((item,slot)=>({item,slot,zone})))
         .find(({item})=>item.auras?.includes(target.card));
-      wire[index].soloTarget = {type:'aura',isLocal:host?.isLocal ?? false,slot:host?.slot ?? -1,
+      wire[index].soloTarget = {type:'aura',isLocal:target.isLocal,zone:host?.zone,slot:host?.slot ?? -1,
         auraSlot:host?.item.auras.indexOf(target.card) ?? -1};
     }
   });
@@ -138,7 +145,7 @@ function restoreSoloStack(entries,state) {
       const card = graveyardForSide(state,isLocal)[slot];
       stack[index].targetObj = card ? lockGraveyardTarget({type,isLocal,card}) : null;
     } else if (type === 'aura') {
-      const item = (isLocal ? state.localCombat : state.rivalCombat)[slot];
+      const item = (state[soloTarget.zone] || (isLocal ? state.localCombat : state.rivalCombat))[slot];
       const card = item?.auras?.[auraSlot];
       stack[index].targetObj = card ? lockAuraTarget({type,isLocal,item,card}) : null;
     }
@@ -360,6 +367,12 @@ export function restoreSoloRecoveryState(candidate, state) {
   state.priorityClockDeadlineLocalMs = 0;
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = 'solo_recovery';
+  state.endTurnTriggerEntries=null;
+  if (state.phase==='cleanup' && state.endTurnCleanup==='discard') {
+    state.endTurnTriggerEntries=deserializeCleanupTriggers(candidate.state.endTurnDeferredTriggers,state,'host');
+    state.cardsToDiscard=Math.max(0,state.localHand.length-7);
+    state.isDiscarding=state.cardsToDiscard>0;
+  }
   if (candidate.rngState) restoreGameRngSession(candidate.rngState);
   return restoreSoloStack(candidate.stackState || [],state);
 }

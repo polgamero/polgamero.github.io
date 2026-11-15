@@ -1,3 +1,6 @@
+import { ARTIFACT_SPELL_MANA } from './manaPool.js';
+import { isArtifactPermanent, isCreaturePermanent, isLandPermanent } from './permanentTypes.js';
+
 // js/manaSources.js — Argentinia 23.14.5 · LAND 4 Mana Source Generalization
 // Normaliza fuentes de maná de cualquier tipo de permanente sobre el Mana Pool de LAND 0.
 // Compatibilidad total con schema legacy (`produces`, `producesOptions`, `manaAmount`,
@@ -18,15 +21,36 @@ export function normalizeManaAbility(card) {
       : (Array.isArray(card.producesOptions) ? card.producesOptions : [card.produces])
   );
   if (!options.length) return null;
+  if (explicit?.spendOnly != null && explicit.spendOnly !== ARTIFACT_SPELL_MANA) return null;
+  if (explicit?.amountFrom != null && explicit.amountFrom !== 'controlledCreatures') return null;
   const amount = Math.max(1, Math.floor(Number(explicit?.amount ?? card.manaAmount) || 1));
   return {
     options,
     amount,
+    ...(explicit?.amountFrom === 'controlledCreatures' ? { amountFrom:explicit.amountFrom } : {}),
+    ...(explicit?.spendOnly ? { spendOnly:explicit.spendOnly } : {}),
     // Legacy mana rocks/lands always used tap. Explicit manaAbility may opt out (Lotus Petal-style).
     requiresTap: explicit?.requiresTap !== undefined ? !!explicit.requiresTap : true,
     sacrificeSelf: explicit?.sacrificeSelf !== undefined ? !!explicit.sacrificeSelf : !!card.sacrificeOnTap,
     sourceSchema: explicit ? 'manaAbility' : 'legacy'
   };
+}
+
+export function manaProductionAmount(state, isLocal, ability) {
+  if (!ability) return 0;
+  if (ability.amountFrom !== 'controlledCreatures') return ability.amount;
+  const side = isLocal ? 'local' : 'rival';
+  const permanents = new Set(['Combat', 'Lands', 'Support', 'Planeswalkers']
+    .flatMap(zone => state[side + zone] || []));
+  return [...permanents].filter(isCreaturePermanent).length;
+}
+
+export function canSpendArtifactSpellMana(card) {
+  return isArtifactPermanent(card) && !isLandPermanent(card);
+}
+
+export function meetsActivatedHandSize(ability, hand) {
+  return ability?.handSizeExactly == null || hand?.length === ability.handSizeExactly;
 }
 
 export function isManaSourceCard(card) { return !!normalizeManaAbility(card); }
@@ -46,6 +70,6 @@ export function canActivateManaSourcePermanent(item, { hasHaste = false, ability
   if (!ability) return false;
   if (ability.requiresTap && item.tapped) return false;
   // CR 302.6: summoning sickness only blocks {T}/{Q} costs of creatures.
-  if (ability.requiresTap && isCreatureCardLike(item) && item.summoningSickness && !hasHaste) return false;
+  if (ability.requiresTap && isCreaturePermanent(item) && item.summoningSickness && !hasHaste) return false;
   return true;
 }

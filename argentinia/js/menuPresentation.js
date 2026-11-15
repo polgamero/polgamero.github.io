@@ -15,13 +15,14 @@ function button(id, icon, label, key = '', extra = '') {
   return `<button type="button" id="${id}" class="arg-menu-button" ${extra}>${menuIcon(icon)}<span data-menu-label${key ? ` data-menu-text="${key}"` : ''}>${escape(label)}</span></button>`;
 }
 
-export function mainMenuMarkup(t) {
+export function mainMenuMarkup(t, { staticPreview = false } = {}) {
   const mode = (id, icon, key, subtitle, primary = false) => `<button type="button" id="${id}" class="arg-menu-mode arg-menu-frame${primary ? ' arg-menu-primary' : ''}">${menuIcon(icon)}<span class="arg-menu-mode-copy"><span data-menu-label data-menu-text="${key}">${escape(t(key))}</span><span class="arg-menu-subtitle" data-menu-text="${subtitle}">${escape(t(subtitle))}</span></span><img class="arg-menu-mode-art${primary ? ' arg-menu-tano' : ''}" src="./assets/images/menu/${primary ? 'tano' : icon}.webp" alt="" aria-hidden="true"></button>`;
+  const logoHandlers = staticPreview ? '' : ` onload="this.parentElement?.classList.add('has-original-logo')" onerror="this.hidden=true"`;
   return `
     <header class="arg-menu-header">
       <div id="main-menu-account" class="arg-menu-account"></div>
       <div class="arg-menu-brand" aria-label="Argentinia — Magia y leyenda">
-        <img class="arg-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia — Magia y leyenda" onload="this.parentElement?.classList.add('has-original-logo')" onerror="this.hidden=true">
+        <img class="arg-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia — Magia y leyenda"${logoHandlers}>
         <div class="arg-menu-wordmark" aria-hidden="true">ARGENTINIA<span>MAGIA Y LEYENDA</span></div>
       </div>
       <div class="arg-menu-hud"><div id="arg-menu-wallet-slot"></div><div class="arg-menu-tools"><div id="arg-menu-support-slot"></div>${button('menu-options','options',t('menu.options'),'menu.options')}</div></div>

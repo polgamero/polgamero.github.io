@@ -4,7 +4,7 @@ import { cardManaValue } from './libraryEngine.js';
 import { recordTelemetryEvent, recordTelemetryBugCandidate, summarizeTelemetryTarget } from './telemetry.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { getProliferateCandidates } from './utils.js';
-import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
+import { getEffectiveLandManaAbilities, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
 import { cardHasSubtype, cardsShareCreatureType, resolveSubtypeReference } from './typalEngine.js';
 import {
   state,
@@ -48,8 +48,8 @@ import {
   passPriority, // Importado del nuevo turnManager / main
   beginActivePlayerPriorityWindow,
   landEntersTappedForBattlefield,
-  handleLandTappedForManaEvent,
-  captureLandTappedForManaEvent,
+  activateRivalManaSource,
+  tryAutoPayCounterTax,
   flushDeferredLandManaTriggers,
   payBotActivatedDiscardCost,
   dispatchGameEvent,
@@ -63,8 +63,8 @@ import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTrigg
 import { addToStack, spellStack, isStackItemLegalCounterTarget, isStackItemLegalCopyTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { gameText } from './gameTexts.js';
 import { isSoloPriorityFullControl } from './ui.js';
-import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost, spendCostAutomatically } from './manaPool.js';
-import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
+import { manaAvailableForPayment, manaPoolTotal, manaCostTotal, spendCostAutomatically } from './manaPool.js';
+import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana, meetsActivatedHandSize } from './manaSources.js';
 import { readPaymentSources, planManaSources, maximumAffordableX } from './xCostPayment.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
@@ -90,18 +90,20 @@ import { ensureSoloBotPriorityScheduled } from './turnManager.js';
 
 const botThinkDelay = (ms) => globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true ? Promise.resolve() : sleep(ms);
 
-function botEffectiveManaAbility(item, isLocal = false) {
-  if (!item?.card) return null;
+function botEffectiveManaAbilities(item, isLocal = false) {
+  if (!item?.card) return [];
+  if (isLandPermanent(item)) return getEffectiveLandManaAbilities(state, item, isLocal);
   const printed = normalizeManaAbility(item.card);
-  return isLandPermanent(item) ? getEffectiveLandManaAbility(state, item, isLocal, printed) : printed;
+  return printed ? [printed] : [];
 }
-function botManaOptions(item, isLocal = false) { return botEffectiveManaAbility(item, isLocal)?.options || []; }
-function botManaAmount(item, isLocal = false) { return botEffectiveManaAbility(item, isLocal)?.amount || 0; }
-function botManaRequiresTap(item, isLocal = false) { return !!botEffectiveManaAbility(item, isLocal)?.requiresTap; }
-function botManaSacrifices(item, isLocal = false) { return !!botEffectiveManaAbility(item, isLocal)?.sacrificeSelf; }
-function botCanActivateMana(item, isLocal = false) {
-  const ability = botEffectiveManaAbility(item, isLocal);
-  return !!ability && canActivateManaSourcePermanent(item, { hasHaste:hasKeyword(item, 'haste'), ability });
+function botManaOptions(item, isLocal = false) {
+  return [...new Set(botEffectiveManaAbilities(item, isLocal).flatMap(ability=>ability.options))];
+}
+function botManaAmount(item, isLocal = false, readyOnly = false) {
+  const hasHaste = hasKeyword(item, 'haste');
+  return Math.max(0, ...botEffectiveManaAbilities(item,isLocal).filter(ability=>!ability.spendOnly &&
+    (!readyOnly || canActivateManaSourcePermanent(item,{hasHaste,ability})))
+    .map(ability=>manaProductionAmount(state,isLocal,ability)));
 }
 
 // HF23.3.5 — la Regla de Leyenda sigue siendo una SBA legal del motor, pero el Tano no
@@ -136,7 +138,7 @@ function botPaymentMethodPlan(card, cost, options = {}) {
   const methods=getSpellPaymentMethods(card);
   let remaining={...cost,hybrid:cost?.hybrid?.map(x=>[...x]),phyrexian:cost?.phyrexian?[...cost.phyrexian]:undefined};
   const plan={convoke:[],convokePayments:[],delve:[],phyrexianLife:[],phyrexianLifeAmount:0};
-  const affordable=()=>canRivalAfford({manaCost:null},{parsedCost:remaining,excludeItems:plan.convoke});
+  const affordable=()=>canRivalAfford(card,{parsedCost:remaining,excludeItems:plan.convoke});
 
   // Estrategia Tano: si puede pagar con maná, conserva criaturas/cementerio. Sólo usa tantos
   // recursos alternativos como sean necesarios para volver pagable el coste final.
@@ -180,7 +182,7 @@ function canBotPayCastRoute(card, useAlternative = false, options = {}) {
     isLocal:false
   });
   const planned = botPaymentMethodPlan(card,final.cost,{...options,useAlternative});
-  if (!canRivalAfford({ manaCost:null }, { parsedCost:planned.cost, excludeItems:planned.plan.convoke })) return false;
+  if (!canRivalAfford(card, { parsedCost:planned.cost, excludeItems:planned.plan.convoke })) return false;
   return canPayCastCompositeNonManaCosts(card, false, useAlternative, {
     excludeCard: options.excludeCard || null,
     lifeFloor: (options.lifeFloor ?? 5) + (planned.plan.phyrexianLifeAmount || 0)
@@ -227,9 +229,9 @@ async function payBotCastRoute(card, useAlternative = false, options = {}) {
     isLocal:false
   });
   const planned = botPaymentMethodPlan(card,final.cost,{...options,useAlternative});
-  if (!canRivalAfford({manaCost:null},{parsedCost:planned.cost,excludeItems:planned.plan.convoke})) throw new Error(`Tano no puede pagar el costo final de ${card.name}`);
+  if (!canRivalAfford(card,{parsedCost:planned.cost,excludeItems:planned.plan.convoke})) throw new Error(`Tano no puede pagar el costo final de ${card.name}`);
   if (!commitBotPaymentMethodPlan(card,planned.plan)) throw new Error(`Tano perdió recursos preparados de ${card.name}`);
-  if (parsedManaTotal(planned.cost)>0) tapRivalLandsFor({ manaCost:null }, { parsedCost:planned.cost });
+  if (parsedManaTotal(planned.cost)>0) tapRivalLandsFor(card, { parsedCost:planned.cost });
   await payCastCompositeNonManaCosts(card, false, useAlternative);
   return { final, planned };
 }
@@ -430,53 +432,18 @@ export function tryPayWardForBotTarget(targetObj) {
   if (!wardKw) return true;
   const wardCost = parseInt(wardKw.split('_')[1], 10);
 
-  const sources = getRivalManaSources().filter(item => botCanActivateMana(item, false));
-  const available = manaPoolTotal(state.rivalManaPool) + sources.reduce((sum,s) => sum + botManaAmount(s, false), 0);
-  if (available < wardCost) {
+  if (!tryAutoPayCounterTax(false, wardCost, { deferTriggers:true })) {
     logMsg(gameText('bot.ward.cantPay', { target: targetObj.item.card.name, cost: wardCost }));
     return false;
-  }
-  const remaining = { W:0,U:0,B:0,R:0,G:0,C:0,generic:wardCost };
-  spendAvailableTowardCost(state.rivalManaPool, remaining);
-  for (const source of sources) {
-    if (remaining.generic <= 0) break;
-    const opts = botManaOptions(source, false);
-    const type = opts.find(t => MANA_TYPES.includes(t));
-    if (!type) continue;
-    const tappedForMana = botManaRequiresTap(source, false);
-    const wasTappedForMana=!!source.tapped;
-    if (tappedForMana) {
-      source.tapped = true;
-      if(!wasTappedForMana) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(source.card,false,state.currentMatch?.myRole||null),card:source.card,item:source,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'}, {forceDeferNormalTriggers:true});
-    }
-    const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
-      ? captureLandTappedForManaEvent(source, false, type) : null;
-    if (botManaSacrifices(source, false)) performSacrifice(source, false);
-    const producedAmount = botManaAmount(source, false);
-    addMana(state.rivalManaPool, type, producedAmount);
-    if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, type, producedAmount, { eventSnapshot:landManaEventSnapshot });
-    spendAvailableTowardCost(state.rivalManaPool, remaining);
   }
   logMsg(gameText('bot.ward.paid', { cost: wardCost }));
   return true;
 }
 
-// Fuentes de maná del Tano: Tierras, mana rocks/Treasures y criaturas/artefactos-criatura
-// con manaAbility. `canActivateManaSourcePermanent` aplica {T}, tapped y mareo cuando corresponde.
-// Un solo lugar para juntarlas evita repetir
-// este filtro en cada función de abajo.
-function getRivalManaSources(excludeItems = []) {
-  const excluded = new Set(excludeItems || []);
-  return [...state.rivalLands, ...state.rivalSupport, ...state.rivalCombat]
-    .filter(item => !!botEffectiveManaAbility(item, false) && !excluded.has(item));
-}
-
-// Cuánto maná TOTAL (sumando todo lo que tiene sin girar) le queda disponible al Tano —
-// no descuenta nada todavía, es la base para calcular cuánto puede gastar en X.
 function getRivalTotalAvailableMana() {
-  return manaPoolTotal(state.rivalManaPool) + getRivalManaSources().filter(item => botCanActivateMana(item, false)).reduce((sum, s) => sum + botManaAmount(s, false), 0);
+  return manaPoolTotal(manaAvailableForPayment(state.rivalManaPool)) +
+    [...state.rivalLands, ...state.rivalSupport, ...state.rivalCombat].reduce((sum,item)=>sum+botManaAmount(item,false,true),0);
 }
-
 
 // HF15 — memoria diagnóstica de gasto de valor dentro del turno del bot. No forma parte del
 // state sincronizado ni del recovery: sólo sirve para detectar automáticamente regresiones
@@ -696,9 +663,9 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     xValue
   };
   addToStack(castStackItem);
-  flushDeferredLandManaTriggers();
+  const manaTriggers = state.deferredLandManaTriggers.splice(0);
   logMsg(gameText('bot.graveCast', { ability: source === 'escape' ? 'Zafar' : 'Otra vuelta', card: card.name }));
-  await triggerSpellCast(false, card, castStackItem);
+  await triggerSpellCast(false, card, castStackItem,{manaTriggers});
   if (!tryPayWardForBotTarget(aiTargetObj)) {
     const stackIndex = spellStack.indexOf(castStackItem);
     if (stackIndex >= 0) moveBotCounteredSpell(spellStack.splice(stackIndex,1)[0],'ward');
@@ -807,7 +774,7 @@ export function canRivalAfford(card, options = null) {
   const cost = options?.parsedCost || parseManaCost(card.manaCost);
   return planManaSources(state.rivalManaPool,cost,readPaymentSources(state,false,{
     excludeItems:options?.excludeItems || [], hasHaste:item=>hasKeyword(item,'haste')
-  })) !== null;
+  }), options?.isCasting !== false && canSpendArtifactSpellMana(card)) !== null;
 }
 
 export function tapRivalLandsFor(card, options = null) {
@@ -815,25 +782,15 @@ export function tapRivalLandsFor(card, options = null) {
   if (!card.manaCost && !options?.parsedCost) return;
   const remaining = options?.parsedCost ? { ...options.parsedCost } : parseManaCost(card.manaCost);
   if (!state.rivalManaPool) state.rivalManaPool = { W:0,U:0,B:0,R:0,G:0,C:0 };
+  const allowsRestricted = options?.isCasting !== false && canSpendArtifactSpellMana(card);
   const plan = planManaSources(state.rivalManaPool,remaining,readPaymentSources(state,false,{
     excludeItems,hasHaste:item=>hasKeyword(item,'haste')
-  }));
+  }),allowsRestricted);
   if (!plan) throw new Error('Tano no puede pagar el coste completo sin dejar deuda');
-  for (const { item:source, type:chosen, ability } of plan) {
-    const amount = ability.amount;
-    const tappedForMana = botManaRequiresTap(source, false);
-    const wasTappedForMana=!!source.tapped;
-    if (tappedForMana) {
-      source.tapped = true;
-      if(!wasTappedForMana) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(source.card,false,state.currentMatch?.myRole||null),card:source.card,item:source,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'}, {forceDeferNormalTriggers:true});
-    }
-    const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
-      ? captureLandTappedForManaEvent(source, false, chosen) : null;
-    if (botManaSacrifices(source, false)) performSacrifice(source, false);
-    addMana(state.rivalManaPool, chosen, amount);
-    if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, chosen, amount, { forceDeferNormalTriggers:true, eventSnapshot:landManaEventSnapshot });
+  for (const { item, type, ability } of plan) {
+    if (!activateRivalManaSource(item,type,ability)) throw new Error('Fuentes del Tano cambiaron durante el pago');
   }
-  if (!spendCostAutomatically(state.rivalManaPool,remaining)) throw new Error('Fuentes del Tano cambiaron durante el pago');
+  if (!spendCostAutomatically(state.rivalManaPool,remaining,allowsRestricted)) throw new Error('Fuentes del Tano cambiaron durante el pago');
 }
 
 function shouldBotActivateHealing(effect, timing = 'legacy') {
@@ -918,8 +875,7 @@ async function tryBotCombatTrick() {
     type: 'instant'
   };
   addToStack(castStackItem);
-  flushDeferredLandManaTriggers();
-  await triggerSpellCast(false, card, castStackItem);
+  await triggerSpellCast(false, card, castStackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
   if (!tryPayWardForBotTarget(targetObj)) {
     const idx = spellStack.indexOf(castStackItem);
     if (idx >= 0) moveBotCounteredSpell(spellStack.splice(idx,1)[0],'ward');
@@ -988,8 +944,7 @@ async function tryBotPostBlockTrick() {
       type: 'instant'
     };
     addToStack(castStackItem);
-    flushDeferredLandManaTriggers();
-    await triggerSpellCast(false, pumpCard, castStackItem);
+    await triggerSpellCast(false, pumpCard, castStackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
 
     state.priorityPlayer = 'local';
     state.consecutivePasses = 0;
@@ -1059,8 +1014,7 @@ export async function checkRivalCounterOrResponse() {
         type: 'instant'
       };
       addToStack(castStackItem);
-      flushDeferredLandManaTriggers();
-      await triggerSpellCast(false, protectCard, castStackItem);
+      await triggerSpellCast(false, protectCard, castStackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
       logMsg(gameText('bot.protect', { target: savedCreature.card.name, card: protectCard.name }));
@@ -1157,8 +1111,7 @@ export async function checkRivalCounterOrResponse() {
           : 'instant'
     };
     addToStack(castStackItem);
-    flushDeferredLandManaTriggers();
-    await triggerSpellCast(false, responseCard, castStackItem);
+    await triggerSpellCast(false, responseCard, castStackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
     if (!tryPayWardForBotTarget(targetObj)) {
       const idx = spellStack.indexOf(castStackItem);
       if (idx >= 0) moveBotCounteredSpell(spellStack.splice(idx,1)[0],'ward');
@@ -1395,6 +1348,7 @@ function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilitie
 // `sorcery` exige propia Main + pila vacía; `instant` sólo exige que el Tano tenga prioridad.
 function botAbilityTimingAllowed(ability, { instantOnly = false } = {}) {
   if (!ability || state.gameOver || state.priorityPlayer !== 'rival') return false;
+  if (!meetsActivatedHandSize(ability,state.rivalHand)) return false;
   const timing = getActivatedAbilityTiming(ability);
   if (timing === 'invalid') return false;
   const intrinsicSorceryOnly = ability.effect?.type === 'attach_equipment';
@@ -1520,7 +1474,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       // HF15 — las habilidades instantáneas de valor ya no "secuestran" upkeep/draw/main1
       // en Medio/Difícil. Primero se conserva el plan de la mano; el valor sobrante se cobra
       // en Main 2 propio o End step rival. Además se evita fabricar descarte por hand limit.
-      if (isNonUrgentBotValueEffect(effect.type)) {
+      if (isNonUrgentBotValueEffect(effect.type) && ability.handSizeExactly == null) {
         const eligibleCount = effect.type === 'return_all_lands_from_graveyard'
           ? state.rivalGraveyard.filter(c => String(c?.type || '').includes('Tierra')).length
           : effect.type === 'return_from_graveyard'
@@ -1626,7 +1580,9 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       else if (effect.type === 'heal' || effect.type === 'draw') {
         const useful = effect.type === 'heal'
           ? shouldBotActivateHealing(effect,timing)
-          : (state.phase === 'main2' || (timing === 'instant' && state.rivalHand.length <= 3));
+          : ability.handSizeExactly != null
+            ? state.rivalDeck.length >= (effect.amount ?? 1) && (state.phase === 'main2' || state.phase === 'end_step')
+            : state.phase === 'main2' || (timing === 'instant' && state.rivalHand.length <= 3);
         if (useful) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
           shouldActivate = true;
@@ -2216,8 +2172,7 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
     else if(card.type?.includes('Instantáneo')) stackType='instant';
     else if(card.adjunta) stackType='aura';
     const stackItem={card,isLocal:false,targetObj,type:stackType,xValue:botXValue,kicked:botKicked,castFrom:'exile',exilePermissionId:permission.permissionId,exilePlayEngineVersion:EXILE_PLAY_ENGINE_VERSION};
-    addToStack(stackItem); flushDeferredLandManaTriggers();
-    await triggerSpellCast(false,card,stackItem);
+    addToStack(stackItem); await triggerSpellCast(false,card,stackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
     if(!tryPayWardForBotTarget(targetObj)){
       const i=spellStack.indexOf(stackItem); if(i>=0) moveBotCounteredSpell(spellStack.splice(i,1)[0],'ward');
     }
@@ -2289,7 +2244,7 @@ export async function castSuspendedCardForBot(original) {
   else if(card.type?.includes('Instantáneo')) stackType='instant';
   else if(card.adjunta) stackType='aura';
   const stackItem={card,isLocal:false,targetObj,type:stackType,xValue:0,kicked:botKicked,castFrom:'suspend',suspendEngineVersion:SUSPEND_ENGINE_VERSION,suspendHaste:card.power!==undefined};
-  addToStack(stackItem); flushDeferredLandManaTriggers(); await triggerSpellCast(false,card,stackItem);
+  addToStack(stackItem); await triggerSpellCast(false,card,stackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
   if(!tryPayWardForBotTarget(targetObj)){ const i=spellStack.indexOf(stackItem); if(i>=0) moveBotCounteredSpell(spellStack.splice(i,1)[0],'ward'); }
   state.priorityPlayer='local'; state.consecutivePasses=0;
   logMsg(gameText('bot.stack.entered',{card:card.name})); render(); return true;
@@ -2339,7 +2294,7 @@ async function tryBotSuspendFromHand() {
     const spec = normalizeSuspendSpec(card);
     if (!spec?.cost || botControlsLegendaryNamed(card)) continue;
     const cost = parseManaCost(spec.cost);
-    if (!canRivalAfford(card,{parsedCost:cost})) continue;
+    if (!canRivalAfford(card,{parsedCost:cost,isCasting:false})) continue;
     // When there is no useful immediate cast, prefer a sooner payoff for less mana.
     const score = (card.power !== undefined ? 2 : 0) + Math.min(7,Number(card.cmc)||0) -
       spec.time * 2 - parsedManaTotal(cost);
@@ -2349,8 +2304,8 @@ async function tryBotSuspendFromHand() {
   const chosen = options[0];
   if (!chosen || !suspendRivalCardFromHand(chosen.card, manaCost => {
     const cost = parseManaCost(manaCost);
-    if (!canRivalAfford(chosen.card,{parsedCost:cost})) return false;
-    tapRivalLandsFor(chosen.card,{parsedCost:cost});
+    if (!canRivalAfford(chosen.card,{parsedCost:cost,isCasting:false})) return false;
+    tapRivalLandsFor(chosen.card,{parsedCost:cost,isCasting:false});
     return true;
   })) return false;
   if (state.priorityPlayer === 'rival' && !hasBotRuntimeBlocker()) await passPriority('rival');
@@ -2398,7 +2353,7 @@ async function takeGuidedBotAction() {
   state.rivalHand.splice(state.rivalHand.indexOf(card),1);
   progress.botCastKeys.add(key);progress.botHighlight='#stack-container';
   const stackItem={card,isLocal:false,targetObj,xValue,type:card.power!==undefined?'summon':card.type.includes('Instantáneo')?'instant':'spell'};
-  addToStack(stackItem);flushDeferredLandManaTriggers();await triggerSpellCast(false,card,stackItem);
+  addToStack(stackItem);await triggerSpellCast(false,card,stackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
   state.priorityPlayer='local';state.consecutivePasses=0;render();return true;
 }
 
@@ -2474,7 +2429,7 @@ export async function takeBotPriorityAction() {
   if (state.activePlayer === 'rival' && (state.phase === 'main1' || state.phase === 'main2')) {
     
     // Intentar bajar tierra
-    const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
+    const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra') && !botControlsLegendaryNamed(c));
     if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
       await playBotLandFromHand(landIndex);
     }
@@ -3023,8 +2978,8 @@ export async function takeBotPriorityAction() {
         kicked: botKicked
       };
       addToStack(castStackItem);
-      flushDeferredLandManaTriggers();
-      await triggerSpellCast(false, cardToPlay, castStackItem);
+      const manaTriggers = state.deferredLandManaTriggers.splice(0);
+      await triggerSpellCast(false, cardToPlay, castStackItem,{manaTriggers});
 
       // Impuesto es posterior al casteo. Aún se resuelve como prompt simplificado (no trigger
       // separado en Stack), pero ya no evita que el hechizo haya sido casteado primero.

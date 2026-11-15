@@ -2,9 +2,10 @@
 // Nunca ejecuta una jugada. Comparte timing, coste FINAL y permisos con el motor real.
 // `none` SOLO si cada ruta cubierta quedó descartada con pruebas canónicas.
 // Mecánicas desconocidas, combinatoria excesiva o efectos que alteran permisos => `unknown`.
-import { normalizeManaPool, canPoolPayCost } from './manaPool.js';
-import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
-import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities } from './landCharacteristics.js';
+import { normalizeManaPool, canPoolPayCost, manaAvailableForPayment, ARTIFACT_SPELL_MANA } from './manaPool.js';
+import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana } from './manaSources.js';
+import { getEffectiveLandManaAbilities, getEffectiveLandActivatedAbilities } from './landCharacteristics.js';
+import { isLandPermanent } from './permanentTypes.js';
 import { getLandManaBonuses } from './landStax.js';
 import { getActivatedAbilities, getGrantedAbilities, parseManaCost } from './utils.js';
 
@@ -46,27 +47,25 @@ function readManaSources(s, helpers) {
   for(const zone of ['localLands','localSupport','localCombat','localPlaneswalkers']) {
     for(const item of s[zone]) {
       if(!item || !item.card)return {status:'unknown',reason:'invalid_mana_permanent'};
-      let mana;
-      try { mana=zone==='localLands' ? getEffectiveLandManaAbility(s,item,true) : normalizeManaAbility(item.card); }
+      let abilities;
+      const land = isLandPermanent(item);
+      try { abilities=land ? getEffectiveLandManaAbilities(s,item,true) : [normalizeManaAbility(item.card)]; }
       catch {return {status:'unknown',reason:'effective_mana_error'};}
-      if(!mana)continue;
-      if(!Array.isArray(mana.options)||!mana.options.length ||
-        !mana.options.every(c=>COLORS.includes(c)) || !Number.isSafeInteger(mana.amount)||mana.amount<=0)
-        return {status:'unknown',reason:'unsupported_mana_source'};
       let haste=false;
       try{haste=!!helpers.getEffectiveKeywords?.(item)?.some(k=>String(k).toLowerCase()==='haste');}catch{}
-      // El chequeo canónico de factibilidad de la fuente protege mareo/tap y ventanas.
-      // Al calcular pagos NO descartamos una fuente que podría activarse en una
-      // ventana 601/602, por eso sólo se omite por tap/mareo intrínsecos.
-      if(!canActivateManaSourcePermanent(item,{hasHaste:haste||item.card?.keywords?.includes('haste'),ability:mana}))continue;
-      // Immediate land-mana bonuses can change amount AND color. The current
-      // assignment model represents one output color per activation; do not
-      // undercount a canonical bonus and incorrectly prove a spell unpayable.
-      if(zone==='localLands' && mana.options.some(color=>getLandManaBonuses(s,true,item,color).length>0))
-        return {status:'unknown',reason:'land_mana_bonus_not_modeled'};
-      if(mana.requiresTap===false && mana.sacrificeSelf===false)
-        return {status:'unknown',reason:'unbounded_repeatable_mana'};
-      entries.push({options:mana.options,amount:mana.amount});
+      const choices = [];
+      for (const mana of abilities) {
+        if (!mana || !canActivateManaSourcePermanent(item,{hasHaste:haste||item.card?.keywords?.includes('haste'),ability:mana})) continue;
+        const amount = manaProductionAmount(s,true,mana);
+        if (!Number.isSafeInteger(amount) || amount < 0) return {status:'unknown',reason:'unsupported_mana_source'};
+        if (!amount) continue;
+        if (land && mana.options.some(color=>getLandManaBonuses(s,true,item,color).length>0))
+          return {status:'unknown',reason:'land_mana_bonus_not_modeled'};
+        if (mana.requiresTap===false && mana.sacrificeSelf===false)
+          return {status:'unknown',reason:'unbounded_repeatable_mana'};
+        choices.push({options:mana.options,amount,spendOnly:mana.spendOnly});
+      }
+      if (choices.length) entries.push({choices});
     }
   }
   return {status:'ok',pool,entries};
@@ -74,7 +73,7 @@ function readManaSources(s, helpers) {
 // Decide si el coste es potencialmente pagable probando asignaciones completas,
 // usando `canPoolPayCost` del motor existente para colores/híbridos/genérico.
 // No resta maná, no gira fuentes, no pide targets. Tope explícito: fail-closed.
-export function evaluateManaPayment(cost,model,{searchLimit=150000}={}) {
+export function evaluateManaPayment(cost,model,{searchLimit=150000, allowArtifactSpellMana=false}={}) {
   if(!model || model.status!=='ok')return 'unknown';
   if(!cost || typeof cost!=='object')return 'unknown';
   const c={...cost};
@@ -83,13 +82,15 @@ export function evaluateManaPayment(cost,model,{searchLimit=150000}={}) {
      (c.hybrid && !Array.isArray(c.hybrid)) || (c.phyrexian && !Array.isArray(c.phyrexian)))return 'unknown';
   // Phyrexian puede pagarse con VIDA. Incluso sin maná la acción podría existir.
   if(c.phyrexian?.length)return 'unknown';
-  const available=model.pool;
+  const available=manaAvailableForPayment(model.pool,allowArtifactSpellMana);
+  const sources=model.entries.map(entry=>(entry.choices || [entry])
+    .filter(choice=>!choice.spendOnly || allowArtifactSpellMana));
   if(canPoolPayCost(available,c))return 'possible';
-  const upper=COLORS.reduce((n,k)=>n+available[k],0)+model.entries.reduce((n,s)=>n+s.amount,0);
+  const upper=COLORS.reduce((n,k)=>n+available[k],0)+sources.reduce((n,choices)=>n+Math.max(0,...choices.map(choice=>choice.amount)),0);
   const total=COLORS.reduce((n,k)=>n+(c[k]||0),c.generic||0)+(c.hybrid?.length||0);
   if(total>upper)return 'impossible';
   for(const color of COLORS){
-    const colorMaximum=available[color]+model.entries.filter(e=>e.options.includes(color)).reduce((n,e)=>n+e.amount,0);
+    const colorMaximum=available[color]+sources.reduce((n,choices)=>n+Math.max(0,...choices.filter(choice=>choice.options.includes(color)).map(choice=>choice.amount)),0);
     if((c[color]||0)>colorMaximum)return 'impossible';
   }
   const mutable={...available};let visited=0,found=false,exhausted=false;
@@ -97,10 +98,9 @@ export function evaluateManaPayment(cost,model,{searchLimit=150000}={}) {
     if(found||exhausted)return;
     if(++visited>searchLimit){exhausted=true;return;}
     if(canPoolPayCost(mutable,c)){found=true;return;}
-    if(i>=model.entries.length)return;
+    if(i>=sources.length)return;
     walk(i+1);
-    const source=model.entries[i];
-    for(const color of source.options){
+    for(const source of sources[i]) for(const color of source.options){
       mutable[color]+=source.amount;
       walk(i+1);
       mutable[color]-=source.amount;
@@ -124,7 +124,7 @@ function castAffordability(s,card,model,h,{baseOverride=null,fromExile=false}={}
   try{data=h.getFinalCastingManaCost(card,baseOverride===null?{isLocal:true}:{isLocal:true,baseOverride});}
   catch{return 'unknown';}
   if(!data || !checkTokenString(data.manaString??''))return 'unknown';
-  return evaluateManaPayment(data.cost,model);
+  return evaluateManaPayment(data.cost,model,{allowArtifactSpellMana:canSpendArtifactSpellMana(card)});
 }
 function abilityAffordability(s,item,ability,model,h) {
   if(!ability || typeof ability!=='object')return 'unknown';
@@ -165,7 +165,9 @@ function actionSummary(s,options,h){
   if(s.priorityPlayer!=='local')return result('unknown','not_local_priority');
   if(ZONES.some(z=>!Array.isArray(s[z])))return result('unknown','unverified_zone');
   if(!s.localManaPool||typeof s.localManaPool!=='object'||Array.isArray(s.localManaPool) ||
-     Object.entries(s.localManaPool).some(([k,v])=>!COLORS.includes(k)||!Number.isFinite(v)||v<0))
+     Object.entries(s.localManaPool).some(([k,v])=>k===ARTIFACT_SPELL_MANA
+       ? !v || typeof v!=='object' || Array.isArray(v) || Object.entries(v).some(([type,n])=>!COLORS.includes(type)||!Number.isSafeInteger(n)||n<0||n>s.localManaPool[type])
+       : !COLORS.includes(k)||!Number.isFinite(v)||v<0))
      return result('unknown','unverified_pool');
   // La propia pila puede contener un hechizo que necesita respuesta o trigger;
   // en HF3 Smart no pasa sobre la pila aunque no se detecten otras acciones.

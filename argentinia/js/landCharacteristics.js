@@ -238,32 +238,30 @@ function intrinsicManaOptions(subtypes) {
   return uniq((subtypes || []).map(t => BASIC_LAND_MANA[t]).filter(Boolean));
 }
 
-export function getEffectiveLandManaAbility(state, itemOrCard, targetIsLocal = true, printedAbility = undefined) {
+export function getEffectiveLandManaAbilities(state, itemOrCard, targetIsLocal = true) {
   const card = itemOrCard?.card || itemOrCard || {};
-  const base = printedAbility === undefined ? normalizeManaAbility(card) : printedAbility;
+  const base = normalizeManaAbility(card);
   const ch = getEffectiveLandCharacteristics(state, itemOrCard, targetIsLocal);
-  if (!ch.isLand) return base;
-  if (ch.manaOverride) return { ...ch.manaOverride };
+  if (!ch.isLand) return base ? [base] : [];
+  if (ch.manaOverride) return [ch.manaOverride];
 
   const intrinsic = intrinsicManaOptions(ch.subtypes);
-  if (ch.suppressPrintedAbilities) {
-    if (!intrinsic.length) return null;
-    return { options:intrinsic, amount:1, requiresTap:true, sacrificeSelf:false, sourceSchema:'intrinsic_basic_land_type' };
-  }
+  const intrinsicAbility = { options:intrinsic, amount:1, requiresTap:true, sacrificeSelf:false, sourceSchema:'intrinsic_basic_land_type' };
+  if (ch.suppressPrintedAbilities) return intrinsic.length ? [intrinsicAbility] : [];
 
-  // Un tipo básico AGREGADO concede su habilidad de maná intrínseca sin borrar el texto.
-  // Nuestro schema actual representa las habilidades {T}:1 de colores distintos como una
-  // única elección de color, equivalente mientras todas produzcan exactamente una unidad.
-  let out = base ? { ...base, options:[...(base.options || [])] } : null;
-  if (intrinsic.length) {
-    if (!out) out = { options:intrinsic, amount:1, requiresTap:true, sacrificeSelf:false, sourceSchema:'intrinsic_basic_land_type' };
-    else if (out.amount === 1 && out.requiresTap && !out.sacrificeSelf) out.options = uniq([...out.options, ...intrinsic]);
+  const abilities = base ? [base] : [];
+  for (const added of [...(intrinsic.length ? [intrinsicAbility] : []), ...ch.manaAdds]) {
+    const equivalent = abilities.find(ability => ability.amount === added.amount &&
+      ability.requiresTap === added.requiresTap && ability.sacrificeSelf === added.sacrificeSelf &&
+      ability.amountFrom === added.amountFrom && ability.spendOnly === added.spendOnly);
+    if (equivalent) equivalent.options = uniq([...equivalent.options, ...added.options]);
+    else abilities.push({ ...added });
   }
-  for (const add of ch.manaAdds) {
-    if (!out) out = { ...add, options:[...add.options] };
-    else if (out.amount === add.amount && out.requiresTap === add.requiresTap && out.sacrificeSelf === add.sacrificeSelf) out.options = uniq([...out.options, ...add.options]);
-  }
-  return out;
+  return abilities;
+}
+
+export function getEffectiveLandManaAbility(state, itemOrCard, targetIsLocal = true) {
+  return getEffectiveLandManaAbilities(state, itemOrCard, targetIsLocal)[0] || null;
 }
 
 export function getEffectiveLandActivatedAbilities(state, itemOrCard, targetIsLocal = true) {

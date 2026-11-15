@@ -419,7 +419,7 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
   function mountMenuPreview() {
     const holder = root.querySelector('[data-menu-v2-preview]'); if (!holder) return;
     const frame = document.createElement('iframe'); frame.title = 'Vista previa del menú principal actual';
-    // No game engine, authentication, network writes or scripts run in this frame.
+    // The parent wires the preview. The sandbox prevents scripts inside the frame.
     frame.setAttribute('sandbox','allow-same-origin');
     const mobile = viewport === 'android' || viewport === 'iphone';
     const [width,height] = viewport === 'notebook' ? [1366,768] : viewport === 'wide' ? [1778,801] : viewport === 'iphone' ? [936,432] : mobile ? [960,432] : [1600,900];
@@ -434,13 +434,15 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
       doc.documentElement.dataset.argAppearanceMainMenu = config.mainMenu.enabled ? '1' : '0';
       if (mobile) doc.documentElement.classList.add('argentinia-mobile');
       const menu = doc.createElement('div');menu.id='main-menu-overlay';menu.className='arg-menu-v2';
-      menu.innerHTML=mainMenuMarkup(gameText);
-      menu.querySelectorAll('[onload],[onerror]').forEach(node=>{node.removeAttribute('onload');node.removeAttribute('onerror');});
+      menu.innerHTML=mainMenuMarkup(gameText,{staticPreview:true});
       const logo=menu.querySelector('.arg-menu-logo');
       logo.addEventListener('load',()=>logo.parentElement.classList.add('has-original-logo'));
       logo.addEventListener('error',()=>{logo.hidden=true;});
       doc.body.append(menu);
-      if(logo.complete&&logo.naturalWidth>0)logo.parentElement.classList.add('has-original-logo');
+      if (logo.complete) {
+        if (logo.naturalWidth > 0) logo.parentElement.classList.add('has-original-logo');
+        else logo.hidden = true;
+      }
       const iconButton=(id,icon,label)=>`<button type="button" id="${id}" class="arg-menu-button">${menuIcon(icon)}<span data-menu-label>${esc(label)}</span></button>`;
       menu.querySelector('#main-menu-account').innerHTML=`<button type="button" class="arg-menu-profile arg-menu-frame"><span class="arg-menu-avatar">✹</span><span class="arg-menu-identity-copy"><span class="arg-menu-player-name">Jugador de ejemplo</span><span class="arg-menu-profile-caption">Mi perfil</span></span></button><button type="button" class="arg-menu-account-action arg-menu-logout-direct">Cerrar sesión</button>`;
       menu.querySelector('#arg-menu-wallet-slot').innerHTML=`<div class="arg-menu-wallet arg-menu-frame">${['moneda','ficha','esencia'].map((name,i)=>`<div class="arg-menu-resource"><img class="arg-menu-resource-icon" src="./assets/images/ui/${name}.png" alt=""><span><strong>${[8045,1034,10][i]}</strong><span class="arg-menu-resource-label">${['Puntos','Fichas','Esencia'][i]}</span></span></div>`).join('')}</div>`;

@@ -3,8 +3,8 @@
   "releaseHotfix": "HF7",
   "releaseDisplayVersion": "23.22.0 HF7",
   "engineVersion": "23.21.6",
-  "engineProtocolVersion": "mp-23.19.2-fl42",
-  "protocolVersion": "mp-23.19.2-fl42",
+  "engineProtocolVersion": "mp-23.19.2-fl44",
+  "protocolVersion": "mp-23.19.2-fl44",
   "refreshAssets": [
     "./assets/data/artefactos.json",
     "./assets/data/conjuros.json",
@@ -232,7 +232,9 @@
     "./js/transformEngine.js",
     "./js/triggerLabels.js",
     "./js/triggerOrdering.js",
+    "./js/terminalRules.js",
     "./js/turnManager.js",
+    "./js/turnSchedule.js",
     "./js/tutorialContent.js",
     "./js/tutorials.js",
     "./js/typalEngine.js",
@@ -281,6 +283,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "9e6ea0c9d32a45bd7549",
+  "buildId": "93c974f6f83c2b0319a0",
   "serviceUsageSchema": "arg-service-usage-v1"
 }

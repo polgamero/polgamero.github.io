@@ -55,6 +55,7 @@ export function markTournamentPendingSettlement(payload = {}) {
     matchId,
     roundKey: String(payload.roundKey || '').trim(),
     won: payload.won === true,
+    ...(payload.outcome==='draw'?{outcome:'draw'}:{}),
     difficultyObservation:normalizeDifficultyObservation(payload.difficultyObservation),
     savedAtMs: Date.now()
   });

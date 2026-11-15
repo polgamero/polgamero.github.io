@@ -16,8 +16,8 @@ export const PER_PLAYER_FIELDS = [
 ];
 
 export const SHARED_FIELDS = [
-  'turnCount', 'phase', 'gameOver', 'deckedOutRole', 'consecutivePasses', 'combatDamagePrevented',
-  'activeEffects', 'scheduledReturns',
+  'turnCount', 'phase', 'gameOver', 'deckedOutRole', 'terminalEffect', 'consecutivePasses', 'combatDamagePrevented',
+  'activeEffects', 'scheduledReturns', 'extraTurnRoles', 'nextRegularTurnRole', 'endTurnCleanup',
   'pendingDecision', 'decisionResponse', 'multiplayerResolutionMarker',
   'priorityClockSerial', 'priorityClockDurationMs', 'priorityActivity'
 ];
@@ -307,7 +307,7 @@ function deserializeStackSource(source, state, myRole) {
   }
   if (source.eventItemRef) {
     out._eventItemRef = source.eventItemRef;
-    out.eventItem = deserializeBoardItemRef(source.eventItemRef, state, myRole);
+    out.eventItem = deserializeBoardItemRef(source.eventItemRef, state, myRole, {strict:source.eventItemRef.strict===true});
   }
   delete out.sourceItemRef;
   delete out.eventItemRef;
@@ -318,22 +318,32 @@ export function serializeStackForPublic(stack, state, myRole) {
   if (!Array.isArray(stack)) return [];
   return stack.map(item => {
     const effectType = item?.ability?.effect?.type || item?.card?.effect?.type;
-    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage'].includes(effectType)
+    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage','exile_source','destroy_damaged_creature'].includes(effectType)
       || item?.source?.selfTarget === true || effectType === 'exile_source_until_end_step'
       || (item?.type === 'aura' && item.card?.enchantKind === 'land');
     const liveRef = serializeBoardItemRef(item?.sourceItem, state, myRole);
     const sourceItemRef = liveRef ? {...liveRef,...(strict ? {strict:true} : {})} : item?._sourceItemRef || null;
     const source = serializeStackSource(item?.source, state, myRole);
+    if (effectType==='destroy_damaged_creature' && source?.eventItemRef) {
+      source.eventItemRef={...source.eventItemRef,strict:true};
+      item.source._eventItemRef=source.eventItemRef;
+    }
     if (strict && source?.sourceItemRef) {
       source.sourceItemRef = {...source.sourceItemRef,strict:true};
       item.source._sourceItemRef = source.sourceItemRef;
     }
+    // Retain the wire field for older fl42 clients. Current resolvers use the
+    // source reference for self effects and never treat it as a declared target.
+    const selfRef = item?.source?.selfTarget && source?.sourceItemRef;
+    const target = selfRef
+      ? {...selfRef,type:({combat:'creature',lands:'land',support:'permanent',planeswalkers:'planeswalker'})[selfRef.zone]}
+      : serializeStackTarget(item?.targetObj, state, myRole, {strict});
     const wire = {
       id: item?.id ?? null,
       controllerRole: item?.isLocal ? myRole : otherRole(myRole),
       type: item?.type || null,
       card: discoverySafePublicValue(item?.card || null),
-      target: serializeStackTarget(item?.targetObj, state, myRole, {strict}),
+      target,
       xValue: item?.xValue ?? null,
       castFrom: item?.castFrom ?? null,
       exilePermissionId: item?.exilePermissionId ?? null,
@@ -377,7 +387,8 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
       id: wire?.id ?? null,
       card: wire?.card || null,
       isLocal: wire?.controllerRole === myRole,
-      targetObj: deserializeStackTarget(wire?.target, state, myRole),
+      targetObj: wire?.source?.selfTarget && ['pump','grant_keyword_temp','add_counter'].includes(wire?.ability?.effect?.type)
+        ? null : deserializeStackTarget(wire?.target, state, myRole),
       type: wire?.type || null,
       xValue: wire?.xValue ?? null,
       castFrom: wire?.castFrom ?? null,
@@ -410,6 +421,28 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
     }
     return item;
   });
+}
+
+export function serializeCleanupTriggers(entries, state, myRole) {
+  const objects = entries.map(entry => ({
+    type:'ability', abilityKind:'triggered', card:entry.sourceCard, isLocal:entry.isLocal,
+    targetObj:entry.targetObj, ability:{effect:entry.effect}, triggerType:entry.triggerType,
+    source:{sourceItem:entry.sourceItem,eventItem:entry.eventItem,eventCard:entry.eventCard,
+      selfTarget:!!entry.selfTarget,triggerType:entry.triggerType}
+  }));
+  return serializeStackForPublic(objects,state,myRole).map((row,index) => ({
+    ...row, requiresTarget:!!entries[index].requiresTarget, targetRelation:entries[index].target ?? null
+  }));
+}
+
+export function deserializeCleanupTriggers(rows, state, myRole) {
+  if (!Array.isArray(rows)) return [];
+  return deserializeStackFromPublic(rows,state,myRole).flatMap((item,index) => item.ability?.effect ? [{
+    effect:item.ability.effect, sourceCard:item.card, sourceItem:item.source?.sourceItem,
+    eventItem:item.source?.eventItem, eventCard:item.source?.eventCard, isLocal:item.isLocal,
+    selfTarget:item.source?.selfTarget, triggerType:item.triggerType, targetObj:item.targetObj,
+    requiresTarget:rows[index].requiresTarget, target:rows[index].targetRelation
+  }] : []);
 }
 
 export function buildMyPublicPatch(state, myRole, stack = []) {
@@ -476,12 +509,19 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
         : (state.priorityActivity || null);
       return;
     }
+    if (field==='terminalEffect' && !state.gameOver) return;
     if (state[field] !== undefined) patch[field] = state[field];
   });
   patch.activePlayer = state.activePlayer === 'local' ? myRole : rivalRole;
   patch.priorityPlayer = state.priorityPlayer === 'local' ? myRole : rivalRole;
   patch.abandonedBy = state.abandonedBy === 'local' ? myRole : (state.abandonedBy === 'rival' ? rivalRole : null);
-  patch.stackState = serializeStackForPublic(stack, state, myRole);
+  if (hasAuthority || state.phase==='untap') {
+    patch.endTurnDeferredTriggers = state.endTurnCleanup==='discard' && state.endTurnTriggerEntries
+      ? serializeCleanupTriggers(state.endTurnTriggerEntries,state,myRole) : null;
+  }
+  const terminalEvidence=state.pendingTerminalStackEvidence;
+  patch.stackState = serializeStackForPublic(terminalEvidence && !stack.includes(terminalEvidence)
+    ? [...stack,terminalEvidence] : stack,state,myRole);
 
   return discoverySafePublicValue(patch);
 }
@@ -565,7 +605,7 @@ export function refreshStackItemBoardRefs(item, state, myRole) {
   if (!item || !state || !myRole) return item;
   if (item._sourceItemRef) item.sourceItem = deserializeBoardItemRef(item._sourceItemRef, state, myRole, {strict:item._sourceItemRef.strict === true});
   if (item.source?._sourceItemRef) item.source.sourceItem = deserializeBoardItemRef(item.source._sourceItemRef, state, myRole, {strict:item.source._sourceItemRef.strict === true});
-  if (item.source?._eventItemRef) item.source.eventItem = deserializeBoardItemRef(item.source._eventItemRef, state, myRole);
+  if (item.source?._eventItemRef) item.source.eventItem = deserializeBoardItemRef(item.source._eventItemRef,state,myRole,{strict:item.source._eventItemRef.strict===true});
   if (item.targetObj?._syncDescriptor) item.targetObj = deserializeStackTarget(item.targetObj._syncDescriptor, state, myRole);
   if (item.targetObj?.type === 'multi' && Array.isArray(item.targetObj.targets)) {
     item.targetObj.targets = item.targetObj.targets.map(target =>

@@ -1,5 +1,6 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
 import { moveBattlefieldCardToZone } from './utils.js';
+import { checkGameOver } from './turnManager.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -33,6 +34,7 @@ import { showDamageAssignmentModal } from './ui.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
+import { applyDamageToPlayer, applyDamagePreventionCounters } from './main.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardBlockPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 import { planBotCombat3 } from './combatBotAdapter3.js';
@@ -427,6 +429,15 @@ export function hasPendingCombatDamageContinuation() {
   return !!pendingCombatDamageContinuation;
 }
 
+export function leaveCombatForEndTurn() {
+  pendingCombatDamageContinuation = null;
+  const attackers = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
+  const defenders = state.activePlayer === 'local' ? state.rivalCombat : state.localCombat;
+  finishCombatDamageStep(attackers, defenders);
+  for (const creature of [...attackers, ...defenders]) creature.attackTarget = null;
+  state.autoZeroBlockersQueued = false;
+}
+
 function finishCombatDamageStep(attackersArray, defendersArray) {
   attackersArray.forEach(c => {
     c.isAttacking = false;
@@ -450,8 +461,7 @@ export async function resolveCombatDamage() {
     const { combatPairs, isLocalAttacking, attackersArray, defendersArray } = pendingCombatDamageContinuation;
     pendingCombatDamageContinuation = null;
     logMsg(gameText('combat.damage.regularStep'));
-    await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
-    await runStateBasedActions({ reason:'combat_damage_regular' });
+    await resolveCombatDamageBatch(combatPairs,isLocalAttacking,dealsInRegularStep,'combat_damage_regular');
     finishCombatDamageStep(attackersArray, defendersArray);
     return;
   }
@@ -486,8 +496,8 @@ export async function resolveCombatDamage() {
   if (hayIniciativa) {
     const serialBefore = state.triggerStackSerial || 0;
     logMsg(gameText('combat.damage.firstStrikeStep'));
-    await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
-    await runStateBasedActions({ reason:'combat_damage_first_strike' });
+    await resolveCombatDamageBatch(combatPairs,isLocalAttacking,dealsInFirstStrikeStep,'combat_damage_first_strike');
+    if (state.gameOver) return;
 
     // Si iniciativa produjo combatDamage/dies/anyDies/etc., no seguimos de largo: esas
     // habilidades quedan en Stack y ambos jugadores pueden responder. Cuando la pila quede
@@ -500,9 +510,21 @@ export async function resolveCombatDamage() {
     logMsg(gameText('combat.damage.regularStep'));
   }
 
-  await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
-  await runStateBasedActions({ reason:'combat_damage_regular' });
+  await resolveCombatDamageBatch(combatPairs,isLocalAttacking,dealsInRegularStep,'combat_damage_regular');
   finishCombatDamageStep(attackersArray, defendersArray);
+}
+
+async function resolveCombatDamageBatch(pairs,isLocalAttacking,filter,reason) {
+  state.terminalCheckDepth++;
+  try {
+    state.combatDamageBatchInProgress=true;
+    try { await resolveDamageSubStep(pairs,isLocalAttacking,filter); }
+    finally { state.combatDamageBatchInProgress=false; }
+    await runStateBasedActions({reason});
+  } finally {
+    state.terminalCheckDepth--;
+  }
+  checkGameOver();
 }
 
 // Contagio (regla real 702.90): una criatura con Contagio hace TODO su daño de combate de
@@ -538,7 +560,8 @@ function dealCombatDamageToCreature(source, targetItem, amount) {
 function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
   if (amount <= 0) return 0;
   const sourceIsLocal=state.localCombat.includes(source);
-  const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:isTargetLocal,targetIsLocal:isTargetLocal,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:isTargetLocal,targetIsLocal:isTargetLocal,targetKind:'player',sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  applyDamagePreventionCounters(replacement);
   const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
   if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:isTargetLocal?'Vos':getRivalName()})); return 0; }
   if (hasKeyword(source, 'infect')) {
@@ -546,9 +569,7 @@ function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
     else state.rivalPoison = (state.rivalPoison || 0) + finalAmount;
     logMsg(gameText('combat.infect.player', { source: source.card.name, amount:finalAmount, target: isTargetLocal ? 'Vos' : getRivalName() }));
   } else {
-    if (isTargetLocal) state.localHP -= finalAmount;
-    else state.rivalHP -= finalAmount;
-    dispatchGameEvent({type:'life_lost',controllerIsLocal:isTargetLocal,actorIsLocal:sourceIsLocal,sourceControllerIsLocal:sourceIsLocal,targetPlayerIsLocal:isTargetLocal,sourceCard:source.card,sourceItem:source,amount:finalAmount,cause:'combat_damage',combat:true});
+    applyDamageToPlayer(finalAmount,isTargetLocal,{sourceCard:source.card,sourceItem:source,sourceIsLocal,combat:true});
   }
   return finalAmount;
 }
@@ -570,6 +591,7 @@ function dealCombatDamageToPlaneswalker(source, targetItem, amount) {
 }
 
 async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
+  const assignments=[];
   for (const { attacker, blockers } of combatPairs) {
     // Entre Iniciativa y daño regular ahora puede resolverse una Stack completa. Una
     // criatura destruida/rebotada/exiliada durante esa ventana no puede seguir pegando
@@ -578,8 +600,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     const attackerDealsThisStep = stepFilter(attacker);
     const attackerPower = getEffectivePower(attacker);
-    const attackerHasLifelink = hasKeyword(attacker, 'lifelink') || hasKeyword(attacker, 'life_link');
-    const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
     const aliveBlockers = blockers.filter(b => isUnitStillOnBattlefield(b) && !isCreatureDead(b));
@@ -623,6 +643,14 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         manualPlayerDamage = result.playerDmg;
       }
     }
+    assignments.push({attacker,blockers,aliveBlockers,attackerDealsThisStep,attackerPower,attackerHasTrample,
+      combatVisual,useManual,manualDistribution,manualPlayerDamage});
+  }
+
+  for (const {attacker,blockers,aliveBlockers,attackerDealsThisStep,attackerPower,attackerHasTrample,
+    combatVisual,useManual,manualDistribution,manualPlayerDamage} of assignments) {
+    const attackerHasLifelink = hasKeyword(attacker, 'lifelink') || hasKeyword(attacker, 'life_link');
+    const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
 
     aliveBlockers.forEach(blocker => {
       if (!stepFilter(blocker)) return; 

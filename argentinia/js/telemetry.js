@@ -1433,7 +1433,7 @@ export function captureTelemetryState(reason = 'render') {
 
   if (snapshot.turn.gameOver && !currentSession.endedAt) {
     currentSession.endedAt = nowIso();
-    currentSession.endReason = 'game_over_detected';
+    currentSession.endReason = state.terminalOutcome==='draw'?'draw':'game_over_detected';
     recordTelemetryEvent('session_end_detected', {
       turnCount: snapshot.turn.turnCount,
       phase: snapshot.turn.phase

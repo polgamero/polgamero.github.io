@@ -427,7 +427,7 @@ export function settleMatchRewardServer(reward = {}, operationId = null) {
     operationId: operationId || matchRewardOperationId(reward.receiptId),
     receiptId: String(reward.receiptId || ''),
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
-    outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    outcome: ['loss','draw'].includes(reward.outcome) ? reward.outcome : 'win',
     difficulty: reward.mode === 'multiplayer' ? null : String(reward.difficulty || ''),
     matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
     durationMs: reward.mode === 'multiplayer' ? 0 : Math.max(0, Math.floor(Number(reward.durationMs) || 0))
@@ -521,7 +521,8 @@ export function settleTournamentMatchServer(tournamentId, matchId, won, operatio
     operationId: operationId || `tournament-settle:${String(tournamentId || '')}:${String(matchId || '')}`.slice(0, 128),
     tournamentId: String(tournamentId || ''),
     matchId: String(matchId || ''),
-    won: won === true
+    won: won === true,
+    ...(won==='draw'?{outcome:'draw'}:{})
   },difficultyObservation);
 }
 

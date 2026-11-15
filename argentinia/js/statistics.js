@@ -15,11 +15,14 @@ export function emptyPlayerStats() {
     multiplayerGames: 0,
     wins: 0,
     losses: 0,
+    draws: 0,
     soloWins: 0,
     soloLosses: 0,
+    soloDraws: 0,
     multiplayerWins: 0,
     duelistWins: 0,
     multiplayerLosses: 0,
+    multiplayerDraws: 0,
     abandons: 0,
     totalDurationMs: 0,
     pointsEarned: 0,
@@ -34,6 +37,7 @@ export function emptyPlayerStats() {
     tournamentMatches: 0,
     tournamentWins: 0,
     tournamentLosses: 0,
+    tournamentDraws: 0,
     tournamentQuarterfinals: 0,
     tournamentSemifinals: 0,
     tournamentFinals: 0,
@@ -110,6 +114,7 @@ function parseJson(value, fallback = null) {
 
 export function telemetryOutcome(session) {
   const endReason = String(session?.endReason || '');
+  if (endReason==='draw') return {result:'draw',abandoned:false};
   if (endReason === 'abandon_local' || endReason.startsWith('abandon_recovery')) return { result: 'loss', abandoned: true };
   const snap = parseJson(session?.latestSnapshotJson, session?.finalSnapshot || null);
   const turn = snap?.turn || {};
@@ -148,6 +153,11 @@ export function summarizePlayerTelemetry(sessions = []) {
       if (isMulti) out.multiplayerLosses += 1;
       else if (isTournament) out.tournamentLosses += 1;
       else out.soloLosses += 1;
+    } else if (outcome.result==='draw') {
+      out.draws += 1;
+      if (isMulti) out.multiplayerDraws += 1;
+      else if (isTournament) out.tournamentDraws += 1;
+      else out.soloDraws += 1;
     }
     if (outcome.abandoned) out.abandons += 1;
   }

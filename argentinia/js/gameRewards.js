@@ -46,7 +46,7 @@ export function queuePendingGameReward(uid, reward = {}) {
     baseDelta,
     operationId: String(reward.operationId || `match-reward:${receiptId}`).slice(0, 128),
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
-    outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    outcome: ['loss','draw'].includes(reward.outcome) ? reward.outcome : 'win',
     // 23.19.2 — la dificultad forma parte de la evidencia durable para que Rules pueda
     // validar el premio Solo contra gameConfig. Pendientes legacy no la tienen y siguen
     // siendo recuperables por compatibilidad server-side.

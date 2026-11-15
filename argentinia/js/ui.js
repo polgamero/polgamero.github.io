@@ -55,6 +55,7 @@ import {
   canSuspendCardFromHand,
   getExilePlayPermissionForCard,
   canManaSourcePayPendingCost,
+  pendingPaymentAllowsArtifactMana,
   canActivateLocalManaAbility,
   spendLocalManaFromPool,
   checkGameOver,
@@ -155,7 +156,8 @@ import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, playSfx, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation, queueWorkshopUnlockAnimation } from './animationDirector.js';
-import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
+import { MANA_TYPES, manaPoolTotal, artifactSpellMana, ARTIFACT_SPELL_MANA } from './manaPool.js';
+import { meetsActivatedHandSize } from './manaSources.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
 import { isSagaCard, sagaUiState } from './sagaEngine.js';
@@ -218,7 +220,8 @@ export function showRedundantAuraConfirmation(aura, target, keywords, valid) {
 let cleanupDecisionClock=null;
 function syncCleanupDecisionClock() {
   if(HEADLESS_ENGINE)return;
-  if(!state.currentMatch||state.gameOver||!state.isDiscarding){cleanupDecisionClock?.remove();cleanupDecisionClock=null;return;}
+  const awaitingCleanupAck=state.endTurnCleanup==='discard' && !!state.multiplayerResolutionMarker;
+  if(!state.currentMatch||state.gameOver||!state.isDiscarding||awaitingCleanupAck){cleanupDecisionClock?.remove();cleanupDecisionClock=null;return;}
   if(cleanupDecisionClock?.isConnected)return;
   const match=state.currentMatch;
   const host=document.createElement('div');host.className='arg-cleanup-decision-clock';
@@ -228,7 +231,9 @@ function syncCleanupDecisionClock() {
     while(state.currentMatch===match&&!state.gameOver&&state.isDiscarding&&state.localHand.length){
       const card=randomLegalSubset(state.localHand,1)[0];
       const index=state.localHand.indexOf(card);if(index<0)break;
+      const handSize=state.localHand.length;
       await handleDiscardClick(index);
+      if(state.localHand.length>=handSize)break;
     }
   },()=>[],{action:false,isCurrent:()=>state.isDiscarding,blocked:()=>!!state.multiplayerSyncBlocked,record:recordTelemetryEvent});
 }
@@ -1401,16 +1406,20 @@ export function showCreatureTypeChoiceModal(options,{title='Elegí un tipo de cr
   overlay.querySelector('.typal-cancel').onclick=()=>finish(null); overlay.onclick=e=>{if(e.target===overlay)finish(null)};
 }
 
-export function showManaColorChoiceModal(cardName, options, onChoose) {
-  const normalized = [...new Set((options || []).filter(t => MANA_TYPES.includes(t)))];
+export function showManaColorChoiceModal(cardName, options, onChoose, { showDetails = false } = {}) {
+  const normalized = [...new Set(options || [])].filter(choice=>MANA_TYPES.includes(typeof choice === 'string' ? choice : choice?.type));
   if (!normalized.length) return;
   const overlay = document.createElement('div');
   overlay.className = 'gy-modal-overlay';
-  const choices = normalized.map(type => `
-    <button class="mana-choice-btn" data-mana-type="${type}">
+  const choices = normalized.map((option, index) => {
+    const { type, amount, spendOnly } = typeof option === 'string' ? { type:option } : option;
+    return `
+    <button class="mana-choice-btn" data-mana-type="${type}" data-mana-choice="${index}">
       ${renderManaIcon(type, 'mana-icon-inline')}
       <span>${gameText(`mana.color.${type}`)}</span>
-    </button>`).join('');
+      ${showDetails && amount != null ? `<small>${gameTextHtml('mana.sourceChoice.quantity', { amount })}${spendOnly === ARTIFACT_SPELL_MANA ? ` · ${gameTextHtml('mana.pool.artifactOnly')}` : ''}</small>` : ''}
+    </button>`;
+  }).join('');
   overlay.innerHTML = `
     <div class="gy-modal-content mana-choice-modal">
       <div class="gy-modal-header"><h3>${gameTextHtml('mana.chooseColor.title', { card: cardName })}</h3></div>
@@ -1418,10 +1427,9 @@ export function showManaColorChoiceModal(cardName, options, onChoose) {
       <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
     </div>`;
   document.body.appendChild(overlay);
-  const finish=timedModalChoice(overlay,type=>{if(type)onChoose?.(type);},()=>[],{action:true,abortArgs:()=>[]});
+  const finish=timedModalChoice(overlay,choice=>{if(choice)onChoose?.(choice);},()=>[],{action:true,abortArgs:()=>[]});
   overlay.querySelectorAll('[data-mana-type]').forEach(btn => btn.addEventListener('click', () => {
-    const type = btn.dataset.manaType;
-    finish(type);
+    finish(normalized[Number(btn.dataset.manaChoice)]);
   }));
   const close = () => finish();
   overlay.querySelector('.mana-choice-cancel').onclick = close;
@@ -1473,15 +1481,23 @@ function renderManaPoolHud() {
     for (const type of MANA_TYPES) {
       const amount = Math.max(0, Number(pool?.[type]) || 0);
       if (!amount) continue;
+      const restricted = artifactSpellMana(pool, type);
+      const spendable = isLocal && state.pendingCost && (amount > restricted || pendingPaymentAllowsArtifactMana());
       const chip = document.createElement(isLocal ? 'button' : 'span');
-      chip.className = `mana-pool-chip mana-pool-${type.toLowerCase()}${isLocal && state.pendingCost ? ' mana-pool-spendable' : ''}`;
+      chip.className = `mana-pool-chip mana-pool-${type.toLowerCase()}${spendable ? ' mana-pool-spendable' : ''}`;
       chip.innerHTML = `${renderManaIcon(type, 'mana-icon-pool')}<span class="mana-pool-count">${amount}</span>`;
       chip.title = isLocal
-        ? (state.pendingCost ? gameText('mana.pool.clickSpend', { mana:`{${type}}`, amount }) : gameText('mana.pool.floating', { mana:`{${type}}`, amount }))
+        ? (spendable ? gameText('mana.pool.clickSpend', { mana:`{${type}}`, amount }) : gameText('mana.pool.floating', { mana:`{${type}}`, amount }))
         : gameText('mana.pool.rivalFloating', { mana:`{${type}}`, amount });
+      if (restricted) {
+        const restriction = gameText('mana.pool.artifactPortion', { amount:restricted });
+        chip.title += ` · ${restriction}`;
+        chip.insertAdjacentHTML('beforeend', '<span aria-hidden="true">🔒</span>');
+        chip.setAttribute('aria-label', chip.title);
+      }
       if (isLocal) {
         chip.type = 'button';
-        chip.disabled = !state.pendingCost;
+        chip.disabled = !spendable;
         chip.onclick = () => spendLocalManaFromPool(type);
       }
       container.appendChild(chip);
@@ -1591,6 +1607,13 @@ export function getTargetRules(card) {
   const effectType = card.effect?.type || card.etbEffect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
 
   const effect = card.effect || card.etbEffect || firstActivated?.effect || firstGranted?.effect || {};
+  if (effectType === 'lose_life' || effectType === 'pay_or_optional_draw') {
+    return {allowPlayer:true,allowLocalCreature:false,allowRivalCreature:false,allowLocalPermanent:false,allowRivalPermanent:false};
+  }
+  if (effectType === 'tap_permanent' && (!effect.targetKind || effect.targetKind === 'any_permanent')) {
+    return {allowPlayer:false,allowLocalCreature:true,allowRivalCreature:true,allowLocalPermanent:true,allowRivalPermanent:true,
+      allowLocalLand:true,allowRivalLand:true,allowLocalPlaneswalker:true,allowRivalPlaneswalker:true};
+  }
   const publicTargets = battlefieldEffectTargets(effect);
   if (publicTargets) {
     const allows = type => publicTargets.includes(type);
@@ -1984,7 +2007,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // la Tierra (Blood Moon/tipos básicos incluidos), no sólo de su texto impreso.
   if (isLocal && zone === 'land' && isBattlefieldLand) {
     const hasEffectiveMana = !!getEffectiveLandManaAbility(state, itemObj, true);
-    const hasEffectiveUtility = getEffectiveLandActivatedAbilities(state, itemObj, true).length > 0;
+    const hasEffectiveUtility = getEffectiveLandActivatedAbilities(state, itemObj, true)
+      .some(ability=>meetsActivatedHandSize(ability,state.localHand));
     if (hasEffectiveMana && hasEffectiveUtility) el.dataset.mobileLandSplitActions = '1';
     el.addEventListener('argentinia:mobile-land-action', event => {
       const action = event?.detail?.action;
@@ -2424,10 +2448,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   ensureDfcFacePreviewInteractions();
 
-  if (customClick) {
-    el.addEventListener('click', customClick);
-  } else {
-    if (zone === 'combat' && !state.currentMatch && attachedAuras.length &&
+    if (['combat','land'].includes(zone) && !state.currentMatch && attachedAuras.length &&
       battlefieldEffectTargets(state.pendingTargetCard?.effect)?.includes('aura')) {
       const targets = document.createElement('div');
       targets.style.cssText = 'position:absolute;left:0;right:0;bottom:18%;z-index:12;display:flex;flex-direction:column;gap:2px';
@@ -2440,12 +2461,16 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         button.style.cssText = 'min-height:24px;padding:2px 4px;font-size:10px';
         button.addEventListener('click',event => {
           event.stopPropagation();
-          handleCombatClick(itemObj,isLocal,index,null,aura);
+          if (zone === 'land') handleLandTargetClick(itemObj,isLocal,index,aura);
+          else handleCombatClick(itemObj,isLocal,index,null,aura);
         });
         targets.append(button);
       }
       el.append(targets);
     }
+  if (customClick) {
+    el.addEventListener('click', customClick);
+  } else {
 // Antes acá se reimplementaba una versión más estricta de "¿puedo jugar esto?" (solo tu
 // fase principal, o responder algo que ya está en la pila), lo que dejaba a los instantáneos
 // sin poder jugarse fuera de esos dos casos — por ejemplo, como truco de combate en el turno
@@ -11041,7 +11066,7 @@ export function showAdminPanel(onBack) {
       </div>
     `).join('');
     const drawNote = sectionName === 'Premios por empate'
-      ? '<div class="admin-debug-summary">Estos valores se aplicarán cuando esté activa la liquidación de empates.</div>' : '';
+      ? '<div class="admin-debug-summary">Solo usa la duración de la partida. Torneo premia el primer empate de cada etapa y permite volver a jugarla. PvP conserva el Elo.</div>' : '';
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${drawNote}${rowsHTML}</div>`;
   }).join('');
 
@@ -11853,6 +11878,11 @@ export function showAdminPanel(onBack) {
   }
 
   function adminExpectedSoloBaseDelta(session, meta, outcome) {
+    if (outcome === 'draw') {
+      const wonPoints=adminExpectedSoloBaseDelta(session,meta,'win');
+      const long=telemetryDurationMs(session)>=DRAW_REWARDS.soloDrawLongGameMinutes*60_000;
+      return Math.floor(wonPoints*(long?DRAW_REWARDS.soloDrawLongRewardPercent:DRAW_REWARDS.soloDrawShortRewardPercent)/100);
+    }
     if (outcome === 'loss') return Math.max(0, Math.floor(Number(POINTS.lossVsTano) || 0));
     const difficulty = String(session?.difficulty || meta?.difficulty || '').toLowerCase();
     if (difficulty === 'hard') return Math.max(0, Math.floor(Number(POINTS.winVsTanoDificil) || 0));
@@ -11863,7 +11893,7 @@ export function showAdminPanel(onBack) {
 
   function adminTelemetryOutcome(session, gameResult) {
     const authoritative = String(gameResult?.result || '');
-    if (authoritative === 'win' || authoritative === 'loss') return { result: authoritative, authoritative: true };
+    if (['win','loss','draw'].includes(authoritative)) return { result: authoritative, authoritative: true };
     const fallback = telemetryOutcome(session)?.result || 'unknown';
     return { result: fallback, authoritative: false };
   }
@@ -11875,13 +11905,14 @@ export function showAdminPanel(onBack) {
       const displayStatus=telemetryAdminDisplayStatus(session);
       if(receipt){
         const won=receipt.won===true;
+        const draw=receipt.outcome==='draw';
         // La fila representa la perspectiva del owner de ESTE log: el ícono expresa si ese
         // jugador ganó/perdió y el nombre debe ser siempre el jugador local, nunca el ganador global.
-        const resultHtml=`<span class="admin-debug-result ${won?'win':'loss'}" title="Receipt de Torneo server-authoritative">${won?'🏆':'💀'} ${escapeHtml(localName)}</span>`;
+        const resultHtml=`<span class="admin-debug-result ${draw?'draw':won?'win':'loss'}" title="Receipt de Torneo server-authoritative">${draw?'Empate':won?'🏆':'💀'} ${escapeHtml(localName)}</span>`;
         const points=Math.max(0,Math.floor(Number(receipt.pointsGain)||0));
         const packs=Math.max(0,Math.floor(Number(receipt.packsGain)||0));
         const eligible=receipt.rewardEligible===true;
-        const rewardHtml=won && eligible
+        const rewardHtml=(won || draw) && eligible
           ? `<span class="admin-debug-reward ok" title="tournamentReceipt ${escapeHtml(receipt.id||'')}">✅ ${escapeHtml(gameText('admin.debug.tournamentReward',{points,packs}))}</span>`
           : `<span class="admin-debug-reward ok" title="tournamentReceipt ${escapeHtml(receipt.id||'')}">✅ ${escapeHtml(eligible?gameText('admin.debug.tournamentSettledZero'):gameText('admin.debug.tournamentPractice'))}</span>`;
         return {resultHtml,rewardHtml};
@@ -11912,7 +11943,7 @@ export function showAdminPanel(onBack) {
     // nombra al ganador: identifica que el jugador local perdió.
     let resultHtml = outcome.result === 'unknown'
       ? '<span class="admin-debug-reward unknown">—</span>'
-      : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(localName)}</span>`;
+      : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'draw' ? 'Empate' : outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(localName)}</span>`;
 
     if (reward) {
       if (reward.rewardReason === 'match_not_started') {
@@ -14630,7 +14661,7 @@ export function showTournamentScreen(onBack, onPlayMatch) {
     if(busy||!pending?.tournamentId||!pending?.matchId)return;
     setBusy(true);
     try{
-      await settleTournamentMatch(pending.tournamentId,pending.matchId,pending.won===true,pending.difficultyObservation);
+      await settleTournamentMatch(pending.tournamentId,pending.matchId,pending.outcome==='draw'?'draw':pending.won===true,pending.difficultyObservation);
       clearTournamentRecoveryMarkers();
       renderState(await getTournamentState({resolveInterrupted:false}));
     }catch(error){
@@ -16736,8 +16767,9 @@ export function showStackObjectChoiceModal(entries = [], title = null, onConfirm
 }
 
 export function showGameOverOverlay(didWin) {
-  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_GAME_OVER__ = { didWin: !!didWin, at: Date.now() }; return; }
-  els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
+  const draw=didWin==='draw';
+  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_GAME_OVER__ = { didWin: draw?null:!!didWin, ...(draw?{outcome:'draw'}:{}), at: Date.now() }; return; }
+  els.gameOverTitle.textContent = gameText(draw?'game.over.overlayDraw':didWin?'game.over.overlayWin':'game.over.overlayLoss', {rival:getRivalName()});
   if (els.gameOverRewardStatus) {
     els.gameOverRewardStatus.textContent = state.currentTournamentMatch
       ? gameText('tournament.match.settling')
@@ -17512,7 +17544,9 @@ export function render() {
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode'); els.localSupport.classList.remove('paying-mode');
   }
   renderStack();
-  void runStateBasedActions({ reason:'render' });
+  void runStateBasedActions({ reason:'render' }).then(changed=>{
+    if (changed && checkGameOver()) render();
+  });
   checkGameOver();
 
   // ENTREGA 22+: snapshot diagnóstico del estado estabilizado por este render.

@@ -158,6 +158,16 @@ def build(repo,output,allow_incomplete=False,mode_override=None,owner_config=Non
         relative=Path(parent).relative_to(app/'assets')
         return [name for name in names if remote_asset(relative/name,policy)]
     copy_tree(app/'assets',output/'assets',ignore=ignore_media)
+    emote_assets=[]
+    for relative,extensions in (
+        ('images/emotes', {'.webp','.gif','.png'}),
+        ('sounds/sfx', {'.opus','.mp3','.wav'}),
+    ):
+        for asset in (output/'assets'/relative).glob('*'):
+            if asset.is_file() and asset.suffix.lower() in extensions:
+                emote_assets.append(asset.relative_to(output).as_posix())
+    emote_inventory=output/'assets/data/emote-assets.json'
+    emote_inventory.write_text(json.dumps({'paths':sorted(emote_assets)},ensure_ascii=False)+'\n',encoding='utf-8')
     shutil.copyfile(app/'favicon.png',output/'favicon.png')
     write_route(output,'/jugar/',game_document(app/'index.html',revision))
     published_manifest={**game_manifest,'refreshAssets':['./jugar/index.html' if name=='./index.html' else name for name in game_manifest['refreshAssets']]}

@@ -25,6 +25,9 @@ import { resolveUntapAttempt } from './counterEngine.js';
 import { botDifficultyLabel } from './botDifficulty.js';
 import { gameRandom } from './gameRng.js';
 import { derivePerspectiveTerminalOutcome } from './gameTerminal.js';
+import { takeNextTurn } from './turnSchedule.js';
+import { leaveCombatForEndTurn } from './combatRules.js';
+import { runStateBasedActions, waitForStateBasedActions } from './main.js';
 import { markTournamentPendingSettlement, clearTournamentPendingSettlement, clearTournamentActiveMatch } from './tournamentRecovery.js';
 
 function cleanupDiscardDestination(card,isLocal) {
@@ -37,19 +40,36 @@ function cleanupDiscardDestination(card,isLocal) {
   return {zoneTo,destination,ownerIsLocal};
 }
 
-export function checkGameOver() {
+export function checkGameOver({duringResolution=false} = {}) {
+  if (state.currentMatch && !state.gameOver && !state.abandonedBy) {
+    const authority=state.multiplayerResolutionMarker?.authorityRole;
+    if (authority && authority!==state.currentMatch.myRole) return false;
+  }
+  if (state.terminalProcessedLocally || (!state.gameOver &&
+    ((!duringResolution && state.terminalCheckDepth) || state.sbaKernelRunning || state.pendingKickerResolutionContinuation))) return false;
   const terminal = derivePerspectiveTerminalOutcome(state);
-  if (!terminal || state.terminalProcessedLocally) return;
+  if (!terminal) return false;
 
   // CRÍTICO 23.19.5.5: `state.gameOver` es estado COMPARTIDO y puede llegar ya en true
   // desde Firestore. Nunca puede funcionar como guard local de terminal. Este flag puramente
   // local garantiza overlay + receipt + settlement exactamente una vez en AMBOS peers.
   const wasAlreadyGameOver = state.gameOver === true;
+  const outcome = terminal.outcome || (terminal.won ? 'win' : 'loss');
+  state.terminalOutcome = outcome;
   state.terminalProcessedLocally = true;
   state.gameOver = true;
   clearTerminalInteractions();
 
   switch (terminal.reason) {
+    case 'draw':
+      logMsg(gameText('game.over.overlayDraw'));
+      break;
+    case 'effect_loss':
+      logMsg(gameText('game.over.overlayLoss', {rival:getRivalName()}));
+      break;
+    case 'effect_win':
+      logMsg(gameText('game.over.overlayWin', {rival:getRivalName()}));
+      break;
     case 'rival_abandon':
       state.abandonProcessedLocally = true;
       logMsg(gameText('game.over.abandonWin'));
@@ -78,14 +98,16 @@ export function checkGameOver() {
 
   recordTelemetryEvent('terminal_processed_locally', {
     reason: terminal.reason,
+    outcome,
     won: terminal.won,
     mode: state.currentMatch ? 'multiplayer' : (state.currentTournamentMatch ? 'tournament' : 'solo'),
     matchId: state.currentMatch?.matchId || null,
     myRole: state.currentMatch?.myRole || null,
     syncedGameOver: wasAlreadyGameOver
   });
-  showGameOverOverlay(terminal.won);
-  awardMatchEndPoints(terminal.won);
+  showGameOverOverlay(outcome==='draw'?'draw':terminal.won);
+  awardMatchEndPoints(outcome);
+  return true;
 }
 
 
@@ -139,7 +161,9 @@ function pvpRewardNotice(result) {
   return gameText('game.points.pvpRewarded', { points: awarded });
 }
 
-function awardMatchEndPoints(won) {
+function awardMatchEndPoints(outcome) {
+  const won=outcome==='win';
+  const draw=outcome==='draw';
   if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch)return;
   // 23.20.0 — Torneo has its own exactly-once authority. Never let the generic Solo
   // receipt path award a second reward for the same game.
@@ -148,21 +172,23 @@ function awardMatchEndPoints(won) {
     if (!state.currentUser || !context.tournamentId || !context.matchId) return;
     if (els.btnRestart) els.btnRestart.disabled = true;
     showGameRewardStatus(gameText('tournament.match.settling'), 'info');
-    markTournamentPendingSettlement({ tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won, difficultyObservation:currentDifficultyObservation(state) });
-    recordTelemetryEvent('tournament_settlement_queued', { tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
-    settleTournamentMatch(context.tournamentId, context.matchId, !!won, currentDifficultyObservation(state))
+    markTournamentPendingSettlement({ tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won, outcome, difficultyObservation:currentDifficultyObservation(state) });
+    recordTelemetryEvent('tournament_settlement_queued', { tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won, outcome });
+    settleTournamentMatch(context.tournamentId, context.matchId, draw?'draw':won, currentDifficultyObservation(state))
       .then(result => {
         if (state.userProfile) {
           if (Number.isFinite(Number(result?.totalPoints))) state.userProfile.points = Number(result.totalPoints);
           if (result?.inventoryAfter) state.userProfile.inventory = result.inventoryAfter;
         }
         const round = gameText(`tournament.round.${context.roundKey}`);
-        const msg = won
+        const msg = draw
+          ? gameText('tournament.match.draw', {round,points:Number(result?.pointsGain)||0})
+          : won
           ? (result?.rewardEligible
               ? gameText('tournament.match.win', { round, points:Number(result?.pointsGain)||0, packs:Number(result?.packsGain)||0 })
               : gameText('tournament.match.winPractice', { round }))
           : gameText('tournament.match.loss', { round });
-        showGameRewardStatus(msg, won ? 'success' : 'warning');
+        showGameRewardStatus(msg, draw ? 'info' : won ? 'success' : 'warning');
         logMsg(msg);
         state.currentTournamentMatch.settled = true;
         clearTournamentPendingSettlement();
@@ -193,6 +219,7 @@ function awardMatchEndPoints(won) {
   const telemetry = getTelemetryStatus();
   const matchId = state.currentMatch?.matchId || '';
   const myRole = state.currentMatch?.myRole || '';
+  const rewardUid = state.currentUser.uid;
   const receiptId = matchId
     ? `match_${matchId}_${myRole || 'player'}`
     : (soloRecovery?.soloGameId || telemetry.sessionId);
@@ -202,12 +229,14 @@ function awardMatchEndPoints(won) {
   // only the economic settlement; Functions writes the result receipt/stats idempotently.
 
   if (state.currentMatch) {
-    clearActiveMatchId(state.currentUser.uid)
-      .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
-      .catch(() => {});
+    if (!draw) {
+      clearActiveMatchId(state.currentUser.uid)
+        .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
+        .catch(() => {});
+    }
   }
 
-  const delta = state.currentMatch
+  const delta = draw ? 0 : state.currentMatch
     ? (won ? POINTS.winVsHumano : POINTS.lossVsHumano)
     : pointsForBotGameEnd(won, state.botDifficulty);
   const difficultyLabel = botDifficultyLabel(state.botDifficulty);
@@ -223,7 +252,7 @@ function awardMatchEndPoints(won) {
     difficultyObservation:currentDifficultyObservation(state),
     baseDelta: delta,
     mode,
-    outcome: won ? 'win' : 'loss',
+    outcome,
     difficulty: mode === 'solo' ? String(state.botDifficulty || 'medium') : '',
     matchId,
     myRole,
@@ -231,9 +260,9 @@ function awardMatchEndPoints(won) {
   };
 
   // Durable antes del primer await: un F5 puede reintentar exactamente este settlement.
-  queuePendingGameReward(state.currentUser.uid, rewardPayload);
+  queuePendingGameReward(rewardUid, rewardPayload);
   recordTelemetryEvent('game_reward_queued', {
-    receiptId, mode, outcome: won ? 'win' : 'loss', baseDelta: delta,
+    receiptId, mode, outcome, baseDelta: delta,
     difficulty: mode === 'solo' ? String(state.botDifficulty || 'medium') : null,
     matchId: matchId || null
   });
@@ -243,18 +272,27 @@ function awardMatchEndPoints(won) {
         // Fuerza a subir gameOver/HP/veneno/abandonedBy. Functions 23.19.5.4 sella
         // endedAt/terminalKind/winnerRole y liquida usando sólo evidencia server-side.
         .then(() => publishMatchState({ force: true }))
-        .then(() => awardGamePointsOnce(state.currentUser.uid, rewardPayload))
-    : awardGamePointsOnce(state.currentUser.uid, rewardPayload);
+        .then(confirmed => {
+          if (draw && !confirmed) throw new Error('PVP_DRAW_SNAPSHOT_NOT_CONFIRMED');
+          return awardGamePointsOnce(rewardUid, rewardPayload);
+        })
+    : awardGamePointsOnce(rewardUid, rewardPayload);
 
   settlePromise
     .then(result => {
+      if (state.currentUser?.uid!==rewardUid) return;
+      if (mode==='multiplayer' && draw) {
+        if (state.currentMatch?.matchId===matchId) void clearActiveMatchId(rewardUid).then(()=>{
+          if (state.currentUser?.uid===rewardUid && state.userProfile?.activeMatchId===matchId) state.userProfile.activeMatchId=null;
+        }).catch(()=>{});
+      }
       const newTotal = result?.total ?? state.userProfile?.points ?? 0;
       const awarded = Math.max(0, Number(result?.appliedDelta) || 0);
       if (state.userProfile) state.userProfile.points = newTotal;
       recordTelemetryEvent('game_reward_settled', {
         receiptId,
         mode,
-        outcome: won ? 'win' : 'loss',
+        outcome,
         baseDelta: delta,
         appliedDelta: awarded,
         total: newTotal,
@@ -269,19 +307,21 @@ function awardMatchEndPoints(won) {
 
       if (mode === 'multiplayer') {
         const notice = pvpRewardNotice(result);
-        const eloNotice = pvpEloNotice(result);
+        const eloNotice = draw ? gameText('game.points.drawElo') : pvpEloNotice(result);
         const finalNotice = eloNotice ? `${notice}\n${eloNotice}` : notice;
         const limited = ['match_not_started','early_abandon','pair_limit','daily_cap'].includes(result?.rewardReason);
         showGameRewardStatus(finalNotice, limited ? 'warning' : 'success');
         logMsg(notice);
         if (eloNotice) logMsg(eloNotice);
-        if (awarded > 0 && result?.rewardReason !== 'daily_cap_partial') {
+        if (!draw && awarded > 0 && result?.rewardReason !== 'daily_cap_partial') {
           logMsg(won
             ? gameText('game.points.pvpWin', { points: awarded, total: newTotal })
             : gameText('game.points.pvpLoss', { points: awarded, total: newTotal }));
         }
       } else {
-        const msg = won
+        const msg = draw
+          ? gameText('game.points.drawSaved', {points:awarded,total:newTotal})
+          : won
           ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: awarded, total: newTotal })
           : gameText('game.points.botLoss', { points: awarded, total: newTotal });
         showGameRewardStatus(msg, 'success');
@@ -328,6 +368,11 @@ const PHASE_SEQUENCE = [
 
 export async function advanceStep() {
   if (state.gameOver) return;
+  if (state.phase==='cleanup' && state.endTurnCleanup==='priority') {
+    state.endTurnTriggerEntries = [];
+    await executeCleanupStep();
+    return;
+  }
 
   const phaseBefore = state.phase;
 
@@ -363,7 +408,7 @@ export async function advanceStep() {
 
   // Si terminamos cleanup, rotamos el jugador activo al siguiente
   if (state.phase === 'cleanup') {
-    state.activePlayer = state.activePlayer === 'local' ? 'rival' : 'local';
+    state.activePlayer = takeNextTurn(state);
     // ENTREGA 23.7 — el contador representa TURNOS globales, no "mis turnos". En
     // multiplayer cada notebook ve a sí misma como `local`; la lógica vieja incrementaba
     // sólo si el jugador NUEVO era local, condición que nunca se cumplía en el cliente que
@@ -518,6 +563,22 @@ export async function advanceStep() {
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
     scheduleSoloBotPriority(600);
   }
+}
+
+export async function endTurnFromStack(exileStack) {
+  state.endTurnTriggerEntries ||= [];
+  exileStack();
+  leaveCombatForEndTurn();
+  state.phase='cleanup';
+  state.priorityPlayer=state.activePlayer;
+  state.consecutivePasses=0;
+  resetPriorityClock('phase_change');
+  clearManaPool(state.localManaPool ||= emptyManaPool());
+  clearManaPool(state.rivalManaPool ||= emptyManaPool());
+  logMsg(gameText('game.turn.endFromStack'));
+  await runStateBasedActions({reason:'end_turn_before_cleanup'});
+  if (checkGameOver({duringResolution:true})) return;
+  await executeCleanupStep();
 }
 
 // FASE 4, ETAPA 4: la contraparte del "me detengo acá" de advanceStep() de arriba — se
@@ -779,6 +840,7 @@ export function beginActivePlayerPriorityWindow() {
 export async function passPriority(player) {
   if(state.isGuidedLearningMatch&&!state.currentMatch&&!state.currentTournamentMatch&&!guidedCanPass(player))return;
   if (state.gameOver || isMultiplayerInteractionBlocked()) return;
+  if (state.endTurnTriggerEntries) return;
 
   // 23.15.1 — las State-Based Actions y sus decisiones reglamentarias ocurren antes de
   // que cualquier jugador reciba prioridad. No aceptar pases mientras el kernel/los
@@ -1096,9 +1158,8 @@ function executeEndStep() {
   const supportZone = isLocal ? state.localSupport : state.rivalSupport;
   const attackersCount = isLocal ? state.localAttackersDeclaredThisTurn : state.rivalAttackersDeclaredThisTurn;
 
-  resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
-
   const entries = collectScheduledReturnTriggers();
+  resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
   supportZone.forEach(item => {
     const trig = item.card.endStepTrigger;
     if (!trig) return;
@@ -1122,6 +1183,19 @@ function executeDrawStep() {
 
 async function executeCleanupStep() {
   const isLocal = state.activePlayer === 'local';
+  if (state.endTurnTriggerEntries) {
+    // Cleanup discards before damage and until-end-of-turn effects expire.
+    const excess=(isLocal?state.localHand:state.rivalHand).length-7;
+    if (excess>0 && isLocal) {
+      state.endTurnCleanup='discard';
+      state.isDiscarding=true;
+      state.cardsToDiscard=excess;
+      logMsg(gameText('game.handLimit.prompt',{count:excess}));
+      render();
+      return;
+    }
+    if (excess>0 && !state.currentMatch) discardBotHandExcess(excess);
+  }
 
   // 23.16.2: los permisos de Cast-from-Exile tienen duración de reglas y expiran en
   // Cleanup, antes de pasar el turno. `until_end_of_next_turn` sólo consume cierres del
@@ -1129,8 +1203,10 @@ async function executeCleanupStep() {
   expireExilePlayPermissionsForCleanup(isLocal);
   
   // Limpiamos el daño residual
-  state.localCombat.forEach(c => c.damageTaken = 0);
-  state.rivalCombat.forEach(c => c.damageTaken = 0);
+  for (const creature of [...state.localCombat,...state.rivalCombat]) {
+    creature.damageTaken=0;
+    delete creature.lethalThroughShield;
+  }
 
   // Trucos de combate "hasta el final del turno" (ej. Fuerza de Toro, A Cubierto) y Fog:
   // todo lo temporal expira acá, en Limpieza.
@@ -1175,6 +1251,27 @@ async function executeCleanupStep() {
   // 23.15.2: los cambios de control 'hasta el final del turno' terminan en Limpieza.
   expireTemporaryControlEffects();
 
+  if (state.endTurnTriggerEntries) {
+    state.activeEffects=(state.activeEffects || []).filter(effect => !(
+      (effect.effectType==='prevent_damage' && effect.expiresAtCleanup!==false) ||
+      (effect.effectType==='cant_attack_next_turn' && effect.targetPlayer===state.activePlayer && effect.appliesThisCombat)
+    ));
+    await runStateBasedActions({reason:'end_turn_cleanup'});
+    if (checkGameOver({duringResolution:true})) return;
+    const triggers=state.endTurnTriggerEntries;
+    state.endTurnTriggerEntries=null;
+    queueTriggeredAbilities(triggers);
+    await waitForStateBasedActions();
+    if (spellStack.length) {
+      state.endTurnCleanup='priority';
+      beginActivePlayerPriorityWindow();
+      return;
+    }
+    state.endTurnCleanup=null;
+    await advanceStep();
+    return;
+  }
+
   // Lógica de descarte habitual...
   if (isLocal) {
     const excess = state.localHand.length - 7;
@@ -1186,35 +1283,61 @@ async function executeCleanupStep() {
       return;
     }
   } else {
-    const rivalExcess = state.rivalHand.length - 7;
-    // HF15 — Medio/Difícil dejan de ignorar strategicDiscard: protegen removal, engines,
-    // cartas casteables/sinérgicas y descartan el recurso de menor valor. Fácil conserva RNG.
-    reportBotStrategicTurnAtCleanup({ excessDiscardCount:rivalExcess });
-    for (let i = 0; i < rivalExcess; i++) {
-      const strategicIndex = chooseBotCleanupDiscardIndex();
-      const randomIndex = strategicIndex >= 0
-        ? strategicIndex
-        : Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
-      const discarded = state.rivalHand.splice(randomIndex,1)[0];
-      const plan=cleanupDiscardDestination(discarded,false);
-      plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discarded) : discarded);
-      dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
-      if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
-      logMsg(gameText('game.handLimit.botDiscard', { card: discarded.name }));
-    }
+    discardBotHandExcess(state.rivalHand.length - 7);
   }
 
-  // Avanzamos turno automáticamente si no requiere descarte interactivo
-  // BUGFIX: faltaba este await — advanceStep() es async, y sin esperarlo acá, quien llamó
-  // a ESTA función (el advanceStep() de más arriba, que ya te está esperando a VOS con su
-  // propio await) daba por completada la transición de turno cuando en realidad la
-  // continuación recursiva (pasar de limpieza al enderezar del turno siguiente) todavía
-  // podía seguir en curso en el fondo. Mismo patrón de bug que ya se arregló para
-  // resolveCombatDamage().
   await advanceStep();
 }
 
+function discardBotHandExcess(rivalExcess) {
+  // El descarte estratégico conserva recursos de mayor valor en Medio y Difícil.
+  reportBotStrategicTurnAtCleanup({ excessDiscardCount:rivalExcess });
+  for (let i = 0; i < rivalExcess; i++) {
+    const strategicIndex = chooseBotCleanupDiscardIndex();
+    const index = strategicIndex >= 0 ? strategicIndex : Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
+    const discarded = state.rivalHand.splice(index,1)[0];
+    const plan=cleanupDiscardDestination(discarded,false);
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discarded) : discarded);
+    dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
+    if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
+    logMsg(gameText('game.handLimit.botDiscard', { card: discarded.name }));
+  }
+}
+
 export async function handleDiscardClick(index) {
+  if (state.endTurnCleanup==='discard' && (state.gameOver || !state.isDiscarding ||
+    state.multiplayerResolutionMarker || state.multiplayerSyncBlocked || state.multiplayerSessionSuperseded ||
+    !state.localHand[index])) return;
+  const match = state.currentMatch;
+  if (match && state.endTurnCleanup==='discard' && state.cardsToDiscard===1) {
+    const marker = {
+      authorityRole:match.myRole, kind:'step_advance', stackId:null,
+      turnCount:state.turnCount, phase:'cleanup', startedAtClientMs:Date.now()
+    };
+    const card = state.localHand[index];
+    state.multiplayerResolutionMarker = marker;
+    render();
+    let confirmed = false;
+    try {
+      confirmed = await publishMatchState({force:true});
+      if (confirmed && state.currentMatch===match && !state.gameOver && state.localHand[index]===card) {
+        state.stackResolutionAuthority = true;
+        await commitCleanupDiscard(index);
+      }
+    } finally {
+      if (state.currentMatch===match) {
+        state.multiplayerResolutionMarker = null;
+        render();
+        try { if (confirmed) await publishMatchState({force:true}); }
+        finally { state.stackResolutionAuthority = false; }
+      }
+    }
+    return;
+  }
+  await commitCleanupDiscard(index);
+}
+
+async function commitCleanupDiscard(index) {
   const discardedCard=state.localHand.splice(index,1)[0];
   const plan=cleanupDiscardDestination(discardedCard,true);
   plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discardedCard) : discardedCard);
@@ -1229,7 +1352,8 @@ export async function handleDiscardClick(index) {
     // BUGFIX: faltaba este await — mismo patrón que executeCleanupStep/resolveCombatDamage.
     // Sin él, el render() de acá abajo podía correr con la transición de turno todavía a
     // medio resolver en el fondo.
-    await advanceStep();
+    if (state.endTurnCleanup==='discard') await executeCleanupStep();
+    else await advanceStep();
   }
   
   render();

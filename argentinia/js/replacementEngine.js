@@ -95,6 +95,8 @@ function specMatches(spec,event,sourceIsLocal){
   if(filter.zoneFrom && filter.zoneFrom!==event.zoneFrom) return false;
   if(filter.zoneTo && filter.zoneTo!==event.zoneTo) return false;
   if(filter.cause && filter.cause!==event.cause) return false;
+  if(filter.excludeCause && filter.excludeCause===event.cause) return false;
+  if(filter.targetKind && filter.targetKind!==event.targetKind) return false;
   if(filter.combat!==undefined && !!filter.combat!==!!event.combat) return false;
   if(filter.counterType && filter.counterType!==(event.counterType || event.metadata?.counterType)) return false;
   if(filter.minAmount!==undefined && Number(event.amount||0)<Number(filter.minAmount)) return false;
@@ -102,21 +104,28 @@ function specMatches(spec,event,sourceIsLocal){
   return true;
 }
 
-function stableReplacementId(sourceItem,spec,index){
-  const sid=sourceItem?._syncObjectId || sourceItem?._effectObjectId || sourceItem?.card?.id || sourceItem?.card?.name || 'source';
-  return String(spec.id || `${sid}:replacement:${index}`);
+function stableReplacementId(sourceItem,spec,index,sourceSlot){
+  const sid=sourceItem?._syncObjectId || sourceItem?._effectObjectId || `battlefield:${sourceSlot}`;
+  return `${sid}:replacement:${index}${spec.id ? `:${spec.id}` : ''}`;
 }
 
 function collectStaticCandidates(state,event){
   const out=[];
-  for(const {item,isLocal} of battlefieldEntries(state)){
+  battlefieldEntries(state).forEach(({item,isLocal},sourceSlot)=>{
     const specs=cardSpecs(item?.card);
     specs.forEach((spec,index)=>{
       if(!sourceActive(item,spec) || !specMatches(spec,event,isLocal)) return;
-      out.push({kind:'static',id:stableReplacementId(item,spec,index),spec,sourceItem:item,sourceCard:item.card,sourceIsLocal:isLocal,priority:Number(spec.priority||0)});
+      if(event.cannotRegenerate && (spec.action || spec.mode)==='regenerate') return;
+      if(event.cannotPreventDamage && event.type==='damage' && isDamagePreventionSpec(spec) && !spec.addSourceCounter) return;
+      out.push({kind:'static',id:stableReplacementId(item,spec,index,sourceSlot),spec,sourceItem:item,sourceCard:item.card,sourceIsLocal:isLocal,priority:Number(spec.priority||0)});
     });
-  }
+  });
   return out;
+}
+
+function isDamagePreventionSpec(spec) {
+  return spec.type==='prevention_effect' || (spec.action || spec.mode)==='prevent' ||
+    spec.prevent===true || spec.preventAll===true || spec.preventAmount!==undefined;
 }
 
 function activeEffectTargetMatches(effect,event){
@@ -133,7 +142,7 @@ function activeEffectTargetMatches(effect,event){
 }
 
 function collectActivePrevention(state,event){
-  if(event.type!=='damage') return [];
+  if(event.type!=='damage' || event.cannotPreventDamage) return [];
   return (state?.activeEffects || []).flatMap((effect,index)=>{
     if(!['prevent_damage','prevent_next_damage'].includes(effect?.effectType)) return [];
     if(!activeEffectTargetMatches(effect,event)) return [];
@@ -145,6 +154,7 @@ function collectActivePrevention(state,event){
 
 function collectShieldCounter(state,event){
   const item=event.item || event.targetItem;
+  if(event.type==='destroy' && event.bypassShield) return [];
   if(getCounterCount(item,'shield')<=0) return [];
   if(event.type!=='damage' && event.type!=='destroy') return [];
   if(event.type==='damage' && Math.max(0,Number(event.amount)||0)<=0) return [];
@@ -174,6 +184,16 @@ function applyStaticSpec(event,spec){
     out.amount=Math.max(0,Number(out.amount||0)-p); if(out.amount===0) out.prevented=true;
   }
   if(action==='prevent_destroy' && out.type==='destroy') out.prevented=true;
+  if(action==='regenerate' && out.type==='destroy') {
+    out.prevented=true;
+    out.regenerated=true;
+  }
+  if(action==='floor_from_damage' && out.type==='damage_life_loss') {
+    const floor=Number(spec.lifeFloor);
+    if(Number.isFinite(floor) && Number(event.lifeBefore)>=floor) {
+      out.amount=Math.min(out.amount,Number(event.lifeBefore)-floor);
+    }
+  }
   return out;
 }
 
@@ -184,8 +204,8 @@ function applyCandidate(state,event,candidate){
     const removed=Math.max(0,Number(change?.removed)||0);
     return {
       ...event,
-      amount:event.type==='damage'?0:event.amount,
-      prevented:true,
+      amount:event.type==='damage' && !event.cannotPreventDamage ? 0 : event.amount,
+      prevented:!event.cannotPreventDamage || event.type==='destroy',
       shieldCounterConsumed:removed>0,
       counterRemovedByReplacement:removed>0 ? {
         counterType:'shield',
@@ -207,7 +227,16 @@ function applyCandidate(state,event,candidate){
     } else if(effect.consumeOnUse!==false) state.activeEffects.splice(candidate.activeIndex,1);
     return out;
   }
-  return applyStaticSpec(event,candidate.spec || {});
+  const spec=candidate.spec || {};
+  const out=event.cannotPreventDamage && event.type==='damage' && isDamagePreventionSpec(spec)
+    ? {...event} : applyStaticSpec(event,spec);
+  if (event.type==='damage' && Number(event.amount)>0 && spec.addSourceCounter) {
+    const {type,amount=1}=spec.addSourceCounter;
+    out.countersFromPrevention=[...(out.countersFromPrevention || []),{
+      item:candidate.sourceItem,isLocal:candidate.sourceIsLocal,type,amount
+    }];
+  }
+  return out;
 }
 
 
@@ -258,6 +287,17 @@ export function resolveReplacementEvent(state,rawEvent={},options={}){
     if(event.prevented && (event.type==='destroy' || Number(event.amount||0)<=0)) break;
   }
   return {event,prevented:!!event.prevented,applied,changed:applied.length>0};
+}
+
+export function damageLifeLoss(state,{amount,targetIsLocal,sourceCard,sourceItem,combat=false,cause='damage'}) {
+  const key=targetIsLocal ? 'localHP' : 'rivalHP';
+  const lifeBefore=Number(state?.[key]);
+  const damage=Math.max(0,Number(amount)||0);
+  if(!damage || !Number.isFinite(lifeBefore)) return 0;
+  return resolveReplacementEvent(state,{
+    type:'damage_life_loss', amount:damage, lifeBefore, targetKind:'player', targetIsLocal,
+    sourceCard, sourceItem, combat, cause
+  }).event.amount;
 }
 
 export function replacementEngineSummary(){

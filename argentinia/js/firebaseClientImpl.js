@@ -27,7 +27,8 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, startAfter, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc as sdkGetDoc, getDocFromServer as sdkGetDocFromServer, setDoc as sdkSetDoc, updateDoc as sdkUpdateDoc, deleteDoc as sdkDeleteDoc, runTransaction as sdkRunTransaction, serverTimestamp, deleteField, onSnapshot as sdkOnSnapshot, getDocs as sdkGetDocs, getDocsFromServer as sdkGetDocsFromServer, collection as sdkCollection, query as sdkQuery, orderBy, limit, startAfter, where, documentId, writeBatch as sdkWriteBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { ARTIFACT_SPELL_MANA } from './manaPool.js';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken as getAppCheckToken } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_EVOLVED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -739,7 +740,7 @@ async function settleGameRewardOnce(uid, reward = {}) {
   const response = await settleMatchRewardServer({
     receiptId,
     mode,
-    outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    outcome: ['loss','draw'].includes(reward.outcome) ? reward.outcome : 'win',
     difficulty: mode === 'solo' ? reward.difficulty : '',
     ...(mode==='solo' && reward.difficultyObservation ? {difficultyObservation:reward.difficultyObservation} : {}),
     matchId: mode === 'multiplayer' ? matchIdFromReward(reward) : '',
@@ -2496,6 +2497,20 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
       privateWrite = { ...(privatePatch || {}), _syncRevision: nextRevision };
     }
 
+    // A merged write keeps omitted nested keys. Remove restriction entries explicitly
+    // when they are spent or when the phase empties the pool.
+    for (const field of ['hostManaPool', 'guestManaPool']) {
+      const pool = publicWrite[field];
+      const previous = current[field]?.[ARTIFACT_SPELL_MANA];
+      if (!pool || !previous) continue;
+      const remaining = pool[ARTIFACT_SPELL_MANA];
+      if (!remaining) publicWrite[field] = { ...pool, [ARTIFACT_SPELL_MANA]:deleteField() };
+      else {
+        const bucket = { ...remaining };
+        for (const type of Object.keys(previous)) if (!(type in bucket)) bucket[type] = deleteField();
+        publicWrite[field] = { ...pool, [ARTIFACT_SPELL_MANA]:bucket };
+      }
+    }
     tx.set(matchRef, publicWrite, { merge: true });
     if (privateWrite) tx.set(privateRef, privateWrite, { merge: true });
     return {
