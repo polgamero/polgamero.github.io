@@ -41,6 +41,10 @@ function injectStartingCoinStyles() {
 
     .starting-coin-shadow{position:absolute;left:50%;bottom:24px;width:116px;height:22px;transform:translateX(-50%);border-radius:50%;background:rgba(0,0,0,.44);filter:blur(9px);opacity:.72;}
     .starting-coin-result{min-height:32px;font-size:21px;font-weight:900;color:#f6e6ae;opacity:0;transform:translateY(6px);transition:opacity .30s ease,transform .30s ease}.starting-coin-result.is-visible{opacity:1;transform:none}
+    .resolution-coin .starting-coin-panel{width:min(86vw,340px);padding:16px;}
+    .resolution-coin .starting-coin-stage{height:144px;}
+    .resolution-coin .starting-coin-flight{scale:.63;}
+    .resolution-coin .starting-coin-result{font-size:17px;}
     .starting-coin.has-landed .starting-coin-face.is-camera-visible{box-shadow:inset 0 0 0 3px rgba(255,244,170,.35),inset -9px -10px 18px rgba(72,43,4,.33),0 0 24px rgba(231,189,67,.30);}
     @media (prefers-reduced-motion:reduce){.starting-coin,.starting-coin-flight{animation:none!important;transition:none!important}}
   `;
@@ -103,8 +107,8 @@ function approvedSpinEase(progress) {
   return bezierCoord(t, .72, 1);
 }
 
-function animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced }) {
-  const duration = reduced ? 120 : COIN_SPIN_MS;
+function animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced, compact }) {
+  const duration = reduced ? 120 : compact ? 1100 : COIN_SPIN_MS;
   const finalDegrees = COIN_TURNS * 360 + (winnerSide === 'rival' ? 180 : 0);
 
   if (reduced || typeof requestAnimationFrame !== 'function') {
@@ -116,6 +120,7 @@ function animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSi
 
   const startedAt = performance.now();
   const frame = (now) => {
+    if (!coin.isConnected) return;
     const raw = Math.max(0, Math.min(1, (now - startedAt) / duration));
     const eased = approvedSpinEase(raw);
     const spinDegrees = finalDegrees * eased;
@@ -149,15 +154,16 @@ function animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSi
   return { duration, finalDegrees };
 }
 
-export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local' } = {}) {
+function presentCoin({ localName, rivalName, winnerSide = 'local', title, subtitle, resultText, compact = false, signal } = {}) {
+  if (signal?.aborted || typeof document === 'undefined') return Promise.resolve(winnerSide);
   injectStartingCoinStyles();
-  document.getElementById('starting-coin-overlay')?.remove();
   const local = safeName(localName, 'El Gaucho');
   const rival = safeName(rivalName, 'El Tano');
   const winner = winnerSide === 'rival' ? rival : local;
   const overlay = document.createElement('div');
-  overlay.id = 'starting-coin-overlay';
-  overlay.className = 'starting-coin-overlay';
+  overlay.id = compact ? 'resolution-coin-overlay' : 'starting-coin-overlay';
+  document.getElementById(overlay.id)?.remove();
+  overlay.className = compact ? 'starting-coin-overlay resolution-coin' : 'starting-coin-overlay';
   overlay.innerHTML = `
     <div class="starting-coin-panel" role="dialog" aria-modal="true">
       <div class="starting-coin-title"></div>
@@ -174,16 +180,17 @@ export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local
       </div>
       <div class="starting-coin-result"></div>
     </div>`;
-  overlay.querySelector('.starting-coin-title').textContent = gameText('game.start.coin.title');
-  overlay.querySelector('.starting-coin-subtitle').textContent = gameText('game.start.coin.subtitle');
+  overlay.querySelector('.starting-coin-title').textContent = title || gameText('game.start.coin.title');
+  overlay.querySelector('.starting-coin-subtitle').textContent = subtitle || gameText('game.start.coin.subtitle');
   overlay.querySelector('.starting-coin-front span').textContent = local;
   overlay.querySelector('.starting-coin-back span').textContent = rival;
   const result = overlay.querySelector('.starting-coin-result');
-  result.textContent = gameText('game.start.coin.result', { player: winner });
+  result.setAttribute('role','status');
+  result.textContent = resultText || gameText('game.start.coin.result', { player: winner });
   document.body.appendChild(overlay);
   // RC5.2 — cover stale/empty board initialization until the coin is actually mounted.
   // The coin is now the first gameplay visual frame the player sees.
-  try { globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__?.(); } catch {}
+  if (!compact) { try { globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__?.(); } catch {} }
 
   return new Promise(resolve => {
     const coin = overlay.querySelector('.starting-coin');
@@ -196,15 +203,47 @@ export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local
     // EXACTAMENTE una reproducción por sorteo y justo antes del primer frame de animación.
     // El Audio Manager elige moneda.opus y deja moneda.mp3 como fallback; respeta SFX ON/OFF y volumen.
     playSfx('coinToss');
-    const { duration } = animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced });
+    const { duration } = animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced, compact });
+    let holdTimer;
+    const close = () => {
+      clearTimeout(spinTimer);
+      clearTimeout(holdTimer);
+      signal?.removeEventListener('abort',close);
+      overlay.remove();
+      resolve(winnerSide);
+    };
+    signal?.addEventListener('abort',close,{once:true});
 
-    setTimeout(() => {
+    const spinTimer = setTimeout(() => {
       coin.classList.add('has-landed');
       result.classList.add('is-visible');
-      setTimeout(() => {
-        overlay.remove();
-        resolve(winnerSide);
-      }, reduced ? 900 : COIN_RESULT_HOLD_MS);
+      holdTimer = setTimeout(close,compact ? 550 : reduced ? 900 : COIN_RESULT_HOLD_MS);
     }, duration + (reduced ? 20 : 100));
   });
+}
+
+export function showStartingCoinToss(options) {
+  return presentCoin(options);
+}
+
+export function showResolutionCoinToss({ actor, opponent, source, won, faces, signal } = {}) {
+  const name = safeName(actor,'Jugador');
+  const winnerSide=won ? 'local' : 'rival';
+  const resultText=faces ? faces[won ? 0 : 1] : `${name} ${won ? 'ganó' : 'perdió'} la tirada`;
+  const options={localName:faces?.[0] || name,rivalName:faces?.[1] || opponent,winnerSide,title:'Lanzamiento de moneda',
+    subtitle:`${source || 'Efecto'} · ${name} tira la moneda`,resultText,compact:true,signal};
+  const fallback=()=>{
+    document.getElementById('resolution-coin-overlay')?.remove();
+    if (signal?.aborted) return winnerSide;
+    const overlay=document.createElement('div');
+    overlay.className='starting-coin-overlay resolution-coin';
+    overlay.id='resolution-coin-overlay';
+    const message=document.createElement('div');
+    message.className='starting-coin-panel';
+    message.setAttribute('role','status');
+    message.textContent=`${options.subtitle}. ${resultText}`;
+    overlay.append(message);document.body.append(overlay);
+    return new Promise(resolve=>setTimeout(()=>{overlay.remove();resolve(winnerSide);},550));
+  };
+  try { return presentCoin(options).catch(fallback); } catch { return Promise.resolve(fallback()); }
 }

@@ -29,6 +29,9 @@ import { takeNextTurn } from './turnSchedule.js';
 import { leaveCombatForEndTurn } from './combatRules.js';
 import { runStateBasedActions, waitForStateBasedActions } from './main.js';
 import { markTournamentPendingSettlement, clearTournamentPendingSettlement, clearTournamentActiveMatch } from './tournamentRecovery.js';
+import { beginSharedHandRefillAfterPasses } from './main.js';
+import { devourResolutionKind } from './devour.js';
+import { phaseSevenEffectKind, SHARED_REFILL_PROTOCOL } from './sharedHandRefill.js';
 
 function cleanupDiscardDestination(card,isLocal) {
   const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
@@ -42,6 +45,8 @@ function cleanupDiscardDestination(card,isLocal) {
 
 export function checkGameOver({duringResolution=false} = {}) {
   if (state.currentMatch && !state.gameOver && !state.abandonedBy) {
+    const shared=state.multiplayerResolutionMarker?.sharedHandRefill;
+    if (shared?.redirect || shared?.control || shared?.chain) return false;
     const authority=state.multiplayerResolutionMarker?.authorityRole;
     if (authority && authority!==state.currentMatch.myRole) return false;
   }
@@ -543,7 +548,7 @@ export async function advanceStep() {
   }
 
   if (state.phase === 'end_step') {
-    const queued = executeEndStep();
+    const queued = await executeEndStep();
     if (queued.length && state.currentMatch) await waitForTriggerOrdering();
     render();
     // En el Paso Final también hay prioridad
@@ -777,7 +782,8 @@ if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') 
 
 function hasSoloInteractiveResolutionPending() {
   return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingSuspendCastChoice ||
-    state.pendingGraveyardChoice?.reason === 'public_zone_target' || state.pendingPublicEffectResolution);
+    state.pendingGraveyardChoice?.reason === 'public_zone_target' || state.pendingPublicEffectResolution ||
+    state.pendingSacrificeEffectChoice?.reason==='devour');
 }
 
 function soloRuntimeIsHidden() {
@@ -847,7 +853,7 @@ export async function passPriority(player) {
   // selectores de Leyenda/orden de triggers estén estabilizando el estado.
   if (state.pendingLegendChoice || state.pendingTriggerOrderChoice || state.sbaKernelRunning) return;
   if (state.pendingGraveyardChoice?.reason === 'public_zone_target' || state.pendingPublicEffectResolution ||
-      state.pendingPrivateZoneChoice) return;
+      state.pendingPrivateZoneChoice || state.pendingSacrificeEffectChoice?.reason==='devour') return;
   if (state.multiplayerResolutionMarker?.kind === 'stack_resolution') return;
 
   // NUEVO: Bloqueo de seguridad si hay que descartar
@@ -948,6 +954,13 @@ export async function resolveBothPassed() {
     // Mi pase puede ser el segundo aunque el objeto superior lo controle el rival. Publico
     // el contador=2 y espero a que el listener del controlador tome la resolución.
     render();
+    return;
+  }
+
+  const effect = topStackItem?.type === 'ability' ? topStackItem.ability?.effect : topStackItem?.card?.effect;
+  if (state.currentMatch?.engineProtocolVersion === SHARED_REFILL_PROTOCOL &&
+      (phaseSevenEffectKind(effect,topStackItem?.targetObj) || devourResolutionKind(topStackItem,state.localGraveyard))) {
+    await beginSharedHandRefillAfterPasses();
     return;
   }
 
@@ -1153,13 +1166,14 @@ function executeUpkeepStep() {
 // Habilidad Disparada por fase con condición opcional (ej. Hinchada Fervorosa: "si atacaste con
 // 2 o más criaturas este turno, robás"). Misma simplificación que el resto: resuelve directo,
 // sin pasar por la pila.
-function executeEndStep() {
+async function executeEndStep() {
   const isLocal = state.activePlayer === 'local';
   const supportZone = isLocal ? state.localSupport : state.rivalSupport;
   const attackersCount = isLocal ? state.localAttackersDeclaredThisTurn : state.rivalAttackersDeclaredThisTurn;
 
   const entries = collectScheduledReturnTriggers();
-  resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
+  const returning = resolveScheduledReturns(isLocal);
+  if (returning) await returning;
   supportZone.forEach(item => {
     const trig = item.card.endStepTrigger;
     if (!trig) return;

@@ -1,5 +1,8 @@
+import { isCreaturePermanent } from './permanentTypes.js';
+
 const battlefieldTargetTypes = {
   creature: ['creature'],
+  artifact_or_creature: ['creature', 'permanent'],
   creature_or_planeswalker: ['creature', 'planeswalker'],
   permanent: ['creature', 'planeswalker', 'land', 'permanent', 'aura']
 };
@@ -19,9 +22,14 @@ export function graveyardForSide(state, isLocal) {
   return isLocal ? state.localGraveyard : state.rivalGraveyard;
 }
 
+export function matchesGraveyardEffectCard(card,effect) {
+  return !!card && !card.isToken && (!effect.cardType ||
+    (effect.cardType === 'creature' && isCreaturePermanent(card)));
+}
+
 export function graveyardTargets(state, controllerIsLocal, effect) {
   const sides = effect.graveyard === 'own' ? [controllerIsLocal] : [true, false];
-  return sides.flatMap(isLocal => graveyardForSide(state, isLocal).filter(card => card && !card.isToken)
+  return sides.flatMap(isLocal => graveyardForSide(state, isLocal).filter(card=>matchesGraveyardEffectCard(card,effect))
     .map(card => ({type:'graveyard',isLocal,card})));
 }
 

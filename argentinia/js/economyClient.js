@@ -61,6 +61,10 @@ async function call(name, payload = {}) {
   }
 }
 
+export function rollMatchResolutionCoin(matchId,stackId,slot,sessionId) {
+  return call('multiplayerRollResolutionCoin',{matchId,stackId,slot,sessionId});
+}
+
 // Bootstrap/starter receipts must not be permanent functions of uid: deleting and
 // recreating the in-game profile can keep the same Firebase Auth uid while the old
 // economyOperations ledger intentionally survives. Callers normally pass a journaled

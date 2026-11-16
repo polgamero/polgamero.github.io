@@ -61,10 +61,15 @@ import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActi
 
 import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
 import { addToStack, spellStack, isStackItemLegalCounterTarget, isStackItemLegalCopyTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { botRedirectStackChoice } from './stackManager.js';
+import { REDIRECT_EFFECT, stackSpellManaValue } from './stackRedirect.js';
+import { isSpellObject } from './spellControl.js';
+import { settleWardForCommittedStackItem } from './main.js';
 import { gameText } from './gameTexts.js';
 import { isSoloPriorityFullControl } from './ui.js';
 import { manaAvailableForPayment, manaPoolTotal, manaCostTotal, spendCostAutomatically } from './manaPool.js';
 import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana, meetsActivatedHandSize } from './manaSources.js';
+import { getAttachedLandManaAuras } from './landStax.js';
 import { readPaymentSources, planManaSources, maximumAffordableX } from './xCostPayment.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
@@ -103,7 +108,8 @@ function botManaAmount(item, isLocal = false, readyOnly = false) {
   const hasHaste = hasKeyword(item, 'haste');
   return Math.max(0, ...botEffectiveManaAbilities(item,isLocal).filter(ability=>!ability.spendOnly &&
     (!readyOnly || canActivateManaSourcePermanent(item,{hasHaste,ability})))
-    .map(ability=>manaProductionAmount(state,isLocal,ability)));
+    .map(ability=>manaProductionAmount(state,isLocal,ability) +
+      (ability.requiresTap ? getAttachedLandManaAuras(item).length : 0)));
 }
 
 // HF23.3.5 — la Regla de Leyenda sigue siendo una SBA legal del motor, pero el Tano no
@@ -770,6 +776,67 @@ function chooseBotMode(card) {
   return idx !== -1 ? idx : 0;
 }
 
+function isRedirectFamily(card) {
+  return [REDIRECT_EFFECT,'coin_control_spell'].includes(card.effect?.type) || card.modes?.some(mode=>mode.effect?.type === REDIRECT_EFFECT);
+}
+
+function botRedirectFamilyTargets(effect,card) {
+  if (effect?.type==='coin_control_spell') {
+    const threats=spellStack.filter(item=>isSpellObject(item) && item.isLocal)
+      .filter(item=>!item.card.cannotBeCountered || stackSpellManaValue(item)>=3)
+      .sort((a,b)=>stackSpellManaValue(b)-stackSpellManaValue(a));
+    const target=threats[0];
+    return target ? {type:'stack',stackId:target.id} : null;
+  }
+  if (effect?.type === REDIRECT_EFFECT) {
+    const original = botRedirectStackChoice(effect,card);
+    return original ? {type:'stack',stackId:original.id} : null;
+  }
+  if (!['destroy_artifact','prevent_block_this_turn'].includes(effect?.type)) return null;
+  const isBlock = effect.type === 'prevent_block_this_turn';
+  if (isBlock && (state.activePlayer !== 'rival' || !['main1','combat_begin','combat_attackers'].includes(state.phase))) return null;
+  const attackers = isBlock ? state.rivalCombat.filter(unit=>!unit.tapped &&
+    (!unit.summoningSickness || hasKeyword(unit,'haste')) && !hasKeyword(unit,'defender')) : [];
+  const candidates = getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false})
+    .filter(target=>target.isLocal && (isBlock
+      ? !target.item.tapped && attackers.some(attacker=>canBlock(attacker,target.item))
+      : !hasKeyword(target.item,'indestructible')))
+    .sort((left,right)=>botTargetThreatScore(right)-botTargetThreatScore(left));
+  if (isBlock && (effect.maxTargets || 1) > 1 && candidates.length >= 2) return {type:'multi',targets:candidates.slice(0,2)};
+  return candidates[0] || null;
+}
+
+async function tryBotRedirectFamilyCast() {
+  for (const original of state.rivalHand) {
+    if (!isRedirectFamily(original) || !original.type.includes('Instantáneo')) continue;
+    const modes = original.modal ? [...original.modes].sort((a,b)=>Number(b.effect?.type===REDIRECT_EFFECT)-Number(a.effect?.type===REDIRECT_EFFECT))
+      : [{effect:original.effect,requiresTarget:true}];
+    for (const mode of modes) {
+      const card = {...original,effect:mode.effect,requiresTarget:mode.requiresTarget,...(mode.text ? {chosenModeText:mode.text} : {})};
+      const target = botRedirectFamilyTargets(card.effect,card);
+      if (!target) continue;
+      if (target.type === 'multi') {
+        card.multiTarget = true;
+        card.targets = target.targets.map(()=>({effect:card.effect}));
+      }
+      const route = chooseBotCastRoute(card,{excludeCard:original});
+      if (route === null) continue;
+      await payBotCastRoute(card,route,{excludeCard:original});
+      state.rivalHand.splice(state.rivalHand.indexOf(original),1);
+      const stackItem = {type:'instant',card,isLocal:false,targetObj:target};
+      addToStack(stackItem);
+      await triggerSpellCast(false,card,stackItem,{manaTriggers:state.deferredLandManaTriggers.splice(0)});
+      await settleWardForCommittedStackItem(stackItem,false);
+      state.priorityPlayer='local';
+      state.consecutivePasses=0;
+      logMsg(gameText('bot.instantResponse',{card:card.name}));
+      render();
+      return true;
+    }
+  }
+  return false;
+}
+
 export function canRivalAfford(card, options = null) {
   const cost = options?.parsedCost || parseManaCost(card.manaCost);
   return planManaSources(state.rivalManaPool,cost,readPaymentSources(state,false,{
@@ -787,8 +854,8 @@ export function tapRivalLandsFor(card, options = null) {
     excludeItems,hasHaste:item=>hasKeyword(item,'haste')
   }),allowsRestricted);
   if (!plan) throw new Error('Tano no puede pagar el coste completo sin dejar deuda');
-  for (const { item, type, ability } of plan) {
-    if (!activateRivalManaSource(item,type,ability)) throw new Error('Fuentes del Tano cambiaron durante el pago');
+  for (const { item, type, ability, bonusTypes } of plan) {
+    if (!activateRivalManaSource(item,type,ability,bonusTypes)) throw new Error('Fuentes del Tano cambiaron durante el pago');
   }
   if (!spendCostAutomatically(state.rivalManaPool,remaining,allowsRestricted)) throw new Error('Fuentes del Tano cambiaron durante el pago');
 }
@@ -976,6 +1043,7 @@ export async function checkRivalCounterOrResponse() {
   await botThinkDelay(600);
   // Si se activó Ctrl mientras el Tano estaba pensando, retener igual la prioridad.
   if (state.priorityPlayer === 'local' && isSoloPriorityFullControl()) return false;
+  if (await tryBotRedirectFamilyCast()) return true;
 
   // ETAPA 1 (Grupo C, IA reactiva): si algo en la pila amenaza con destruir/exiliar/matar
   // (de daño letal) a una criatura del Tano, y tiene un instantáneo que le dé Intocable
@@ -1024,6 +1092,7 @@ export async function checkRivalCounterOrResponse() {
   }
 
   const responseIndex = state.rivalHand.findIndex(c => {
+    if (isRedirectFamily(c)) return false;
     const hasFlash = c.keywords && c.keywords.includes('flash');
     if (!(c.type.includes('Instantáneo') || hasFlash) || chooseBotCastRoute(c, { excludeCard: c }) === null) return false;
 
@@ -1449,11 +1518,15 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       const costStr = ability.cost || '';
       const requiresTap = costStr.includes('{T}');
       if (requiresTap && supportItem.tapped) continue;
+      const redirect = ability.effect?.type === REDIRECT_EFFECT ? botRedirectStackChoice(ability.effect,card) : null;
+      if (ability.effect?.type === REDIRECT_EFFECT && !redirect) continue;
+      const fixedX = redirect ? (ability.effect.manaValueCostMultiplier || 0) * stackSpellManaValue(redirect) : null;
 
-      const manaCostString = costStr.replace('{T}', '').replace(',', '').trim();
+      const fixedCost = fixedX === null ? costStr : costStr.replaceAll('{X}',`{${fixedX}}`);
+      const manaCostString = fixedCost.replace('{T}', '').replace(',', '').trim();
       const dummyCardForCost = { manaCost: manaCostString || null };
       let reservedManaSources = requiresTap ? [supportItem] : [];
-      if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost, { excludeItems: reservedManaSources })) continue;
+      if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost, { excludeItems: reservedManaSources,isCasting:false })) continue;
       const timing = getActivatedAbilityTiming(ability);
       // Sin costo, sin {T} y sin sacrificio, una habilidad instantánea repetible podría hacer
       // que la IA se auto-encadene para siempre cada vez que recupera prioridad. El jugador
@@ -1503,7 +1576,10 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         }
       }
 
-      if (effect.type === 'animate_land') {
+      if (redirect) {
+        aiTargetObj={type:'stack',stackId:redirect.id};
+        shouldActivate=true;
+      } else if (effect.type === 'animate_land') {
         // 23.17.5.5 — si la misma Tierra ya está animada o ya tiene una activación de
         // animación esperando en la pila, volver a activarla no aporta nada y puede dejarla
         // girada al autopagarse el coste. El caso reportado de Plaza Mitre era una doble
@@ -1689,7 +1765,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       }
 
       if (abilityAdditional?.discard?.amount > 0 && !payBotActivatedDiscardCost(abilityAdditional.discard.amount, card.name)) continue;
-      if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost, { excludeItems: reservedManaSources });
+      if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost, { excludeItems: reservedManaSources,isCasting:false });
       if (requiresTap) {
         const wasTapped=!!supportItem.tapped;
         supportItem.tapped = true;
@@ -1727,6 +1803,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           type: 'ability',
           source: { type: 'support_activation', index: i, abilityIndex },
           sourceItem: supportItem,
+          ...(fixedX === null ? {} : {xValue:fixedX}),
           ability
         });
       }
@@ -1823,7 +1900,11 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
         }
       }
 
-      if (graveyardEffectTargets(effect)) {
+      if (effect.type==='add_counters_to_source' && ability.sacrifice==='creature') {
+        const expendable = state.rivalCombat.find(unit=>unit!==creatureItem &&
+          (unit.card.isToken || unit.card.diesTrigger || getEffectiveToughness(unit)<=0));
+        shouldActivate = !!expendable && (state.phase==='main2' || creatureItem.isAttacking);
+      } else if (graveyardEffectTargets(effect)) {
         const target = getResolvedEffectTargetCandidates({effect,sourceCard,controllerIsLocal:false})
           .filter(candidate => isCreaturePermanent(candidate.card))
           .sort((a,b)=>Number(b.isLocal)-Number(a.isLocal) || cardManaValue(b.card)-cardManaValue(a.card))[0];
@@ -1908,7 +1989,10 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
       }
 
       if (ability.sacrifice === 'creature') {
-        const candidates = state.rivalCombat.filter(c => c !== creatureItem);
+        const others = state.rivalCombat.filter(c=>c!==creatureItem);
+        const expendable = effect.type==='add_counters_to_source' ?
+          others.filter(unit=>unit.card.isToken || unit.card.diesTrigger || getEffectiveToughness(unit)<=0) : [];
+        const candidates = expendable.length ? expendable : others;
         const worst = candidates.reduce((prev, current) =>
           (getEffectivePower(prev) + getEffectiveToughness(prev)) < (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
         );
@@ -1971,14 +2055,19 @@ function resolveBotModalVariantForPreflight(card) {
 
 function chooseBotLandAuraTarget(card) {
   const options = {cardLike:card,sourceCard:card,controllerIsLocal:false};
-  for (const [index,item] of [...state.localLands,...state.localCombat.filter(isLandPermanent)].entries()) {
-    const target = {type:'land',isLocal:true,item,index};
+  const addsMana = card.auraEffect?.additionalMana === 'any_color';
+  const lands = addsMana ? state.rivalLands : state.localLands;
+  const combat = addsMana ? state.rivalCombat : state.localCombat;
+  for (const [index,item] of [...lands,...combat.filter(isLandPermanent)].entries()) {
+    if (addsMana && !getEffectiveLandManaAbilities(state,item,false).some(ability=>ability.requiresTap)) continue;
+    const target = {type:'land',isLocal:!addsMana,item,index};
     if (isResolvedEffectTargetLegal(target,options)) return target;
   }
   return null;
 }
 
 function canBotBuildMainPhaseCastProposal(rawCard) {
+  if (rawCard && isRedirectFamily(rawCard)) return false;
   const card = resolveBotModalVariantForPreflight(rawCard);
   if (!card) return false;
   if (botControlsLegendaryNamed(card)) return false;
@@ -2254,7 +2343,8 @@ export async function castSuspendedCardForBot(original) {
 // decisions inside an already-resolving object, NOT new priority windows. A bot timer that
 // was scheduled before the pause must not sneak another spell onto the stack.
 function hasBotInteractiveResolutionPending() {
-  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice);
+  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice ||
+    state.pendingSacrificeEffectChoice?.reason==='devour');
 }
 
 function botRuntimeIsHidden() {
@@ -2412,6 +2502,9 @@ export async function takeBotPriorityAction() {
     passPriority('rival');
     return;
   }
+
+  if (state.activePlayer === 'rival' && ['main1','combat_begin','combat_attackers','main2'].includes(state.phase) &&
+      await tryBotRedirectFamilyCast()) return;
 
   // 1.5. Truco de combate: si vos declarás atacantes y la pila está vacía, el Tano puede
   // quemar a uno antes de que se asignen bloqueos.

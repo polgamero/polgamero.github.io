@@ -39,6 +39,7 @@ export function getProtectionMatch(itemObj, sourceColors) {
  * @returns {Boolean}
  */
 export function canBlock(attacker, blocker) {
+  if ((blocker.tempEffects || []).some(effect=>effect.type === 'prevent_block')) return false;
   const attackerFlies = hasKeyword(attacker, 'flying');
   
   if (attackerFlies) {

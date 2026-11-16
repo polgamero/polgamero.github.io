@@ -14,7 +14,7 @@ export function randomLegalSubset(entries, count = 1) {
 // Returns the same callback with an exactly-once, identity-fenced deadline.
 export function timedDecision(overlay, state, callback, fallbackArgs, {
   action = false, abortArgs = () => [[]], notice = 'Al vencer el tiempo se elegirá al azar entre las opciones legales.',
-  blocked = () => false, record = () => {}, durationMs = DECISION_DURATION_MS, remove = true, onActionExpire = null, isCurrent = () => true, clockHost = null
+  blocked = () => false, record = () => {}, durationMs = DECISION_DURATION_MS, remove = true, onActionExpire = null, isCurrent = () => true, onInvalidate = null, clockHost = null
 } = {}) {
   // Solo/Tournament do not have a PvP match or its deadline. They still need
   // the same modal lifetime: close BEFORE the engine callback, exactly once.
@@ -48,17 +48,36 @@ export function timedDecision(overlay, state, callback, fallbackArgs, {
   banner.append(counter,copy,fuse);
   (clockHost || overlay.querySelector('.mulligan-panel,.gy-modal-content,#damage-modal-content') || overlay).append(banner);
   const valid = () => state.currentMatch === match && state.currentUser?.uid === uid && !state.gameOver && isCurrent() && (!action || state.priorityClockSerial===serial);
-  const fence = event => { if(!valid()){event.preventDefault();event.stopImmediatePropagation();if(remove)overlay.remove();} };
+  const fence = event => {
+    if (valid()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (remove) overlay.remove();
+    if (onInvalidate) invalidate();
+  };
   overlay.addEventListener('click',fence,true);
   const stop = () => { clearInterval(interval);actionDecisions.delete(abort);overlay.removeEventListener('click',fence,true);banner.remove(); };
+  const invalidate = () => {
+    if (settled) return;
+    settled = true;
+    stop();
+    if (action && remove) overlay.remove();
+    onInvalidate?.();
+  };
   const finish = (...args) => {
-    if (settled) return; settled = true; stop();
-    if (!valid()) { if(remove)overlay.remove();return; }
+    if (settled) return;
+    if (!valid()) {
+      if (remove) overlay.remove();
+      invalidate();
+      return;
+    }
+    settled = true;
+    stop();
     if(remove)overlay.remove(); callback?.(...args);
   };
   const abort = () => { if(!overlay.isConnected){settled=true;stop();return;}finish(...abortArgs()); };
   const tick = () => {
-    if (!valid() || !overlay.isConnected || overlay.hidden || overlay.classList.contains('hidden')) { settled = true; stop(); if(action&&remove)overlay.remove(); return; }
+    if (!valid() || !overlay.isConnected || overlay.hidden || overlay.classList.contains('hidden')) { invalidate(); return; }
     const seconds = Math.max(0,Math.ceil((deadline-Date.now())/1000));
     if (seconds !== lastSeconds) { counter.textContent = `⏳ ${seconds} s`; fuse.style.width=`${Math.max(0,Math.min(100,(deadline-Date.now())/durationMs*100))}%`; lastSeconds = seconds; }
     if (seconds > 0 || blocked()) return;

@@ -5,10 +5,20 @@ import { buildLessonDecks, orderLibrary, REDRAW_HAND } from './guidedMatchModel.
 import { presentPlayIntroduction, learningOfferHandled, rememberLearningOutcome } from './tutorials.js';
 import { observeResourceUsage } from './serviceUsage.js';
 observeResourceUsage();
-import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decisionClock.js';
+import { timedDecision, randomLegalSubset, cancelActionDecisions, DECISION_DURATION_MS } from './decisionClock.js';
 import { refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { showGameDialog, closeGameDialog } from './gameDialogs.js';
 import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { materializeEffectTokens, collectCreatedTokenTriggers, applyEffectLifeLoss, applySourceToll, applyGraveyardTokenEffect } from './stackManager.js';
+import { REDIRECT_EFFECT, canRedirectStackItem, sameStackTarget, stackSpellManaValue } from './stackRedirect.js';
+import { singleStackTarget } from './stackRedirect.js';
+import { redirectCandidates, redirectTargetLabel } from './stackManager.js';
+import { redirectFinishingStack } from './redirectResolution.js';
+import { prepareRedirectCommit } from './sharedHandRefill.js';
+import { isSpellObject, spellControlApplies, spellControlFinalStack, spellControlIntent } from './spellControl.js';
+import { controlExchangeSource, counterSpellObject, moveResolvedSpellCard, resolveTopStackItem, spellControlTargets } from './stackManager.js';
+import { prepareControlCommit } from './sharedHandRefill.js';
+import { showResolutionCoinToss } from './startingCoin.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
@@ -43,7 +53,7 @@ import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, manaSourc
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
 import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
 import { cardManaValue, normalizeLibraryEffect, getLibraryWindowEntries, getLibraryEligibleEntries, chooseBotLibraryEntries, libraryCardMatchesFilter, libraryCardCanMoveToDestination } from './libraryEngine.js';
-import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
+import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses, getAttachedLandManaAuras, LAND_AURA_MANA_COLORS } from './landStax.js';
 import { canPayXCost, maximumAffordableX, readPaymentSources, planManaSources } from './xCostPayment.js';
 import { getEffectiveLandManaAbilities, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
 import { auraCanEnchant, evaluateStateBasedActions, hasMechanicalStateActions, SBA_MAX_PASSES } from './rulesKernel.js';
@@ -51,8 +61,19 @@ import { buildApnapTriggerGroups, stackPlacementFromResolutionOrders } from './t
 import { controllerRoleForSide, stampPermanentController, permanentControllerRole, makeControlEffect, addControlEffect, expireEndOfTurnControlEffects, removeSourceBoundControlEffects, deriveNextControlEffectSerial } from './controlEngine.js';
 import { normalizeGameEvent, collectGenericEventMatches } from './eventEngine.js';
 import { protectsController } from './terminalRules.js';
-import { deserializeCleanupTriggers } from './matchSync.js';
-import { battlefieldEffectTargets, graveyardEffectTargets, graveyardForSide, graveyardTargets, lockGraveyardTarget, graveyardEntryCard, lockAuraTarget, auraEntryCard, notePermanentExit } from './publicZoneEffects.js';
+import { derivePerspectiveTerminalOutcome } from './gameTerminal.js';
+import { discoverySafePublicValue } from './discoveryPlayability.js';
+import {
+  readSharedHandRefill, sharedHandRefillExpectation, matchesSharedHandRefillExpectation,
+  prepareSharedHandRefillCommit, makeSharedRefillTriggerPlan, sharedRefillTriggerChoices,
+  prepareSharedRefillOrderCommit, prepareSharedRefillTargetCommit, sharedRefillStackRows,
+  phaseSevenPublicMutationKeys, preparePhaseSevenCommit, phaseSevenBatchStack, preparePhaseSevenWardCommit, prepareChainedCommit
+} from './sharedHandRefill.js';
+import { buildCopiedCard } from './copyEngine.js';
+import { chooseBotDevourSacrifices, devourMultiplier, sourceAmount } from './devour.js';
+import { libraryDeckWithSelectionOnTop } from './chainedEffects.js';
+import { deserializeCleanupTriggers, serializeCleanupTriggers } from './matchSync.js';
+import { battlefieldEffectTargets, graveyardEffectTargets, graveyardForSide, graveyardTargets, matchesGraveyardEffectCard, lockGraveyardTarget, graveyardEntryCard, lockAuraTarget, auraEntryCard, notePermanentExit } from './publicZoneEffects.js';
 import { applySpellCostModifiers, getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, planAutomaticPaymentMethods, parsedManaTotal, costEngineSummary } from './costEngine.js';
 import { resolveReplacementEvent, replacementEngineSummary, damageLifeLoss } from './replacementEngine.js';
 import { normalizeCounterType, changeCounterCount, getCounterCount, counterStatDelta, resolveUntapAttempt, getCounterDefinition } from './counterEngine.js';
@@ -302,6 +323,8 @@ function startGlobalDirectChallengeBridge(uid){
 let multiplayerPresenceTimer = null;
 let activeMatchListenerStop = null;
 function stopActiveMatchListener() {
+  sharedRefillListenerSerial++;
+  stopSharedRefillJob();
   if (typeof activeMatchListenerStop === 'function') {
     try { activeMatchListenerStop(); } catch {}
   }
@@ -642,7 +665,8 @@ function ensureControlEffectSerialAfterHydration() {
 export function changePermanentController(item, toIsLocal, options = {}) {
   const loc = findBattlefieldItemLocation(item);
   if (!loc) return false;
-  const controlVisualSnapshot = loc.isLocal !== !!toIsLocal ? captureCardVisual(item,loc.isLocal?'local':'rival') : null;
+  const draft=state.pendingPublicEffectResolution?.draft===true;
+  const controlVisualSnapshot = !draft && loc.isLocal !== !!toIsLocal ? captureCardVisual(item,loc.isLocal?'local':'rival') : null;
   const myRole = state.currentMatch?.myRole || null;
   stampCardOwner(item.card, loc.isLocal, myRole);
   stampPermanentController(item, loc.isLocal, myRole);
@@ -684,7 +708,7 @@ export function changePermanentController(item, toIsLocal, options = {}) {
   }
   item._controllerRole = newRole;
   logMsg(gameText('control.gained', { card:item.card?.name || gameText('control.permanentFallback'), controller: toIsLocal ? getLocalPlayerName() : getRivalName() }));
-  recordTelemetryEvent('permanent_control_changed', { card:item.card?.name || null, previousRole, newRole, duration:effect.duration, zone:loc.zoneName });
+  if (!draft) recordTelemetryEvent('permanent_control_changed', { card:item.card?.name || null, previousRole, newRole, duration:effect.duration, zone:loc.zoneName });
   if(controlVisualSnapshot && loc.isLocal !== !!toIsLocal) void queueControlChangeAnimation({item,fromIsLocal:loc.isLocal,toIsLocal:!!toIsLocal,zoneName:loc.zoneName,sourceSnapshot:controlVisualSnapshot});
   return true;
 }
@@ -1752,6 +1776,12 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
       console.warn('No se pudo cerrar la sesión de Telemetría recuperada:', err);
     }
   }
+  if (candidate.state?.currentTournamentMatch) {
+    clearSoloRecovery();
+    await recoverTournamentBeforeFixture();
+    showTournamentScreen();
+    return;
+  }
   if (state.currentUser && (!candidate?.ownerUid || candidate.ownerUid === state.currentUser.uid)) {
     try {
       const result = await applyAbandonPenalty(state.currentUser.uid, {
@@ -1767,7 +1797,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
 
 async function resumeSoloRecoveryGame(candidate) {
   soloGameplayReady = true;
-  enterGameplayAudio('solo');
+  enterGameplayAudio(candidate.state?.currentTournamentMatch ? 'tournament' : 'solo');
   setPlayerPresenceActivity('solo', { availability:'busy', difficulty:normalizeBotDifficulty(candidate?.difficulty || state.botDifficulty) });
   // HF18 — route ownership: un recovery Solo válido siempre gana frente a cualquier
   // fixture stale que haya quedado montado por un boot/reload anterior.
@@ -1793,7 +1823,7 @@ async function resumeSoloRecoveryGame(candidate) {
   replaceSpellStackFromSync(restoredStack);
   const nextSegment = Math.max(1, Number(candidate.segmentIndex) || 1) + 1;
   startTelemetrySession({
-    mode: 'solo_reconnect',
+    mode: state.currentTournamentMatch ? 'tournament_reconnect' : 'solo_reconnect',
     difficulty: state.botDifficulty,
     difficultyObservation:currentDifficultyObservation(state),
     deckLabel: candidate.deckLabel || 'reconnect',
@@ -1822,9 +1852,32 @@ async function resumeSoloRecoveryGame(candidate) {
   hookGameplayButtons();
   render();
   logMsg(gameText('solo.recovery.restored'));
+  const top=spellStack.at(-1);
+  if (state.localSpellControlResumeId != null && state.localSpellControlResumeId===top?.id) {
+    state.consecutivePasses=0;
+    await resolveTopStackItem();
+    render();
+  }
   if (!state.gameOver && state.priorityPlayer === 'rival') {
     ensureSoloBotPriorityScheduled(180);
   }
+}
+
+export function checkpointLocalSpellControl(stackId) {
+  if (state.currentMatch || state.gameOver) return;
+  state.localSpellControlResumeId=stackId;
+  if (state.currentTournamentMatch && !hasActiveSoloRecovery()) {
+    beginSoloRecoverySession({soloGameId:createSoloGameId(),state,stack:spellStack,ownerUid:state.currentUser?.uid || null,
+      playerName:getLocalPlayerName(),telemetrySessionId:getTelemetryStatus().sessionId,
+      getState:()=>state,getStack:()=>spellStack,getTelemetrySessionId:()=>getTelemetryStatus().sessionId});
+  }
+  checkpointSoloRecovery(state,spellStack,{force:true,telemetrySessionId:getTelemetryStatus().sessionId});
+}
+
+export function releaseLocalSpellControlCheckpoint() {
+  state.localSpellControlResumeId=null;
+  if (state.currentTournamentMatch) clearSoloRecovery();
+  else if (!state.pendingWardChoice) checkpointSoloRecovery(state,spellStack,{telemetrySessionId:getTelemetryStatus().sessionId});
 }
 
 async function offerSoloRecoveryIfAvailable() {
@@ -3005,7 +3058,10 @@ function setMultiplayerSyncBlocked(reason = 'transport', { permanent = false } =
   if (!state.currentMatch || state.gameOver) return;
   state.multiplayerSyncBlocked = true;
   state.multiplayerSyncBlockReason = reason;
-  if (permanent || reason === 'session_superseded') state.multiplayerSessionSuperseded = true;
+  if (permanent || reason === 'session_superseded') {
+    state.multiplayerSessionSuperseded = true;
+    stopSharedRefillJob();
+  }
   try { if (els?.btnEndTurn) els.btnEndTurn.disabled = true; } catch {}
   showMultiplayerSyncBarrier(state.multiplayerSessionSuperseded ? 'session_superseded' : 'reconnecting');
 }
@@ -3192,10 +3248,684 @@ async function drainMatchPublishQueue() {
   return allPublishesConfirmed;
 }
 
+let sharedRefillJob = null;
+let sharedRefillListenerSerial = 0;
+
+function stopSharedRefillJob() {
+  sharedRefillJob?.prompt?.controller.abort();
+  sharedRefillJob?.coin?.controller.abort();
+  if (sharedRefillJob?.retry) clearTimeout(sharedRefillJob.retry);
+  sharedRefillJob = null;
+}
+
+// The existing engine runs synchronously on a projection of the transaction's
+// confirmed document. Only the resulting public delta is committed.
+function withPhaseSevenProjection(room,role,run) {
+  const projection = {
+    localCombat:[],rivalCombat:[],localLands:[],rivalLands:[],localSupport:[],rivalSupport:[],
+    localPlaneswalkers:[],rivalPlaneswalkers:[],localGraveyard:[],rivalGraveyard:[],localExile:[],rivalExile:[],
+    localManaPool:emptyManaPool(),rivalManaPool:emptyManaPool(),permanentExitTurn:{local:null,rival:null},
+    localHand:Array(room[role+'HandCount'] || 0).fill(null),
+    localDeck:Array(room[role+'DeckCount'] || 0).fill(null),
+    ...extractMyStateFromPublicDoc(room,role),...extractRivalStateFromPublicDoc(room,role),
+    ...extractSharedStateFromPublicDoc(room,role),
+    controlEffectSerial:1,
+    pendingPublicEffectResolution:{triggers:[],draft:true},stackResolutionAuthority:true,
+    deferredLandManaTriggers:[],endTurnTriggerEntries:null,
+    pendingCost:null,pendingCastTransaction:null,pendingSpellIndex:null,pendingAbilitySource:null,
+    pendingCrew:null,pendingWardChoice:null,pendingCounterUnlessPay:null,pendingCompositeCostPayment:false,
+    paymentManaSourceRollbacks:[]
+  };
+  const saved = Object.fromEntries(Object.keys(projection).map(key=>[key,state[key]]));
+  try {
+    Object.assign(state,wireClone(projection));
+    relinkEquipmentAttachments(state);
+    ensureControlEffectSerialAfterHydration();
+    return run();
+  } finally {
+    Object.assign(state,saved);
+  }
+}
+
+function stagePhaseSevenMutation(room,role,run,keys=phaseSevenPublicMutationKeys) {
+  return withPhaseSevenProjection(room,role,()=>{
+    const before = wireClone(buildMyPublicPatch(state,role,[]));
+    const applied = run();
+    if (applied === false) return {applied:false,publicPatch:{},rows:[]};
+    const after = buildMyPublicPatch(state,role,[]);
+    const publicPatch = Object.fromEntries(keys
+      .filter(key=>!wireEqual(before[key],after[key])).map(key=>[key,after[key]]));
+    const {triggers} = state.pendingPublicEffectResolution;
+    const rows = serializePhaseSevenTriggers([...triggers,...state.deferredLandManaTriggers],role);
+    return {applied:true,publicPatch,rows};
+  });
+}
+
+function serializePhaseSevenTriggers(entries,role) {
+  return serializeCleanupTriggers(entries,state,role).map((row,index) => {
+    const entry = entries[index];
+    return entry.targetObj ? {...row,target:serializeStackTarget(entry.targetObj,state,role,{strict:true})}
+      : {...row,requiresTarget:entry.requiresTarget || !!graveyardEffectTargets(entry.effect)};
+  });
+}
+
+async function chooseDevourResolution(job,plan,signal,deadline) {
+  const top = job.room.stackState.at(-1);
+  let cards = [];
+  let graveyardIds = [];
+  if (plan.chainKind==='devour-cast') cards = [top.card];
+  else if (plan.chainKind==='devour-return') {
+    const card = state.localExile.find(entry=>entry._exileObjectId===plan.effect.exileObjectId);
+    if (card && devourMultiplier(card)) cards = [card];
+  } else {
+    const candidates = getGraveyardChoiceCandidates(true,'creature').filter(entry=>entry.card._graveyardObjectId);
+    const amount = Math.min(plan.effect.amount || 1,candidates.length);
+    let selected = candidates;
+    if (amount>0 && candidates.length>amount) {
+      const valid = () => !signal.aborted;
+      const indexes = await new Promise(resolve=>showGraveyardChoiceModal(candidates,amount,top.card.name,
+        graveyardFilterLabel('creature'),'elegí qué criaturas reanimar',resolve,{
+          valid,durationMs:Math.max(1,deadline-Date.now())
+        }));
+      selected = candidates.filter(entry=>indexes.includes(entry.index));
+    }
+    cards = selected.slice(0,amount).map(entry=>entry.card);
+    graveyardIds = cards.map(card=>card._graveyardObjectId);
+  }
+  const selections = await chooseDevourSacrifices(cards,true,{valid:()=>!signal.aborted,deadline});
+  return {graveyardIds,selections:selections.map(items=>items.map(item=>item._syncObjectId).filter(Boolean))};
+}
+
+function applyStagedDevour(plan,item,choice) {
+  let entries;
+  if (plan.chainKind==='devour-cast') {
+    const card = item.isCopy ? buildCopiedCard(item.card,{
+      id:`stackcopy_perm_${item.id}_entry`,isToken:true,originKind:'permanent_spell_copy'
+    }) : item.card;
+    if (item._castIsLocal !== undefined) stampCardOwner(card,item._castIsLocal,state.currentMatch?.myRole || null);
+    entries = [{card,zoneFrom:'stack',suspendHaste:item.suspendHaste,castFromHand:!item.isCopy && !item.castFrom,
+      targetObj:card.requiresTarget ? item.targetObj : null}];
+  } else if (plan.chainKind==='devour-return') {
+    const card = state.localExile.find(entry=>entry._exileObjectId===plan.effect.exileObjectId);
+    if (!card || !devourMultiplier(card)) return;
+    entries = [{card,zoneFrom:'exile'}];
+  } else {
+    entries = [...new Set(choice.graveyardIds)].slice(0,plan.effect.amount || 1).map(id=>{
+      const card = state.localGraveyard.find(entry=>entry._graveyardObjectId===id);
+      if (!card || card.isToken || !isCreaturePermanent(card)) throw new Error('MULTIPLAYER_DEVOUR_STALE_GRAVEYARD_CHOICE');
+      return {card,zoneFrom:'graveyard',transformed:plan.effect.transformed===true};
+    });
+    const available = getGraveyardChoiceCandidates(true,'creature').length;
+    if (entries.length!==Math.min(plan.effect.amount || 1,available)) throw new Error('MULTIPLAYER_DEVOUR_INVALID_GRAVEYARD_COUNT');
+  }
+  const candidates = new Map(getSacrificeEffectCandidates(true,'creature').filter(isCreaturePermanent)
+    .map(unit=>[unit._syncObjectId,unit]));
+  const choices = choice.selections.map(ids=>ids.map(id=>candidates.get(id)).filter(Boolean));
+  applyDevourCreatureEntries(entries,true,choices);
+}
+
+function stageChainedResolution(room,role,ownZones,plan,choice) {
+  const effect = plan.effect;
+  let privatePatch = {};
+  let keys = phaseSevenPublicMutationKeys;
+  if (plan.chainKind === 'library-life') {
+    if (!wireEqual(ownZones.deck,choice.deck)) throw new Error('MULTIPLAYER_CHAIN_LIBRARY_SNAPSHOT_STALE');
+    const deck = libraryDeckWithSelectionOnTop(ownZones.deck,effect,choice.index,shuffleLibraryInPlace);
+    if (deck.length) privatePatch = {deck};
+    keys = [role+'HP'];
+  }
+  const staged = stagePhaseSevenMutation(room,role,()=>{
+    const item = deserializeStackFromPublic([room.stackState.at(-1)],state,role)[0];
+    if (plan.chainKind === 'library-life') applyEffectLifeLoss(effect.lifeLossAfter,true);
+    else if (plan.chainKind === 'land-toll') applySourceToll(effect,item,true,choice);
+    else if (plan.chainKind.startsWith('devour-')) applyStagedDevour(plan,item,choice);
+    else applyGraveyardTokenEffect(effect,item.targetObj,{card:item.card,isLocal:true,stamp:`phase7_${plan.stackId}`});
+  },keys);
+  return prepareChainedCommit(room,{...staged,privatePatch});
+}
+
+function stagePhaseSevenEffect(room,role,plan,progress) {
+  const result = stagePhaseSevenMutation(room,role,()=>{
+    if (plan.kind === 'sacrifice') {
+      const sides = [plan.activeRole,otherRole(plan.activeRole)];
+      const selections = progress.actions.flatMap((id,index)=>{
+        if (id === null) return [];
+        const isLocal = sides[index] === role;
+        const item = getSacrificeEffectCandidates(isLocal,'creature').find(candidate=>candidate._syncObjectId===id);
+        if (!item) throw new Error('MULTIPLAYER_SHARED_REFILL_ILLEGAL_SACRIFICE');
+        return [{item,isLocal}];
+      });
+      performSacrifices(selections);
+    } else {
+      const card = room.stackState.at(-1).card;
+      const {created} = materializeEffectTokens(plan.effect,card,true,`phase7_${plan.stackId}_${room.syncRevision}`);
+      queueTriggeredAbilities(collectCreatedTokenTriggers(created,card,true));
+    }
+  });
+  return {publicPatch:result.publicPatch,batch:makeSharedRefillTriggerPlan(plan,result.rows,Date.now()+DECISION_DURATION_MS,{force:true})};
+}
+
+function finishSharedRefillCommit(room, role) {
+  const {plan, progress} = readSharedHandRefill(room);
+  const redirect = plan.kind === 'redirect';
+  const roles = redirect ? [plan.authorityRole] : [plan.activeRole, otherRole(plan.activeRole)];
+  const perspective = {
+    ...extractMyStateFromPublicDoc(room,role),
+    ...extractRivalStateFromPublicDoc(room,role),
+    currentMatch: {myRole:role}
+  };
+  const defeated = roles.filter((owner,index) => progress.failed[index] > 0 &&
+    !protectsController(perspective,owner === role ? 'local' : 'rival'));
+  const deckedOutRole = defeated.length === 2 ? 'both' : defeated[0] ?? null;
+  const terminal = derivePerspectiveTerminalOutcome({...perspective,deckedOutRole,deckOutReady:!!deckedOutRole});
+  const top = room.stackState.at(-1);
+  const control = plan.kind==='control' ? stageSpellControlFinish(room,role,plan,progress.control) : null;
+  const publicPatch = {
+    ...control?.publicPatch,
+    multiplayerResolutionMarker:null, stackState:control?.stack || (redirect ? redirectFinishingStack(room,plan,progress) : room.stackState.slice(0,-1)),
+    consecutivePasses:0, priorityPlayer:room.activePlayer, priorityActivity:null
+  };
+  const enteredFromStack = plan.chainKind === 'devour-cast';
+  if (!control && !enteredFromStack && !top.isCopy && top.type !== 'ability') {
+    const owner = plan.kind === 'chained' && [role,otherRole(role)].includes(top.card?._ownerRole || top.castRole) ? (top.card._ownerRole || top.castRole) : role;
+    const zone = owner + (top.castFrom === 'flashback' ? 'Exile' : 'Graveyard');
+    const card = top.castFrom === 'flashback' ? top.card
+      : {...graveyardEntryCard(top.card),_graveyardObjectId:`refill_${plan.stackId}_spell`};
+    publicPatch[zone] = [...room[zone],card];
+  }
+  if (terminal) {
+    if (deckedOutRole) publicPatch.deckedOutRole = deckedOutRole;
+    publicPatch.gameOver = true;
+    return {publicPatch,privatePatch:{}};
+  }
+
+  const triggerOrder = progress.triggerOrder;
+  if (triggerOrder) {
+    const rows = phaseSevenBatchStack(plan,progress);
+    const sealed = progress.sealedTriggers || [];
+    if (!triggerOrder.wardCosts) {
+      const costs = refillWardCosts(rows,role);
+      if (costs.length) {
+        return replacePhaseSevenBatch(room,progress,
+          {...triggerOrder,wardCosts:costs,wardAnswers:[],deadlineMs:Date.now()+DECISION_DURATION_MS});
+      }
+    } else {
+      const extra = triggerOrder.wardAnswers.flatMap(answer=>answer.rows);
+      if (extra.length) return replacePhaseSevenBatch(room,progress,
+        makeSharedRefillTriggerPlan(plan,extra,Date.now()+DECISION_DURATION_MS,{force:true}),[...sealed,...rows]);
+    }
+    publicPatch.stackState.push(...sealed,...rows);
+    publicPatch.priorityClockSerial = normalizeSyncRevision(room.priorityClockSerial) + 1;
+    return {publicPatch,privatePatch:{}};
+  }
+
+  const triggers = [];
+  for (const ref of progress.discarded) {
+    const isLocal = ref.role === role;
+    const card = room[ref.role + ref.zone]?.[ref.index];
+    if (!card) throw new Error('MULTIPLAYER_SHARED_REFILL_DISCARD_REFERENCE');
+    const event = {controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+      card,zoneFrom:'hand',zoneTo:ref.zone.toLowerCase(),cause:'effect'};
+    triggers.push(...buildGenericEventTriggerEntries({...event,type:'card_discarded'}, {allowChosenTargets:true}));
+    if (ref.zone === 'Exile') triggers.push(...buildGenericEventTriggerEntries({...event,type:'card_exiled'}, {allowChosenTargets:true}));
+  }
+  for (const [index,owner] of roles.entries()) {
+    const isLocal = owner === role;
+    for (let count = 0; !redirect && count < progress.drawn[index]; count++) {
+      triggers.push(...buildGenericEventTriggerEntries({
+        type:'card_drawn',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+        zoneFrom:'library',zoneTo:'hand',cause:'shared_refill'
+      }, {allowChosenTargets:true}));
+    }
+  }
+  if (!control && !enteredFromStack && !top.isCopy && top.type !== 'ability' && top.castFrom === 'flashback') {
+    triggers.push(...buildGenericEventTriggerEntries({
+      type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,
+      card:top.card,zoneFrom:'stack',zoneTo:'exile',cause:'flashback'
+    }, {allowChosenTargets:true}));
+  }
+  const rows = [...(progress.chain?.rows || []),...(progress.redirect?.rows || []),...(progress.control?.rows || []),...(control?.rows || []),...serializePhaseSevenTriggers(triggers,role)];
+  const stacked = sharedRefillStackRows(plan,rows);
+  const batch = makeSharedRefillTriggerPlan(plan,rows,Date.now()+DECISION_DURATION_MS,{
+    force:plan.kind === 'chained' || refillWardCosts(stacked,role).length>0
+  });
+  if (batch) return replacePhaseSevenBatch(room,progress,batch);
+  publicPatch.stackState.push(...stacked);
+  publicPatch.priorityClockSerial = normalizeSyncRevision(room.priorityClockSerial) + 1;
+  return {publicPatch,privatePatch:{}};
+}
+
+function replacePhaseSevenBatch(room,progress,triggerOrder,sealedTriggers=progress.sealedTriggers) {
+  return {publicPatch:{multiplayerResolutionMarker:{...room.multiplayerResolutionMarker,sharedHandRefill:{
+    ...progress,triggerOrder,...(sealedTriggers ? {sealedTriggers} : {})
+  }}},privatePatch:{}};
+}
+
+function refillWardCosts(rows,role) {
+  return rows.flatMap(row=>{
+    const target = deserializeStackTarget(row.target,state,role);
+    const ward = detectWardForDeclaredTarget(row.card,target,row.controllerRole===role);
+    return ward ? [{index:Number(row.id.split('_').at(-1)),amount:ward.wardCost}] : [];
+  });
+}
+
+function stagePhaseSevenWard(room,role,accepted) {
+  const {step} = readSharedHandRefill(room);
+  return accepted ? stagePhaseSevenMutation(room,role,()=>tryAutoPayCounterTax(true,step.amount))
+    : {applied:false,publicPatch:{},rows:[]};
+}
+
+function redirectChoices(room,role,plan) {
+  return withPhaseSevenProjection(room,role,()=>{
+    const stack = deserializeStackFromPublic(room.stackState,state,role);
+    const original = stack[plan.redirect.index];
+    const source = stack.at(-1);
+    return redirectCandidates(original,singleStackTarget(original),source,plan.effect,stack).map((target,index)=>({
+      target:serializeStackTarget(target,state,role,{strict:true}),label:redirectTargetLabel(target,index),
+      ward:detectWardForDeclaredTarget(original.card,target,original.isLocal)?.wardCost || 0
+    })).filter(choice=>choice.target);
+  });
+}
+
+function stageRedirectAdvance(room,role,ownZones,refill,choice,deadlineMs) {
+  const {plan,step,progress} = refill;
+  const {redirect} = progress;
+  const original = room.stackState[plan.redirect.index];
+  const card = room.stackState.at(-1).card;
+  const operation = step.operation;
+  let change;
+  if (operation === 'redirect-tax' || operation === 'redirect-ward') {
+    const tax = operation === 'redirect-tax';
+    const amount = tax ? plan.redirect.tax : redirect.ward;
+    const payment = choice ? stagePhaseSevenMutation(room,role,()=>tryAutoPayCounterTax(true,amount)) : null;
+    change = {publicPatch:payment?.publicPatch,redirect:{[tax ? 'taxPaid' : 'wardPaid']:payment?.applied === true,
+      rows:[...redirect.rows,...(payment?.rows || [])]}};
+  } else if (operation === 'redirect-target') {
+    const candidates = redirectChoices(room,role,plan);
+    const chosen = candidates.find(candidate=>wireEqual(candidate.target,choice));
+    if (!chosen && (choice !== null || candidates.length)) throw new Error('MULTIPLAYER_REDIRECT_ILLEGAL_TARGET');
+    change = {redirect:{target:chosen?.target || null,ward:chosen?.ward || 0}};
+  } else if (operation === 'redirect-apply') {
+    const live = original && !redirect.taxPaid;
+    const amount = live ? plan.redirect.draw : 0;
+    const deck = [...ownZones.deck];
+    const drawn = Math.min(amount,deck.length);
+    const hand = [...ownZones.hand,...deck.splice(deck.length-drawn,drawn).reverse()];
+    const staged = stagePhaseSevenMutation(room,role,()=>{
+      if (!live) return;
+      if (redirect.target && !redirect.wardPaid && original.card?.cannotBeCountered !== true) {
+        const target = deserializeStackFromPublic([original],state,role)[0];
+        handleCounteredSuspendTrigger(target,{renderAfter:false});
+        const zoneTo = moveCounteredStackItemToDestination(target,state);
+        dispatchGameEvent({type:'spell_countered',controllerIsLocal:target.isLocal,actorIsLocal:!target.isLocal,
+          card:target.card,item:target,zoneFrom:'stack',zoneTo,cause:'ward'});
+        if (zoneTo === 'exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:target.isLocal,actorIsLocal:!target.isLocal,
+          ownerIsLocal:cardOwnerIsLocal(target.card,target.isLocal,role),card:target.card,item:target,zoneFrom:'stack',zoneTo,cause:'ward'});
+      }
+      const lost = plan.effect.loseLifeByManaValue ? stackSpellManaValue(original) : 0;
+      if (lost) {
+        state.localHP -= lost;
+        dispatchGameEvent({type:'life_lost',controllerIsLocal:true,actorIsLocal:true,targetPlayerIsLocal:true,
+          sourceCard:card,amount:lost,cause:'effect'});
+      }
+      for (let index=0; index<drawn; index++) {
+        dispatchGameEvent({type:'card_drawn',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,
+          zoneFrom:'library',zoneTo:'hand',cause:'effect'});
+      }
+    },[...phaseSevenPublicMutationKeys,role+'HP']);
+    change = {redirect:{rows:[...redirect.rows,...staged.rows]},publicPatch:staged.publicPatch};
+    if (drawn) {
+      Object.assign(change.publicPatch,{[role+'HandCount']:hand.length,[role+'DeckCount']:deck.length});
+      change.privatePatch = {hand,deck};
+    }
+    if (amount) change.drawReceipt = {drawn:[drawn],failed:[amount-drawn]};
+  } else {
+    change = {redirect:operation === 'redirect-skip-tax' ? {taxPaid:false}
+      : operation === 'redirect-skip-target' ? {target:null,ward:0} : {wardPaid:true}};
+  }
+  return prepareRedirectCommit(room,change,deadlineMs);
+}
+
+function stageSpellControlFinish(room,role,plan,progress) {
+  const applied=spellControlApplies(room,plan,progress);
+  const stack=spellControlFinalStack(room,plan,progress,applied);
+  return {...stagePhaseSevenMutation(room,role,()=>{
+    const source=deserializeStackFromPublic([room.stackState.at(-1)],state,role)[0];
+    if (!source.isCopy && source.type!=='ability') moveResolvedSpellCard(source.card,source,source.isLocal);
+    if (!applied) return;
+    const original=deserializeStackFromPublic([room.stackState[plan.control.index]],state,role)[0];
+    const intent=spellControlIntent(plan,progress);
+    if (intent==='transfer' && !plan.control.coin) {
+      const exchange=controlExchangeSource(source);
+      if (!exchange || !changePermanentController(exchange.source,original.isLocal)) throw new Error('MULTIPLAYER_CONTROL_SOURCE_CHANGED');
+    }
+    if (intent==='counter' || !progress.wardPaid) {
+      if (intent==='transfer' && !original.isCopy) stampCardOwner(original.card,original.isLocal,role);
+      if (intent==='transfer') original.isLocal=plan.control.recipient===role;
+      counterSpellObject(original,intent==='counter' || !original.isLocal);
+    }
+  }),stack};
+}
+
+function controlChoiceSlots(room,role,plan) {
+  return withPhaseSevenProjection(room,role,()=>{
+    const stack=deserializeStackFromPublic(room.stackState,state,role);
+    const original=stack[plan.control.index];
+    const controller=plan.control.recipient===role;
+    return spellControlTargets(original,controller,stack.at(-1),stack).map(slot=>({index:slot.index,choices:slot.choices.map((target,index)=>({
+      target:serializeStackTarget(target,state,role,{strict:true}),label:redirectTargetLabel(target,index),
+      ward:detectWardForDeclaredTarget(original.card,target,controller)?.wardCost || 0
+    })).filter(candidate=>candidate.target)}));
+  });
+}
+
+function stageControlAdvance(room,role,refill,choice,deadlineMs) {
+  const {plan,step,progress}=refill;
+  const control=progress.control;
+  if (step.operation==='control-answer') return prepareControlCommit(room,plan.control.coin && choice
+    ? {outcome:choice.won,coinId:choice.coinId} : {outcome:typeof choice==='boolean' ? choice : null}, {},deadlineMs);
+  if (step.operation==='control-present') return prepareControlCommit(room,{}, {},deadlineMs);
+  if (step.operation==='control-targets') {
+    const original=room.stackState[plan.control.index];
+    const target=original?.target?.type==='multi' ? {...original.target,targets:original.target.targets.slice()} : original?.target;
+    const slots=choice.length ? controlChoiceSlots(room,role,plan) : [];
+    const wards=[];
+    let replacement=null;
+    for (const {index,value} of choice) {
+      const candidate=slots.find(slot=>slot.index===index)?.choices.find(row=>wireEqual(row.target,value));
+      if (!candidate) throw new Error('MULTIPLAYER_CONTROL_ILLEGAL_TARGET');
+      if (candidate.ward) wards.push(candidate.ward);
+      if (target.type === 'multi') target.targets[index]=candidate.target;
+      replacement=target.type === 'multi' ? target : candidate.target;
+    }
+    return prepareControlCommit(room,{target:replacement,wards,rows:[],wardIndex:0},{},deadlineMs);
+  }
+  const amount=control.wards[control.wardIndex] || 0;
+  const payment=amount && choice ? stagePhaseSevenMutation(room,role,()=>tryAutoPayCounterTax(true,amount)) : null;
+  const paid=payment?.applied===true;
+  const wardIndex=control.wardIndex+Number(paid);
+  const sameCursor=paid && wardIndex<control.wards.length;
+  return prepareControlCommit(room,{wardIndex,rows:[...control.rows,...(payment?.rows || [])],
+    ...(sameCursor ? {} : {wardPaid:!amount || paid})},payment?.publicPatch,deadlineMs,{sameCursor});
+}
+
+function presentConfirmedControlCoin(job,refill) {
+  const receipt=refill?.progress?.control;
+  if (!receipt?.coinId || receipt.coinId===job.coin?.id || refill.progress.cursor!==1) return;
+  job.coin?.controller.abort();
+  const controller=new AbortController();
+  const actorIsLocal=refill.plan.authorityRole===job.match.myRole;
+  const card=job.room.stackState.at(-1).card;
+  const actorProfile=job.room.players?.[job.room[refill.plan.authorityRole+'Uid']];
+  const opponentProfile=job.room.players?.[job.room[otherRole(refill.plan.authorityRole)+'Uid']];
+  const promise=showResolutionCoinToss({actor:actorProfile?.username || (actorIsLocal?getLocalPlayerName():getRivalName()),
+    opponent:opponentProfile?.username || (actorIsLocal?getRivalName():getLocalPlayerName()),source:card.name,
+    won:receipt.outcome,faces:refill.plan.effect.faces,signal:controller.signal});
+  job.coin={id:receipt.coinId,controller,promise};
+}
+
+function observeSharedHandRefill(room) {
+  const match = state.currentMatch;
+  if (!match || room.engineProtocolVersion !== ENGINE_PROTOCOL_VERSION || state.multiplayerSessionSuperseded) return;
+  if (sharedRefillJob?.match !== match) {
+    stopSharedRefillJob();
+    sharedRefillJob = {match,room:null,running:null,paused:null,retry:null,prompt:null,selection:null};
+  }
+  const job = sharedRefillJob;
+  if (job.room && normalizeSyncRevision(job.room.syncRevision) > normalizeSyncRevision(room.syncRevision)) return;
+  job.room = room;
+  const refill = readSharedHandRefill(room);
+  presentConfirmedControlCoin(job,refill);
+  if (job.prompt && !matchesSharedHandRefillExpectation(refill,job.prompt.expected)) job.prompt.controller.abort();
+  if (job.selection && !matchesSharedHandRefillExpectation(refill,job.selection.expected)) job.selection = null;
+  if (!refill || refill.step.role !== match.myRole || job.running || job.retry) return;
+  const expected = sharedHandRefillExpectation(refill);
+  if (job.paused && wireEqual(job.paused,expected)) return;
+  job.running = advanceSharedHandRefill(job,expected).finally(() => {
+    job.running = null;
+    if (sharedRefillJob === job && state.currentMatch === match && job.room !== room) observeSharedHandRefill(job.room);
+  });
+}
+
+function sharedRefillTargetOptions(refill) {
+  const row = refill.progress.triggerOrder.rows[refill.step.index];
+  return {effect:row.ability.effect,sourceCard:row.card,
+    sourceItem:deserializeBoardItemRef(row.source?.sourceItemRef,state,state.currentMatch.myRole,{strict:true}),
+    cardName:row.card.name,controllerIsLocal:true,chooserIsLocal:true};
+}
+
+function validateSharedRefillTarget(refill,target) {
+  const candidates = getResolvedEffectTargetCandidates(sharedRefillTargetOptions(refill));
+  if (target === null) return candidates.length === 0;
+  return candidates.some(candidate =>
+    wireEqual(serializeStackTarget(candidate,state,state.currentMatch.myRole,{strict:true}),target));
+}
+
+async function chooseSharedRefillAction(job,refill,expected) {
+  if (job.selection && matchesSharedHandRefillExpectation(refill,job.selection.expected)) return job.selection.value;
+  const batch = refill.progress.triggerOrder;
+  const controller = new AbortController();
+  const prompt = {controller,expected};
+  job.prompt = prompt;
+  try {
+    const deadline = batch?.deadlineMs ?? refill.progress.deadlineMs;
+    const durationMs = Math.max(1,Math.min(DECISION_DURATION_MS,deadline - Date.now()));
+    const signal = controller.signal;
+    let value;
+    if (refill.step.operation === 'chain-apply') {
+      const cardName = job.room.stackState.at(-1).card.name;
+      if (refill.plan.chainKind.startsWith('devour-')) {
+        value = await chooseDevourResolution(job,refill.plan,signal,deadline);
+      } else if (refill.plan.chainKind === 'library-life') {
+        const deck = wireClone(lastKnownPrivateWire?.deck ?? state.localDeck);
+        const spec = normalizeLibraryEffect(refill.plan.effect);
+        const entries = await chooseLibraryEntries({ownerIsLocal:true,chooserIsLocal:true,spec,cardName,deck,signal,durationMs});
+        value = {deck,index:entries[0]?.index ?? null};
+      } else {
+        value = await choosePublicEffectOption(`¿Querés pagar {${refill.plan.effect.amount}} para conservar la tierra?`,cardName,
+          ()=>!signal.aborted,{durationMs});
+      }
+    } else if (refill.step.operation === 'order') {
+      const entries = sharedRefillTriggerChoices(refill).map(index => {
+        const row = batch.rows[index];
+        return {index,sourceCard:row.card,triggerType:row.triggerType,effect:row.ability.effect,eventCard:row.source?.eventCard};
+      });
+      const ordered = await showTriggerOrderModal(entries,{signal,durationMs});
+      value = ordered?.map(entry => entry.index);
+    } else if (refill.step.operation === 'target') {
+      const options = sharedRefillTargetOptions(refill);
+      const target = graveyardEffectTargets(options.effect)
+        ? await choosePublicGraveyardTarget(options.effect,options.sourceCard,true,{valid:()=>!signal.aborted,durationMs})
+        : await chooseResolvedEffectTarget({...options,signal,durationMs});
+      value = serializeStackTarget(target,state,job.match.myRole,{strict:true});
+    } else if (refill.step.operation === 'control-answer') {
+      const {plan}=refill;
+      const original=job.room.stackState[plan.control.index];
+      if (!original) value=null;
+      else if (plan.control.coin) value=await (await import('./economyClient.js'))
+        .rollMatchResolutionCoin(job.match.matchId,plan.stackId,0,MULTIPLAYER_CLIENT_SESSION_ID);
+      else if (!spellControlApplies(job.room,plan,{outcome:true})) value=false;
+      else value=await choosePublicEffectOption(`¿Querés intercambiar el control de ${job.room.stackState.at(-1).card.name} y ${original.card.name}?`,
+        job.room.stackState.at(-1).card.name,()=>!signal.aborted,{durationMs});
+    } else if (refill.step.operation === 'control-present') {
+      await job.coin?.promise;
+      value=null;
+    } else if (refill.step.operation === 'control-targets') {
+      value=[];
+      if (spellControlIntent(refill.plan,refill.progress.control)==='transfer' &&
+          spellControlApplies(job.room,refill.plan,refill.progress.control)) {
+        const original=job.room.stackState[refill.plan.control.index];
+        for (const slot of controlChoiceSlots(job.room,job.match.myRole,refill.plan)) {
+          const remaining=deadline-Date.now();
+          if (remaining<=0 || signal.aborted) break;
+          if (!slot.choices.length) continue;
+          const target=await new Promise(resolve=>showStackObjectChoiceModal(slot.choices,`Nuevo objetivo para ${original.card.name}`,
+            entry=>resolve(entry.target),()=>resolve(null),{signal,durationMs:remaining}));
+          if (target) value.push({index:slot.index,value:target});
+        }
+      }
+    } else if (refill.step.operation === 'control-ward') {
+      const amount=refill.progress.control.wards[refill.progress.control.wardIndex] || 0;
+      value=amount ? await choosePublicEffectOption(`¿Querés pagar {${amount}} por Impuesto?`,
+        job.room.stackState[refill.plan.control.index].card.name,()=>!signal.aborted,{durationMs}) : true;
+    } else if (refill.step.operation === 'redirect-tax') {
+      const original = job.room.stackState[refill.plan.redirect.index];
+      value = await choosePublicEffectOption(`¿Querés pagar {${refill.plan.redirect.tax}} para conservar el objetivo?`,original.card.name,
+        ()=>!signal.aborted,{durationMs});
+    } else if (refill.step.operation === 'redirect-target') {
+      const candidates = redirectChoices(job.room,job.match.myRole,refill.plan);
+      value = candidates.length > 1 ? await new Promise(resolve=>{
+        showStackObjectChoiceModal(candidates,`Elegí un nuevo objetivo para ${job.room.stackState[refill.plan.redirect.index].card.name}`,
+          selected=>resolve(selected.target),()=>resolve(undefined),{required:true,signal,durationMs});
+      }) : candidates[0]?.target ?? null;
+    } else if (refill.step.operation === 'redirect-ward') {
+      const {target,ward} = refill.progress.redirect;
+      const original = job.room.stackState[refill.plan.redirect.index];
+      value = await new Promise(resolve=>{
+        showWardDecisionModal(ward,target?.cardName,original.card.name,
+          ()=>resolve(true),()=>resolve(false),{signal,durationMs,onAbort:()=>resolve(undefined)});
+      });
+    } else if (refill.step.operation === 'confirm') {
+      value = await choosePublicEffectOption(refill.plan.effect.mayConfirm,job.room.stackState.at(-1).card.name,
+        ()=>!signal.aborted,{durationMs});
+    } else if (refill.step.operation === 'ward') {
+      const row = batch.rows[refill.step.index];
+      const target = batch.targets.find(answer=>answer.index===refill.step.index)?.target || row.target;
+      value = await new Promise(resolve=>{
+        showWardDecisionModal(refill.step.amount,target?.cardName,row.card.name,
+          ()=>resolve(true),()=>resolve(false),{signal,durationMs,onAbort:()=>resolve(undefined)});
+      });
+    } else {
+      const candidates = getSacrificeEffectCandidates(true,'creature');
+      const selected = candidates.length ? await new Promise(resolve=>{
+        showSacrificeEffectModal(candidates,1,job.room.stackState.at(-1).card.name,'creature',resolve,
+          {valid:()=>!signal.aborted,durationMs});
+      }) : [];
+      value = selected[0]?._syncObjectId ?? null;
+    }
+    if (signal.aborted || !matchesSharedHandRefillExpectation(readSharedHandRefill(job.room),expected)) return undefined;
+    job.selection = {expected,value};
+    return value;
+  } finally {
+    if (job.prompt === prompt) job.prompt = null;
+  }
+}
+
+async function advanceSharedHandRefill(job,expected) {
+  const {match} = job;
+  const uid = state.currentUser?.uid;
+  const current = () => sharedRefillJob === job && state.currentMatch === match && state.currentUser?.uid === uid &&
+    !state.multiplayerSessionSuperseded;
+  if (matchPublishInFlight) await matchPublishInFlight;
+  const refill = readSharedHandRefill(job.room);
+  if (!uid || !current() || refill?.step.role !== match.myRole ||
+      !wireEqual(sharedHandRefillExpectation(refill),expected)) return;
+  let prepared = null;
+  try {
+    const choosing = ['order','target','confirm','sacrifice-choice','ward','redirect-tax','redirect-target','redirect-ward',
+      'control-answer','control-present','control-targets','control-ward'].includes(refill.step.operation);
+    const chainChoice = refill.step.operation === 'chain-apply' && refill.plan.chainKind !== 'graveyard-token';
+    const choice = choosing || chainChoice ? await chooseSharedRefillAction(job,refill,expected) : null;
+    if (!current() || ((choosing || chainChoice) && choice === undefined)) return;
+    const {myRole} = match;
+    const result = await publishMatchStateAtomic(match.matchId,uid,myRole,{
+      syncMeta:{writerRole:myRole,writerClientId:matchSyncClientId + ':refill',
+        writerSeq:++matchSyncWriterSeq,publishId:`refill_${expected.stackId}_${expected.cursor ?? 'start'}_${expected.orderIndex ?? 'initial'}_${expected.targetIndex ?? 'none'}_${expected.wardIndex ?? 'none'}_${expected.sealedCount}`}
+    },{},{
+      expected,
+      prepare(room,ownZones) {
+        if (!current()) throw new Error('MULTIPLAYER_SHARED_REFILL_SESSION_CHANGED');
+        if (prepared) return prepared;
+        if (refill.step.operation === 'target' && !validateSharedRefillTarget(readSharedHandRefill(room),choice)) {
+          throw new Error('MULTIPLAYER_SHARED_REFILL_ILLEGAL_TRIGGER_TARGET');
+        }
+        const deadlineMs = Date.now() + DECISION_DURATION_MS;
+        const discard = (card,index) => {
+              const plan = replacementCardZonePlan(card,true,'hand','graveyard','effect');
+              if (!plan.ownerIsLocal) throw new Error('MULTIPLAYER_SHARED_REFILL_FOREIGN_HAND_OWNER');
+              return plan.zoneTo === 'exile' ? {zone:'Exile',entry:card} : {
+                zone:'Graveyard',entry:{...graveyardEntryCard(card),_graveyardObjectId:`refill_${expected.stackId}_${myRole}_${index}`}
+              };
+        };
+        const operation = refill.step.operation;
+        let next;
+        if (operation === 'order') next = prepareSharedRefillOrderCommit(room,choice,deadlineMs);
+        else if (operation === 'target') next = prepareSharedRefillTargetCommit(room,choice,deadlineMs);
+        else if (operation === 'ward') next = preparePhaseSevenWardCommit(room,stagePhaseSevenWard(room,myRole,choice),deadlineMs);
+        else if (operation === 'finish') next = finishSharedRefillCommit(room,myRole);
+        else if (refill.plan.kind === 'refill' || operation === 'start') {
+          next = prepareSharedHandRefillCommit(room,ownZones,{fromGraveyard:graveyardEntryCard,shuffle:shuffleLibraryInPlace,discard,deadlineMs});
+        } else if (operation === 'chain-apply') {
+          next = stageChainedResolution(room,myRole,ownZones,refill.plan,choice);
+        } else if (refill.plan.kind === 'redirect') {
+          next = stageRedirectAdvance(room,myRole,ownZones,readSharedHandRefill(room),choice,deadlineMs);
+        } else if (refill.plan.kind === 'control') {
+          next = stageControlAdvance(room,myRole,readSharedHandRefill(room),choice,deadlineMs);
+        } else {
+          next = preparePhaseSevenCommit(room,ownZones,choice,{
+            deadlineMs,discard,random:length=>Math.floor(gameRandom('random_discard_choice')*length),
+            draft:(plan,progress)=>stagePhaseSevenEffect(room,myRole,plan,progress)
+          });
+        }
+        if (!next) return null;
+        prepared = {...next,publicPatch:discoverySafePublicValue(next.publicPatch)};
+        return prepared;
+      }
+    });
+    if (!current()) return;
+    const own = result.refillPrivateDoc;
+    if (own && normalizeSyncRevision(own._syncRevision) >= normalizeSyncRevision(lastKnownPrivateWire?._syncRevision)) {
+      lastKnownPrivateWire = wireClone(own);
+      state.localHand = own.hand;
+      state.localDeck = own.deck;
+      // A matching public snapshot can arrive either side of the transaction ACK.
+      remoteSyncApplyDepth++;
+      try { render(); } finally { remoteSyncApplyDepth--; }
+    }
+    if (result.refillPaused) {
+      job.paused = expected;
+      recordTelemetryEvent('shared_refill_requires_ward',{stackId:expected.stackId});
+      return;
+    }
+    clearMultiplayerSyncBlocked();
+    if (result.refillPublicDoc) observeSharedHandRefill(result.refillPublicDoc);
+  } catch (error) {
+    if (!current()) return;
+    if (isSessionSupersededError(error)) {
+      setMultiplayerSyncBlocked('session_superseded',{permanent:true});
+      return;
+    }
+    setMultiplayerSyncBlocked('transport');
+    recordTelemetryNetwork('shared_refill_commit_failed',{stackId:expected.stackId,code:error.code || error.message},'error');
+    if (isRetryableSyncError(error)) {
+      job.retry = setTimeout(() => {
+        job.retry = null;
+        if (current()) observeSharedHandRefill(job.room);
+      },SYNC_RECOVERY_RETRY_MS);
+    } else {
+      job.paused = expected;
+      console.error('Fallo la resolución de la recarga:',error);
+    }
+  }
+}
+
+export async function beginSharedHandRefillAfterPasses() {
+  const match = state.currentMatch;
+  if (!await publishMatchState({force:true}) || state.currentMatch !== match) return;
+  if (lastKnownPublicWire) observeSharedHandRefill(lastKnownPublicWire);
+}
+
 export function publishMatchState(options = {}) {
   if (!state.currentMatch || !state.currentUser) return Promise.resolve(false);
   if (state.multiplayerSessionSuperseded) return Promise.resolve(false);
   if (remoteSyncApplyDepth > 0 && !options.force) return Promise.resolve(false);
+  if (state.gameOver && sharedRefillJob?.match === state.currentMatch && sharedRefillJob.running) {
+    return sharedRefillJob.running.then(() => publishMatchState(options));
+  }
+  if (state.multiplayerResolutionMarker?.sharedHandRefill || lastKnownPublicWire?.multiplayerResolutionMarker?.sharedHandRefill ||
+      (sharedRefillJob?.match === state.currentMatch && sharedRefillJob.room?.multiplayerResolutionMarker?.sharedHandRefill)) {
+    return Promise.resolve(false);
+  }
 
   matchPublishQueued = true;
   if (!matchPublishInFlight) {
@@ -3749,6 +4479,37 @@ export async function resolveDrawCards(isLocal, amount, cause = 'effect') {
   return drawn;
 }
 
+export function refillBothHandsLocally(move, amount) {
+  if (state.currentMatch || state.gameOver || state.pendingPublicEffectResolution || !['discard','shuffle'].includes(move)) return null;
+  if (!Number.isSafeInteger(amount) || amount<1) return null;
+  const activeIsLocal = state.activePlayer === 'local';
+  const sides = [activeIsLocal, !activeIsLocal];
+  const resolution = { triggers:[] };
+  state.pendingPublicEffectResolution = resolution;
+  try {
+    if (move === 'discard') {
+      const discarded = sides.flatMap(isLocal => (isLocal ? state.localHand : state.rivalHand).splice(0)
+        .map(card => ({card, isLocal})));
+      commitDiscardedCards(discarded,'effect');
+    } else {
+      for (const isLocal of sides) {
+        const deck = isLocal ? state.localDeck : state.rivalDeck;
+        const hand = isLocal ? state.localHand : state.rivalHand;
+        const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+        deck.push(...hand.splice(0), ...graveyard.splice(0).map(graveyardEntryCard));
+        shuffleLibraryInPlace(deck);
+      }
+    }
+    for (const isLocal of sides) {
+      const result = drawCardsFromLibrary(isLocal,amount,'shared_refill');
+      noteFailedDraw(isLocal,result.failed,'shared_refill');
+    }
+  } finally {
+    state.pendingPublicEffectResolution = null;
+  }
+  return resolution.triggers;
+}
+
 // The room records the failed attempt while the library is still empty. The
 // spell can then put cards back before the normal end-of-resolution check.
 export async function publishFailedDrawBeforeRefill() {
@@ -3762,7 +4523,7 @@ export async function publishFailedDrawBeforeRefill() {
   return publishMatchState({force:true});
 }
 
-export function choosePublicEffectOption(message, cardName, valid) {
+export function choosePublicEffectOption(message, cardName, valid, {durationMs=DECISION_DURATION_MS}={}) {
   const match = state.currentMatch;
   const uid = state.currentUser?.uid;
   const current = () => !state.gameOver && !state.multiplayerSessionSuperseded &&
@@ -3772,7 +4533,7 @@ export function choosePublicEffectOption(message, cardName, valid) {
     title:cardName,confirm:true,acceptLabel:'Sí',cancelLabel:'No',valid:current,
     bindDecision:(overlay,finish) => {
       const choose = timedDecision(overlay,state,finish,()=>[false],{
-        remove:false,action:false,isCurrent:current,clockHost:overlay.querySelector('section'),
+        remove:false,action:false,isCurrent:current,clockHost:overlay.querySelector('section'),durationMs,
         blocked:()=>state.multiplayerSyncBlocked,notice:'Al vencer se elige No.'
       });
       return () => choose(false);
@@ -3906,8 +4667,8 @@ function libraryDestinationCopy(destination='hand') {
   return labels[destination] || destination;
 }
 
-async function chooseLibraryEntries({ ownerIsLocal, chooserIsLocal, spec, cardName }) {
-  const deck=ownerIsLocal ? state.localDeck : state.rivalDeck;
+async function chooseLibraryEntries({ownerIsLocal,chooserIsLocal,spec,cardName,
+  deck=ownerIsLocal ? state.localDeck : state.rivalDeck,signal,durationMs}) {
   const windowEntries=getLibraryWindowEntries(deck,spec).map(entry=>({
     ...entry,
     selectable: libraryCardMatchesFilter(entry.card,spec.filter) && libraryCardCanMoveToDestination(entry.card,spec.destination)
@@ -3917,7 +4678,8 @@ async function chooseLibraryEntries({ ownerIsLocal, chooserIsLocal, spec, cardNa
   if(maxCount<=0) return [];
   if(!chooserIsLocal) return chooseBotLibraryEntries(deck,spec).slice(0,maxCount);
 
-  state.pendingLibraryChoice={cardName,amount:spec.amount,maxCount,range:spec.range,rangeCount:spec.rangeCount,destination:spec.destination};
+  const pending = {cardName,amount:spec.amount,maxCount,range:spec.range,rangeCount:spec.rangeCount,destination:spec.destination};
+  state.pendingLibraryChoice = pending;
   render();
   return new Promise(resolve=>{
     showLibrarySearchModal({
@@ -3927,10 +4689,10 @@ async function chooseLibraryEntries({ ownerIsLocal, chooserIsLocal, spec, cardNa
       filterLabel:libraryFilterCopy(spec.filter),
       destinationLabel:libraryDestinationCopy(spec.destination),
       allowFewer:spec.allowFewer,
-      lookCount:spec.range==='top_n' ? spec.rangeCount : null
+      lookCount:spec.range==='top_n' ? spec.rangeCount : null,
+      signal,durationMs
     }, chosenIndexes=>{
-      state.pendingLibraryChoice=null;
-      render();
+      if (state.pendingLibraryChoice === pending) { state.pendingLibraryChoice=null; render(); }
       const byIndex=new Map(windowEntries.map(entry=>[entry.index,entry]));
       const unique=[...new Set((chosenIndexes||[]).map(Number))]
         .filter(Number.isInteger)
@@ -3952,7 +4714,10 @@ async function buildOwnEtbAfterLibraryEntry(card,item,isLocal) {
     });
   }
   if(!card.requiresTarget || etbTarget){
-    return {effect:card.etbEffect,sourceCard:card,sourceItem:item,isLocal,targetObj:etbTarget,triggerType:'library_etb'};
+    const printed = card.etbEffect;
+    const effect = printed.amountFrom==='devoured'
+      ? {...printed,amountFrom:null,amount:sourceAmount(printed,item)} : printed;
+    return {effect,sourceCard:card,sourceItem:item,isLocal,targetObj:etbTarget,triggerType:'library_etb'};
   }
   logMsg(gameText('effect.etb.noLegalTarget',{card:card.name}));
   return null;
@@ -3981,7 +4746,14 @@ async function putLibraryCardsOntoBattlefield(cards, ownerIsLocal, tappedByInstr
 
   // Todos entran físicamente antes de detectar el primer ETB: una instrucción que pone
   // varias cartas en battlefield representa un único evento simultáneo de entrada.
-  for(const {item} of prepared) initializeEntryCounters(item,ownerIsLocal);
+  const cardsToEnter = prepared.map(entry=>entry.card);
+  let held = [];
+  let devoured = [];
+  if (cardsToEnter.some(devourMultiplier)) {
+    const choices = await chooseDevourSacrifices(cardsToEnter,ownerIsLocal);
+    ({devoured,triggers:held} = collectDevourSacrifices(cardsToEnter,ownerIsLocal,choices));
+  }
+  prepared.forEach(({item},index)=>initializeEntryCounters(item,ownerIsLocal,devoured[index]));
   for(const entry of prepared){
     const zone=entry.kind==='land' ? (ownerIsLocal?state.localLands:state.rivalLands)
       : entry.kind==='creature' ? (ownerIsLocal?state.localCombat:state.rivalCombat)
@@ -3997,7 +4769,7 @@ async function putLibraryCardsOntoBattlefield(cards, ownerIsLocal, tappedByInstr
   }
   // Todos los ETB nacidos del mismo movimiento se agrupan antes de tocar la Stack.
   // Esto preserva simultaneidad + AP/NAP incluso si el lote mezcla Tierras, criaturas y Support/PW.
-  const triggerEntries=[];
+  const triggerEntries=[...held];
   const creatureEntries=prepared.filter(entry=>entry.kind==='creature').map(({card,item})=>({card,item}));
   const landEntries=prepared.filter(entry=>entry.kind==='land').map(({card,item})=>({card,item}));
   if(creatureEntries.length) triggerEntries.push(...collectCreatureEtbBatchEntries(ownerIsLocal,creatureEntries));
@@ -4247,19 +5019,27 @@ async function discardCardsFromHandNow(options) {
   // el array y las mecánicas que miran "lo más reciente" conservan un orden determinista.
   removed.sort((a, b) => a.originalIndex - b.originalIndex);
   const discardedCards = removed.map(entry => entry.card);
-  for (const discardedCard of discardedCards) {
-    const plan=replacementCardZonePlan(discardedCard,victimIsLocal,'hand','graveyard',reason);
-    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(discardedCard) : discardedCard);
+  commitDiscardedCards(discardedCards.map(card=>({card,isLocal:victimIsLocal})),reason);
+  return { completed: !requireExact || discardedCards.length === amount, discardedCards, discardedNames: discardedCards.map(c => c.name) };
+}
+
+function commitDiscardedCards(entries, reason) {
+  const moves = entries.map(({card,isLocal}) => ({
+    card,isLocal,plan:replacementCardZonePlan(card,isLocal,'hand','graveyard',reason)
+  }));
+  for (const {card,plan} of moves) {
+    plan.destination.push(plan.zoneTo === 'graveyard' ? graveyardEntryCard(card) : card);
+  }
+  for (const {card,isLocal,plan} of moves) {
     dispatchGameEvent({
-      type:'card_discarded', controllerIsLocal:victimIsLocal, actorIsLocal:victimIsLocal,
-      ownerIsLocal:plan.ownerIsLocal, card:discardedCard, zoneFrom:'hand', zoneTo:plan.zoneTo, cause:reason
+      type:'card_discarded', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      ownerIsLocal:plan.ownerIsLocal, card, zoneFrom:'hand', zoneTo:plan.zoneTo, cause:reason
     });
     if(plan.zoneTo==='exile') dispatchGameEvent({
-      type:'card_exiled',controllerIsLocal:victimIsLocal,actorIsLocal:victimIsLocal,ownerIsLocal:plan.ownerIsLocal,
-      card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:reason
+      type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,
+      card,zoneFrom:'hand',zoneTo:'exile',cause:reason
     });
   }
-  return { completed: !requireExact || discardedCards.length === amount, discardedCards, discardedNames: discardedCards.map(c => c.name) };
 }
 
 export function discardCardsFromHand(options) {
@@ -4348,7 +5128,7 @@ export function getFinalCastingManaCost(card, options = {}) {
   const xSymbols = manaString?.match(/\{X\}/g)?.length || 0;
   baseCost.generic += xSymbols * Math.max(0, Math.floor(Number(options.xValue) || 0));
   const casterIsLocal = options.isLocal !== false;
-  const result = applySpellCostModifiers(state, card, casterIsLocal, baseCost, options);
+  const result = applySpellCostModifiers(state, card, casterIsLocal, baseCost, {...options,getPower:getEffectivePower});
   return { ...result, manaString, baseCost };
 }
 
@@ -5291,6 +6071,14 @@ export function startListeningToMatch(matchId, myRole) {
         isExactMultiplayerVersionCompatible(publicDoc.engineVersion,publicDoc.engineProtocolVersion) &&
         publicDoc.hostReady === true && publicDoc.guestReady === true && !!publicDoc.bothReadyAt};
     notifyPrioritySyncChanged();
+    if (priorityServerFrontier.confirmed) {
+      const match = state.currentMatch;
+      const listenerSerial = sharedRefillListenerSerial;
+      queueMicrotask(() => {
+        if (sharedRefillListenerSerial === listenerSerial && state.currentMatch === match &&
+            match?.matchId === matchId) observeSharedHandRefill(publicDoc);
+      });
+    }
 
     const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
     const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
@@ -5455,13 +6243,14 @@ export function startListeningToMatch(matchId, myRole) {
       lastAppliedWriterSeq.set(writerKey, writerSeq);
     }
 
-    const writtenByRival = isSelfEcho ? true : (writerRole ? writerRole !== myRole : false);
+    const authoritativeZoneWrite = isSelfEcho || writerClientId === matchSyncClientId + ':refill' ||
+      (writerRole && writerRole !== myRole);
 
     const incoming = {
       // Si el ÚLTIMO write fue del rival, puede contener cambios autoritativos sobre MI
       // battlefield (daño, removal, bounce, etc.). Sólo importamos las keys que ese write
       // declaró haber tocado; nunca leemos de rebote campos viejos del documento mergeado.
-      ...(writtenByRival ? extractMyStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys) : {}),
+      ...(authoritativeZoneWrite ? extractMyStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys) : {}),
       ...extractRivalStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys),
       ...extractSharedStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys)
     };
@@ -5632,12 +6421,7 @@ export function startListeningToMatch(matchId, myRole) {
     console.error('La escucha multiplayer se interrumpió:', error);
   });
   return () => {
-    if (typeof activeMatchListenerStop === 'function') {
-      try { activeMatchListenerStop(); } catch {}
-      activeMatchListenerStop = null;
-    }
-    priorityServerFrontier = null;
-    notifyPrioritySyncChanged();
+    stopActiveMatchListener();
   };
 }
 
@@ -6056,7 +6840,7 @@ export function chooseGraveyardCards(options) {
 let pendingResolvedEffectTargetResolver = null;
 let resolvedEffectTargetChoiceChain = Promise.resolve();
 
-async function choosePublicGraveyardTarget(effect, sourceCard, controllerIsLocal, {action = false, valid = null} = {}) {
+async function choosePublicGraveyardTarget(effect, sourceCard, controllerIsLocal, {action = false, valid = null, durationMs} = {}) {
   const candidates = graveyardTargets(state,controllerIsLocal,effect);
   if (!candidates.length) return null;
   if (!controllerIsLocal) {
@@ -6090,7 +6874,7 @@ async function choosePublicGraveyardTarget(effect, sourceCard, controllerIsLocal
     showGraveyardChoiceModal(candidates.map((target,index) => ({card:target.card,index,
       sideLabel:target.isLocal ? 'Tu cementerio' : 'Cementerio rival'})),
       1,sourceCard.name,'','Elegí el objetivo en el cementerio',resolve,{
-        allowCancel:action,valid:current
+        allowCancel:action,valid:current,durationMs
       });
   });
   if (state.pendingGraveyardChoice !== choice) return null;
@@ -6123,7 +6907,7 @@ function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controller
 
 export function refreshPublicEffectTarget(target, effect) {
   const allowed = battlefieldEffectTargets(effect);
-  if (!allowed || !target) return target;
+  if (!target || (!allowed && !target._trackBattlefieldTarget && !target._syncDescriptor?.strict)) return target;
   if (target.type === 'aura') {
     const host = [state.localCombat,state.rivalCombat,state.localLands,state.rivalLands,state.localSupport,state.rivalSupport]
       .flat().find(item => item.auras?.includes(target.card));
@@ -6134,7 +6918,7 @@ export function refreshPublicEffectTarget(target, effect) {
   const location = findBattlefieldItemLocation(target.item);
   if (!location) return target;
   const zoneType = {combat:'creature',support:'permanent',land:'land',planeswalker:'planeswalker'}[location.zoneName];
-  const type = allowed.includes('creature') && isCreaturePermanent(target.item) ? 'creature' : zoneType;
+  const type = (allowed?.includes('creature') || target.type === 'creature') && isCreaturePermanent(target.item) ? 'creature' : zoneType;
   return {...target,type,isLocal:location.isLocal,index:location.index};
 }
 
@@ -6144,7 +6928,7 @@ export function explainResolvedEffectTargetLegality(targetObj, options) {
   const sourceCard = options.sourceCard || options.cardLike || { name: options.cardName || 'Efecto', colors: [] };
   if (graveyardEffectTargets(options.effect)) {
     const withinScope = options.effect.graveyard !== 'own' || targetObj.isLocal === controllerIsLocal;
-    const legal = targetObj.type === 'graveyard' && !!targetObj.card && !targetObj.card.isToken && withinScope && graveyardForSide(state,targetObj.isLocal).includes(targetObj.card);
+    const legal = targetObj.type === 'graveyard' && matchesGraveyardEffectCard(targetObj.card,options.effect) && withinScope && graveyardForSide(state,targetObj.isLocal).includes(targetObj.card);
     return {legal, reason:legal ? 'ok' : 'graveyard_target_missing'};
   }
   const battlefieldTypes = battlefieldEffectTargets(options.effect);
@@ -6157,6 +6941,10 @@ export function explainResolvedEffectTargetLegality(targetObj, options) {
       return {legal:!!legal,reason:legal ? 'ok' : 'left_battlefield_or_zone'};
     }
     if (!targetObj.item || !findBattlefieldItemLocation(targetObj.item)) return {legal:false,reason:'left_battlefield_or_zone'};
+    if (options.effect.targetKind === 'artifact_or_creature' &&
+        !getPermanentTypes(targetObj.item).some(type=>type === 'artifact' || type === 'creature')) {
+      return {legal:false,reason:'permanent_filter'};
+    }
   }
   const cardLike = options.cardLike || resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
   const rules = getTargetRules(cardLike);
@@ -6234,8 +7022,8 @@ export function getResolvedEffectTargetCandidates(options) {
   const controllerIsLocal = options?.controllerIsLocal !== false;
   const sourceCard = options?.sourceCard || { name: options?.cardName || 'Efecto', colors: [] };
   const effect = options?.effect;
-  if (!effect) return [];
-  const rules = getTargetRules(resolvedEffectTargetCard(sourceCard, effect, options?.cardName));
+  if (!effect && !options?.cardLike) return [];
+  const rules = getTargetRules(options?.cardLike || resolvedEffectTargetCard(sourceCard, effect, options?.cardName));
   const candidates = [];
 
   if (rules.allowPlayer) {
@@ -6395,12 +7183,13 @@ function finishPendingResolvedEffectTarget(targetObj) {
 
 async function chooseResolvedEffectTargetNow(options) {
   options = options || {};
+  const {signal,durationMs} = options;
   const effect = options.effect;
   const sourceCard = options.sourceCard || { name: options.cardName || 'Habilidad disparada', colors: [] };
   const controllerIsLocal = options.controllerIsLocal !== false;
   const chooserIsLocal = options.chooserIsLocal !== false;
   const cardName = options.cardName || `ETB de ${sourceCard.name}`;
-  if (!effect) return null;
+  if (!effect || signal?.aborted) return null;
 
   const candidates = getResolvedEffectTargetCandidates({ ...options, sourceCard, controllerIsLocal });
   if (candidates.length === 0) {
@@ -6430,12 +7219,18 @@ async function chooseResolvedEffectTargetNow(options) {
       const clock=document.createElement('div');clock.className='arg-resolution-clock';
       clock.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);width:min(340px,80vw);z-index:100001;pointer-events:none';
       document.body.append(clock);
-      pendingResolvedEffectTargetResolver=timedDecision(clock,state,target=>{
+      const finish = target => {
+        signal?.removeEventListener('abort',abort);
+        clock.remove();
         if(target&&!isResolvedEffectTargetLegal(target,{...options,sourceCard,controllerIsLocal}))target=null;
         if(state.pendingResolvedEffectTargetChoice===choice){state.pendingResolvedEffectTargetChoice=null;state.pendingTargetCard=null;pendingResolvedEffectTargetResolver=null;render();}
         resolve(target);
-      },()=>[randomLegalSubset(getResolvedEffectTargetCandidates({...options,sourceCard,controllerIsLocal}),1)[0]||null],{
-        action:false,blocked:isMultiplayerInteractionBlocked,record:recordTelemetryEvent
+      };
+      const abort = () => finish(null);
+      signal?.addEventListener('abort',abort,{once:true});
+      pendingResolvedEffectTargetResolver=timedDecision(clock,state,finish,()=>[randomLegalSubset(getResolvedEffectTargetCandidates({...options,sourceCard,controllerIsLocal}),1)[0]||null],{
+        action:false,blocked:isMultiplayerInteractionBlocked,record:recordTelemetryEvent,
+        durationMs,isCurrent:()=>!signal?.aborted
       });
     });
   }
@@ -6508,7 +7303,9 @@ export function performSacrifice(item, isLocal) {
     if (idx === -1) continue;
     const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
     const exitPlan = replacementExitPlan(item,isLocal,'sacrifice','graveyard');
-    void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
+    if (!state.pendingPublicEffectResolution?.draft) {
+      void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
+    }
     zone.splice(idx, 1);
     if (isCreatureZone) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreatureZone) detachEquipmentFrom(item, isLocal);
@@ -6545,13 +7342,11 @@ export function performSacrifice(item, isLocal) {
 // Punto 5: sacrifica varios permanentes como UNA misma instrucción. Primero salen todos y
 // recién después se disparan sus muertes, preservando watchers simultáneos.
 export function performSacrificeBatch(items, isLocal) {
-  const uniqueItems = [...new Set((items || []).filter(Boolean))];
-  if (uniqueItems.length === 0) return [];
+  return performSacrifices((items || []).map(item=>({item,isLocal})));
+}
 
-  const zones = isLocal
-    ? [state.localCombat, state.localSupport, state.localLands]
-    : [state.rivalCombat, state.rivalSupport, state.rivalLands];
-  const combat = isLocal ? state.localCombat : state.rivalCombat;
+export function performSacrifices(entries) {
+  if (!entries.length) return [];
   const deathWatchersSnapshot = [
     ...state.localCombat.map(unit => ({ unit, isLocal: true })),
     ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
@@ -6562,39 +7357,45 @@ export function performSacrificeBatch(items, isLocal) {
   // Los replacement effects de una instrucción simultánea se determinan antes de mover
   // el primer permanente, para que una fuente que también se sacrifica vea todo el lote.
   const planned=[];
-  for (const item of uniqueItems) {
-    let foundZone=null, idx=-1;
-    for (const zone of zones) { idx=zone.indexOf(item); if(idx!==-1){foundZone=zone;break;} }
-    if(!foundZone) continue;
-    planned.push({item,foundZone,isCreature:foundZone===combat,exitPlan:replacementExitPlan(item,isLocal,'sacrifice','graveyard')});
+  const seen=new Set();
+  for (const {item,isLocal} of entries) {
+    if (!item || seen.has(item)) continue;
+    const loc=findBattlefieldItemLocation(item);
+    if (!loc || loc.isLocal!==isLocal || loc.zoneName==='planeswalker') continue;
+    seen.add(item);
+    planned.push({item,isLocal,foundZone:loc.zone,isCreature:loc.zoneName==='combat',exitPlan:replacementExitPlan(item,isLocal,'sacrifice','graveyard')});
   }
 
   const removed = [];
   for (const plan of planned) {
-    const {item,foundZone,isCreature,exitPlan}=plan;
+    const {item,isLocal,foundZone,isCreature,exitPlan}=plan;
     const idx=foundZone.indexOf(item); if(idx===-1) continue;
-    void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
+    if (!state.pendingPublicEffectResolution?.draft) {
+      void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
+    }
     foundZone.splice(idx,1);
     if (isCreature) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreature) detachEquipmentFrom(item, isLocal);
     sendAurasToGraveyard(item, isLocal);
     if (isCreature) cleanupIfVehicle(item);
     moveBattlefieldCardToZone(item.card, exitPlan.destination);
-    removed.push({ item, isCreature, zoneTo:exitPlan.zoneTo });
+    removed.push({ item, isLocal, isCreature, zoneTo:exitPlan.zoneTo });
     logMsg(gameText(isLocal ? 'sacrifice.self' : 'sacrifice.self.bot', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
+  }
+  for (const {item,isLocal,zoneTo} of removed) {
     sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
-      type:'permanent_sacrificed', aliases:exitPlan.zoneTo==='exile'?[]:['permanent_left_battlefield'], controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      type:'permanent_sacrificed', aliases:zoneTo==='exile'?[]:['permanent_left_battlefield'], controllerIsLocal:isLocal, actorIsLocal:isLocal,
       ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
-      card:item.card, item, zoneFrom:'battlefield', zoneTo:exitPlan.zoneTo, cause:'sacrifice'
+      card:item.card, item, zoneFrom:'battlefield', zoneTo,cause:'sacrifice'
     }, {watchersSnapshot:genericWatchersSnapshot}));
-    if(exitPlan.zoneTo==='exile') sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
+    if(zoneTo==='exile') sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
       type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,
       ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
       card:item.card,item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
     }, {watchersSnapshot:genericWatchersSnapshot}));
   }
 
-  const deadEntries = removed.filter(entry => entry.isCreature && entry.zoneTo==='graveyard').map(entry => ({ unit: entry.item, isLocal }));
+  const deadEntries = removed.filter(entry => entry.isCreature && entry.zoneTo==='graveyard').map(entry => ({ unit: entry.item, isLocal:entry.isLocal }));
   if (deadEntries.length) {
     queueCreatureDeathBatch(deadEntries, deathWatchersSnapshot, sacrificeTriggerEntries);
   } else if (sacrificeTriggerEntries.length) {
@@ -6725,6 +7526,7 @@ function enqueueTriggerStackItem(entry) {
       type:'triggered', triggerType, sourceItem:entry.sourceItem || null,
       sourceCardId:entry.sourceCard.id || null, selfTarget:!!entry.selfTarget,
       eventCard:entry.eventCard || null, eventItem:entry.eventItem || null,
+      ...(entry.eventStackId != null ? {eventStackId:entry.eventStackId} : {}),
       sagaChapter:entry.sagaChapter ?? null, sagaPendingKey:entry.sagaPendingKey ?? null
     }
   };
@@ -6931,7 +7733,7 @@ function initializeSagaForBattlefieldEntry(rawEvent = {}) {
   return result.entries;
 }
 
-export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapshot=null } = {}) {
+export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapshot=null, allowChosenTargets=false } = {}) {
   const sagaEntryEntries=initializeSagaForBattlefieldEntry(rawEvent);
   const event=normalizeGameEvent({
     ...rawEvent,
@@ -6955,14 +7757,21 @@ export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapsho
   });
   const entries=[];
   for(const match of matches){
-    const effect=match.spec.effect;
+    const declaredEffect = match.spec.effect;
+    if (declaredEffect.amountFrom === 'event_amount' && !(event.amount>0)) continue;
+    const effect = declaredEffect.amountFrom === 'event_amount' ? {...declaredEffect,amount:event.amount} : declaredEffect;
+    const exchange=effect.type==='exchange_spell_control';
+    if (exchange && (event.type!=='spell_cast' || !isSpellObject(event.item) || !event.item.id ||
+      !match.sourceItem || match.sourceIsLocal===event.controllerIsLocal)) continue;
     const hasTargetDeclaration=match.spec.target!=null || match.spec.selfTarget===true;
     const targetObj=genericDeclaredTarget(match,event);
+    const requiresTarget = allowChosenTargets && !targetObj && !hasTargetDeclaration &&
+      (match.spec.requiresTarget === true || effect.requiresTarget === true) && canResolveGameEffectWithTarget(effect.type);
     const selfTarget = !!targetObj && targetObj.item === match.sourceItem && (
       match.spec.selfTarget === true ||
       ['self','source','this'].includes(String(typeof match.spec.target==='string'?match.spec.target:match.spec.target?.relation || '').toLowerCase())
     ) && ['pump','grant_keyword_temp','add_counter','remove_counter','exile_source'].includes(effect.type);
-    if(!targetObj && !graveyardEffectTargets(effect) && !canResolveGameEffectWithoutTarget(effect.type)){
+    if(!targetObj && !requiresTarget && !graveyardEffectTargets(effect) && !canResolveGameEffectWithoutTarget(effect.type)){
       // 23.15.3 auto-liga self/event/player cuando el schema lo declara. No inventa una
       // elección para "cualquier objetivo": eso debe seguir pasando por la UX legal existente.
       const reason=hasTargetDeclaration ? 'no pudo resolver el objetivo declarado' : 'necesita un objetivo no declarado';
@@ -6975,10 +7784,11 @@ export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapsho
     }
     entries.push({
       effect, sourceCard:match.sourceCard, sourceItem:match.sourceItem, isLocal:match.sourceIsLocal,
-      targetObj, selfTarget,
+      targetObj, selfTarget, ...(requiresTarget ? {requiresTarget:true} : {}),
       triggerType:match.spec.label || match.spec.event,
       eventCard:event.type === 'card_drawn' ? null : event.card || null,
       eventItem:effect.type==='destroy_damaged_creature' ? event.targetItem : event.item || null,
+      ...(exchange ? {eventStackId:event.item.id} : {}),
       genericEvent:event, genericTriggerIndex:match.spec._index
     });
   }
@@ -7064,7 +7874,9 @@ function queueGeneratedTriggerEntries(entries = [], eventType = 'event', options
 export function dispatchGameEvent(rawEvent = {}, options = {}) {
   // 23.19.4.3 — bridge visual descartable. Captura la geometría ANTES del próximo render,
   // pero nunca muta state ni altera triggers: si falla o está OFF, gameplay sigue igual.
-  try { void queueGameEventAnimation(rawEvent); } catch {}
+  if (!state.pendingPublicEffectResolution?.draft) {
+    try { void queueGameEventAnimation(rawEvent); } catch {}
+  }
   const entries=buildGenericEventTriggerEntries(rawEvent,options);
   const eventType=normalizeGameEvent(rawEvent).type;
   return queueGeneratedTriggerEntries(entries,eventType,options);
@@ -7210,8 +8022,10 @@ export function hasStateBasedActionsToProcess() {
 export async function runStateBasedActions({ reason='rules_check' }={}) {
   const marker = state.multiplayerResolutionMarker;
   if (reason === 'render' && state.endTurnTriggerEntries) return false;
-  if (state.gameOver || (marker && marker.authorityRole !== state.currentMatch?.myRole)) return false;
-  if(state.sbaKernelRunning || state.pendingPublicEffectResolution || state.combatDamageBatchInProgress) return false;
+  if (state.gameOver || marker?.sharedHandRefill?.chain ||
+    (marker && marker.authorityRole !== state.currentMatch?.myRole)) return false;
+  if (state.sbaKernelRunning || state.pendingPublicEffectResolution || state.combatDamageBatchInProgress ||
+      state.pendingSacrificeEffectChoice?.reason==='devour') return false;
   state.sbaKernelRunning=true;
   let changed=false;
   try {
@@ -7538,7 +8352,7 @@ export async function triggerSpellCast(isLocal, castCard, stackItem = null, {man
     }));
   }
   const simultaneous = manaTriggers.some(entry=>entry.sourceCard?.enchantKind === 'land') ||
-    entries.some(entry=>['pay_or_optional_draw','exile_source_until_end_step'].includes(entry.effect.type));
+    entries.some(entry=>['pay_or_optional_draw','exile_source_until_end_step','exchange_spell_control'].includes(entry.effect.type));
   if (!simultaneous && manaTriggers.length) queueTriggeredAbilities(manaTriggers);
   const queued = queueTriggeredAbilities(simultaneous ? [...manaTriggers,...entries] : entries);
   if (simultaneous) await waitForTriggerOrdering();
@@ -8124,10 +8938,16 @@ export function resolveScheduledReturns(isLocal) {
   const toReturn = state.scheduledReturns.filter(due);
   if (toReturn.length === 0) return;
   state.scheduledReturns = state.scheduledReturns.filter(entry => !due(entry));
-  toReturn.forEach(entry => returnExiledPermanent(entry.card,isLocal));
+  let pending = null;
+  for (const {card} of toReturn) {
+    pending = pending ? pending.then(()=>returnExiledPermanent(card,isLocal))
+      : returnExiledPermanent(card,isLocal) || null;
+  }
+  return pending;
 }
 
 function returnExiledPermanent(card,isLocal, queued = false) {
+  if (devourMultiplier(card)) return resolveDevourCreatureEntries([{card,zoneFrom:'exile'}],isLocal);
   const exileZone = isLocal ? state.localExile : state.rivalExile;
   const idx = exileZone.indexOf(card);
   if (idx === -1) return;
@@ -8206,7 +9026,7 @@ export function resolveExiledPermanentReturn({exileObjectId,ownerRole}) {
   const isLocal = ownerRole === engineRoleForSide(true);
   const exile = isLocal ? state.localExile : state.rivalExile;
   const card = exile.find(candidate=>candidate._exileObjectId === exileObjectId);
-  if (card) returnExiledPermanent(card,isLocal,true);
+  if (card) return returnExiledPermanent(card,isLocal,true);
 }
 
 export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
@@ -8298,9 +9118,141 @@ export function addCounters(item, type, amount, options = {}) {
   return addCountersDetailed(item,type,amount,options).added;
 }
 
-export function initializeEntryCounters(item, isLocal) {
+export async function chooseDevourSacrifices(cards,isLocal,{valid=()=>true,deadline}={}) {
+  const choices=[];
+  const committed = new Set();
+  for (const card of cards) {
+    const candidates = getSacrificeEffectCandidates(isLocal,'creature')
+      .filter(item=>isCreaturePermanent(item) && !committed.has(item));
+    let selected = [];
+    if (devourMultiplier(card) && candidates.length && valid() && (deadline === undefined || deadline>Date.now())) {
+      if (!isLocal && !state.currentMatch) {
+        selected = chooseBotDevourSacrifices(candidates,card,item=>
+          Math.max(0,getEffectivePower(item))+Math.max(0,getEffectiveToughness(item)));
+      } else if (isLocal) {
+        const pending = {permanentType:'creature',amount:candidates.length,cardName:card.name,reason:'devour'};
+        state.pendingSacrificeEffectChoice = pending;
+        render();
+        try {
+          selected = await new Promise(resolve=>showSacrificeEffectModal(candidates,candidates.length,card.name,
+            'creature',resolve,{optional:true,valid,durationMs:deadline===undefined ? undefined : Math.max(1,deadline-Date.now())}));
+        } finally {
+          if (state.pendingSacrificeEffectChoice===pending) state.pendingSacrificeEffectChoice=null;
+        }
+      }
+    }
+    choices.push(selected);
+    selected.forEach(item=>committed.add(item));
+  }
+  return choices;
+}
+
+function applyDevourSacrifices(cards,isLocal,choices) {
+  const reserved = new Set();
+  const assignments = cards.map((card,index)=>{
+    if (!devourMultiplier(card)) return [];
+    return (choices[index] || []).filter(item=>{
+      if (!isCreaturePermanent(item) || reserved.has(item) || findBattlefieldItemLocation(item)?.isLocal!==isLocal) return false;
+      reserved.add(item);
+      return true;
+    });
+  });
+  const sacrificed = new Set(performSacrificeBatch([...reserved],isLocal));
+  return assignments.map(items=>items.filter(item=>sacrificed.has(item)).length);
+}
+
+// Callers with an existing batch entry path can prepend the sacrifice triggers
+// to the same entry batch without changing entry logic for other permanents.
+export function collectDevourSacrifices(cards,isLocal,choices) {
+  const parent = state.pendingPublicEffectResolution;
+  const resolution = parent || {triggers:[]};
+  state.pendingPublicEffectResolution=resolution;
+  try {
+    const devoured = applyDevourSacrifices(cards,isLocal,choices);
+    return {devoured,triggers:parent ? [] : resolution.triggers};
+  } finally { state.pendingPublicEffectResolution=parent; }
+}
+
+// Sacrifices and entry are one instruction. Hold both sets of triggers until the
+// new batch is on the battlefield and all its entry counters have been applied.
+function withDevourEntryTriggers(run) {
+  if (state.pendingPublicEffectResolution) return run();
+  const batch = {triggers:[]};
+  state.pendingPublicEffectResolution=batch;
+  try { return run(); }
+  finally {
+    state.pendingPublicEffectResolution=null;
+    if (batch.triggers.length) queueTriggeredAbilities(batch.triggers);
+  }
+}
+
+export function applyDevourCreatureEntries(entries,isLocal,choices) {
+  return withDevourEntryTriggers(()=>{
+    const prefix = isLocal ? 'local' : 'rival';
+    const ready = entries.map((entry,index)=>({...entry,chosen:choices[index] || []})).filter(entry=>{
+      const zone = entry.zoneFrom === 'graveyard' ? state[prefix+'Graveyard']
+        : entry.zoneFrom === 'exile' ? state[prefix+'Exile'] : null;
+      if (!zone) return true;
+      const index = zone.indexOf(entry.card);
+      if (index<0) return false;
+      zone.splice(index,1);
+      if (entry.zoneFrom==='exile') clearExilePlayStateOnLeave(entry.card);
+      return true;
+    });
+    const counts = applyDevourSacrifices(ready.map(entry=>entry.card),isLocal,ready.map(entry=>entry.chosen));
+    const board = state[prefix+'Combat'];
+    const created = ready.map((entry,index)=>{
+      const {card} = entry;
+      const item = {card,tapped:entry.tapped===true,summoningSickness:true,enteredThisTurn:true,
+        isAttacking:false,blockingIndex:null,damageTaken:0,auras:[]};
+      initializeTransformPermanentItem(item,card,{face:entry.transformed === true ? 'back' : 'front'});
+      stampCardOwner(card,isLocal,state.currentMatch?.myRole || null);
+      stampPermanentController(item,isLocal,state.currentMatch?.myRole || null);
+      if (entry.suspendHaste) item._suspendHaste=true;
+      if (hasKeyword(item,'haste') || entry.suspendHaste) item.summoningSickness=false;
+      initializeEntryCounters(item,isLocal,counts[index]);
+      return {...entry,item};
+    });
+    board.push(...created.map(entry=>entry.item));
+    const triggers = collectCreatureEtbBatchEntries(isLocal,created);
+    for (const entry of created) {
+      const {card,item,zoneFrom,targetObj} = entry;
+      if (!state.pendingPublicEffectResolution?.draft) {
+        logMsg(gameText('permanent.creature.enter',{card:card.name}));
+        void queueGameEventAnimation({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,
+          ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole || null),card,item,zoneFrom,zoneTo:'battlefield',
+          cause:'resolve',metadata:{targetKind:'creature'}});
+      }
+      if (card.etbEffect) {
+        const original = card.etbEffect;
+        const effect = original.amountFrom==='devoured'
+          ? {...original,amountFrom:null,amount:sourceAmount(original,item)} : original;
+        triggers.push({effect,sourceCard:card,sourceItem:item,isLocal,targetObj,
+          requiresTarget:!!(card.requiresTarget || card.etbEffect.requiresTarget),triggerType:'etb'});
+      }
+    }
+    queueTriggeredAbilities(triggers);
+    return created;
+  });
+}
+
+export async function resolveDevourCreatureEntries(entries,isLocal) {
+  const match=state.currentMatch, uid=state.currentUser?.uid, turn=state.turnCount;
+  const valid = () => !state.gameOver && state.currentMatch===match && state.currentUser?.uid===uid && state.turnCount===turn;
+  const choices = await chooseDevourSacrifices(entries.map(entry=>entry.card),isLocal,{valid});
+  return valid() ? applyDevourCreatureEntries(entries,isLocal,choices) : [];
+}
+
+export function initializeEntryCounters(item,isLocal,devoured = 0) {
   const card = item.card;
-  const entries = { ...card.entersWithCounters };
+  const entries = {...card.entersWithCounters};
+  const multiplier = devourMultiplier(card);
+  if (multiplier) {
+    item.devouredCount = devoured;
+    const counters = Object.entries(entries).filter(([type])=>normalizeCounterType(type)==='plusOne');
+    for (const [type] of counters) delete entries[type];
+    entries['+1/+1'] = counters.reduce((total,[,amount])=>total+Math.max(0,Math.floor(Number(amount)||0)),0)+devoured*multiplier;
+  }
   if (card.type?.includes('Planeswalker')) {
     entries.loyalty = card.loyalty;
     item.loyalty = 0;
@@ -8433,7 +9385,7 @@ export function handleCombatClick(item, isLocal, index, approvedAura = null, att
   }
 
   if (state.pendingResolvedEffectTargetChoice) {
-    const pendingEffect = state.pendingResolvedEffectTargetChoice.effect;
+    const pendingEffect = state.pendingResolvedEffectTargetChoice.options.effect;
     const rules = pendingEffect ? getTargetRules({ effect: pendingEffect }) : null;
     const landAllowed = item.isAnimatedLand && rules && (isLocal ? rules.allowLocalLand : rules.allowRivalLand);
     finishPendingResolvedEffectTarget({ type: landAllowed ? 'land' : 'creature', isLocal, index, item });
@@ -8861,6 +9813,10 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     logMsg(gameText('ability.noEquipTarget', { card: source.item.card.name }));
     return true;
   }
+  if (ability.effect?.type === REDIRECT_EFFECT && !spellStack.some(item=>canRedirectStackItem(ability.effect,item,source.isLocal))) {
+    logMsg(`No hay un objeto válido en la pila para ${source.item.card.name}.`);
+    return true;
+  }
 
   if (ability.sacrifice && ability.sacrifice !== 'self') {
     const candidates = getSacrificeEffectCandidates(source.isLocal, ability.sacrifice);
@@ -8932,7 +9888,8 @@ function beginActivatedAbilityPayment(source) {
   const ability = source?.ability;
   if (!ability) return false;
   const costStr = ability.cost || "";
-  const manaCostStr = costStr.replace('{T}', '').trim();
+  const activationCost = source.fixedX === undefined ? costStr : costStr.replaceAll('{X}',`{${source.fixedX}}`);
+  const manaCostStr = activationCost.replace('{T}', '').trim();
   const manaCost = parseManaCost(manaCostStr || "");
   state.pendingAbilitySource = source;
   state.pendingCost = manaCost;
@@ -8947,6 +9904,16 @@ function beginActivatedAbilityPayment(source) {
     logMsg(gameText('ability.payPrompt', { prefix, source: source.activationDisplayName || source.sourceName || source.item.card.name }));
     render();
   }
+  return true;
+}
+
+export function declareActivatedStackTarget(item) {
+  const source=state.pendingTargetSource;
+  const effect=source?.ability?.effect;
+  if (!source || source !== state.pendingAbilitySource || !spellStack.includes(item) ||
+      !canRedirectStackItem(effect,item,source.isLocal)) return false;
+  source.fixedX = (Number(effect.manaValueCostMultiplier) || 0) * stackSpellManaValue(item);
+  void executeSpellOnTarget({type:'stack',stackId:item.id});
   return true;
 }
 
@@ -8995,7 +9962,7 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
 // bloqueadores, el click principal de la criatura ya tiene otro significado; el botón ⚡
 // llama acá y evita que activar una habilidad cambie accidentalmente la declaración de combate.
 export function handleInstantActivatedAbilityClick(item, isLocal, index, zoneType = 'combat') {
-  if (isMultiplayerInteractionBlocked()) return;
+  if (isMultiplayerInteractionBlocked() || state.pendingSacrificeEffectChoice?.reason==='devour') return;
   if (state.gameOver || !isLocal) return false;
   let resolvedIndex = index;
   let options = [];
@@ -9020,7 +9987,9 @@ export function handleLandTargetClick(item, isLocal, index, attachedAura = null)
     const target = refreshPublicEffectTarget({type:'aura',card:attachedAura,item,isLocal},card?.effect);
     if (battlefieldEffectTargets(card?.effect)?.includes('aura') &&
         isResolvedEffectTargetLegal(target,{effect:card.effect,sourceCard:card,controllerIsLocal:true})) {
-      return executeSpellOnTarget(lockAuraTarget(target));
+      const locked = lockAuraTarget(target);
+      if (state.pendingResolvedEffectTargetChoice) return finishPendingResolvedEffectTarget(locked);
+      return executeSpellOnTarget(locked);
     }
     return;
   }
@@ -9706,6 +10675,8 @@ export function canPlayCard(card) {
   if (isMultiplayerInteractionBlocked()) return false;
   if (state.gameOver || state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
+  if (!card.modal && card.effect?.type === REDIRECT_EFFECT && !spellStack.some(item=>canRedirectStackItem(card.effect,item,true))) return false;
+  if (card.effect?.type === 'coin_control_spell' && !spellStack.some(isSpellObject)) return false;
 
   // LAND 3 / Punto 14: cualquier costo adicional no-maná, tanto schema legacy
   // (`type:'discard'`, `type:'sacrifice'`) como compuesto, se prevalida ANTES de anunciar.
@@ -9752,7 +10723,7 @@ function buildCastStackType(card) {
 
 function castNeedsTarget(card) {
   return !!(card.adjunta || (card.requiresTarget ?? (card.effect && (
-    card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter')
+    card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type === REDIRECT_EFFECT || card.effect.type === 'coin_control_spell' || card.effect.type.startsWith('counter')
     || card.effect.type === 'destroy_land' || card.effect.type === 'destroy_nonbasic_land'
   ))));
 }
@@ -9923,6 +10894,25 @@ function beginCastTargetDeclaration() {
   state.pendingXValue = tx.xValue;
   state.pendingKicked = tx.kicked;
 
+  if (card.effect?.type === 'prevent_block_this_turn' && card.effect.maxTargets === 2 && !tx.blockTargetCount) {
+    const candidates=getResolvedEffectTargetCandidates({effect:card.effect,sourceCard:card,controllerIsLocal:true});
+    if (!candidates.length) { abortCastTransaction(`No hay criaturas válidas para ${card.name}.`); return; }
+    if (candidates.length === 1) tx.blockTargetCount = 1;
+    else {
+      showStackObjectChoiceModal([{id:1,label:'Una criatura'},{id:2,label:'Dos criaturas'}],`Elegí cuántas criaturas para ${card.name}`,
+        choice=>{
+          if (state.pendingCastTransaction !== tx) return;
+          tx.blockTargetCount=choice.id;
+          beginCastTargetDeclaration();
+        },()=>{ if (state.pendingCastTransaction === tx) abortCastTransaction(); });
+      return;
+    }
+  }
+  if (tx.blockTargetCount === 2 && !card.multiTarget) {
+    card.multiTarget=true;
+    card.targets=[{label:'Primera criatura',effect:card.effect},{label:'Segunda criatura',effect:card.effect}];
+  }
+
   if (card.multiTarget && Array.isArray(card.targets) && card.targets.length > 0) {
     state.pendingMultiTargetChoice = { card, chosenTargets:[], currentIndex:0, castTransactionId:tx.id };
     logMsg(gameText('cast.targetAnnounce', { card: card.name, total: card.targets.length }));
@@ -9931,6 +10921,10 @@ function beginCastTargetDeclaration() {
   }
 
   if (castNeedsTarget(card)) {
+    if (card.effect?.type === REDIRECT_EFFECT && !spellStack.some(item=>canRedirectStackItem(card.effect,item,true))) {
+      abortCastTransaction(`No hay un objeto válido en la pila para ${card.name}.`);
+      return;
+    }
     state.pendingTargetCard = card;
     state.pendingTargetSource = null;
     let targetHint = `Elegí el objetivo de ${card.name} antes de pagar.`;
@@ -10180,6 +11174,10 @@ async function prepareCastTransactionCosts(tx, determinedCost) {
 export async function completeCastTargetDeclaration(targetObj) {
   const tx = state.pendingCastTransaction;
   if (!tx || tx.stage !== 'targets') return false;
+  if (tx.card.effect?.type === 'coin_control_spell' && (targetObj?.type !== 'stack' ||
+    !isSpellObject(spellStack.find(item=>item.id===targetObj.stackId)))) return false;
+  if (tx.card.effect?.type === REDIRECT_EFFECT && (targetObj?.type !== 'stack' ||
+    !canRedirectStackItem(tx.card.effect,spellStack.find(item=>item.id===targetObj.stackId),true))) return false;
   if (battlefieldEffectTargets(tx.card.effect) &&
     !isResolvedEffectTargetLegal(targetObj,{effect:tx.card.effect,sourceCard:tx.card,controllerIsLocal:true})) {
     logMsg(gameText('target.invalid.generic',{source:tx.card.name}));
@@ -10683,6 +11681,7 @@ export function pendingPaymentAllowsArtifactMana() {
 }
 
 export function canActivateLocalManaAbility(item) {
+  if (state.pendingSacrificeEffectChoice?.reason==='devour') return false;
   if (state.multiplayerResolutionMarker?.kind === 'stack_resolution' &&
       !state.pendingCounterUnlessPay && !state.pendingWardChoice) return false;
   if (!item?.card || state.gameOver) return false;
@@ -10714,7 +11713,7 @@ export function canActivateLocalManaAbility(item) {
   return true;
 }
 
-function produceManaFromSource(item, isLocal, chosenType, chosenAbility = null, { automaticPayment = false, deferTriggers = false } = {}) {
+function produceManaFromSource(item, isLocal, chosenType, chosenAbility = null, { automaticPayment = false, deferTriggers = false, bonusTypes } = {}) {
   if (!item?.card || findBattlefieldItemLocation(item)?.isLocal !== isLocal) return false;
   const abilities = effectiveManaAbilitiesForItem(item, isLocal);
   const ability = abilities.find(candidate => candidate.options.includes(chosenType) && (!chosenAbility ||
@@ -10723,6 +11722,10 @@ function produceManaFromSource(item, isLocal, chosenType, chosenAbility = null, 
       candidate.sacrificeSelf === chosenAbility.sacrificeSelf)));
   const hasHaste = getEffectiveKeywords(item).some(k=>String(k).toLowerCase()==='haste');
   if (!canActivateManaSourcePermanent(item, { hasHaste, ability })) return false;
+
+  const manaAuras = ability.requiresTap ? getAttachedLandManaAuras(item) : [];
+  const auraColors = bonusTypes ?? manaAuras.map(()=>LAND_AURA_MANA_COLORS.includes(chosenType) ? chosenType : 'W');
+  if (auraColors.length !== manaAuras.length || auraColors.some(color=>!LAND_AURA_MANA_COLORS.includes(color))) return false;
 
   // 23.19.5 RC2 — usar una man-land para pagar SU propia animación es legal, pero el resultado
   // sorprende: la fuente se gira para producir maná y luego la habilidad la convierte en una
@@ -10743,7 +11746,7 @@ function produceManaFromSource(item, isLocal, chosenType, chosenAbility = null, 
     }).then(accepted => {
       if (state.pendingActionConfirmation !== confirmation) return;
       state.pendingActionConfirmation = null;
-      if (accepted) { pendingAbility.selfManaWarningAccepted = true; produceManaFromSource(item, isLocal, chosenType, ability); }
+      if (accepted) { pendingAbility.selfManaWarningAccepted = true; produceManaFromSource(item,isLocal,chosenType,ability,{bonusTypes:auraColors}); }
       else render();
     });
     render(); return false;
@@ -10774,9 +11777,13 @@ function produceManaFromSource(item, isLocal, chosenType, chosenAbility = null, 
   if (ability.sacrificeSelf) performSacrifice(item, isLocal);
   const amount = manaProductionAmount(state, isLocal, ability);
   addMana(pool, type, amount, ability.spendOnly);
-  const landManaEvent = amount > 0 && landManaEventSnapshot
-    ? handleLandTappedForManaEvent(item, isLocal, type, amount, { eventSnapshot:landManaEventSnapshot, forceDeferNormalTriggers:deferTriggers })
-    : { bonuses:[] };
+  const extraMana = manaAuras.map((sourceCard,index)=>({sourceCard,type:auraColors[index],amount:1}));
+  const landManaEvent = landManaEventSnapshot && (amount > 0 || extraMana.length)
+    ? handleLandTappedForManaEvent(item,isLocal,type,amount,{
+      eventSnapshot:{...landManaEventSnapshot,bonuses:[...(amount ? landManaEventSnapshot.bonuses : []),...extraMana]},
+      forceDeferNormalTriggers:deferTriggers
+    })
+    : {bonuses:[]};
   // UX tipo Arena + regla real: durante 601.2g/602, clickear una fuente puede pagar el
   // coste directamente. La producción COMPLETA entra primero al pool; consumimos como máximo
   // lo que esa activación acaba de producir y todo excedente queda flotando. El maná que ya
@@ -10819,6 +11826,46 @@ function chooseAndProduceMana(item, isLocal) {
     ability, type, amount:manaProductionAmount(state,isLocal,ability), spendOnly:ability.spendOnly
   })));
   const activate = choice => choice && produceManaFromSource(item,isLocal,choice.type,choice.ability);
+  const attached = getAttachedLandManaAuras(item);
+  if (isLocal && attached.length && choices.some(choice=>choice.ability.requiresTap)) {
+    if (state.pendingActionConfirmation) return false;
+    const identity = {match:state.currentMatch,uid:state.currentUser?.uid,serial:state.priorityClockSerial,
+      phase:state.phase,cost:state.pendingCost,turn:state.turnCount};
+    state.pendingActionConfirmation = identity;
+    const valid = () => {
+      const liveAuras = getAttachedLandManaAuras(item);
+      return state.pendingActionConfirmation === identity && state.currentMatch === identity.match &&
+        state.currentUser?.uid === identity.uid && state.priorityClockSerial === identity.serial &&
+        state.phase === identity.phase && state.turnCount === identity.turn && state.pendingCost === identity.cost &&
+        findBattlefieldItemLocation(item)?.isLocal === true && canActivateLocalManaAbility(item) &&
+        liveAuras.length === attached.length && liveAuras.every((aura,index)=>aura === attached[index]);
+    };
+    const cancel = () => {
+      if (state.pendingActionConfirmation !== identity) return;
+      state.pendingActionConfirmation = null;
+      render();
+    };
+    const select = choice => {
+      const manaAuras = choice.ability.requiresTap ? attached : [];
+      const colors = [];
+      const next = () => {
+        if (!valid()) { cancel(); return; }
+        if (colors.length === manaAuras.length) {
+          state.pendingActionConfirmation = null;
+          if (!produceManaFromSource(item,true,choice.type,choice.ability,{bonusTypes:colors})) render();
+          return;
+        }
+        showManaColorChoiceModal(manaAuras[colors.length].name,LAND_AURA_MANA_COLORS,color=>{
+          colors.push(color);
+          next();
+        },{valid,onCancel:cancel});
+      };
+      next();
+    };
+    if (choices.length === 1) select(choices[0]);
+    else showManaColorChoiceModal(item.card.name,choices,select,{showDetails:abilities.length>1,valid,onCancel:cancel});
+    return true;
+  }
   if (choices.length <= 1 || !isLocal) return !!activate(choices[0]);
   showManaColorChoiceModal(item.card.name, choices, activate, { showDetails:abilities.length>1 });
   return true;
@@ -10854,8 +11901,8 @@ export function activateLocalManaSource(item) {
 }
 
 // Para automatismos/IA: agrega al pool rival con el color elegido y no usa la Stack.
-export function activateRivalManaSource(item, chosenType = null, ability = null) {
-  return produceManaFromSource(item, false, chosenType || manaSourceOptions(item, false)[0], ability, { automaticPayment:true, deferTriggers:true });
+export function activateRivalManaSource(item, chosenType = null, ability = null, bonusTypes) {
+  return produceManaFromSource(item,false,chosenType || manaSourceOptions(item,false)[0],ability,{automaticPayment:true,deferTriggers:true,bonusTypes});
 }
 
 export function getManaSourceProductionOptions(card) { return manaSourceOptions(card); }
@@ -11220,6 +12267,10 @@ export function confirmModeChoice(modeIndex) {
   if (!chosenMode) return;
 
   const resolvedCard = { ...mc.card, effect: chosenMode.effect, requiresTarget: chosenMode.requiresTarget, chosenModeText: chosenMode.text };
+  if (mc.card.effect?.type === 'prevent_block_this_turn') {
+    delete resolvedCard.multiTarget;
+    delete resolvedCard.targets;
+  }
   if (state.pendingCastTransaction && mc.castTransactionId === state.pendingCastTransaction.id) {
     if (Number.isInteger(mc.index)) state.localHand[mc.index] = resolvedCard;
     state.pendingCastTransaction.card = resolvedCard;
@@ -11572,6 +12623,12 @@ function checkPaymentComplete() {
       const isGranted = source.abilityKind === 'granted';
       const ability = source.ability || (isGranted ? getGrantedAbilities(card)[0] : getActivatedAbilities(card)[0]);
       const tapTarget = source.tapTarget || source.item;
+      if (ability.effect?.type === REDIRECT_EFFECT && (!canRedirectStackItem(ability.effect,
+        spellStack.find(item=>item.id===source.chosenTarget?.stackId),source.isLocal) ||
+        (source.requiresTap && tapTarget.tapped) || findBattlefieldItemLocation(source.item)?.isLocal !== source.isLocal)) {
+        cancelPayment();
+        return;
+      }
 
       // 23.15.7 — coste adicional de descarte para habilidades activadas (Blood-like).
       // El maná ya está pagado, pero todavía no se giró/sacrificó la fuente ni entró la
@@ -11654,6 +12711,7 @@ function finalizeAbilityActivation(source, ability, card) {
     isLocal: source.isLocal,
     targetObj,
     type: 'ability',
+    ...(source.fixedX === undefined ? {} : {xValue:source.fixedX}),
     source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index, abilityIndex: source.abilityIndex },
     sourceItem: source.item,
     ability
@@ -11717,6 +12775,10 @@ export function tryResolveSacrificeChoice(item, isLocal) {
 // (si ya están todos) manda el hechizo entero a la pila con la lista completa adjunta.
 async function advanceMultiTargetChoice(targetObj) {
   const mtc = state.pendingMultiTargetChoice;
+  if (mtc.card.effect?.type === 'prevent_block_this_turn' && mtc.chosenTargets.some(selected=>sameStackTarget(selected,targetObj))) {
+    logMsg('Elegí otra criatura.');
+    return;
+  }
   mtc.chosenTargets.push(targetObj);
   mtc.currentIndex++;
 
@@ -11857,8 +12919,8 @@ function autoPayGenericManaCost(isLocal, amount, { deferTriggers = false } = {})
     hasHaste:item=>getEffectiveKeywords(item).some(k=>String(k).toLowerCase()==='haste')
   }));
   if (!plan) return false;
-  for (const { item, type, ability } of plan) {
-    if (!produceManaFromSource(item, isLocal, type, ability, { automaticPayment:true, deferTriggers })) return false;
+  for (const { item, type, ability, bonusTypes } of plan) {
+    if (!produceManaFromSource(item,isLocal,type,ability,{automaticPayment:true,deferTriggers,bonusTypes})) return false;
   }
   return spendCostAutomatically(pool, remaining);
 }

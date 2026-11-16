@@ -2148,6 +2148,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'effect.sacrifice.remoteNone': definition('Partida', '🔪 ¡{card}! {rival} no tenía {kind} para sacrificar.', 'Sacrificio remoto sin candidatos.'),
   'effect.sacrifice.none': definition('Partida', '🔪 {card}: no había {kind} para sacrificar.', 'Sacrificio sin candidatos.'),
   'effect.sacrifice.done': definition('Partida', '🔪 ¡{card}! {who} {verb} {cards}.', 'Sacrificio resuelto.'),
+  'effect.sacrifice.rivalChose': definition('Partida', '{player} eligió sacrificar {card}.', 'Elección pública antes de sacrificar el lote.'),
   'effect.discard.done': definition('Partida', '🗑️ ¡{card}! {target} descartó: {cards}.', 'Descarte resuelto.'),
   'effect.discard.none': definition('Partida', '🗑️ ¡{card}! {target} no tenía cartas para descartar.', 'Descarte sin cartas.'),
   'effect.look.empty': definition('Partida', '{card}: no hay cartas para mirar, el mazo está vacío.', 'Scry/Chusmeá con mazo vacío.'),

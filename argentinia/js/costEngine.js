@@ -147,12 +147,16 @@ function countPermanents(state, isLocal, predicate) {
   return battlefieldEntries(state).filter(e => e.isLocal === isLocal && predicate(e.item)).length;
 }
 
-function countForPer(state, casterIsLocal, per, card) {
+function countForPer(state, casterIsLocal, per, card, getPower) {
   if (!per) return 1;
   const kind = String(per.kind || per.count || '').toLowerCase();
   let n = 0;
   if (kind === 'artifact_you_control' || kind === 'artifacts_you_control') n = countPermanents(state,casterIsLocal,isArtifactPermanent);
   else if (kind === 'creature_you_control' || kind === 'creatures_you_control') n = countPermanents(state,casterIsLocal,isCreaturePermanent);
+  else if (kind === 'controls_creature_with_power') {
+    n = Number(battlefieldEntries(state).some(entry=>entry.isLocal === casterIsLocal && isCreaturePermanent(entry.item) &&
+      getPower && getPower(entry.item) >= per.atLeast));
+  }
   else if (kind === 'land_you_control' || kind === 'lands_you_control') n = countPermanents(state,casterIsLocal,isLandPermanent);
   else if (kind === 'permanent_you_control' || kind === 'permanents_you_control') n = battlefieldEntries(state).filter(e=>e.isLocal===casterIsLocal).length;
   else if (kind === 'matching_permanent_you_control' || kind === 'matching_permanents_you_control') {
@@ -265,7 +269,7 @@ export function applySpellCostModifiers(state, card, casterIsLocal, baseCost, op
   // CR 601.2f: aumentos primero, reducciones después, mínimos/floors al final.
   for (const mode of ['increase','reduce']) {
     for (const mod of modifiers.filter(m=>m.mode===mode)) {
-      const count = mod.per ? countForPer(state,casterIsLocal,mod.per,card) : 1;
+      const count = mod.per ? countForPer(state,casterIsLocal,mod.per,card,options.getPower) : 1;
       const scale = count * (mod.multiplier || 1);
       if (scale <= 0) continue;
       const delta = scaledManaCost(mod.manaCost,scale);

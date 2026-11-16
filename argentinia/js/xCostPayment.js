@@ -4,8 +4,15 @@ import { MANA_TYPES, emptyManaPool, manaAvailableForPayment, addMana, manaPoolTo
 import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana } from './manaSources.js';
 import { isLandPermanent } from './permanentTypes.js';
 import { getEffectiveLandManaAbilities } from './landCharacteristics.js';
-import { getLandManaBonuses } from './landStax.js';
+import { getLandManaBonuses, getAttachedLandManaAuras, LAND_AURA_MANA_COLORS } from './landStax.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost } from './costEngine.js';
+
+// Equivalent choices with a different order produce the same mana pool.
+function landAuraColorChoices(count, firstColor = 0) {
+  if (!count) return [[]];
+  return LAND_AURA_MANA_COLORS.slice(firstColor).flatMap((color,index)=>
+    landAuraColorChoices(count-1,firstColor+index).map(rest=>[color,...rest]));
+}
 
 export function readPaymentSources(state, isLocal, { excludeItems = [], hasHaste = () => false } = {}) {
   const prefix = isLocal ? 'local' : 'rival';
@@ -21,14 +28,19 @@ export function readPaymentSources(state, isLocal, { excludeItems = [], hasHaste
       for (const ability of abilities) {
         if (!canActivateManaSourcePermanent(item, { ability, hasHaste:hasHaste(item) })) continue;
         const amount = manaProductionAmount(state, isLocal, ability);
-        if (!amount) continue;
+        const tapsLand = land && ability.requiresTap;
+        const auraCount = tapsLand ? getAttachedLandManaAuras(item).length : 0;
+        if (!amount && !auraCount) continue;
+        const auraChoices = landAuraColorChoices(auraCount);
         for (const type of ability.options) {
-          const pool = emptyManaPool();
-          addMana(pool, type, amount, ability.spendOnly);
-          if (land && ability.requiresTap) {
-            for (const bonus of getLandManaBonuses(state, isLocal, item, type)) addMana(pool, bonus.type, bonus.amount);
+          const baseBonuses = amount && tapsLand ? getLandManaBonuses(state,isLocal,item,type) : [];
+          for (const bonusTypes of auraChoices) {
+            const pool = emptyManaPool();
+            addMana(pool,type,amount,ability.spendOnly);
+            for (const bonus of baseBonuses) addMana(pool,bonus.type,bonus.amount);
+            for (const color of bonusTypes) addMana(pool,color,1);
+            choices.push({item,type,ability,bonusTypes,pool});
           }
-          choices.push({ item, type, ability, pool });
         }
       }
       if (choices.length) sources.push({ item, choices });

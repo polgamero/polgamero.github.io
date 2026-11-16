@@ -6,7 +6,7 @@ import { normalizeManaPool, canPoolPayCost, manaAvailableForPayment, ARTIFACT_SP
 import { normalizeManaAbility, canActivateManaSourcePermanent, manaProductionAmount, canSpendArtifactSpellMana } from './manaSources.js';
 import { getEffectiveLandManaAbilities, getEffectiveLandActivatedAbilities } from './landCharacteristics.js';
 import { isLandPermanent } from './permanentTypes.js';
-import { getLandManaBonuses } from './landStax.js';
+import { getLandManaBonuses, getAttachedLandManaAuras } from './landStax.js';
 import { getActivatedAbilities, getGrantedAbilities, parseManaCost } from './utils.js';
 
 const COLORS = Object.freeze(['W','U','B','R','G','C']);
@@ -56,6 +56,9 @@ function readManaSources(s, helpers) {
       const choices = [];
       for (const mana of abilities) {
         if (!mana || !canActivateManaSourcePermanent(item,{hasHaste:haste||item.card?.keywords?.includes('haste'),ability:mana})) continue;
+        if (land && mana.requiresTap && getAttachedLandManaAuras(item).length) {
+          return {status:'unknown',reason:'attached_land_mana_choices'};
+        }
         const amount = manaProductionAmount(s,true,mana);
         if (!Number.isSafeInteger(amount) || amount < 0) return {status:'unknown',reason:'unsupported_mana_source'};
         if (!amount) continue;

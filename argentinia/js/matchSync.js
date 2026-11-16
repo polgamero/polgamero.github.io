@@ -278,15 +278,21 @@ export function deserializeStackTarget(descriptor, state, myRole) {
   return target;
 }
 
-function serializeStackSource(source, state, myRole) {
+function serializeStackSource(source,state,myRole,effect) {
   if (!source) return null;
   const out = {};
-  ['type', 'triggerType', 'sourceCardId', 'selfTarget', 'index', 'abilityIndex'].forEach(key => {
+  ['type', 'triggerType', 'sourceCardId', 'selfTarget', 'index', 'abilityIndex', 'eventStackId'].forEach(key => {
     if (hasOwn(source, key)) out[key] = source[key];
   });
   if (source.eventCard && source.triggerType !== 'card_drawn') out.eventCard = discoverySafePublicValue(source.eventCard);
   const sourceItemRef = serializeBoardItemRef(source.sourceItem, state, myRole) || source._sourceItemRef || null;
-  const eventItemRef = serializeBoardItemRef(source.eventItem, state, myRole) || source._eventItemRef || null;
+  const eventItemRef = serializeBoardItemRef(source.eventItem,state,myRole) || source._eventItemRef || null;
+  if (effect?.amountFrom==='source_plus_counters') {
+    const live = deserializeBoardItemRef(sourceItemRef,state,myRole,{strict:true});
+    const unit = live || source.sourceItem;
+    if (unit) source.lastPlusCounters = Math.max(0,Number(unit.counters?.plusOne)||0);
+    out.lastPlusCounters = source.lastPlusCounters || 0;
+  }
   if (sourceItemRef) {
     out.sourceItemRef = sourceItemRef;
     source._sourceItemRef = sourceItemRef;
@@ -317,13 +323,16 @@ function deserializeStackSource(source, state, myRole) {
 export function serializeStackForPublic(stack, state, myRole) {
   if (!Array.isArray(stack)) return [];
   return stack.map(item => {
-    const effectType = item?.ability?.effect?.type || item?.card?.effect?.type;
-    const strict = ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage','exile_source','destroy_damaged_creature'].includes(effectType)
-      || item?.source?.selfTarget === true || effectType === 'exile_source_until_end_step'
+    const effect = item?.ability?.effect || item?.card?.effect;
+    const effectType = effect?.type;
+    const strict = item?.targetObj?._syncDescriptor?.strict === true
+      || ['move_target_permanent','move_target_graveyard_card','sacrifice_other_or_damage','exile_source','destroy_damaged_creature'].includes(effectType)
+      || item?.source?.selfTarget === true || effect?.amountFrom==='source_plus_counters' ||
+      ['exile_source_until_end_step','exchange_spell_control','pay_or_sacrifice_source','add_counters_to_source'].includes(effectType)
       || (item?.type === 'aura' && item.card?.enchantKind === 'land');
     const liveRef = serializeBoardItemRef(item?.sourceItem, state, myRole);
     const sourceItemRef = liveRef ? {...liveRef,...(strict ? {strict:true} : {})} : item?._sourceItemRef || null;
-    const source = serializeStackSource(item?.source, state, myRole);
+    const source = serializeStackSource(item?.source,state,myRole,effect);
     if (effectType==='destroy_damaged_creature' && source?.eventItemRef) {
       source.eventItemRef={...source.eventItemRef,strict:true};
       item.source._eventItemRef=source.eventItemRef;
@@ -369,6 +378,11 @@ export function serializeStackForPublic(stack, state, myRole) {
       sagaPendingKey: item?.sagaPendingKey ?? null,
       source
     };
+    if (item?.type !== 'ability' && typeof item?._castIsLocal === 'boolean') {
+      wire.castRole = item._castIsLocal ? myRole : otherRole(myRole);
+    }
+    if (!state.currentMatch && item?.resolutionCoin) wire.resolutionCoin=item.resolutionCoin;
+    if (!state.currentMatch && typeof item?.controlAccepted === 'boolean') wire.controlAccepted=item.controlAccepted;
     if (sourceItemRef) {
       wire.sourceItemRef = sourceItemRef;
       // Persistimos el descriptor también en el objeto local de Stack. El eco propio no se
@@ -387,6 +401,9 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
       id: wire?.id ?? null,
       card: wire?.card || null,
       isLocal: wire?.controllerRole === myRole,
+      ...(wire?.castRole ? {_castIsLocal:wire.castRole===myRole} : {}),
+      ...(!state.currentMatch && wire?.resolutionCoin ? {resolutionCoin:wire.resolutionCoin} : {}),
+      ...(!state.currentMatch && typeof wire?.controlAccepted==='boolean' ? {controlAccepted:wire.controlAccepted} : {}),
       targetObj: wire?.source?.selfTarget && ['pump','grant_keyword_temp','add_counter'].includes(wire?.ability?.effect?.type)
         ? null : deserializeStackTarget(wire?.target, state, myRole),
       type: wire?.type || null,
@@ -428,6 +445,7 @@ export function serializeCleanupTriggers(entries, state, myRole) {
     type:'ability', abilityKind:'triggered', card:entry.sourceCard, isLocal:entry.isLocal,
     targetObj:entry.targetObj, ability:{effect:entry.effect}, triggerType:entry.triggerType,
     source:{sourceItem:entry.sourceItem,eventItem:entry.eventItem,eventCard:entry.eventCard,
+      ...(entry.eventStackId != null ? {eventStackId:entry.eventStackId} : {}),
       selfTarget:!!entry.selfTarget,triggerType:entry.triggerType}
   }));
   return serializeStackForPublic(objects,state,myRole).map((row,index) => ({
@@ -439,7 +457,7 @@ export function deserializeCleanupTriggers(rows, state, myRole) {
   if (!Array.isArray(rows)) return [];
   return deserializeStackFromPublic(rows,state,myRole).flatMap((item,index) => item.ability?.effect ? [{
     effect:item.ability.effect, sourceCard:item.card, sourceItem:item.source?.sourceItem,
-    eventItem:item.source?.eventItem, eventCard:item.source?.eventCard, isLocal:item.isLocal,
+    eventItem:item.source?.eventItem, eventCard:item.source?.eventCard,eventStackId:item.source?.eventStackId, isLocal:item.isLocal,
     selfTarget:item.source?.selfTarget, triggerType:item.triggerType, targetObj:item.targetObj,
     requiresTarget:rows[index].requiresTarget, target:rows[index].targetRelation
   }] : []);
@@ -604,7 +622,13 @@ export function buildMyPrivatePatch(state) {
 export function refreshStackItemBoardRefs(item, state, myRole) {
   if (!item || !state || !myRole) return item;
   if (item._sourceItemRef) item.sourceItem = deserializeBoardItemRef(item._sourceItemRef, state, myRole, {strict:item._sourceItemRef.strict === true});
-  if (item.source?._sourceItemRef) item.source.sourceItem = deserializeBoardItemRef(item.source._sourceItemRef, state, myRole, {strict:item.source._sourceItemRef.strict === true});
+  if (item.source?._sourceItemRef) {
+    const live = deserializeBoardItemRef(item.source._sourceItemRef,state,myRole,{strict:item.source._sourceItemRef.strict === true});
+    if (!live && item.ability?.effect?.amountFrom==='source_plus_counters' && item.source.sourceItem) {
+      item.source.lastPlusCounters = Math.max(0,Number(item.source.sourceItem.counters?.plusOne)||0);
+    }
+    item.source.sourceItem = live;
+  }
   if (item.source?._eventItemRef) item.source.eventItem = deserializeBoardItemRef(item.source._eventItemRef,state,myRole,{strict:item.source._eventItemRef.strict===true});
   if (item.targetObj?._syncDescriptor) item.targetObj = deserializeStackTarget(item.targetObj._syncDescriptor, state, myRole);
   if (item.targetObj?.type === 'multi' && Array.isArray(item.targetObj.targets)) {

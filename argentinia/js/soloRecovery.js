@@ -17,7 +17,7 @@ const TRANSIENT_KEYS = new Set([
   'currentUser','userProfile','currentMatch','authInitialResolved','authIdentityReady',
   'soloRuntimeSuspended','soloLifecycleSuspendedAtMs','soloLifecycleResumeGraceUntilMs','soloLifecycleReloading',
   'matchSyncBusy','multiplayerWaitingForReady','stackResolutionAuthority','autoZeroBlockersQueued',
-  'endTurnTriggerEntries','pendingEndTurnResolution',
+  'endTurnTriggerEntries','pendingEndTurnResolution','terminalCheckDepth',
   'priorityClockDeadlineLocalMs','priorityClockRemainingMs','priorityClockPausedLocal','priorityClockPauseReasonLocal',
   'pendingCastTransaction','pendingSuspendCastChoice','pendingPreparedCastCosts','pendingAlternativeCostChoice','pendingPrivateZoneChoice',
   'pendingSpellIndex','pendingCost','tappedLandsThisSpell','paymentManaSourceRollbacks','pendingTargetCard',
@@ -364,6 +364,7 @@ export function restoreSoloRecoveryState(candidate, state) {
   state.matchSyncBusy = false;
   state.multiplayerWaitingForReady = false;
   state.stackResolutionAuthority = false;
+  state.terminalCheckDepth = 0;
   state.priorityClockDeadlineLocalMs = 0;
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = 'solo_recovery';

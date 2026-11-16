@@ -51,6 +51,7 @@ import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayloa
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
 import { privateRevisionField, validateReconnectRevisionPair, normalizeSyncRevision, MULTIPLAYER_CLIENT_SESSION_ID, roleSessionField, validateRoleSession, classifyReconnectSafety } from './multiplayerReliability.js';
+import { assertSharedHandRefillCommit, matchesSharedHandRefillExpectation, readSharedHandRefill } from './sharedHandRefill.js';
 
 
 const { getDoc, getDocFromServer, getDocs, getDocsFromServer, setDoc, updateDoc, deleteDoc, runTransaction, onSnapshot, writeBatch, collection, query } = createFirestoreUsageAdapter({ getDoc: sdkGetDoc, getDocFromServer: sdkGetDocFromServer, getDocs: sdkGetDocs, getDocsFromServer: sdkGetDocsFromServer, setDoc: sdkSetDoc, updateDoc: sdkUpdateDoc, deleteDoc: sdkDeleteDoc, runTransaction: sdkRunTransaction, onSnapshot: sdkOnSnapshot, writeBatch: sdkWriteBatch, collection: sdkCollection, query: sdkQuery });
@@ -2049,6 +2050,7 @@ function playableReconnectSafety(data, role) {
   if (!data?.bothReadyAt && !(data?.hostReady===true && data?.guestReady===true)) {
     return {ok:false,reason:'initial_setup_incomplete'};
   }
+  if (role && readSharedHandRefill(data)) return {ok:true,reason:null,resumableSharedHandRefill:true};
   return classifyReconnectSafety(data,role);
 }
 
@@ -2442,7 +2444,7 @@ export async function cancelMatch(code, uid = null) {
 // cada commit recibe una revisión global monotónica. Esto elimina el reconnect "partido"
 // (mano privada de una jugada con board público de otra) y permite al listener descartar
 // snapshots viejos sin perder cambios acumulados.
-export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = {}, privatePatch = {}) {
+export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = {}, privatePatch = {}, refillWrite = null) {
   if (!matchId || !uid) throw new Error('MULTIPLAYER_COMMIT_IDENTITY_REQUIRED');
   if (role !== 'host' && role !== 'guest') throw new Error('MULTIPLAYER_ROLE_INVALID');
 
@@ -2466,17 +2468,37 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
     }
     const session = validateRoleSession(current, role, MULTIPLAYER_CLIENT_SESSION_ID);
     if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
+    let nextPublicPatch = publicPatch;
+    let nextPrivatePatch = privatePatch;
+    let refillPrivateDoc;
+    if (refillWrite) {
+      const ownSnapshot = await tx.get(privateRef);
+      refillPrivateDoc = ownSnapshot.data();
+      if (!ownSnapshot.exists() || !validateReconnectRevisionPair(current, refillPrivateDoc, role).ok) {
+        throw new Error('MULTIPLAYER_SHARED_REFILL_PRIVATE_REVISION');
+      }
+      const refill = readSharedHandRefill(current);
+      if (!matchesSharedHandRefillExpectation(refill, refillWrite.expected)) {
+        return {refillPrivateDoc, refillPublicDoc:current, refillCommitted:false};
+      }
+      if (refill.step.role !== role) throw new Error('MULTIPLAYER_SHARED_REFILL_WRONG_STEP_OWNER');
+      const prepared = refillWrite.prepare(current, refillPrivateDoc);
+      if (!prepared) return {refillPrivateDoc, refillPublicDoc:current, refillPaused:true};
+      nextPublicPatch = {...prepared.publicPatch, syncMeta:publicPatch.syncMeta};
+      nextPrivatePatch = prepared.privatePatch;
+    }
+    assertSharedHandRefillCommit(current, role, nextPublicPatch, nextPrivatePatch);
 
     const nextRevision = normalizeSyncRevision(current.syncRevision) + 1;
-    const publicKeys = Object.keys(publicPatch || {}).filter(key => key !== 'syncMeta');
-    const privateKeys = Object.keys(privatePatch || {});
-    const meta = publicPatch?.syncMeta && typeof publicPatch.syncMeta === 'object' ? publicPatch.syncMeta : {};
+    const publicKeys = Object.keys(nextPublicPatch || {}).filter(key => key !== 'syncMeta');
+    const privateKeys = Object.keys(nextPrivatePatch || {});
+    const meta = nextPublicPatch?.syncMeta && typeof nextPublicPatch.syncMeta === 'object' ? nextPublicPatch.syncMeta : {};
     const nextFieldRevisions = {
       ...(current.syncFieldRevisions && typeof current.syncFieldRevisions === 'object' ? current.syncFieldRevisions : {})
     };
     publicKeys.forEach(key => { nextFieldRevisions[key] = nextRevision; });
     const publicWrite = {
-      ...(publicPatch || {}),
+      ...(nextPublicPatch || {}),
       syncRevision: nextRevision,
       syncFieldRevisions: nextFieldRevisions,
       syncMeta: {
@@ -2485,6 +2507,7 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
         serverCommittedAt: serverTimestamp(),
         engineVersion: ENGINE_VERSION,
         engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
+        ...(refillWrite ? {roleSessionId:MULTIPLAYER_CLIENT_SESSION_ID} : {}),
         touchedKeys: Array.isArray(meta.touchedKeys) ? meta.touchedKeys : publicKeys,
         privateTouchedKeys: privateKeys
       }
@@ -2494,7 +2517,7 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
     if (privateKeys.length > 0) {
       const revisionField = privateRevisionField(role);
       publicWrite[revisionField] = nextRevision;
-      privateWrite = { ...(privatePatch || {}), _syncRevision: nextRevision };
+      privateWrite = { ...(nextPrivatePatch || {}), _syncRevision: nextRevision };
     }
 
     // A merged write keeps omitted nested keys. Remove restriction entries explicitly
@@ -2518,7 +2541,12 @@ export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = 
       syncFieldRevisions: nextFieldRevisions,
       privateRevision: privateWrite ? nextRevision : null,
       publicKeys,
-      privateKeys
+      privateKeys,
+      ...(refillWrite ? {
+        refillCommitted:true,
+        refillPublicDoc:{...current, ...publicWrite},
+        refillPrivateDoc:{...refillPrivateDoc, ...privateWrite}
+      } : {})
     };
   });
 }

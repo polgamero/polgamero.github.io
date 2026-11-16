@@ -635,7 +635,8 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
 }
 
 
-export function showWardDecisionModal(amount, targetCardName, sourceCardName, onPay, onDecline) {
+export function showWardDecisionModal(amount, targetCardName, sourceCardName, onPay, onDecline, {signal,durationMs,onAbort}={}) {
+  if (signal?.aborted) { onAbort?.(); return; }
   if (HEADLESS_ENGINE) { headlessChoice.chooseCounterTax()==='pay' ? onPay?.() : onDecline?.(); return; }
   injectMulliganStyles();
   const modalOverlay=document.createElement('div');
@@ -652,7 +653,12 @@ export function showWardDecisionModal(amount, targetCardName, sourceCardName, on
       </div>
     </div>`;
   document.body.appendChild(modalOverlay);
-  const finish=timedModalChoice(modalOverlay,pay=>pay?onPay?.():onDecline?.(),()=>[false],{action:false,notice:'Al vencer se rechaza el pago opcional.'});
+  const abort = () => { modalOverlay.remove(); onAbort?.(); };
+  signal?.addEventListener('abort',abort,{once:true});
+  const finish=timedModalChoice(modalOverlay,pay=>{
+    signal?.removeEventListener('abort',abort);
+    if (pay) onPay?.(); else onDecline?.();
+  },()=>[false],{action:false,durationMs,isCurrent:()=>!signal?.aborted,notice:'Al vencer se rechaza el pago opcional.'});
   modalOverlay.querySelector('#ward-pay').onclick=()=>finish(true);
   modalOverlay.querySelector('#ward-decline').onclick=()=>finish(false);
 }
@@ -780,7 +786,21 @@ export function showLibrarySearchModal(options, onConfirm) {
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
-  onConfirm=timedModalChoice(overlay,onConfirm,()=>[allowFewer?[]:randomLegalSubset(candidates.filter(e=>e.selectable!==false),maxCount).map(e=>e.index)],{notice:allowFewer?'Al vencer no se elegirá ninguna carta.':undefined});
+  const complete = onConfirm;
+  const signal = options?.signal;
+  const abort = () => {
+    overlay.remove();
+    complete?.([]);
+  };
+  signal?.addEventListener('abort',abort,{once:true});
+  onConfirm=timedModalChoice(overlay,indexes=>{
+    signal?.removeEventListener('abort',abort);
+    complete?.(indexes);
+  },()=>[allowFewer ? [] : randomLegalSubset(candidates.filter(e=>e.selectable!==false),maxCount).map(e=>e.index)],{
+    notice:allowFewer?'Al vencer no se elegirá ninguna carta.':undefined,
+    durationMs:options?.durationMs
+  });
+  if (signal?.aborted) { abort(); return; }
   confirmButton().disabled=!allowFewer && maxCount>0;
   confirmButton().textContent=allowFewer?gameText('library.search.chooseNone'):gameText('library.search.confirm');
   confirmButton().addEventListener('click',()=>{
@@ -1406,7 +1426,7 @@ export function showCreatureTypeChoiceModal(options,{title='Elegí un tipo de cr
   overlay.querySelector('.typal-cancel').onclick=()=>finish(null); overlay.onclick=e=>{if(e.target===overlay)finish(null)};
 }
 
-export function showManaColorChoiceModal(cardName, options, onChoose, { showDetails = false } = {}) {
+export function showManaColorChoiceModal(cardName, options, onChoose, { showDetails = false, onCancel, valid } = {}) {
   const normalized = [...new Set(options || [])].filter(choice=>MANA_TYPES.includes(typeof choice === 'string' ? choice : choice?.type));
   if (!normalized.length) return;
   const overlay = document.createElement('div');
@@ -1427,7 +1447,7 @@ export function showManaColorChoiceModal(cardName, options, onChoose, { showDeta
       <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
     </div>`;
   document.body.appendChild(overlay);
-  const finish=timedModalChoice(overlay,choice=>{if(choice)onChoose?.(choice);},()=>[],{action:true,abortArgs:()=>[]});
+  const finish=timedModalChoice(overlay,choice=>{if(choice)onChoose?.(choice);else onCancel?.();},()=>[],{action:true,abortArgs:()=>[],isCurrent:valid,onInvalidate:onCancel});
   overlay.querySelectorAll('[data-mana-type]').forEach(btn => btn.addEventListener('click', () => {
     finish(normalized[Number(btn.dataset.manaChoice)]);
   }));
@@ -1520,6 +1540,7 @@ function renderManaPoolHud() {
 }
 
 export function logMsg(msg) {
+  if (state.pendingPublicEffectResolution?.draft) return;
   const publicMsg = publicTerminologyText(msg);
   recordTelemetryUiLog(publicMsg);
   if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_LOG__?.push?.(String(publicMsg)); return; }
@@ -1607,6 +1628,13 @@ export function getTargetRules(card) {
   const effectType = card.effect?.type || card.etbEffect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
 
   const effect = card.effect || card.etbEffect || firstActivated?.effect || firstGranted?.effect || {};
+  if (effectType === 'prevent_block_this_turn') {
+    return {allowPlayer:false,allowLocalCreature:true,allowRivalCreature:true,allowLocalPermanent:false,allowRivalPermanent:false};
+  }
+  if (effectType === 'damage' && effect.target === 'player_or_planeswalker') {
+    return {allowPlayer:true,allowLocalCreature:false,allowRivalCreature:false,allowLocalPermanent:false,allowRivalPermanent:false,
+      allowLocalPlaneswalker:true,allowRivalPlaneswalker:true};
+  }
   if (effectType === 'lose_life' || effectType === 'pay_or_optional_draw') {
     return {allowPlayer:true,allowLocalCreature:false,allowRivalCreature:false,allowLocalPermanent:false,allowRivalPermanent:false};
   }
@@ -1621,6 +1649,7 @@ export function getTargetRules(card) {
       allowPlayer:false,
       allowLocalCreature:allows('creature'),allowRivalCreature:allows('creature'),
       allowLocalPermanent:allows('permanent'),allowRivalPermanent:allows('permanent'),
+      ...(effect.targetKind === 'artifact_or_creature' ? {permanentFilter:'Artefacto'} : {}),
       allowLocalLand:allows('land'),allowRivalLand:allows('land'),
       allowLocalPlaneswalker:allows('planeswalker'),allowRivalPlaneswalker:allows('planeswalker')
     };
@@ -1681,7 +1710,7 @@ export function getTargetRules(card) {
     };
   }
 
-  if (['copy_spell','copy_ability','copy_stack_object'].includes(effectType)) {
+  if (['copy_spell','copy_ability','copy_stack_object','redirect_stack_target','coin_control_spell'].includes(effectType)) {
     // Estos efectos targetean un objeto de la STACK; el battlefield no debe brillar ni
     // aceptar clicks mientras se declara ese objetivo.
     return {allowPlayer:false,allowLocalCreature:false,allowRivalCreature:false,allowLocalPermanent:false,allowRivalPermanent:false,allowLocalLand:false,allowRivalLand:false,allowLocalPlaneswalker:false,allowRivalPlaneswalker:false};
@@ -2119,6 +2148,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const isBasicLand = card.type.includes('Tierra básica');
   let landSymbolImg = '';
   if (isBasicLand) {
+    if (card.produces === 'C') landSymbolImg = 'incolora.png';
     if (card.type.includes('Planicie')) landSymbolImg = 'planicie.png';
     if (card.type.includes('Agua')) landSymbolImg = 'agua.png';
     if (card.type.includes('Pantano')) landSymbolImg = 'pantano.png';
@@ -2139,17 +2169,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const hasCornerStat = hasDisplayCombatStats || card.type.includes('Planeswalker');
 
   let formattedTextHTML = '';
-  const colorlessBasic = isBasicLand && card.produces === 'C';
-  if (isBasicLand && (landSymbolImg || colorlessBasic)) {
-    const landSymbolUrl = colorlessBasic ? MANA_ICON_URLS.C : `./assets/images/${landSymbolImg}`;
-    const symbolStyle = colorlessBasic ? 'width:36%; height:62%; object-fit:contain' : 'width:100%; height:100%; object-fit:cover';
+  if (landSymbolImg) {
     const basicFlavor=String(card.flavorText||'').trim();
     const basicFlavorHTML=basicFlavor?`<div class="card-flavor-text" style="position:absolute;left:5%;right:5%;bottom:4%;padding:3%;background:rgba(253,251,247,.92);white-space:pre-line;z-index:2">${escapeCardTextHtml(basicFlavor)}</div>`:'';
     // 23.13.17 — una sola capa real. El asset ocupa toda la caja inferior con cover;
     // el PNG puede prepararse con margen/expansión vertical sin que el renderer duplique el
     // mismo dibujo como fondo + foreground (artefacto visual que se notaba especialmente en móvil).
     formattedTextHTML = `<div class="card-text-box basic-land-symbol-box"${basicFlavor?' data-auto-text-cqw="6"':''} style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden;${basicFlavor?'font-size:clamp(3px,var(--card-text-effective-size,6cqw),26px);':''}">
-        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="${symbolStyle}; object-position:center;" onerror="this.style.display='none'">
+        <img class="basic-land-symbol-main" src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
         ${basicFlavorHTML}
       </div>`;
   } else {
@@ -10380,11 +10407,15 @@ export function showAchievementsScreen(onBack){
 }
 
 async function maybeShowAchievementUnlockNotice(openAchievements){
-  if(achievementNoticeBusy||!state.currentUser||!state.userProfile) return;
-  const uid=state.currentUser.uid;
+  if(achievementNoticeBusy||!state.userProfile||document.getElementById('achievement-unlock-notice')) return;
+  // Account rendering also runs while the startup dialogs hold the input gate.
+  const session=captureSessionAction();
+  if(!session?.uid) return;
+  const {uid}=session;
   achievementNoticeBusy=true;
   try{
-    const {stats,config}=await loadAchievementRuntime(); if(!config.enabled) return;
+    const {stats,config}=await loadAchievementRuntime();
+    if(!config.enabled||!sessionActionCurrent(session)) return;
     const achievementState=normalizeAchievementProfile(state.userProfile?.achievements),claimed=achievementState.claimed,serverNotified=achievementState.notified;
     // Compatibilidad de migración: avisos que ya se mostraron antes de HF23.3.16.2.24
     // siguen silenciados en este navegador mientras el nuevo ledger server-side gobierna los nuevos.
@@ -10397,6 +10428,7 @@ async function maybeShowAchievementUnlockNotice(openAchievements){
     // el modal y el pill de Mis Logros sigue dejando visible la recompensa pendiente.
     let noticeOutcome=null;
     try{noticeOutcome=await acknowledgeAchievementNotice(uid,found.id);}catch(error){console.warn('No se pudo persistir el aviso único de Logros; se omite el modal para evitar repeticiones:',error);return;}
+    if(!sessionActionCurrent(session)) return;
     if(noticeOutcome?.profile)state.userProfile=noticeOutcome.profile;
     mainMenuPendingState.uid=uid; mainMenuPendingState.achievementCount=pendingAchievementIds({stats,config}).length; mainMenuPendingState.refreshedAt=Date.now();
     setMainMenuActionBadge(document.getElementById('main-menu-account'),'menu-achievements',mainMenuPendingState.achievementCount);
@@ -10404,6 +10436,8 @@ async function maybeShowAchievementUnlockNotice(openAchievements){
     injectAchievementStyles();
     injectMulliganStyles(); // modal/botones estándar: no depende de haber abierto Taller u otra pantalla
     const modal=document.createElement('div');
+    modal.id='achievement-unlock-notice';
+    modal.dataset.uid=uid;
     modal.className='gy-modal-overlay';
     modal.innerHTML=`<div class="gy-modal-content" style="max-width:500px;width:min(92vw,500px);"><div class="gy-modal-header"><h3>${gameTextHtml('achievements.unlocked.title')}</h3></div><div style="padding:6px 14px 14px;"><div class="achievement-notice-trophy">${achievementTrophyHtml(found.family.id,found.tier)}</div><div class="achievement-notice-body">${gameTextHtml('achievements.unlocked.body',{achievement:achievementFamilyLabel(found.family.id),tier:achievementTierLabel(found.tier)})}</div><div class="achievement-notice-reward">${gameTextHtml('achievements.reward',{reward:achievementRewardText(found.row)})}</div><div class="achievement-notice-actions"><button class="mulligan-btn mulligan-btn-keep" id="achievement-notice-open">${gameTextHtml('achievements.unlocked.action')}</button><button class="mulligan-btn mulligan-btn-mull" id="achievement-notice-close">${gameTextHtml('achievements.unlocked.later')}</button></div></div></div>`;
     document.body.appendChild(modal);
@@ -10730,6 +10764,8 @@ function updateRivalAccountUI() {
 
 export function updateAccountUI(user) {
   syncSessionInput();
+  const achievementNotice=document.getElementById('achievement-unlock-notice');
+  if(achievementNotice&&(!sessionActionsReady(state)||achievementNotice.dataset.uid!==user?.uid)) achievementNotice.remove();
   // RC5.2g: prime the per-account acquisition tracker as soon as the authenticated
   // profile is visible to UI. This establishes the veteran baseline before the player
   // opens another pack/trade/classified, so only genuinely later acquisitions get NUEVA.
@@ -16367,7 +16403,7 @@ export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
 // copias idénticas sigan siendo distinguibles por slot. `filterLabel` y `actionLabel` son
 // puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
 // cuando se abre, la selección forma parte de una instrucción que ya está resolviéndose.
-export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm, {allowCancel = false,valid = null} = {}) {
+export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm, {allowCancel = false,valid = null,durationMs} = {}) {
   if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseGraveyardIndexes(entries,countToChoose)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -16421,7 +16457,7 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
-  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(entries,count).map(e=>e.index).sort((a,b)=>a-b)]);
+  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(entries,count).map(e=>e.index).sort((a,b)=>a-b)],{durationMs});
   const watch = valid ? setInterval(() => {
     if (!overlay.isConnected || !valid()) finish([]);
   },125) : null;
@@ -16458,8 +16494,12 @@ export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
 // Punto 5: el dueño elige exactamente N permanentes propios para sacrificar como EFECTO.
 // No hay Cancelar: el efecto ya está resolviéndose. Recibe items de battlefield reales,
 // por eso varias copias idénticas siguen siendo seleccionables como objetos distintos.
-export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm, {valid = null} = {}) {
-  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseSacrificeEntries(candidates,countToSacrifice)); return; }
+export function showSacrificeEffectModal(candidates,countToSacrifice,cardName,permanentType,onConfirm,
+  {valid=null,durationMs,optional=false} = {}) {
+  if (HEADLESS_ENGINE) {
+    onConfirm?.(optional ? [] : headlessChoice.chooseSacrificeEntries(candidates,countToSacrifice));
+    return;
+  }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -16469,11 +16509,13 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">${gameTextHtml('sacrifice.choice.title', { card: cardName, count: countToSacrifice, type: `${typeLabel}${countToSacrifice > 1 ? 's' : ''}` })}</div>
+      <div class="mulligan-title">${optional ? `Devorar · ${escapeHtml(cardName)}` :
+        gameTextHtml('sacrifice.choice.title',{card:cardName,count:countToSacrifice,type:`${typeLabel}${countToSacrifice > 1 ? 's' : ''}`})}</div>
+      ${optional ? '<div class="mulligan-subtitle">Podés sacrificar cualquier cantidad de criaturas que controlás.</div>' : ''}
       <div class="mulligan-subtitle" id="sacrifice-effect-count-hint">${gameTextHtml('selection.count', { selected: 0, total: countToSacrifice })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-sacrifice-effect" disabled>${gameTextHtml('sacrifice.choice.confirm')}</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-sacrifice-effect" ${optional ? '' : 'disabled'}>${optional ? 'Entrar sin sacrificar' : gameTextHtml('sacrifice.choice.confirm')}</button>
       </div>
     </div>
   `;
@@ -16494,7 +16536,8 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
         cardEl.classList.add('chosen');
       }
       hint().textContent = gameText('selection.count', { selected: chosen.size, total: countToSacrifice });
-      confirmBtn().disabled = chosen.size !== countToSacrifice;
+      confirmBtn().disabled = !optional && chosen.size !== countToSacrifice;
+      if (optional) confirmBtn().textContent = chosen.size ? 'Confirmar sacrificios' : 'Entrar sin sacrificar';
     };
 
     const zone = state.localCombat.includes(item) ? 'combat'
@@ -16507,19 +16550,29 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
-  onConfirm=timedModalChoice(overlay,onConfirm,()=>[randomLegalSubset(candidates.filter(item=>[...state.localCombat,...state.localSupport,...state.localLands].includes(item)),countToSacrifice)]);
+  let completed = false;
+  const complete = items => {
+    if (completed) return;
+    completed = true;
+    if (watch !== null) clearInterval(watch);
+    onConfirm(items);
+  };
+  const timed = timedModalChoice(overlay,complete,()=>[optional ? [] :
+    randomLegalSubset(candidates.filter(item=>[...state.localCombat,...state.localSupport,...state.localLands].includes(item)),countToSacrifice)],{
+    durationMs,notice:optional?'Al vencer, entra sin sacrificar criaturas.':undefined
+  });
   const watch = valid ? setInterval(() => {
     if (!overlay.isConnected || !valid()) finish([]);
   },125) : null;
   const finish = items => {
-    if (watch !== null) clearInterval(watch);
     overlay.remove();
-    onConfirm(items);
+    timed(items);
+    if (valid && !valid()) complete([]);
   };
 
   overlay.querySelector('#btn-confirm-sacrifice-effect').addEventListener('click', () => {
-    if (chosen.size !== countToSacrifice) return;
-    finish([...chosen]);
+    if (!optional && chosen.size !== countToSacrifice) return;
+    finish(valid && !valid() ? [] : [...chosen]);
   });
 }
 
@@ -16747,7 +16800,8 @@ export function showCopyRetargetModal(cardName, targetLabel, onKeep, onChange) {
   overlay.querySelector('[data-copy-change]').onclick=()=>finish(onChange);
 }
 
-export function showStackObjectChoiceModal(entries = [], title = null, onConfirm, onCancel = null) {
+export function showStackObjectChoiceModal(entries = [], title = null, onConfirm, onCancel = null, {required=false,signal,durationMs}={}) {
+  if (signal?.aborted) { onCancel?.(); return; }
   if (HEADLESS_ENGINE) { const x=headlessChoice.chooseStackEntry(entries); x ? onConfirm?.(x) : onCancel?.(); return; }
   injectMulliganStyles();
   const overlay=document.createElement('div');
@@ -16757,14 +16811,25 @@ export function showStackObjectChoiceModal(entries = [], title = null, onConfirm
     <div class="mulligan-panel">
       <div class="mulligan-title">${escapeCardTextHtml(title || gameText('copy.stackChoice.title'))}</div>
       <div class="mulligan-subtitle">${rows || 'No hay objetos legales.'}</div>
-      <div class="mulligan-buttons"><button class="mulligan-btn" data-stack-cancel>${gameTextHtml('common.cancel')}</button></div>
+      ${required ? '' : `<div class="mulligan-buttons"><button class="mulligan-btn" data-stack-cancel>${gameTextHtml('common.cancel')}</button></div>`}
     </div>`;
   document.body.appendChild(overlay);
-  const finish=timedModalChoice(overlay,entry=>entry?onConfirm?.(entry):onCancel?.(),()=>[onCancel?null:randomLegalSubset(entries,1)[0]],{action:false,notice:onCancel?'Al vencer se cancela esta elección opcional.':undefined});
+  let completed=false;
+  const complete=entry=>{
+    if (completed) return;
+    completed=true;
+    signal?.removeEventListener('abort',abort);
+    if (entry && !signal?.aborted) onConfirm?.(entry);
+    else onCancel?.();
+  };
+  const abort=()=>{ finish(null); overlay.remove(); complete(null); };
+  const finish=timedModalChoice(overlay,complete,()=>[required ? entries[0] : onCancel?null:randomLegalSubset(entries,1)[0]],
+  {action:false,durationMs,notice:required?'Al vencer se elige el primer objetivo válido.':onCancel?'Al vencer se cancela esta elección opcional.':undefined});
+  signal?.addEventListener('abort',abort,{once:true});
   overlay.querySelectorAll('[data-stack-choice]').forEach(btn=>btn.onclick=()=>{
     const entry=entries[Number(btn.dataset.stackChoice)]; finish(entry || null);
   });
-  overlay.querySelector('[data-stack-cancel]').onclick=()=>{ finish(null); };
+  overlay.querySelector('[data-stack-cancel]')?.addEventListener('click',()=>finish(null));
 }
 
 export function showGameOverOverlay(didWin) {
@@ -17958,7 +18023,8 @@ function triggerOrderEventSummary(entry = {}) {
   return gameText(key, { event: entry.eventCard.name });
 }
 
-export function showTriggerOrderModal(entries = []) {
+export function showTriggerOrderModal(entries = [], {signal, durationMs} = {}) {
+  if (signal?.aborted) return Promise.resolve(null);
   if (HEADLESS_ENGINE) return Promise.resolve(headlessChoice.chooseTriggerOrder(entries));
   return new Promise(resolve => {
     if(entries.length<=1){resolve(entries);return;}
@@ -17967,7 +18033,18 @@ export function showTriggerOrderModal(entries = []) {
     overlay.className='gy-modal-overlay trigger-order-overlay';
     overlay.innerHTML=`<div class="gy-modal-content trigger-order-modal"><div class="gy-modal-header"><h3>${gameTextHtml('trigger.order.title')}</h3></div><div class="trigger-order-subtitle">${gameTextHtml('trigger.order.subtitle')}</div><div class="trigger-order-list"></div><button class="mulligan-btn mulligan-btn-keep trigger-order-confirm">${gameTextHtml('trigger.order.confirm')}</button></div>`;
     document.body.appendChild(overlay);
-    resolve=timedModalChoice(overlay,resolve,()=>[randomLegalSubset(entries,entries.length)],{action:false});
+    const finish = result => {
+      signal?.removeEventListener('abort',abort);
+      resolve(result);
+    };
+    const abort = () => {
+      overlay.remove();
+      finish(null);
+    };
+    signal?.addEventListener('abort',abort,{once:true});
+    const choose = timedModalChoice(overlay,finish,()=>[randomLegalSubset(entries,entries.length)],{
+      action:false,durationMs,isCurrent:()=>!signal?.aborted
+    });
     const list=overlay.querySelector('.trigger-order-list');
     const draw=()=>{
       list.innerHTML='';
@@ -17992,6 +18069,6 @@ export function showTriggerOrderModal(entries = []) {
       list.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;if(i<ordered.length-1){[ordered[i+1],ordered[i]]=[ordered[i],ordered[i+1]];draw();}});
     };
     draw();
-    overlay.querySelector('.trigger-order-confirm').onclick=()=>{overlay.remove();resolve(ordered);};
+    overlay.querySelector('.trigger-order-confirm').onclick=()=>{overlay.remove();choose(ordered);};
   });
 }

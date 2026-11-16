@@ -172,3 +172,11 @@ export function scoreLandForUntap(item, state = null, isLocal = true) {
   if (!(state ? landMatchesEffectiveFilter(state, item, isLocal, 'basic') : landMatchesFilter(item, 'basic'))) score += 8;
   return score;
 }
+
+export const LAND_AURA_MANA_COLORS = ['W','U','B','R','G'];
+
+export function getAttachedLandManaAuras(item) {
+  if (!isLandPermanent(item)) return [];
+  return (item.auras || []).filter(aura=>aura.enchantKind === 'land' &&
+    aura.auraEffect?.additionalMana === 'any_color');
+}

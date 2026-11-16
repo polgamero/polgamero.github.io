@@ -209,6 +209,7 @@ export function eventFilterMatches(rawFilter = {}, rawEvent = {}, context = {}) 
   if (filter.activePlayer != null && !relationMatches(filter.activePlayer, sourceIsLocal, event.activePlayerIsLocal)) return false;
 
   if (filter.self === true && !sameObject(sourceItem, event.item)) return false;
+  if (filter.attachedToSource === true && !sameObject(context.attachmentHost,event.sourceItem)) return false;
   if (filter.attachedToEventItem === true && !sameObject(context.attachmentHost, event.item)) return false;
   if (filter.notSelf === true && sameObject(sourceItem, event.item)) return false;
   if (filter.sourceSelf === true && !sameObject(sourceItem, event.sourceItem)) return false;
