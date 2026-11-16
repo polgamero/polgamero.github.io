@@ -25,10 +25,15 @@ export function syncSessionInput(){
 // Only controls required by the existing serialized identity/startup flow can
 // work while it is pending. Navigation, gameplay and tutorial replay cannot.
 const bootControls='.username-overlay[data-session-verification-control],#starter-deck-select-overlay,#daily-login-reward-modal,.campaign-popup-shell,.trade-notification-modal,#community-notice-ok,#simple-alert-ok';
+const fullscreenControls='#arg-mobile-fullscreen-retry,#arg-mobile-ios-install-close';
 function suppress(event){if(event.cancelable)event.preventDefault();event.stopImmediatePropagation();}
 function guard(event){
   const blocked=!snapshot().ready,target=event.target instanceof Element?event.target:null;
   syncSessionInput();
+  if(target?.closest(fullscreenControls)){
+    if(['pointerdown','mousedown','touchstart','click'].includes(event.type))return;
+    if((event.type==='keydown'||event.type==='keyup')&&(event.key==='Enter'||event.key===' ')&&!heldKeys.has(event.code||event.key))return;
+  }
   if(blocked&&target?.closest(bootControls))return;
   if(event.type==='keydown'){
     // Browsing focus and its tooltip remains available during verification.

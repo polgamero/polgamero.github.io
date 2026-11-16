@@ -11356,7 +11356,7 @@ export function showAdminPanel(onBack) {
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
-      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Release ${RELEASE_DISPLAY_VERSION} · Motor ${ENGINE_VERSION} · Protocolo ${ENGINE_PROTOCOL_VERSION}${buildId ? ' · Build '+buildId : ''}</span></div>
+      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Release ${RELEASE_DISPLAY_VERSION} · Motor ${ENGINE_VERSION} · Protocolo ${ENGINE_PROTOCOL_VERSION}${buildId ? ' · Build de página '+buildId : ''}</span></div>
     </div>
     <div class="admin-body">
       <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>

@@ -41,9 +41,13 @@
     // HF23.3.16.2.7 — canonical-URL cache reconciliation. No module/CSS query-string versioning.
     // The public projection replaces the placeholder with a content-derived build id.
     (() => {
-      const BUILD_ID = 'd4c71dd3e7a1d5e1eebe';
+      const BUILD_ID = '5b2f2b82ef9d2e7e4015';
       globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ = BUILD_ID;
       const RETRY_KEY = 'argentinia:runtime-refresh-target';
+      const requiredModuleBodies = new Set([
+        './js/main.js','./js/ui.js','./js/utils.js','./js/flasheraDeck.js',
+        './js/cardLoader.js','./js/sessionInput.js'
+      ]);
       async function fetchFreshManifest() {
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
         const timer = controller ? setTimeout(() => controller.abort(), 4500) : null;
@@ -58,16 +62,27 @@
       async function reloadCanonicalAsset(url) {
         const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
         if (!response.ok) throw new Error(`CACHE_REFRESH_HTTP_${response.status}:${url}`);
+        return response;
       }
       async function reloadInBatches(urls, concurrency = 6) {
         let cursor = 0;
+        let firstError;
+        const bodies = [];
+        const rememberError = error => { firstError ??= error; };
         const workers = Array.from({ length: Math.max(1, Math.min(concurrency, urls.length || 1)) }, async () => {
           while (cursor < urls.length) {
             const url = urls[cursor++];
-            await reloadCanonicalAsset(url);
+            try {
+              const response = await reloadCanonicalAsset(url);
+              // Headers free this slot for the next request. Canonical imports
+              // wait for the required bodies to finish in the same pass.
+              if (requiredModuleBodies.has(url)) bodies.push(response.arrayBuffer().catch(rememberError));
+            } catch (error) { rememberError(error); }
           }
         });
         await Promise.all(workers);
+        await Promise.all(bodies);
+        if (firstError) throw firstError;
       }
       globalThis.__ARGENTINIA_RUNTIME_FRESHNESS_PROMISE__ = (async () => {
         try {
@@ -82,12 +97,13 @@
             try { primed = sessionStorage.getItem(criticalKey) === 'yes'; } catch {}
             if (!primed) {
               await reloadInBatches([
+                ...requiredModuleBodies,
                 './js/economyClient.js','./js/flasheraAdmin.js','./js/packOpening.js',
-                './js/firebaseClientImpl.js','./js/firebaseClient.js','./js/ui.js',
+                './js/firebaseClientImpl.js','./js/firebaseClient.js',
                 './js/gameTexts.js','./js/rankingUI.js',
                 './js/soloPriorityShortcuts.js','./js/priorityIntelligence.js','./js/priorityUX.js',
                 './js/priorityStops.js','./js/priorityLegalActions.js',
-                './js/main.js','./js/bot.js','./js/menuPresentation.js','./js/menuNavigation.js','./js/newsPanel.js','./js/publicProfileUI.js','./css/menuNavigation.css','./css/style.css','./css/mobile.css','./css/menu.css',
+                './js/bot.js','./js/menuPresentation.js','./js/menuNavigation.js','./js/newsPanel.js','./js/publicProfileUI.js','./css/menuNavigation.css','./css/style.css','./css/mobile.css','./css/menu.css',
                 './assets/images/menu/city.webp','./assets/images/menu/city-distant.webp','./assets/images/menu/city-distant-mobile.webp','./assets/images/menu/icons.webp',
                 './assets/images/menu/frame.webp','./assets/images/menu/tano.webp',
                 './assets/images/menu/tournament.webp','./assets/images/menu/multiplayer.webp','./assets/images/menu/utilities.png',
