@@ -12,7 +12,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot, showRedundantAuraConfirmation } from './ui.js';
+import { isAdminUser, createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot, showRedundantAuraConfirmation } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
@@ -1538,6 +1538,13 @@ function hookGameplayButtons() {
   document.addEventListener('visibilitychange', handleSoloVisibilityLifecycle);
 }
 
+function buildSavedMatchDeck(cardIds) {
+  const profile = state.userProfile;
+  return buildDeckFromCardIds(cardIds, profile?.enhancements, profile?.evolutions, profile, {
+    allowVirtualAdminPool: !!state.currentUser?.uid && isAdminUser(state.currentUser)
+  });
+}
+
 async function initGame(deckSource, options = {}) {
   showMatchInitializationOverlay();
   enterGameplayAudio('solo');
@@ -1570,7 +1577,7 @@ async function initGame(deckSource, options = {}) {
   const lessonDecks = lesson ? buildLessonDecks(cardDb.allCards) : null;
   if (lesson) { state.localDeck = lessonDecks.local; deckLabel = gameText('guided.deckName'); }
   else if (deckSource.type === 'saved') {
-    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
+    state.localDeck = buildSavedMatchDeck(deckSource.deck.cardIds);
     deckLabel = deckSource.deck.name;
   } else {
     state.localDeck = buildRandomDeck(deckSource.identity, { quality: 'competitive' });
@@ -2694,7 +2701,7 @@ async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, riv
   lastAppliedWriterSeq.clear();
 
   const deckLabel = deckSource.deck.name;
-  state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements, state.userProfile && state.userProfile.evolutions, state.userProfile);
+  state.localDeck = buildSavedMatchDeck(deckSource.deck.cardIds);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).

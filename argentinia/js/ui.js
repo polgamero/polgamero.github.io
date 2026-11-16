@@ -9773,6 +9773,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, op
           assertIndividualDeckCopyLimits(deck.cardIds,id=>cardDb.getById(id),MAX_COPIES_PER_CARD);
           if (isFlasheraDeck(deck.cardIds)) {
             assertDeckFlasheraOwnership(state.userProfile || {}, deck.cardIds, {
+              allowVirtualAdminPool: isAdminUser(),
               copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD)
             });
           }

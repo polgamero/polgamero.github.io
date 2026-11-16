@@ -251,7 +251,7 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
 // vez de importar `state` directo de main.js — a propósito: evita un import circular
 // (utils.js -> main.js -> ui.js/firebaseClient.js -> SDK de Firebase) que rompía poder
 // importar este archivo de forma aislada, y de paso deja la función más pura y testeable.
-export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, profile = null) {
+export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, profile = null, {allowVirtualAdminPool = false} = {}) {
   // Stage31: the finish must survive into physical game instances. Reject invented
   // premium copies before shuffle/hand split (also used by Solo/Tournament/PvP).
   if (!Array.isArray(cardIds)) throw new Error('El mazo debe ser una lista de variantes canónicas.');
@@ -263,6 +263,7 @@ export function buildDeckFromCardIds(cardIds, enhancements, evolutions = {}, pro
       error.code = 'FLASHERA_GAMEPLAY_OWNERSHIP_REQUIRED'; throw error;
     }
     assertDeckFlasheraOwnership(profile, cardIds, {
+      allowVirtualAdminPool,
       copyLimitForBase:baseId=>deckCopyLimit(cardDb.getById(baseId),MAX_COPIES_PER_CARD)
     });
   }
