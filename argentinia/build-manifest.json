@@ -67,7 +67,6 @@
     "./js/animationDirector.js",
     "./js/appearance.js",
     "./js/appearanceAdmin.js",
-    "./js/appearancePreview.html",
     "./js/artLayout.js",
     "./js/artLayoutEditor.js",
     "./js/audioManager.js",
@@ -290,6 +289,6 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "459f9ee4a391cad5d693",
+  "buildId": "90526679f3c5e6efd273",
   "serviceUsageSchema": "arg-service-usage-v1"
 }
