@@ -40,7 +40,7 @@ import { deckCopyLimit } from './deckCopyLimit.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, acknowledgeAchievementNoticeServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getSanctuaryStatusServer, resolveSanctuaryBarcodeServer, claimSanctuaryBarcodeServer, resolveSanctuaryResonanceServer, claimSanctuaryResonanceServer, adminPreviewSanctuaryServer, adminMigrateDiscoveryPresentationServer, adminSaveDiscoveryPresentationServer, adminCreateDiscoveryArtUploadServer, adminFinalizeDiscoveryArtUploadServer, adminSetSanctuaryConfigServer, adminSetSanctuaryBarcodeBucketsServer, adminSetSanctuaryResonanceBucketsServer, adminSetSanctuaryBarcodeEasterEggsServer, adminSetSanctuaryFoodBucketsServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, adminGetFlasheraStatusServer, adminGetFlasheraAnalyticsServer, adminSaveFlasheraConfigServer, adminAdjustFlasheraDebugServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer, attestMatchDeckServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
@@ -183,7 +183,8 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 export const FIREBASE_IMPL_VERSION = ENGINE_VERSION;
-const REWARD_RULES_VERSION = FIRESTORE_RULES_VERSION;
+// The rewardClock schema is versioned independently of multiplayer Rules releases.
+const REWARD_CLOCK_VERSION = '23.13.95';
 
 function usernameError(code, message) {
   const error = new Error(message || code);
@@ -1252,11 +1253,11 @@ async function readAuthoritativeServerClockOnce(uid) {
   const ref = doc(db, 'rewardClock', uid);
   // 23.17.3.4 — un único probe sirve a Daily y Clasificados. El write queda sellado por
   // Rules con request.time; la lectura posterior sólo acepta la misma attestation.
-  await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
+  await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_CLOCK_VERSION });
   const snap = await getDocFromServer(ref);
   const clockData = snap.exists() ? snap.data() : {};
-  if (clockData.rulesVersion !== REWARD_RULES_VERSION) {
-    throw new Error(`RULES_VERSION_MISMATCH_${REWARD_RULES_VERSION.replaceAll('.', '_')}`);
+  if (clockData.rulesVersion !== REWARD_CLOCK_VERSION) {
+    throw new Error(`RULES_VERSION_MISMATCH_${REWARD_CLOCK_VERSION.replaceAll('.', '_')}`);
   }
   const serverNow = firestoreTimestampLikeToDate(clockData.now);
   if (!serverNow) {

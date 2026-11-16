@@ -385,8 +385,8 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
   function renderShell() {
     root.innerHTML = `<div class="appearance-studio">
       <div class="appearance-toolbar">
-        <select class="appearance-preset" data-appearance-preset><option value="classic">Clásico Argentinia</option><option value="custom">Personalizado</option></select>
-        <label class="appearance-section-picker"><span>ELEMENTO</span><select data-appearance-section-select>${SECTION_META.map(([key,label,icon])=>`<option value="${key}">${icon} ${esc(label)}</option>`).join('')}</select></label>
+        <select id="appearance-preset" class="appearance-preset" data-appearance-preset aria-label="Preajuste de apariencia"><option value="classic">Clásico Argentinia</option><option value="custom">Personalizado</option></select>
+        <label class="appearance-section-picker" for="appearance-section-select"><span>ELEMENTO</span><select id="appearance-section-select" data-appearance-section-select>${SECTION_META.map(([key,label,icon])=>`<option value="${key}">${icon} ${esc(label)}</option>`).join('')}</select></label>
         <button class="appearance-action" data-appearance-undo>Deshacer cambios locales</button>
         <button class="appearance-action danger" data-appearance-rollback>↩ Volver a revisión anterior</button>
         <span class="spacer"></span><span class="appearance-toolbar-status" data-appearance-status></span>
@@ -429,6 +429,10 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
     frame.addEventListener('load', () => {
       if (!frame.isConnected) return;
       const doc = frame.contentDocument;
+      if (!doc?.getElementById('appearance-menu-preview')) return;
+      const style=doc.createElement('style');
+      style.textContent=menuV2AppearanceCss();
+      doc.head.append(style);
       const {vars} = appearanceCssVariables(config);
       for (const [key,value] of Object.entries(vars)) doc.documentElement.style.setProperty(key,value);
       doc.documentElement.dataset.argAppearanceMainMenu = config.mainMenu.enabled ? '1' : '0';
@@ -460,8 +464,7 @@ export function mountAppearanceAdminPane(root, { renderFlasheraPreviewCard = nul
       more.addEventListener('click',()=>{menu.classList.toggle('places-open');more.setAttribute('aria-expanded',String(menu.classList.contains('places-open')));});
       close.addEventListener('click',()=>{menu.classList.remove('places-open');more.setAttribute('aria-expanded','false');});
     },{once:true});
-    const base=new URL('.',document.baseURI).href;
-    frame.srcdoc=`<!doctype html><html><head><base href="${esc(base)}"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="css/menu.css"><style>html,body{margin:0;overflow:hidden}${menuV2AppearanceCss()}</style></head><body></body></html>`;
+    frame.src=new URL('./appearancePreview.html',import.meta.url).href;
     holder.append(frame);
     const fit=()=>{if(!holder.isConnected){menuPreviewResize?.disconnect();return;}frame.style.transform=`scale(${Math.min(holder.clientWidth/width,holder.clientHeight/height)})`;};
     menuPreviewResize=new ResizeObserver(fit);menuPreviewResize.observe(holder);fit();

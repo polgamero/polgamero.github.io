@@ -20,16 +20,16 @@ export function mountAdminFlasheraPane(root){
       <div class="admin-section-title">💫 FLASHERAS · Autoridad y probabilidades</div>
       <div class="admin-flashera-note"><b>Stage42A HF6:</b> adquisición real bajo autoridad Admin. El master viene apagado por defecto. Para habilitarla, primero publicá Functions de HF3 y confirmá las Rules vigentes. Todos los cambios se auditan en el servidor.</div>
       <div class="admin-flashera-grid">
-        <div class="admin-flashera-row"><label>Adquisición global</label><label><input id="flashera-acq" type="checkbox"> MASTER · habilitar adquisición</label></div>
-        <div class="admin-flashera-row"><label>Fuente: sobres</label><label><input id="flashera-pack-enabled" type="checkbox" checked> Activa</label></div>
-        <div class="admin-flashera-row"><label>Fuente: evolución</label><label><input id="flashera-evolution-enabled" type="checkbox" checked> Activa</label></div>
-        <div class="admin-flashera-row"><label>Fuente: Mezcladora</label><label><input id="flashera-mixer-enabled" type="checkbox" checked> Activa</label></div>
-        <div class="admin-flashera-row"><label>Fuente: Santuario</label><label><input id="flashera-sanctuary-enabled" type="checkbox" checked> Activa</label></div>
-        <div class="admin-flashera-row"><label>Efecto visual habilitado</label><input id="flashera-visual" type="checkbox" checked></div>
-        <div class="admin-flashera-row"><label>Sobres (%)</label><input class="admin-field-input" id="flashera-pack" type="number" min="0" max="100" step="0.01"></div>
-        <div class="admin-flashera-row"><label>Evolución (%)</label><input class="admin-field-input" id="flashera-evolution" type="number" min="0" max="100" step="0.01"></div>
-        <div class="admin-flashera-row"><label>Mezcladora (%)</label><input class="admin-field-input" id="flashera-mixer" type="number" min="0" max="100" step="0.01"></div>
-        <div class="admin-flashera-row"><label>Santuario (%)</label><input class="admin-field-input" id="flashera-sanctuary" type="number" min="0" max="100" step="0.01"></div>
+        <div class="admin-flashera-row"><label for="flashera-acq">Adquisición global</label><label><input id="flashera-acq" type="checkbox"> MASTER · habilitar adquisición</label></div>
+        <div class="admin-flashera-row"><label for="flashera-pack-enabled">Fuente: sobres</label><label><input id="flashera-pack-enabled" type="checkbox" checked> Activa</label></div>
+        <div class="admin-flashera-row"><label for="flashera-evolution-enabled">Fuente: evolución</label><label><input id="flashera-evolution-enabled" type="checkbox" checked> Activa</label></div>
+        <div class="admin-flashera-row"><label for="flashera-mixer-enabled">Fuente: Mezcladora</label><label><input id="flashera-mixer-enabled" type="checkbox" checked> Activa</label></div>
+        <div class="admin-flashera-row"><label for="flashera-sanctuary-enabled">Fuente: Santuario</label><label><input id="flashera-sanctuary-enabled" type="checkbox" checked> Activa</label></div>
+        <div class="admin-flashera-row"><label for="flashera-visual">Efecto visual habilitado</label><input id="flashera-visual" type="checkbox" checked></div>
+        <div class="admin-flashera-row"><label for="flashera-pack">Sobres (%)</label><input class="admin-field-input" id="flashera-pack" type="number" min="0" max="100" step="0.01"></div>
+        <div class="admin-flashera-row"><label for="flashera-evolution">Evolución (%)</label><input class="admin-field-input" id="flashera-evolution" type="number" min="0" max="100" step="0.01"></div>
+        <div class="admin-flashera-row"><label for="flashera-mixer">Mezcladora (%)</label><input class="admin-field-input" id="flashera-mixer" type="number" min="0" max="100" step="0.01"></div>
+        <div class="admin-flashera-row"><label for="flashera-sanctuary">Santuario (%)</label><input class="admin-field-input" id="flashera-sanctuary" type="number" min="0" max="100" step="0.01"></div>
       </div>
       <button class="admin-save-btn" id="flashera-save">💾 Guardar configuración</button>
       <div class="admin-success-msg" id="flashera-config-status"></div>
