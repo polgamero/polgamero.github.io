@@ -41,7 +41,8 @@ LEGACY_SHARED_IMAGE_OWNERS = {
 }
 
 # The original/requisition baseline is gapless in every family. Any card above
-# these maxima must use the canonical filename derived from its own name.
+# these maxima must use the canonical filename derived from its own name,
+# with the exact front-face exceptions approved below.
 CANONICAL_IMAGE_BASELINE_MAX = {
     "art": 44,
     "conj": 61,
@@ -57,6 +58,24 @@ CANONICAL_IMAGE_BASELINE_MAX = {
 CANONICAL_IMAGE_REQUIRED_IDS = {
     "inst_080", "inst_081", "inst_082", "inst_083", "inst_084", "inst_085",
     "conj_059", "conj_060", "conj_061", "crea_210", "art_044",
+}
+
+# Owner-approved Phase 8 front-face filenames. These are exact per-card aliases
+# from the final workbook, plus the Aura filename that avoids the basic land art.
+# Ownership checks below still reject any other card sharing one of these files.
+APPROVED_FRONT_IMAGE_NAMES = {
+    "crea_381": "basilisco.png",
+    "crea_382": "peluquero_ocho_brazos.png",
+    "crea_384": "futre.png",
+    "crea_385": "abuela_del_tupper.png",
+    "crea_388": "kurupi.png",
+    "ench_116": "Nina_la_gata_naranja.png",
+    "crea_390": "chancho_de_monte.png",
+    "crea_391": "difunta_correa_leyenda.png",
+    "inst_164": "volantazo_general_paz.png",
+    "crea_393": "telesita.png",
+    "crea_395": "yastay.png",
+    "ench_121": "pampa_humeda_aura.png",
 }
 
 
@@ -248,7 +267,11 @@ def validate_image_ownership(cards) -> list[str]:
         # canonical filename derived from the back-face name.
         canonical_required = face == "back" or card_id in CANONICAL_IMAGE_REQUIRED_IDS or future_card
         if canonical_required:
-            expected = canonical_card_image_name(face_name)
+            expected = (
+                APPROVED_FRONT_IMAGE_NAMES.get(card_id, canonical_card_image_name(face_name))
+                if face == "front"
+                else canonical_card_image_name(face_name)
+            )
             if image != expected:
                 label = f"{card_id} {face}" if face == "back" else card_id
                 errors.append(
