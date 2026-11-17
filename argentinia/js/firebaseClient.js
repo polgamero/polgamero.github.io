@@ -346,6 +346,7 @@ export const createDeck = asyncProxy('createDeck');
 export const updateDeck = asyncProxy('updateDeck');
 export const deleteDeck = asyncProxy('deleteDeck');
 export const loadPublicGameConfigDocument = asyncProxy('loadPublicGameConfigDocument');
+export const saveAdminDeckCopyLimit = asyncProxy('saveAdminDeckCopyLimit');
 export const saveAdminGameConfigDocument = asyncProxy('saveAdminGameConfigDocument');
 export const saveAdminPresentationLayoutsPatch = asyncProxy('saveAdminPresentationLayoutsPatch');
 export const fetchAdminPresentationBackupState = asyncProxy('fetchAdminPresentationBackupState');

@@ -35,8 +35,9 @@ import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_
 import { parseEvolutionVariantId, evolutionStageForProfile } from './evolution.js';
 import { normalizeFlasheraCopies } from './flasheraContract.js';
 import { parseCardVariantId } from './cardVariant.js';
-import { assertDeckFlasheraOwnership } from './flasheraDeck.js';
-import { deckCopyLimit } from './deckCopyLimit.js';
+import { assertDeckFlasheraOwnership, assertIndividualDeckCopyLimits } from './flasheraDeck.js';
+import { DECK_COPY_LIMITS_DOCUMENT, DEFAULT_DECK_COPY_LIMIT, canConfigureDeckCopyLimit, configuredDeckCopyLimit, normalizeDeckCopyLimits } from './deckCopyLimit.js';
+import { deckCopyLimit } from './deckLimitsPolicy.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
@@ -1450,7 +1451,7 @@ export async function mixCards(uid, cardId) {
 // real, tope de copias, reglas de la copia mejorada) — compartido entre createDeck y
 // updateDeck, porque las reglas son EXACTAMENTE las mismas para crear un mazo nuevo o
 // editar uno existente. Tira una excepción con mensaje claro si algo no cumple.
-function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false } = {}) {
+function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false, copyLimits } = {}) {
   if (!name || !name.trim()) throw new Error('El mazo necesita un nombre.');
   // BUGFIX: el input del cliente ya limita a 30 caracteres (maxlength), pero esto es la
   // defensa real del lado del servidor — un nombre más largo rompía el layout de la
@@ -1484,7 +1485,8 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
   // Validate inside the SAME Firestore transaction snapshot as the eventual deck write.
   // Reject forged premium suffixes, unsupported combinations and overdrawn finish counts.
-  assertDeckFlasheraOwnership(data, cardIds, {allowVirtualAdminPool,copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD)});
+  assertIndividualDeckCopyLimits(cardIds, id=>cardDb.getById(id), MAX_COPIES_PER_CARD, copyLimits);
+  assertDeckFlasheraOwnership(data, cardIds, {allowVirtualAdminPool,copyLimitForBase:id=>deckCopyLimit(cardDb.getById(id),MAX_COPIES_PER_CARD,copyLimits)});
   const enhancements = data.enhancements || {};
   const evolutions = data.evolutions || {};
   const requestedCounts = {};
@@ -1559,6 +1561,7 @@ export async function createDeck(uid, name, cardIds) {
 
     if (decks.length >= MAX_SAVED_DECKS) throw new Error(`Ya tenés el máximo de ${MAX_SAVED_DECKS} mazos.`);
     validateDeckCards(data, name, cardIds, {
+      copyLimits: await readDeckCopyLimits(tx),
       allowVirtualAdminPool: auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL
     });
 
@@ -1653,6 +1656,7 @@ export async function updateDeck(uid, deckId, name, cardIds) {
     if (idx === -1) throw new Error('Ese mazo ya no existe.');
 
     validateDeckCards(data, name, cardIds, {
+      copyLimits: await readDeckCopyLimits(tx),
       allowVirtualAdminPool: auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL
     });
 
@@ -1871,6 +1875,40 @@ export async function loadPublicGameConfigDocument(documentId, { server = false 
   const id = assertGameConfigDocumentId(documentId);
   const snap = await (server ? getDocFromServer : getDoc)(doc(db, 'gameConfig', id));
   return snap.exists() ? snap.data() : null;
+}
+
+async function readDeckCopyLimits(tx) {
+  const snap = await tx.get(doc(db, 'gameConfig', DECK_COPY_LIMITS_DOCUMENT));
+  return normalizeDeckCopyLimits(snap.exists() ? snap.data() : null);
+}
+
+export async function saveAdminDeckCopyLimit(cardId, limit, expectedOverride) {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw Error('Acceso de Admin requerido.');
+  const card = cardDb.getById(cardId);
+  if (!canConfigureDeckCopyLimit(card) || !Number.isInteger(limit) || limit < 1 || limit > DEFAULT_DECK_COPY_LIMIT) {
+    throw Error('Elegí una carta válida y un máximo entre 1 y 4.');
+  }
+  const ref = doc(db, 'gameConfig', DECK_COPY_LIMITS_DOCUMENT);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? snap.data() : null;
+    if (current && (current.schemaVersion !== 1 || !current.overrides ||
+        typeof current.overrides !== 'object' || Array.isArray(current.overrides))) {
+      throw Error('La configuración de límites tiene un formato incompatible.');
+    }
+    const overrides = normalizeDeckCopyLimits(current);
+    if ((overrides[cardId] ?? null) !== expectedOverride) {
+      const error = new Error('El límite cambió en otra sesión. Revisá el valor actualizado.');
+      error.code = 'DECK_COPY_LIMIT_CHANGED';
+      throw error;
+    }
+    const printedLimit = configuredDeckCopyLimit(card) ?? DEFAULT_DECK_COPY_LIMIT;
+    if (limit === printedLimit) delete overrides[cardId];
+    else overrides[cardId] = limit;
+    const document = { schemaVersion: 1, overrides: { ...overrides } };
+    tx.set(ref, { ...document, updatedAt: serverTimestamp() });
+    return document;
+  });
 }
 
 // Card presentation writes merge one explicit patch inside a transaction. A save

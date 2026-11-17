@@ -251,7 +251,9 @@
     "./js/version.js",
     "./js/workshop.js",
     "./js/xCostPayment.js",
-    "./js/zoneOwnership.js"
+    "./js/zoneOwnership.js",
+    "./js/adminDeckLimits.js",
+    "./js/deckLimitsPolicy.js"
   ],
   "publicProjection": true,
   "releaseLabel": "23.22.0 HF7",
@@ -289,7 +291,7 @@
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "7bcf63ad3eb67e37902b",
+  "buildId": "cc5ae7e7d4d1d72fa5b9",
   "serviceUsageSchema": "arg-service-usage-v1",
   "firestoreRulesVersion": "23.13.96"
 }

@@ -20,6 +20,7 @@ import { controlExchangeSource, counterSpellObject, moveResolvedSpellCard, resol
 import { prepareControlCommit } from './sharedHandRefill.js';
 import { showResolutionCoinToss } from './startingCoin.js';
 import { cardDb } from './cardLoader.js';
+import { refreshDeckCopyLimits } from './deckLimitsPolicy.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
 import { isAdminUser, createCardElement, refreshPriorityShortcuts, resetSoloPriorityShortcuts, setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal, showCommunityStatusAtBoot, showTradeNotificationsAtBoot, showRedundantAuraConfirmation } from './ui.js';
@@ -1573,6 +1574,7 @@ async function initGame(deckSource, options = {}) {
   showMatchInitializationOverlay();
   enterGameplayAudio('solo');
   await paintMatchInitializationOverlay();
+  if (deckSource.type === 'random') await refreshDeckCopyLimits().catch(() => {});
   if (globalThis.__ARGENTINIA_PHONE_SURFACE__ === true) {
     try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
     // Samsung/Chrome can publish the final fullscreen visualViewport one paint after the

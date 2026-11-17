@@ -11,6 +11,7 @@ import { injectPrivateDiscoveryTextLayouts } from './textLayout.js';
 import {isDiscoveryCard} from './discoveryCards.js';
 import {isOwnedDiscoveryPlayable,ownedCardCopies,ownedDiscoveryDeckIds} from './discoveryPlayability.js';
 import {assertDeckFlasheraOwnership} from './flasheraDeck.js';
+import {refreshDeckCopyLimits} from './deckLimitsPolicy.js';
 
 const IMAGE_MANIFEST_URL = './assets/images/cards/cards-image-manifest.json';
 const DISCOVERY_PUBLIC_URL = './assets/data/discovery-public.json';
@@ -149,6 +150,7 @@ class CardDatabase {
     validateLoadedPool(nextByCategory, nextAllCards);
 
     // 23.21.5 publication/identity layer. Historical 880 default enabled; future IDs fail closed.
+    void refreshDeckCopyLimits().catch(() => {});
     await ensureCardCatalogLoaded({ allowCachedFallback: true });
     this.discoveryPublicCatalog = discoveryPublicCatalog;
     this.rawCardsByCategory = nextByCategory;

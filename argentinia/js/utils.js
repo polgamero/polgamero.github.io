@@ -4,7 +4,7 @@ import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner } from './zoneOwnership.js';
 import { cardForNonBattlefieldZone } from './transformEngine.js';
 import { graveyardEntryCard } from './publicZoneEffects.js';
-import { deckCopyLimit } from './deckCopyLimit.js';
+import { deckCopyLimit } from './deckLimitsPolicy.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, MAX_COPIES_PER_CARD, isEnhancementEligibleCard } from './store.js';
 import { buildCompetitiveDeck, buildOpponentDeck } from './deckIntelligence.js';
 import { parseEvolutionVariantId, evolutionStageForProfile, applyEvolutionStage } from './evolution.js';

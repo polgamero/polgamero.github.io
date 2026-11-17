@@ -5,7 +5,7 @@ import { BOT_AI_VERSION } from './botDifficulty.js';
 
 import {entryLoyaltyAbilities,planeswalkerDeckValue3} from './planeswalkerStrategy3.js';
 import {getManaSourceOptions} from './manaSources.js';
-import { deckCopyLimit } from './deckCopyLimit.js';
+import { deckCopyLimit } from './deckLimitsPolicy.js';
 
 const COLORS = ['W','U','B','R','G'];
 const MANA_LANES = [...COLORS, 'C'];

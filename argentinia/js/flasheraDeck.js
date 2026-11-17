@@ -2,16 +2,16 @@
 // Physical state and cosmetic finish remain orthogonal. Never mint cards in this module.
 import { parseCardVariantId, cardVariantId } from './cardVariant.js';
 import { reconcileFlasheraCopies } from './flasheraContract.js';
-import { cardHasDeckCopyLimit, deckCopyLimit } from './deckCopyLimit.js';
+import { cardHasDeckCopyLimit, deckCopyLimit } from './deckLimitsPolicy.js';
 
-export function assertIndividualDeckCopyLimits(cardIds, getCard, generalLimit) {
+export function assertIndividualDeckCopyLimits(cardIds, getCard, generalLimit, policy) {
   const counts = new Map();
   for (const id of cardIds || []) {
     const {baseId} = parseCardVariantId(id);
     const card = getCard(baseId);
-    if (!cardHasDeckCopyLimit(card)) continue;
+    if (!cardHasDeckCopyLimit(card, policy)) continue;
     const count = (counts.get(baseId) || 0) + 1;
-    const limit = deckCopyLimit(card,generalLimit);
+    const limit = deckCopyLimit(card,generalLimit,policy);
     if (count > limit) throw new Error(`${card.name} admite hasta ${limit} copias por mazo. Editá el mazo antes de jugar.`);
     counts.set(baseId,count);
   }

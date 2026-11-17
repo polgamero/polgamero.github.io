@@ -16,7 +16,7 @@ import { timedDecision, randomLegalSubset, cancelActionDecisions } from './decis
 import { recordTelemetryEvent } from './telemetry.js';
 import { showGameDialog } from './gameDialogs.js';
 import { battlefieldEffectTargets } from './publicZoneEffects.js';
-import { deckCopyLimit } from './deckCopyLimit.js';
+import { deckCopyLimit, refreshDeckCopyLimits } from './deckLimitsPolicy.js';
 import {
   state,
   getLocalPlayerName,
@@ -150,6 +150,7 @@ import { mountAdminSanctuaryPane } from './sanctuaryAdmin.js';
 import { mountAppearanceAdminPane } from './appearanceAdmin.js';
 import { mountPresentationBackups } from './presentationBackups.js';
 import { mountAdminFlasheraPane } from './flasheraAdmin.js';
+import { mountAdminDeckLimits } from './adminDeckLimits.js';
 import { applyCachedPublishedAppearance } from './appearance.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
@@ -4054,6 +4055,14 @@ function cardMatchesColorFilter(card, activeColors) {
   return cardFilterColors(card).some(color => activeColors.has(color));
 }
 
+function normalizeSearch(str) {
+  return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function cardMatchesNameOrText(card, query) {
+  return !query || normalizeSearch(`${card.name} ${card.text || ''}`).includes(query);
+}
+
 function cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) {
   const archetypeOk = activeArchetypes.size === 0 || [...activeArchetypes].some(key => getCardArchetypes(card).has(key));
   const mechanicOk = activeMechanics.size === 0 || [...activeMechanics].some(key => getCardMechanicTags(card).has(key));
@@ -4673,10 +4682,6 @@ export function showEncyclopedia(onBack) {
   applyCardZoom(overlay, defaultZoom, { cssVar: '--card-w', unit: 'vh', min: encyclopediaMinZoom, max: 50, fallback: defaultZoom });
 
   const gridBox = overlay.querySelector('#enc-grid');
-
-  function normalizeSearch(str) {
-    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
 
   // HF23.3.16.2.22 — evolución inline en Enciclopedia. Admin puede inspeccionar
   // Base/Evo1/Evo2 sin que eso altere la colección ni el stage persistido del perfil.
@@ -5978,6 +5983,7 @@ export function showStoreScreen(onBack, options = {}) {
       case 'PREBUILT_ALREADY_PURCHASED': return gameText('prebuilt.error.alreadyPurchased');
       case 'PREBUILT_INSUFFICIENT_FUNDS': return gameText('prebuilt.error.insufficientFunds');
       case 'PREBUILT_DECK_LIMIT': return gameText('prebuilt.error.deckLimit');
+      case 'PREBUILT_COPY_LIMIT': return 'Este mazo prearmado supera el máximo de copias permitido para una de sus cartas.';
       case 'PREBUILT_RULES_STALE': return gameText('prebuilt.error.rulesStale');
       default: return error?.message || gameText('prebuilt.error.generic');
     }
@@ -5989,7 +5995,7 @@ export function showStoreScreen(onBack, options = {}) {
     return parts.length?parts.join(' · '):String(summary.lands||0);
   }
 
-  function openPrebuiltDeckModal(product, summary, purchased) {
+  function openPrebuiltDeckModal(product, summary, purchased, unavailable) {
     document.querySelectorAll('.prebuilt-preview-overlay').forEach(el=>el.remove());
     const modal=document.createElement('div');
     modal.className='prebuilt-preview-overlay';
@@ -6013,7 +6019,7 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="prebuilt-mechanics">${gameTextHtml('prebuilt.summary.mechanics',{themes})}</div>
           <div class="prebuilt-price">${COIN_ICON_HTML} ${currentPrebuiltPointsCost()} <span>+</span> ${FICHA_ICON_HTML} ${currentPrebuiltFichasCost()}</div>
           <div class="prebuilt-actions">
-            <button class="store-buy-btn" id="prebuilt-buy" ${purchased?'disabled':''}>${purchased?gameTextHtml('prebuilt.purchased'):gameTextHtml('prebuilt.buy')}</button>
+            <button class="store-buy-btn" id="prebuilt-buy" ${purchased||unavailable?'disabled':''}>${purchased?gameTextHtml('prebuilt.purchased'):unavailable?'No disponible':gameTextHtml('prebuilt.buy')}</button>
             <button class="store-back-link" id="prebuilt-close">${gameTextHtml('common.close')}</button>
           </div>
           <div class="store-error-msg" id="prebuilt-modal-error"></div>
@@ -6070,6 +6076,7 @@ export function showStoreScreen(onBack, options = {}) {
       await loadStorefrontAuthorityCached();
       const catalog=await loadPrebuiltDeckCatalog();
       const purchasedIds=new Set(getPrebuiltPurchaseIds(state.userProfile));
+      const unavailableIds=new Set(storefrontAuthority?.prebuilt?.disabledProductIds || []);
       body.innerHTML=`
         <div class="store-section store-section-compact">
           <div class="store-section-desc">${gameTextHtml('prebuilt.subtitle')}</div>
@@ -6086,7 +6093,7 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="prebuilt-product-meta">${prebuiltColorLabel(product.colors)} · ${escapeHtml(product.archetypeLabel||product.archetypeId)} · ${summary.lands} Tierras</div>
           <div class="prebuilt-price">${COIN_ICON_HTML} ${PREBUILT_DECK_POINTS} <span>+</span> ${FICHA_ICON_HTML} ${PREBUILT_DECK_FICHAS}</div>
           <button class="store-buy-btn prebuilt-view">${purchased?gameTextHtml('prebuilt.purchased'):gameTextHtml('prebuilt.view')}</button>`;
-        card.querySelector('.prebuilt-view').addEventListener('click',()=>openPrebuiltDeckModal(product,summary,purchased));
+        card.querySelector('.prebuilt-view').addEventListener('click',()=>openPrebuiltDeckModal(product,summary,purchased,unavailableIds.has(product.id)));
         strip.appendChild(card);
       }
       body.querySelector('#prebuilt-back').addEventListener('click',renderMainView);
@@ -9212,10 +9219,6 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   const deckLayout = mountDeckBuilderLayout({overlay,valid:isCurrentBuilder,onDismissPreview:hideDeckCardPreview});
 
-  function normalizeSearch(str) {
-    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
-
   function totalInDeck() {
     return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
   }
@@ -9426,7 +9429,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         (!flasheraOnly || record.isFlasheraTile) &&
         (!evolvableOnly || isEvolutionEligibleCard(card)) &&
         (!newOnly || isNewlyObtained(card.id)) &&
-        (!query || normalizeSearch(`${card.name} ${card.text || ''}`).includes(query));
+        cardMatchesNameOrText(card,query);
       record.node.hidden = !matches;
       if (matches) visible += 1;
       entry.pane.appendChild(record.node); // mueve el nodo existente; mantiene su <img>
@@ -9727,6 +9730,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   refreshPool();
   renderList();
+  void refreshDeckCopyLimits().then(() => {
+    if (isCurrentBuilder()) refreshPoolTileStates();
+  }).catch(() => {});
   void refreshDiscoveryPlayAssets(state,spellStack);
 }
 
@@ -9789,10 +9795,15 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, op
   document.body.appendChild(overlay);
 
   overlay.querySelectorAll('.mydecks-slot-filled').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       const deckId = el.getAttribute('data-deck-id');
       const deck = decks.find(d => d.id === deckId);
       if (deck) {
+        const uid = state.currentUser?.uid;
+        el.disabled = true;
+        await refreshDeckCopyLimits().catch(() => {});
+        if (!overlay.isConnected || state.currentUser?.uid !== uid) return;
+        el.disabled = false;
         // Stage31: preflight the physical premium overlay before leaving the picker.
         // The gameplay builder independently validates again on boot. This client
         // verification is NOT a substitute for server admission (Stage40).
@@ -10931,6 +10942,8 @@ function injectAdminPanelStyles() {
     .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); cursor:default; scrollbar-gutter:stable; }
     .admin-debug-table-wrap.dragging { cursor:default; user-select:none; }
     .admin-debug-table { width:100%; border-collapse:collapse; min-width:920px; font-size:12px; }
+    .admin-debug-table.admin-deck-limits-table { min-width:0; }
+    .admin-deck-limits-table td:last-child .encyclopedia-tab { margin:2px 4px 2px 0; }
     .admin-debug-table th { position:sticky; top:0; z-index:2; background:#24162f; color:#ead9f4; text-align:left; padding:10px 9px; border-bottom:1px solid rgba(176,106,212,0.35); white-space:nowrap; }
     .admin-debug-table td { padding:9px; border-bottom:1px solid rgba(176,106,212,0.13); color:#d9cce2; vertical-align:middle; }
     .admin-debug-table.black-box-table { min-width:1120px; table-layout:auto; }
@@ -11367,6 +11380,7 @@ export function showAdminPanel(onBack) {
 
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'deckLimits', label: 'LÍMITES POR CARTA' },
     { key: 'appearance', label: 'APARIENCIA' },
     { key: 'flasheras', label: 'FLASHERAS' },
     { key: 'workshop', label: gameText('admin.tab.workshop') },
@@ -11407,6 +11421,10 @@ export function showAdminPanel(onBack) {
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
           <div class="admin-success-msg" id="admin-success"></div>
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="deckLimits">
+        <div id="admin-deck-limits-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="appearance">
@@ -12923,6 +12941,7 @@ Receipt: ${receiptId}
   let adminAppearanceController=null;
   let adminBackupController=null;
   let adminFlasheraController=null;
+  let adminDeckLimitsController=null;
 
   async function activateAdminTab(key) {
     if(activeAdminTab==='siteEditorial'&&key!==activeAdminTab&&adminSiteEditorialController&&!await adminSiteEditorialController.canLeave())return;
@@ -12930,6 +12949,16 @@ Receipt: ${receiptId}
     if(key==='siteEditorial'&&!adminSiteEditorialController)adminSiteEditorialController=mountSiteEditorialAdmin(overlay.querySelector('#admin-site-editorial-root'));
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
+    if (key === 'deckLimits') {
+      adminDeckLimitsController ||= mountAdminDeckLimits(overlay.querySelector('#admin-deck-limits-root'), {
+        loadCards: () => cardDb.loadAll(),
+        matches: (card, search, type, rarity) => cardMatchesNameOrText(card, normalizeSearch(search)) &&
+          (!type || deckBuilderTypeKeys(card).includes(type)) && (!rarity || card.rarity === rarity),
+        types: Object.fromEntries(ENCYCLOPEDIA_TABS.map(({ key, label }) => [key, label])),
+        rarities: Object.fromEntries(ENCYCLOPEDIA_RARITIES.map(({ key, label }) => [key, label]))
+      });
+      void adminDeckLimitsController.load();
+    }
     if(key==='backups'&&!adminBackupController)adminBackupController=mountPresentationBackups(overlay.querySelector('#admin-presentation-backups-root'),{uid:state.currentUser?.uid});
     if (key === 'texts' && !gameTextsAdminLoaded) {
       gameTextsAdminLoaded = true;
