@@ -1415,5 +1415,139 @@
     "image": "relleno_sanitario.png",
     "enabled": false,
     "produces": "C"
+  },
+  {
+    "id": "tier_070",
+    "name": "Taller de Artefactos de Igor",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "colors": [],
+    "rarity": "Mythic",
+    "text": "{T}: Agregá {C}{C}{C}. Gastá este maná únicamente para lanzar hechizos de artefacto.",
+    "flavorText": "A las seis cerraba el portón. La fragua seguía hasta el amanecer.",
+    "image": "taller_de_artefactos_de_igor.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": "C",
+      "amount": 3,
+      "spendOnly": "artifactSpell"
+    },
+    "deckCopyLimit": 1,
+    "produces": "C"
+  },
+  {
+    "id": "tier_071",
+    "name": "Biblioteca Nacional",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "colors": [],
+    "rarity": "Uncommon",
+    "text": "{T}: Agregá {C}.\n{T}: Robá una carta. Activá solo si tenés exactamente siete cartas en la mano.",
+    "flavorText": "En el registro figuran todos los libros devueltos, sin embargo siempre faltan más.",
+    "image": "biblioteca_nacional.png",
+    "enabled": false,
+    "keywords": [],
+    "produces": "C",
+    "activatedAbility": {
+      "name": "Robar una carta",
+      "cost": "{T}",
+      "timing": "instant",
+      "handSizeExactly": 7,
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      }
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "tier_072",
+    "name": "Descontrol en la Isla Paulino",
+    "type": "Tierra legendaria",
+    "manaCost": "",
+    "cmc": 0,
+    "colors": [],
+    "rarity": "Mythic",
+    "text": "{T}: Agregá {G} por cada criatura que controlás.",
+    "flavorText": "Cada árbol de la isla tiene raíces en más de una orilla.",
+    "image": "descontrol_en_la_isla_paulino.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": "G",
+      "amountFrom": "controlledCreatures"
+    },
+    "deckCopyLimit": 1,
+    "produces": "G"
+  },
+  {
+    "id": "tier_073",
+    "name": "Feria de la Zona Sur",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "colors": [],
+    "rarity": "Uncommon",
+    "text": "{T}: Robá dos cartas y luego descartá tres cartas.",
+    "flavorText": "En la feria hay que perder para después ganar.",
+    "image": "feria_de_la_zona_sur.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{T}",
+      "timing": "instant",
+      "effect": {
+        "type": "loot",
+        "amount": 2,
+        "discardAmount": 3
+      }
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "tier_074",
+    "name": "Acantilados de Chapadmalal",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "colors": [],
+    "rarity": "Common",
+    "text": "Acantilados de Chapadmalal entra al campo de batalla girada.\nCuando Acantilados de Chapadmalal entra al campo de batalla, sacrificiala a menos que pagues {1}.\n{T}: Agregá un maná de cualquier color.",
+    "flavorText": "Grandes historias, siempre y cuando logres salir.",
+    "image": "acantilados_de_chapadmalal.png",
+    "enabled": false,
+    "keywords": [],
+    "entersTapped": true,
+    "manaAbility": {
+      "produces": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ]
+    },
+    "triggers": [
+      {
+        "event": "land_entered",
+        "filter": {
+          "self": true
+        },
+        "effect": {
+          "type": "pay_or_sacrifice_source",
+          "amount": 1
+        }
+      }
+    ],
+    "producesOptions": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ]
   }
 ]

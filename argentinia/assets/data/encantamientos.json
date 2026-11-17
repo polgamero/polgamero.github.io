@@ -3372,5 +3372,345 @@
         "cardType": "artifact"
       }
     }
+  },
+  {
+    "id": "ench_114",
+    "name": "Monocultivo",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Common",
+    "text": "Encantar tierra.\nCada vez que la tierra encantada se gira, Monocultivo le hace 2 puntos de daño al controlador de esa tierra.",
+    "flavorText": "Menuda manera de destruir la tierra.",
+    "image": "monocultivo.png",
+    "enabled": false,
+    "keywords": [],
+    "adjunta": true,
+    "enchantKind": "land",
+    "triggers": [
+      {
+        "event": "permanent_tapped",
+        "filter": {
+          "attachedToEventItem": true
+        },
+        "target": "event_controller",
+        "effect": {
+          "type": "damage",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_115",
+    "name": "Temporada de Cosecha",
+    "type": "Encantamiento",
+    "manaCost": "{4}{G}{G}",
+    "cmc": 6,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "Si un efecto fuera a crear una o más fichas bajo tu control, crea el doble en vez de eso.\nSi un efecto fuera a poner uno o más contadores sobre un permanente que controlás, pone el doble en vez de eso.",
+    "flavorText": "Es el mejor momento, a meterle y hacer la diferencia.",
+    "image": "temporada_de_cosecha.png",
+    "enabled": false,
+    "keywords": [],
+    "replacementEffects": [
+      {
+        "id": "tokens",
+        "event": "token_create",
+        "scope": "own",
+        "action": "double"
+      },
+      {
+        "id": "counters",
+        "event": "counter_add",
+        "scope": "own",
+        "action": "double",
+        "filter": {
+          "excludeCause": "cost"
+        }
+      }
+    ],
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "ench_116",
+    "name": "Nina",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}{W}",
+    "cmc": 3,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Mythic",
+    "text": "Intocable.\nSi una fuente fuera a hacerte daño, prevení ese daño y poné un contador de Encarnación sobre Nina.\nCuando Nina tenga nueve o más contadores de Encarnación, exiliá Nina.\nCuando Nina deje el campo de batalla, perdés la partida.",
+    "flavorText": "Tu mejor compañía es aquella que se sacrificaría por vos.",
+    "image": "Nina_la_gata_naranja.png",
+    "enabled": false,
+    "keywords": [
+      "hexproof"
+    ],
+    "replacementEffect": {
+      "event": "damage",
+      "scope": "own",
+      "action": "prevent",
+      "filter": {
+        "targetKind": "player"
+      },
+      "addSourceCounter": {
+        "type": "incarnation"
+      }
+    },
+    "counterThresholdTrigger": {
+      "counterType": "incarnation",
+      "amount": 9,
+      "effect": {
+        "type": "exile_source"
+      }
+    },
+    "triggers": [
+      {
+        "event": "permanent_left_battlefield",
+        "filter": {
+          "self": true
+        },
+        "effect": {
+          "type": "declare_match_loss"
+        }
+      }
+    ],
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "ench_117",
+    "name": "Aprovechar la volteada",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Common",
+    "text": "Cada vez que un rival lanza un hechizo, podés robar una carta a menos que ese jugador pague {1}.",
+    "flavorText": "Yo no fui. Yo no robé.",
+    "image": "aprovechar_la_volteada.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "opponent"
+        },
+        "target": "event_controller",
+        "effect": {
+          "type": "pay_or_optional_draw",
+          "amount": 1,
+          "drawAmount": 1
+        }
+      }
+    ],
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "ench_118",
+    "name": "Matadero de Epecuen",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{B}",
+    "cmc": 3,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Al comienzo de tu mantenimiento, robá una carta y perdé 1 Punto de Vida.",
+    "flavorText": "La última entrada del turno siempre la cobraban con sangre.",
+    "image": "matadero_de_epecuen.png",
+    "enabled": false,
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_119",
+    "name": "Empezar a Cobrar en Patacones",
+    "type": "Encantamiento",
+    "manaCost": "{6}{W}{W}",
+    "cmc": 8,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Mythic",
+    "text": "Empezar a Cobrar en Patacones entra al campo de batalla con dos contadores de Intervención.\nAl comienzo de tu mantenimiento, remové un contador de Intervención de Empezar a Cobrar en Patacones.\nCuando removés el último contador de Intervención de Empezar a Cobrar en Patacones, la partida termina en empate.",
+    "flavorText": "En el corto plazo, todos perdemos.",
+    "image": "empezar_a_cobrar_en_patacones.png",
+    "enabled": false,
+    "keywords": [],
+    "entersWithCounters": {
+      "intervention": 2
+    },
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "remove_counter",
+          "counterType": "intervention",
+          "amount": 1
+        },
+        "target": "self"
+      },
+      {
+        "event": "counter_removed",
+        "filter": {
+          "self": true,
+          "actor": "you",
+          "counterType": "intervention",
+          "metadata": {
+            "after": 0
+          }
+        },
+        "effect": {
+          "type": "declare_match_draw"
+        }
+      }
+    ],
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "ench_120",
+    "name": "Mordida de Vampiro",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Common",
+    "text": "Encantar criatura.\nCada vez que la criatura encantada hace daño, ganás esa misma cantidad de Puntos de Vida.",
+    "flavorText": "El vampiro vuelve con los dientes limpios y una saciedad indiscutible.",
+    "image": "mordida_de_vampiro.png",
+    "enabled": false,
+    "keywords": [],
+    "adjunta": true,
+    "alcance": "cualquier_criatura",
+    "triggers": [
+      {
+        "event": "damage_dealt",
+        "filter": {
+          "attachedToSource": true
+        },
+        "effect": {
+          "type": "heal",
+          "amountFrom": "event_amount"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_121",
+    "name": "Pampa Húmeda",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Common",
+    "text": "Encantar tierra.\nCada vez que la tierra encantada se gira para producir maná, su controlador agrega un maná de cualquier color adicional.",
+    "flavorText": "La pampa húmeda daba zapallos hasta en pleno invierno y con heladas.",
+    "image": "pampa_humeda_aura.png",
+    "enabled": false,
+    "keywords": [],
+    "adjunta": true,
+    "enchantKind": "land",
+    "auraEffect": {
+      "additionalMana": "any_color"
+    }
+  },
+  {
+    "id": "ench_122",
+    "name": "Fogata Prohibida en Bariloche",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}{G}",
+    "cmc": 3,
+    "colors": [
+      "R",
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Las criaturas que controlás tienen Apuro.\nSacrificá Fogata Prohibida en Bariloche: La criatura objetivo obtiene +2/+2 hasta el final del turno.",
+    "flavorText": "Los viajeros controlaban el fuego hasta que empezó a correr cuesta arriba.",
+    "image": "fogata_prohibida_en_bariloche.png",
+    "enabled": false,
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "haste"
+    },
+    "activatedAbility": {
+      "cost": "",
+      "timing": "instant",
+      "effect": {
+        "type": "pump",
+        "powerMod": 2,
+        "toughnessMod": 2
+      },
+      "sacrifice": "self",
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "ench_123",
+    "name": "Dispensador de Semillas",
+    "type": "Encantamiento",
+    "manaCost": "{B}{G}",
+    "cmc": 2,
+    "colors": [
+      "B",
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "{2}: Exiliá la carta de criatura objetivo de un cementerio. Creá una ficha de criatura Brote verde 1/1.",
+    "flavorText": "Los sepultureros nunca pudieron averiguar quién regaba de noche.",
+    "image": "dispensador_de_semillas.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}",
+      "timing": "instant",
+      "effect": {
+        "type": "move_target_graveyard_card",
+        "destination": "exile",
+        "cardType": "creature",
+        "onCreatureExiled": {
+          "createTokens": {
+            "type": "create_tokens",
+            "amount": 1,
+            "token": {
+              "name": "Brote",
+              "type": "Criatura — Brote",
+              "colors": [
+                "G"
+              ],
+              "power": 1,
+              "toughness": 1,
+              "image": "token_brote_1_1.png"
+            }
+          }
+        }
+      },
+      "requiresTarget": true
+    }
   }
 ]

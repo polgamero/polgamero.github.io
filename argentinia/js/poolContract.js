@@ -180,15 +180,33 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 128,
     planeswalkers: 8,
   }),
+  expansion_fase8_public_1003: makeMilestone('23.22.0 HF7 · Expansión Fase 8', 1003, {
+    tierras: 74,
+    artefactos: 101,
+    criaturas: 405,
+    instantaneos: 173,
+    conjuros: 119,
+    encantamientos: 123,
+    planeswalkers: 8,
+  }),
+  expansion_fase8_1103: makeMilestone('23.22.0 HF7 · Expansión Fase 8', 1103, {
+    tierras: 74,
+    artefactos: 111,
+    criaturas: 455,
+    instantaneos: 188,
+    conjuros: 129,
+    encantamientos: 138,
+    planeswalkers: 8,
+  }),
 
 });
 
-export const CURRENT_POOL_MILESTONE = 'colorless_1025';
+export const CURRENT_POOL_MILESTONE = 'expansion_fase8_1103';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];
 
-// Expansión incolora: 1025 cartas físicas y 925 en el bootstrap público.
+// Fase 8: 1103 cartas físicas y 1003 en el bootstrap público.
 // Las 100 Discovery siguen hidratándose con autoridad; los hitos históricos no cambian.
-export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.colorless_public_925;
+export const PUBLIC_POOL_BASELINE = POOL_MILESTONES.expansion_fase8_public_1003;
 export const PHYSICAL_POOL_BASELINE = POOL_BASELINE;
 
 // Metadata only: ten physical additions, four EVO variants under two bases.
@@ -196,3 +214,5 @@ export const CARD_ADDENDUM_BASE_IDS = Object.freeze(["crea_368", "crea_369", "in
 export const CARD_ADDENDUM_EVOLUTION_BASE_IDS = Object.freeze(["crea_368", "crea_369"]);
 
 export const COLORLESS_EXPANSION_IDS = Object.freeze(["tier_069", "crea_372", "crea_373", "crea_374", "crea_375", "crea_376", "crea_377", "crea_378", "crea_379", "crea_380", "art_091", "inst_152", "inst_153", "conj_110", "conj_111"]);
+
+export const PHASE8_EXPANSION_IDS = Object.freeze(["tier_070", "tier_071", "crea_381", "tier_072", "conj_112", "conj_113", "inst_154", "conj_114", "art_092", "crea_382", "tier_073", "conj_115", "crea_383", "ench_114", "inst_155", "crea_384", "ench_115", "crea_385", "inst_156", "crea_386", "crea_387", "inst_157", "art_093", "crea_388", "ench_116", "inst_158", "ench_117", "inst_159", "ench_118", "crea_389", "art_094", "inst_160", "inst_161", "crea_390", "conj_116", "crea_391", "crea_392", "ench_119", "inst_162", "inst_163", "inst_164", "crea_393", "inst_165", "inst_166", "inst_167", "art_095", "inst_168", "inst_169", "inst_170", "crea_394", "crea_395", "crea_396", "conj_117", "inst_171", "ench_120", "ench_121", "tier_074", "conj_118", "conj_119", "inst_172", "inst_173", "art_096", "ench_122", "ench_123", "crea_397", "crea_398", "crea_399", "crea_400", "crea_401", "crea_402", "crea_403", "crea_404", "crea_405", "art_097", "art_098", "art_099", "art_100", "art_101"]);

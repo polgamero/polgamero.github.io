@@ -2,6 +2,7 @@
 """Fail-closed GitHub Actions check: run AFTER regenerating image manifest on live checkout."""
 from pathlib import Path
 import json, os, re, sys
+from generate_image_manifest import load_pool_contract, load_json
 root=Path.cwd(); app=root/'argentinia'; errors=[]
 def fail(t): errors.append(t)
 for sibling in ('band','botonera','clima','curso_js','curso_react','cv','top5','trivia','privacidad','terminos'):
@@ -30,11 +31,25 @@ try:
 except Exception as ex:fail('build-manifest invalid: '+str(ex))
 try:
     images=json.loads((app/'assets/images/cards/cards-image-manifest.json').read_text(encoding='utf-8-sig'))
+    public_milestone, _, public_total, public_categories = load_pool_contract(app)
+    image_pool = images.get('pool') or {}
+    if (image_pool.get('milestone'), image_pool.get('total'), image_pool.get('categories')) != (public_milestone, public_total, public_categories):
+        fail('generated public image manifest differs from poolContract.js')
+    release = load_json(app/'build-manifest.json')
+    if (release.get('publicPoolMilestone'), release.get('publicPool')) != (public_milestone, public_total):
+        fail('public build manifest differs from poolContract.js')
+    contract_text = (app/'js/poolContract.js').read_text(encoding='utf-8-sig')
+    current = re.search(r"export const CURRENT_POOL_MILESTONE\s*=\s*'([^']+)'", contract_text)
+    current_count = re.search(rf"\b{re.escape(current[1])}:\s*makeMilestone\('[^']+',\s*(\d+),", contract_text) if current else None
+    if not current_count or (release.get('poolMilestone'), release.get('pool')) != (current[1], int(current_count[1])):
+        fail('physical build manifest differs from poolContract.js')
     stats=images.get('images') or {}
     existing=int(stats.get('existingFileCount') or 0)
     missing=int(stats.get('missingCardCount') or 0)
     refs=int(stats.get('referencedFaceCount') or 0)
-    if existing<=0 or refs<900 or missing>=refs: fail(f'PNG manifest all-missing or no retained art existing={existing} missing={missing} refs={refs}')
+    if stats.get('referencedCardCount') != public_total or image_pool.get('uniqueIds') != public_total:
+        fail('public image manifest has incomplete card coverage')
+    if existing<=0 or refs<public_total or missing>=refs: fail(f'PNG manifest all-missing or no retained art existing={existing} missing={missing} refs={refs}')
     if len(images.get('missing',[]))!=missing:fail('PNG missing[] cardinality mismatch')
     sha=os.environ.get('GITHUB_SHA')
     if sha and images.get('gitSha')!=sha:fail('PNG manifest stale relative to GITHUB_SHA')

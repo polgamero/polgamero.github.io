@@ -9449,5 +9449,809 @@
       "requiresTarget": true,
       "targetController": "opponent"
     }
+  },
+  {
+    "id": "crea_381",
+    "name": "El Basilisco",
+    "type": "Criatura — Leyenda Argentina",
+    "manaCost": "{6}{G}{G}{G}",
+    "cmc": 9,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Mythic",
+    "text": "Apuro.\nCuando El Basilisco entra al campo de batalla, las criaturas que controlás ganan Arrolla y +X/+X hasta el final del turno, donde X es la cantidad de criaturas que controlás.",
+    "flavorText": "Si el huevo no se quema a tiempo, un sapo lo empolla y nace esta criatura.",
+    "image": "basilisco.png",
+    "enabled": false,
+    "keywords": [
+      "haste"
+    ],
+    "etbEffect": {
+      "type": "pump_team",
+      "amount": "own_creatures",
+      "keyword": "trample"
+    },
+    "power": 5,
+    "toughness": 5,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_382",
+    "name": "Octomir, Peluquero de celebridades",
+    "type": "Criatura — Coiffeur",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Al comienzo de tu mantenimiento, Octomir, Peluquero de celebridades te hace 1 punto de daño.",
+    "flavorText": "Coordina las ocho tijeras con una frialdad asombrosa.",
+    "image": "peluquero_ocho_brazos.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        },
+        "target": "controller"
+      }
+    ],
+    "power": 5,
+    "toughness": 5
+  },
+  {
+    "id": "crea_383",
+    "name": "Mulánima",
+    "type": "Criatura — Leyenda Argentina",
+    "manaCost": "{4}{B}{B}{B}",
+    "cmc": 7,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Volar, Arrolla.\nAl comienzo de tu mantenimiento, sacrificá una criatura que no sea Mulánima. Si no podés, Mulánima te hace 7 puntos de daño.",
+    "flavorText": "Recorre los montes y caminos rurales lanzando rebuznos espeluznantes.",
+    "image": "mulanima.png",
+    "enabled": false,
+    "keywords": [
+      "flying",
+      "trample"
+    ],
+    "upkeepTrigger": {
+      "type": "sacrifice_other_or_damage",
+      "amount": 7
+    },
+    "power": 7,
+    "toughness": 7
+  },
+  {
+    "id": "crea_384",
+    "name": "El Futre",
+    "type": "Criatura — Leyenda Argentina",
+    "manaCost": "{3}{B}{B}{B}",
+    "cmc": 6,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Mythic",
+    "text": "Letal.\nCada vez que robás una carta, ganás 2 Puntos de Vida.\nCada vez que el rival roba una carta, pierde 2 Puntos de Vida.",
+    "flavorText": "Se aparece en noches frías o de tormenta en zonas cordilleranas como Potrerillos o Puente del Inca.",
+    "image": "futre.png",
+    "enabled": false,
+    "keywords": [
+      "deathtouch"
+    ],
+    "triggers": [
+      {
+        "event": "card_drawn",
+        "filter": {
+          "controller": "you"
+        },
+        "target": "controller",
+        "effect": {
+          "type": "heal",
+          "amount": 2
+        }
+      },
+      {
+        "event": "card_drawn",
+        "filter": {
+          "controller": "opponent"
+        },
+        "target": "opponent",
+        "effect": {
+          "type": "lose_life",
+          "amount": 2
+        }
+      }
+    ],
+    "power": 4,
+    "toughness": 5,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_385",
+    "name": "Dorga, La Abuela Precavida",
+    "type": "Criatura legendaria — Humano",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Rare",
+    "text": "Cuando un jugador lanza un hechizo o una criatura ataca, exiliá a Dorga, La Abuela Precavida. Devolvela al campo de batalla bajo el control de su dueño al comienzo del próximo paso final.",
+    "flavorText": "Conoce cada escondite y se especializa en mantenerse a salvo.",
+    "image": "abuela_del_tupper.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "effect": {
+          "type": "exile_source_until_end_step"
+        }
+      },
+      {
+        "event": "attack_declared",
+        "effect": {
+          "type": "exile_source_until_end_step"
+        }
+      }
+    ],
+    "power": 2,
+    "toughness": 1
+  },
+  {
+    "id": "crea_386",
+    "name": "Ánima Sola",
+    "type": "Criatura Artefacto — Leyenda Argentina",
+    "manaCost": "{8}",
+    "cmc": 8,
+    "colors": [],
+    "rarity": "Rare",
+    "text": "Volar.\nVos no podés perder la partida y tu rival no puede ganarla.",
+    "flavorText": "Quien le pide un favor y olvida cumplir la promesa de encenderle su vela corre un alto riesgo.",
+    "image": "anima_sola.png",
+    "enabled": false,
+    "keywords": [
+      "flying"
+    ],
+    "staticEffect": {
+      "type": "prevent_match_loss"
+    },
+    "power": 4,
+    "toughness": 4,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_387",
+    "name": "Artista del Caos",
+    "type": "Criatura legendaria — Sicaria",
+    "manaCost": "{3}{B}{B}{B}{B}",
+    "cmc": 7,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Cuando Artista del Caos entra al campo de batalla, perdés la partida si no la lanzaste desde tu mano.\nCuando Artista del Caos le hace daño de combate a una criatura, destruí esa criatura. No puede regenerarse.\nCuando Artista del Caos le hace daño de combate a un jugador, ese jugador pierde la partida.",
+    "flavorText": "A veces pinta con óleos; otras, con la sangre de sus víctimas.",
+    "image": "artista_del_caos.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "self": true,
+          "metadata": {
+            "castFromHand": false
+          }
+        },
+        "effect": {
+          "type": "declare_match_loss"
+        }
+      },
+      {
+        "event": "combat_damage_dealt",
+        "filter": {
+          "sourceSelf": true,
+          "cardType": "creature",
+          "targetController": "opponent"
+        },
+        "effect": {
+          "type": "destroy_damaged_creature",
+          "cannotRegenerate": true
+        }
+      },
+      {
+        "event": "combat_damage_dealt",
+        "filter": {
+          "sourceSelf": true,
+          "targetPlayer": "opponent"
+        },
+        "effect": {
+          "type": "declare_match_loss"
+        },
+        "target": "event_player"
+      }
+    ],
+    "power": 4,
+    "toughness": 4,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_388",
+    "name": "El Kurupí",
+    "type": "Criatura — Leyenda Argentina",
+    "manaCost": "{4}{G}{G}{G}",
+    "cmc": 7,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Mythic",
+    "text": "Arrolla.\nCuando El Kurupí entra al campo de batalla, si tenés menos de 7 Puntos de Vida, tu total de Vida pasa a ser 7.\nSi tenés 7 o más Puntos de Vida, el daño que reduciría tu total por debajo de 7 lo reduce a 7 en vez de eso.",
+    "flavorText": "Castiga con severidad a los cazadores y leñadores que matan animales o talan árboles.",
+    "image": "kurupi.png",
+    "enabled": false,
+    "keywords": [
+      "trample"
+    ],
+    "etbEffect": {
+      "type": "set_minimum_life",
+      "amount": 7
+    },
+    "replacementEffect": {
+      "event": "damage_life_loss",
+      "scope": "own",
+      "action": "floor_from_damage",
+      "lifeFloor": 7
+    },
+    "power": 7,
+    "toughness": 7,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_389",
+    "name": "La Testigo Protegida",
+    "type": "Criatura — Humana Chamana",
+    "manaCost": "{1}{G}{G}",
+    "cmc": 3,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Cuando La Testigo Protegida entra al campo de batalla, podés devolver a tu mano la carta objetivo de tu cementerio.",
+    "flavorText": "Le pidieron un relato nuevo. Señaló la misma baldosa.",
+    "image": "la_testigo_protegida.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "self": true
+        },
+        "effect": {
+          "type": "move_target_graveyard_card",
+          "graveyard": "own",
+          "destination": "hand",
+          "optional": true
+        }
+      }
+    ],
+    "power": 2,
+    "toughness": 1
+  },
+  {
+    "id": "crea_390",
+    "name": "El Pecarí",
+    "type": "Criatura — Leyenda Argentina",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "{G}: Exiliá la carta objetivo de un cementerio. Si era una carta de criatura, poné un contador +1/+1 sobre El Pecarí y ganá 1 Punto de Vida.",
+    "flavorText": "Eterna montura sagrada del Caá Porá, el espíritu protector de la selva.",
+    "image": "chancho_de_monte.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{G}",
+      "timing": "instant",
+      "requiresTarget": true,
+      "effect": {
+        "type": "move_target_graveyard_card",
+        "graveyard": "any",
+        "destination": "exile",
+        "onCreatureExiled": {
+          "counters": 1,
+          "life": 1
+        }
+      }
+    },
+    "power": 2,
+    "toughness": 2
+  },
+  {
+    "id": "crea_391",
+    "name": "La Difunta Correa",
+    "type": "Criatura legendaria — Leyenda Argentina",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Rare",
+    "text": "Primer Golpe.\nLos hechizos que no sean de criatura cuestan {1} más para lanzarse.",
+    "flavorText": "Protectora de los viajeros, camioneros, arrieros, madres y enfermos.",
+    "image": "difunta_correa_leyenda.png",
+    "enabled": false,
+    "keywords": [
+      "firststrike"
+    ],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "increase",
+      "scope": "all",
+      "amount": 1,
+      "filter": {
+        "cardType": "noncreature"
+      }
+    },
+    "power": 2,
+    "toughness": 1
+  },
+  {
+    "id": "crea_392",
+    "name": "Lancera de la Basílica de Flores",
+    "type": "Criatura — Humana Monje",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Uncommon",
+    "text": "Apuro.\nCada vez que lanzás un hechizo que no sea de criatura, Lancera de la Basílica de Flores obtiene +1/+1 hasta el final del turno.",
+    "flavorText": "El golpe que le enseñaron a esquivar ya había pasado.",
+    "image": "lancera_de_la_basilica_de_flores.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "you",
+          "excludeCardType": "creature"
+        },
+        "target": "self",
+        "effect": {
+          "type": "pump",
+          "powerMod": 1,
+          "toughnessMod": 1
+        }
+      }
+    ],
+    "power": 1,
+    "toughness": 2
+  },
+  {
+    "id": "crea_393",
+    "name": "La Telesita",
+    "type": "Criatura Encantamiento — Leyenda Argentina",
+    "manaCost": "{4}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Rare",
+    "text": "Cada vez que el rival lanza un hechizo, podés intercambiar el control de La Telesita y el de ese hechizo. Si lo hacés, podés elegir nuevos objetivos para el hechizo.",
+    "flavorText": "Su pasión incontrolable por la danza y la música la llevó a su trágica muerte.",
+    "image": "telesita.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "opponent"
+        },
+        "effect": {
+          "type": "exchange_spell_control"
+        }
+      }
+    ],
+    "power": 3,
+    "toughness": 3,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_394",
+    "name": "Lagarto de las Salinas Grandes",
+    "type": "Criatura — Lagarto",
+    "manaCost": "{B}{R}{G}",
+    "cmc": 3,
+    "colors": [
+      "B",
+      "R",
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Sacrificá una criatura: Poné un contador +1/+1 sobre Lagarto de las Salinas Grandes.",
+    "flavorText": "Las huellas de la manada terminaban donde empezaban las de un solo animal.",
+    "image": "lagarto_de_las_salinas_grandes.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "",
+      "timing": "instant",
+      "sacrifice": "creature",
+      "effect": {
+        "type": "add_counters_to_source",
+        "counterType": "+1/+1",
+        "amount": 1
+      }
+    },
+    "power": 2,
+    "toughness": 2
+  },
+  {
+    "id": "crea_395",
+    "name": "El Yastay",
+    "type": "Criatura legendaria — Leyenda Argentina",
+    "manaCost": "{3}{B}{G}",
+    "cmc": 5,
+    "colors": [
+      "B",
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "Al comienzo de tu mantenimiento, podés hacer que el rival objetivo descarte una carta al azar.\nCada vez que un rival descarta una carta, podés crear una ficha de criatura verde Guanaco 1/1.",
+    "flavorText": "Premia a quienes ayudan a los animales y castiga severamente a quienes matan por placer.",
+    "image": "yastay.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "discard",
+          "amount": 1,
+          "selection": "random",
+          "mayConfirm": "¿Querés que el rival descarte una carta al azar?"
+        },
+        "target": "opponent"
+      },
+      {
+        "event": "card_discarded",
+        "filter": {
+          "controller": "opponent"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 1,
+          "token": {
+            "name": "Guanaco",
+            "type": "Criatura — Guanaco",
+            "colors": [
+              "G"
+            ],
+            "power": 1,
+            "toughness": 1,
+            "image": "token_guanaco.png"
+          },
+          "mayConfirm": "¿Querés crear una ficha de Guanaco?"
+        }
+      }
+    ],
+    "power": 4,
+    "toughness": 4
+  },
+  {
+    "id": "crea_396",
+    "name": "Morter, El Devorador de Criaturas",
+    "type": "Criatura — Lagarto Guerrero",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Uncommon",
+    "text": "Devorar 3. (Al entrar, podés sacrificar cualquier cantidad de criaturas. Morter, El Devorador de Criaturas entra con tres contadores +1/+1 por cada criatura sacrificada de este modo.)",
+    "flavorText": "Cuando el trueno se oyó sin lluvia, los lagartos grandes se escondieron.",
+    "image": "morter_el_devorador_de_criaturas.png",
+    "enabled": false,
+    "keywords": [],
+    "devour": 3,
+    "power": 1,
+    "toughness": 1
+  },
+  {
+    "id": "crea_397",
+    "name": "Kurdil, Vidente del Bosque",
+    "type": "Criatura — Elfa Chamana",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Common",
+    "text": "Cuando Kurdil, Vidente del Bosque entra al campo de batalla, robá una carta.",
+    "flavorText": "Leía el tiempo por la cara de abajo de las hojas.",
+    "image": "kurdil_vidente_del_bosque.png",
+    "enabled": false,
+    "keywords": [],
+    "etbEffect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "power": 1,
+    "toughness": 1
+  },
+  {
+    "id": "crea_398",
+    "name": "Lagarto Hiperbrotado",
+    "type": "Criatura — Lagarto",
+    "manaCost": "{B}{R}{G}",
+    "cmc": 3,
+    "colors": [
+      "B",
+      "R",
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Cuando Lagarto Hiperbrotado muere, creá tres fichas de criatura Brote verdes 1/1.",
+    "flavorText": "Del cuero seco salieron tres tallos y ningún hueso.",
+    "image": "lagarto_hiperbrotado.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_died",
+        "filter": {
+          "self": true,
+          "zoneTo": "graveyard"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 3,
+          "token": {
+            "name": "Brote",
+            "type": "Criatura — Brote",
+            "colors": [
+              "G"
+            ],
+            "power": 1,
+            "toughness": 1,
+            "image": "token_brote_1_1.png"
+          }
+        }
+      }
+    ],
+    "power": 3,
+    "toughness": 3
+  },
+  {
+    "id": "crea_399",
+    "name": "Jilfon, la Incubadora Gigante",
+    "type": "Criatura — Mutante Zángano",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Common",
+    "text": "Cuando Jilfon, la Incubadora Gigante entra al campo de batalla, creá tres fichas de criatura Engendro Mutante incoloras 0/1. Tienen «Sacrificá esta criatura: Agregá {C}».",
+    "flavorText": "Los huevos abrían la cáscara cuando la laguna quedaba sin viento.",
+    "image": "jilfon_la_incubadora_gigante.png",
+    "enabled": false,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "token": {
+        "name": "Engendro Mutante",
+        "type": "Criatura — Engendro Mutante",
+        "colors": [],
+        "power": 0,
+        "toughness": 1,
+        "image": "token_engendro_mutante.png",
+        "text": "Sacrificá esta criatura: Agregá {C}.",
+        "manaAbility": {
+          "produces": "C",
+          "amount": 1,
+          "requiresTap": false,
+          "sacrificeSelf": true
+        }
+      }
+    },
+    "power": 3,
+    "toughness": 3
+  },
+  {
+    "id": "crea_400",
+    "name": "Lunigan, Baquiana Abrecaminos",
+    "type": "Criatura — Elfa Druida Guerrera",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Common",
+    "text": "Cuando Lunigan, Baquiana Abrecaminos entra al campo de batalla, podés buscar una tierra básica en tu biblioteca, mostrarla, ponerla en tu mano y luego barajar.",
+    "flavorText": "Nunca llevó mapa. Los alambrados le decían el nombre del dueño.",
+    "image": "lunigan_baquiana_abrecaminos.png",
+    "enabled": false,
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_land",
+      "filter": "basic",
+      "amount": 1,
+      "destination": "hand",
+      "reveal": true,
+      "allowFewer": true
+    },
+    "power": 2,
+    "toughness": 2
+  },
+  {
+    "id": "crea_401",
+    "name": "Dragón del Hornocal",
+    "type": "Criatura — Dragón",
+    "manaCost": "{3}{R}{R}{R}",
+    "cmc": 6,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Rare",
+    "text": "Volar, Apuro.\nDevorar 2. (Al entrar, podés sacrificar cualquier cantidad de criaturas. Dragón del Hornocal entra con dos contadores +1/+1 por cada criatura sacrificada de este modo.)",
+    "flavorText": "En lo alto de las serranías jujeñas, espera pacientemente a sus presas.",
+    "image": "dragon_del_hornocal.png",
+    "enabled": false,
+    "keywords": [
+      "flying",
+      "haste"
+    ],
+    "devour": 2,
+    "power": 4,
+    "toughness": 4
+  },
+  {
+    "id": "crea_402",
+    "name": "Colbo, Triturador de Huesos",
+    "type": "Criatura — Elemental",
+    "manaCost": "{4}{G}",
+    "cmc": 5,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "Devorar 1. (Al entrar, podés sacrificar cualquier cantidad de criaturas. Colbo, Triturador de Huesos entra con un contador +1/+1 por cada criatura sacrificada de este modo.)\nCuando Colbo, Triturador de Huesos entra al campo de batalla, robá una carta por cada criatura que devoró.",
+    "flavorText": "Nadie es capaz de distinguir su ruido con el de un hacha.",
+    "image": "colbo_triturador_de_huesos.png",
+    "enabled": false,
+    "keywords": [],
+    "devour": 1,
+    "etbEffect": {
+      "type": "draw",
+      "amountFrom": "devoured"
+    },
+    "power": 3,
+    "toughness": 3
+  },
+  {
+    "id": "crea_403",
+    "name": "Oscor, Hongo del Paseo del Bajo",
+    "type": "Criatura — Hongo",
+    "manaCost": "{4}{G}{G}",
+    "cmc": 6,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "Devorar 2. (Al entrar, podés sacrificar cualquier cantidad de criaturas. Oscor, Hongo del Paseo del Bajo entra con dos contadores +1/+1 por cada criatura sacrificada de este modo.)\nAl comienzo de tu mantenimiento, creá una ficha de criatura Brote verde 1/1 por cada contador +1/+1 sobre Oscor, Hongo del Paseo del Bajo.",
+    "flavorText": "El primer auto entró sin saber qué le esperaba, el segundo ni siquiera llegó a salir.",
+    "image": "oscor_hongo_del_paseo_del_bajo.png",
+    "enabled": false,
+    "keywords": [],
+    "devour": 2,
+    "upkeepTrigger": {
+      "type": "create_tokens",
+      "amountFrom": "source_plus_counters",
+      "token": {
+        "name": "Brote",
+        "type": "Criatura — Brote",
+        "colors": [
+          "G"
+        ],
+        "power": 1,
+        "toughness": 1,
+        "image": "token_brote_1_1.png"
+      }
+    },
+    "power": 4,
+    "toughness": 4,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "crea_404",
+    "name": "Cumbert, el Degollador",
+    "type": "Criatura — Zombi Guerrero",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Uncommon",
+    "text": "Cuando Cumbert, el Degollador entra al campo de batalla, cada jugador sacrifica una criatura.",
+    "flavorText": "El sereno lo vio entrar con una bolsa. Salió con dos.",
+    "image": "cumbert_el_degollador.png",
+    "enabled": false,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "self": true
+        },
+        "effect": {
+          "type": "sacrifice_each_player"
+        }
+      }
+    ],
+    "power": 3,
+    "toughness": 1
+  },
+  {
+    "id": "crea_405",
+    "name": "Encion, Críador de Refuerzos",
+    "type": "Criatura — Dragón",
+    "manaCost": "{3}{B}{R}{G}",
+    "cmc": 6,
+    "colors": [
+      "B",
+      "R",
+      "G"
+    ],
+    "rarity": "Rare",
+    "text": "Volar.\nCuando Encion, Críador de Refuerzos entra al campo de batalla, creá una ficha de criatura Dragón roja 4/4 con Volar.",
+    "flavorText": "Mientras uno cuidaba el nido, el otro se ocupaba de hacer llegar los refuerzos.",
+    "image": "encion_criador_de_refuerzos.png",
+    "enabled": false,
+    "keywords": [
+      "flying"
+    ],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "token": {
+        "name": "Dragón",
+        "type": "Criatura — Dragón",
+        "colors": [
+          "R"
+        ],
+        "power": 4,
+        "toughness": 4,
+        "image": "token_dragon_rojo_4_4.png",
+        "text": "Volar.",
+        "keywords": [
+          "flying"
+        ]
+      }
+    },
+    "power": 4,
+    "toughness": 4
   }
 ]

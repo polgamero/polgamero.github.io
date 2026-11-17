@@ -278,17 +278,18 @@
     "assets/images/menu/city-distant.webp": "e433b0953c34c46517ad82e625adc4e0e795ae12ffe6c0901c5377069840a6f6",
     "assets/images/menu/city-distant-mobile.webp": "6f52ab9acc13861b1241097aac8b647f5534c1087d0174b542f977f5b955685c"
   },
-  "pool": 1025,
-  "publicPool": 910,
-  "poolMilestone": "colorless_1025",
-  "publicPoolMilestone": "cards_addendum_public_910",
-  "label": "Incoloro · Pool 1025",
+  "pool": 1103,
+  "publicPool": 1003,
+  "poolMilestone": "expansion_fase8_1103",
+  "publicPoolMilestone": "expansion_fase8_public_1003",
+  "label": "Expansión Fase 8 · Pool 1103",
   "cardAddendum": {
     "physicalCardsAdded": 10,
     "evolutionVariantsAdded": 4,
     "newCardsPublished": false,
     "artworkStatus": "PENDING"
   },
-  "buildId": "90526679f3c5e6efd273",
-  "serviceUsageSchema": "arg-service-usage-v1"
+  "buildId": "7bcf63ad3eb67e37902b",
+  "serviceUsageSchema": "arg-service-usage-v1",
+  "firestoreRulesVersion": "23.13.96"
 }

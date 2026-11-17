@@ -4,28 +4,28 @@
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "colorless_public_925",
-    "contractVersion": "23.22.0 HF7 · Incoloro",
-    "total": 925,
+    "milestone": "expansion_fase8_public_1003",
+    "contractVersion": "23.22.0 HF7 · Expansión Fase 8",
+    "total": 1003,
     "categories": {
-      "tierras": 69,
-      "artefactos": 91,
-      "criaturas": 380,
-      "instantaneos": 153,
-      "conjuros": 111,
-      "encantamientos": 113,
+      "tierras": 74,
+      "artefactos": 101,
+      "criaturas": 405,
+      "instantaneos": 173,
+      "conjuros": 119,
+      "encantamientos": 123,
       "planeswalkers": 8
     },
-    "uniqueIds": 925
+    "uniqueIds": 1003
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 925,
-    "referencedFaceCount": 941,
+    "referencedCardCount": 1003,
+    "referencedFaceCount": 1019,
     "doubleFacedCardCount": 16,
-    "uniqueReferencedFileCount": 940,
-    "missingCardCount": 941,
+    "uniqueReferencedFileCount": 1018,
+    "missingCardCount": 1019,
     "cardsWithoutImageFieldCount": 0
   },
   "evolutionImages": {
@@ -83,13 +83,13 @@
     "files": []
   },
   "tokenImages": {
-    "producerEffectCount": 57,
-    "uniqueTokenNameCount": 31,
-    "assignedEffectCount": 57,
+    "producerEffectCount": 65,
+    "uniqueTokenNameCount": 36,
+    "assignedEffectCount": 65,
     "unassignedEffectCount": 0,
-    "uniqueReferencedFileCount": 31,
-    "missingEffectCount": 57,
-    "missingUniqueFileCount": 31
+    "uniqueReferencedFileCount": 37,
+    "missingEffectCount": 65,
+    "missingUniqueFileCount": 37
   },
   "missing": [
     {
@@ -112,6 +112,13 @@
       "category": "artefactos",
       "face": "front",
       "image": "amuleto_bendito.png"
+    },
+    {
+      "id": "art_092",
+      "name": "Anillo de Oro",
+      "category": "artefactos",
+      "face": "front",
+      "image": "anillo_de_oro.png"
     },
     {
       "id": "art_073",
@@ -338,6 +345,13 @@
       "image": "esfera_helada_del_nahuel_huapi.png"
     },
     {
+      "id": "art_095",
+      "name": "Espejito del Auto",
+      "category": "artefactos",
+      "face": "front",
+      "image": "espejito_del_auto.png"
+    },
+    {
       "id": "art_084",
       "name": "Espejo de Vestuario",
       "category": "artefactos",
@@ -513,11 +527,60 @@
       "image": "mate_que_no_se_vacia.png"
     },
     {
+      "id": "art_101",
+      "name": "Monolito de Adriana",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_adriana.png"
+    },
+    {
+      "id": "art_099",
+      "name": "Monolito de Belén",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_belen.png"
+    },
+    {
+      "id": "art_098",
+      "name": "Monolito de Carlos",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_carlos.png"
+    },
+    {
+      "id": "art_097",
+      "name": "Monolito de Juan",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_juan.png"
+    },
+    {
+      "id": "art_100",
+      "name": "Monolito de Vicente",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_vicente.png"
+    },
+    {
+      "id": "art_096",
+      "name": "Monolito de Violeta",
+      "category": "artefactos",
+      "face": "front",
+      "image": "monolito_de_violeta.png"
+    },
+    {
       "id": "art_066",
       "name": "Montacargas del Depósito Fiscal",
       "category": "artefactos",
       "face": "front",
       "image": "montacargas_del_deposito_fiscal.png"
+    },
+    {
+      "id": "art_094",
+      "name": "Motito del Repartidor de App",
+      "category": "artefactos",
+      "face": "front",
+      "image": "motito_del_repartidor_de_app.png"
     },
     {
       "id": "art_046",
@@ -672,6 +735,13 @@
       "category": "artefactos",
       "face": "front",
       "image": "robotito_chatarra.png"
+    },
+    {
+      "id": "art_093",
+      "name": "Salto Hipertemporal",
+      "category": "artefactos",
+      "face": "front",
+      "image": "salto_hipertemporal.png"
     },
     {
       "id": "art_079",
@@ -842,11 +912,25 @@
       "image": "audicion_de_la_banda.png"
     },
     {
+      "id": "conj_116",
+      "name": "Bajonivel Inundado",
+      "category": "conjuros",
+      "face": "front",
+      "image": "bajonivel_inundado.png"
+    },
+    {
       "id": "conj_054",
       "name": "Banda de Bombos",
       "category": "conjuros",
       "face": "front",
       "image": "banda_de_bombos.png"
+    },
+    {
+      "id": "conj_115",
+      "name": "Barajar y Dar de Nuevo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "barajar_y_dar_de_nuevo.png"
     },
     {
       "id": "conj_022",
@@ -903,6 +987,13 @@
       "category": "conjuros",
       "face": "front",
       "image": "cenizas_al_viento.png"
+    },
+    {
+      "id": "conj_117",
+      "name": "Certificado por Escribano",
+      "category": "conjuros",
+      "face": "front",
+      "image": "certificado_por_escribano.png"
     },
     {
       "id": "conj_001",
@@ -989,11 +1080,25 @@
       "image": "dos_por_uno_del_kiosco.png"
     },
     {
+      "id": "conj_114",
+      "name": "Déjà vu",
+      "category": "conjuros",
+      "face": "front",
+      "image": "deja_vu.png"
+    },
+    {
       "id": "conj_005",
       "name": "Dólar Blue Desbocado",
       "category": "conjuros",
       "face": "front",
       "image": "dolar_blue.png"
+    },
+    {
+      "id": "conj_118",
+      "name": "Eclosión de Huevos",
+      "category": "conjuros",
+      "face": "front",
+      "image": "eclosion_de_huevos.png"
     },
     {
       "id": "conj_091",
@@ -1008,6 +1113,13 @@
       "category": "conjuros",
       "face": "front",
       "image": "equipo_cancha.png"
+    },
+    {
+      "id": "conj_113",
+      "name": "El Último en Cantar Bingo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "el_ultimo_en_cantar_bingo.png"
     },
     {
       "id": "conj_037",
@@ -1197,6 +1309,13 @@
       "category": "conjuros",
       "face": "front",
       "image": "noche_de_metamorfosis.png"
+    },
+    {
+      "id": "conj_119",
+      "name": "Ojo por Ojo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "ojo_por_ojo.png"
     },
     {
       "id": "conj_039",
@@ -1437,6 +1556,13 @@
       "image": "tierra_arrasada_de_plaza_congreso.png"
     },
     {
+      "id": "conj_112",
+      "name": "Todo Tiene un Costo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "todo_tiene_un_costo.png"
+    },
+    {
       "id": "conj_006",
       "name": "Tormenta Santa Rosa",
       "category": "conjuros",
@@ -1645,6 +1771,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "artista_de_la_instalacion_imposible.png"
+    },
+    {
+      "id": "crea_387",
+      "name": "Artista del Caos",
+      "category": "criaturas",
+      "face": "front",
+      "image": "artista_del_caos.png"
     },
     {
       "id": "crea_367",
@@ -2074,6 +2207,13 @@
       "image": "coipo_del_arroyo_chico.png"
     },
     {
+      "id": "crea_402",
+      "name": "Colbo, Triturador de Huesos",
+      "category": "criaturas",
+      "face": "front",
+      "image": "colbo_triturador_de_huesos.png"
+    },
+    {
       "id": "crea_012",
       "name": "Colectivero Apurado",
       "category": "criaturas",
@@ -2212,6 +2352,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "cuidador_de_mausoleo.png"
+    },
+    {
+      "id": "crea_404",
+      "name": "Cumbert, el Degollador",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cumbert_el_degollador.png"
     },
     {
       "id": "crea_302",
@@ -2361,11 +2508,32 @@
       "image": "domador_toros.png"
     },
     {
+      "id": "crea_385",
+      "name": "Dorga, La Abuela Precavida",
+      "category": "criaturas",
+      "face": "front",
+      "image": "abuela_del_tupper.png"
+    },
+    {
+      "id": "crea_401",
+      "name": "Dragón del Hornocal",
+      "category": "criaturas",
+      "face": "front",
+      "image": "dragon_del_hornocal.png"
+    },
+    {
       "id": "crea_100",
       "name": "Duende del Semáforo",
       "category": "criaturas",
       "face": "front",
       "image": "duende_semaforo.png"
+    },
+    {
+      "id": "crea_381",
+      "name": "El Basilisco",
+      "category": "criaturas",
+      "face": "front",
+      "image": "basilisco.png"
     },
     {
       "id": "crea_002",
@@ -2410,6 +2578,13 @@
       "image": "firulais.png"
     },
     {
+      "id": "crea_384",
+      "name": "El Futre",
+      "category": "criaturas",
+      "face": "front",
+      "image": "futre.png"
+    },
+    {
       "id": "crea_003",
       "name": "El Gaucho",
       "category": "criaturas",
@@ -2431,6 +2606,13 @@
       "image": "el_jinete_de_la_ruta_quemada.png"
     },
     {
+      "id": "crea_388",
+      "name": "El Kurupí",
+      "category": "criaturas",
+      "face": "front",
+      "image": "kurupi.png"
+    },
+    {
       "id": "crea_146",
       "name": "El Lobizón de la Séptima Noche",
       "category": "criaturas",
@@ -2443,6 +2625,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "nahuelito.png"
+    },
+    {
+      "id": "crea_390",
+      "name": "El Pecarí",
+      "category": "criaturas",
+      "face": "front",
+      "image": "chancho_de_monte.png"
     },
     {
       "id": "crea_020",
@@ -2480,11 +2669,25 @@
       "image": "el_ucumar_de_la_quebrada.png"
     },
     {
+      "id": "crea_395",
+      "name": "El Yastay",
+      "category": "criaturas",
+      "face": "front",
+      "image": "yastay.png"
+    },
+    {
       "id": "crea_291",
       "name": "Electricista de Dock Sud",
       "category": "criaturas",
       "face": "front",
       "image": "electricista_de_dock_sud.png"
+    },
+    {
+      "id": "crea_405",
+      "name": "Encion, Críador de Refuerzos",
+      "category": "criaturas",
+      "face": "front",
+      "image": "encion_criador_de_refuerzos.png"
     },
     {
       "id": "crea_077",
@@ -3005,6 +3208,13 @@
       "image": "jefa_de_la_comparsa.png"
     },
     {
+      "id": "crea_399",
+      "name": "Jilfon, la Incubadora Gigante",
+      "category": "criaturas",
+      "face": "front",
+      "image": "jilfon_la_incubadora_gigante.png"
+    },
+    {
       "id": "crea_078",
       "name": "Jinete de la Peregrinación",
       "category": "criaturas",
@@ -3019,6 +3229,13 @@
       "image": "jinete_viento_zonda.png"
     },
     {
+      "id": "crea_397",
+      "name": "Kurdil, Vidente del Bosque",
+      "category": "criaturas",
+      "face": "front",
+      "image": "kurdil_vidente_del_bosque.png"
+    },
+    {
       "id": "crea_380",
       "name": "La Boca del Último Módulo",
       "category": "criaturas",
@@ -3031,6 +3248,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "la_dama_blanca_del_kilometro_cero.png"
+    },
+    {
+      "id": "crea_391",
+      "name": "La Difunta Correa",
+      "category": "criaturas",
+      "face": "front",
+      "image": "difunta_correa_leyenda.png"
     },
     {
       "id": "crea_029",
@@ -3068,6 +3292,20 @@
       "image": "la_sirena_del_rio_de_la_plata.png"
     },
     {
+      "id": "crea_393",
+      "name": "La Telesita",
+      "category": "criaturas",
+      "face": "front",
+      "image": "telesita.png"
+    },
+    {
+      "id": "crea_389",
+      "name": "La Testigo Protegida",
+      "category": "criaturas",
+      "face": "front",
+      "image": "la_testigo_protegida.png"
+    },
+    {
       "id": "crea_378",
       "name": "La Topadora de la Quema",
       "category": "criaturas",
@@ -3082,11 +3320,32 @@
       "image": "lagartija_del_parral.png"
     },
     {
+      "id": "crea_398",
+      "name": "Lagarto Hiperbrotado",
+      "category": "criaturas",
+      "face": "front",
+      "image": "lagarto_hiperbrotado.png"
+    },
+    {
+      "id": "crea_394",
+      "name": "Lagarto de las Salinas Grandes",
+      "category": "criaturas",
+      "face": "front",
+      "image": "lagarto_de_las_salinas_grandes.png"
+    },
+    {
       "id": "crea_108",
       "name": "Lagarto de las Vías",
       "category": "criaturas",
       "face": "front",
       "image": "lagarto_vias.png"
+    },
+    {
+      "id": "crea_392",
+      "name": "Lancera de la Basílica de Flores",
+      "category": "criaturas",
+      "face": "front",
+      "image": "lancera_de_la_basilica_de_flores.png"
     },
     {
       "id": "crea_220",
@@ -3108,6 +3367,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "loro_hablador.png"
+    },
+    {
+      "id": "crea_400",
+      "name": "Lunigan, Baquiana Abrecaminos",
+      "category": "criaturas",
+      "face": "front",
+      "image": "lunigan_baquiana_abrecaminos.png"
     },
     {
       "id": "crea_154",
@@ -3236,6 +3502,13 @@
       "image": "monigote_alambrado.png"
     },
     {
+      "id": "crea_396",
+      "name": "Morter, El Devorador de Criaturas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "morter_el_devorador_de_criaturas.png"
+    },
+    {
       "id": "crea_097",
       "name": "Mosquito del Estero Negro",
       "category": "criaturas",
@@ -3292,6 +3565,13 @@
       "image": "mulita_camino.png"
     },
     {
+      "id": "crea_383",
+      "name": "Mulánima",
+      "category": "criaturas",
+      "face": "front",
+      "image": "mulanima.png"
+    },
+    {
       "id": "crea_296",
       "name": "Murguera de Boedo",
       "category": "criaturas",
@@ -3318,6 +3598,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "nocthar_devorador_de_juramentos.png"
+    },
+    {
+      "id": "crea_382",
+      "name": "Octomir, Peluquero de celebridades",
+      "category": "criaturas",
+      "face": "front",
+      "image": "peluquero_ocho_brazos.png"
     },
     {
       "id": "crea_198",
@@ -3374,6 +3661,13 @@
       "category": "criaturas",
       "face": "back",
       "image": "oraculo_de_la_sudestada.png"
+    },
+    {
+      "id": "crea_403",
+      "name": "Oscor, Hongo del Paseo del Bajo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "oscor_hongo_del_paseo_del_bajo.png"
     },
     {
       "id": "crea_082",
@@ -4237,6 +4531,13 @@
       "image": "angel_descampado.png"
     },
     {
+      "id": "crea_386",
+      "name": "Ánima Sola",
+      "category": "criaturas",
+      "face": "front",
+      "image": "anima_sola.png"
+    },
+    {
       "id": "crea_341",
       "name": "Ánima del Último Tren",
       "category": "criaturas",
@@ -4284,6 +4585,13 @@
       "category": "encantamientos",
       "face": "front",
       "image": "alpargatas.png"
+    },
+    {
+      "id": "ench_117",
+      "name": "Aprovechar la volteada",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "aprovechar_la_volteada.png"
     },
     {
       "id": "ench_071",
@@ -4461,6 +4769,13 @@
       "image": "custodia_titan.png"
     },
     {
+      "id": "ench_123",
+      "name": "Dispensador de Semillas",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "dispensador_de_semillas.png"
+    },
+    {
       "id": "ench_026",
       "name": "Ecos del Puerto",
       "category": "encantamientos",
@@ -4524,6 +4839,13 @@
       "image": "el_exodo_jujeno.png"
     },
     {
+      "id": "ench_119",
+      "name": "Empezar a Cobrar en Patacones",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "empezar_a_cobrar_en_patacones.png"
+    },
+    {
       "id": "ench_032",
       "name": "Espuelas de Chispa",
       "category": "encantamientos",
@@ -4557,6 +4879,13 @@
       "category": "encantamientos",
       "face": "front",
       "image": "festejos_mundiales.png"
+    },
+    {
+      "id": "ench_122",
+      "name": "Fogata Prohibida en Bariloche",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "fogata_prohibida_en_bariloche.png"
     },
     {
       "id": "ench_018",
@@ -4790,6 +5119,13 @@
       "image": "marea_de_fondo.png"
     },
     {
+      "id": "ench_118",
+      "name": "Matadero de Epecuen",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "matadero_de_epecuen.png"
+    },
+    {
       "id": "ench_093",
       "name": "Memoria Colectiva",
       "category": "encantamientos",
@@ -4832,6 +5168,20 @@
       "image": "milonga.png"
     },
     {
+      "id": "ench_114",
+      "name": "Monocultivo",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "monocultivo.png"
+    },
+    {
+      "id": "ench_120",
+      "name": "Mordida de Vampiro",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "mordida_de_vampiro.png"
+    },
+    {
       "id": "ench_047",
       "name": "Murga en la Avenida",
       "category": "encantamientos",
@@ -4839,11 +5189,25 @@
       "image": "murga_en_la_avenida.png"
     },
     {
+      "id": "ench_116",
+      "name": "Nina",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "Nina_la_gata_naranja.png"
+    },
+    {
       "id": "ench_013",
       "name": "Pacto de Sangre",
       "category": "encantamientos",
       "face": "front",
       "image": "pacto_sangre.png"
+    },
+    {
+      "id": "ench_121",
+      "name": "Pampa Húmeda",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "pampa_humeda_aura.png"
     },
     {
       "id": "ench_094",
@@ -4991,6 +5355,13 @@
       "category": "encantamientos",
       "face": "front",
       "image": "taller_de_la_medianoche.png"
+    },
+    {
+      "id": "ench_115",
+      "name": "Temporada de Cosecha",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "temporada_de_cosecha.png"
     },
     {
       "id": "ench_007",
@@ -5154,6 +5525,13 @@
       "image": "banca_parada.png"
     },
     {
+      "id": "inst_154",
+      "name": "Bendición o Castigo",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "bendicion_o_castigo.png"
+    },
+    {
       "id": "inst_039",
       "name": "Bengala de Repuesto",
       "category": "instantaneos",
@@ -5173,6 +5551,20 @@
       "category": "instantaneos",
       "face": "front",
       "image": "bis_del_bandoneon.png"
+    },
+    {
+      "id": "inst_171",
+      "name": "Buscar por Conveniencia",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "buscar_por_conveniencia.png"
+    },
+    {
+      "id": "inst_155",
+      "name": "Cabeza Dura",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cabeza_dura.png"
     },
     {
       "id": "inst_010",
@@ -5208,6 +5600,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "cambio_de_perspectiva.png"
+    },
+    {
+      "id": "inst_169",
+      "name": "Cambió de  Recorrido el Bondi",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cambio_de_recorrido_el_bondi.png"
     },
     {
       "id": "inst_068",
@@ -5271,6 +5670,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "cierre_persiana.png"
+    },
+    {
+      "id": "inst_159",
+      "name": "Claridad Mental",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "claridad_mental.png"
     },
     {
       "id": "inst_133",
@@ -5371,6 +5777,13 @@
       "image": "corte_en_puente_la_noria.png"
     },
     {
+      "id": "inst_163",
+      "name": "Cortocircuito de Trifásica",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cortocircuito_de_trifasica.png"
+    },
+    {
       "id": "inst_073",
       "name": "Cortocircuito del Transformador",
       "category": "instantaneos",
@@ -5404,6 +5817,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "dale_que_va.png"
+    },
+    {
+      "id": "inst_166",
+      "name": "Dar Vuelta en U",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "dar_vuelta_en_u.png"
     },
     {
       "id": "inst_144",
@@ -5462,6 +5882,13 @@
       "image": "descarga_callejera.png"
     },
     {
+      "id": "inst_156",
+      "name": "Desmoronar",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "desmoronar.png"
+    },
+    {
       "id": "inst_019",
       "name": "Destierro del barrio",
       "category": "instantaneos",
@@ -5504,6 +5931,13 @@
       "image": "eco_del_capitulo.png"
     },
     {
+      "id": "inst_165",
+      "name": "El Duende Pillo",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "el_duende_pillo.png"
+    },
+    {
       "id": "inst_066",
       "name": "Embate del Alambrado",
       "category": "instantaneos",
@@ -5537,6 +5971,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "envion_del_terraplen.png"
+    },
+    {
+      "id": "inst_162",
+      "name": "Error en la Comanda",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "error_en_la_comanda.png"
     },
     {
       "id": "inst_148",
@@ -5609,6 +6050,20 @@
       "image": "golpe_furia.png"
     },
     {
+      "id": "inst_173",
+      "name": "Hasta Nunca",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "hasta_nunca.png"
+    },
+    {
+      "id": "inst_172",
+      "name": "Hay Olor a Podrido",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "hay_olor_a_podrido.png"
+    },
+    {
       "id": "inst_095",
       "name": "Humo del Viñedo Negro",
       "category": "instantaneos",
@@ -5665,11 +6120,25 @@
       "image": "jugada_prohibida.png"
     },
     {
+      "id": "inst_168",
+      "name": "Jugar al Frontón",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "jugar_al_fronton.png"
+    },
+    {
       "id": "inst_029",
       "name": "Juramento a Medias",
       "category": "instantaneos",
       "face": "front",
       "image": "juramento_medias.png"
+    },
+    {
+      "id": "inst_158",
+      "name": "La Perinola de la Vida",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "la_perinola_de_la_vida.png"
     },
     {
       "id": "inst_025",
@@ -5810,6 +6279,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "para_ahi.png"
+    },
+    {
+      "id": "inst_161",
+      "name": "Patada Letal",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "patada_letal.png"
     },
     {
       "id": "inst_032",
@@ -6043,6 +6519,13 @@
       "image": "silencio_biblioteca.png"
     },
     {
+      "id": "inst_160",
+      "name": "Te Acompaño a la Salida",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "te_acompano_a_la_salida.png"
+    },
+    {
       "id": "inst_062",
       "name": "Tierra sobre el Cajón",
       "category": "instantaneos",
@@ -6055,6 +6538,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "tonel_de_malbec_en_llamas.png"
+    },
+    {
+      "id": "inst_167",
+      "name": "Torcer el Haz de Luz",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "torcer_el_haz_de_luz.png"
     },
     {
       "id": "inst_030",
@@ -6106,6 +6596,13 @@
       "image": "voladura_en_la_autopista_riccheri.png"
     },
     {
+      "id": "inst_164",
+      "name": "Volantazo en Av. General Paz",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "volantazo_general_paz.png"
+    },
+    {
       "id": "inst_119",
       "name": "Vuelto en Dólares",
       "category": "instantaneos",
@@ -6120,11 +6617,25 @@
       "image": "yuyo_protector.png"
     },
     {
+      "id": "inst_157",
+      "name": "¡Pedazo de Bestia!",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "pedazo_de_bestia.png"
+    },
+    {
       "id": "inst_042",
       "name": "¡Quiero Retruco!",
       "category": "instantaneos",
       "face": "front",
       "image": "quiero_retruco.png"
+    },
+    {
+      "id": "inst_170",
+      "name": "¿Positivo o Negativo?",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "positivo_o_negativo.png"
     },
     {
       "id": "inst_071",
@@ -6190,6 +6701,13 @@
       "image": "la_negra_del_bandoneon_electrico.png"
     },
     {
+      "id": "tier_074",
+      "name": "Acantilados de Chapadmalal",
+      "category": "tierras",
+      "face": "front",
+      "image": "acantilados_de_chapadmalal.png"
+    },
+    {
       "id": "tier_067",
       "name": "Andén de Espera de Constitución",
       "category": "tierras",
@@ -6216,6 +6734,13 @@
       "category": "tierras",
       "face": "front",
       "image": "banados_pilcomayo.png"
+    },
+    {
+      "id": "tier_071",
+      "name": "Biblioteca Nacional",
+      "category": "tierras",
+      "face": "front",
+      "image": "biblioteca_nacional.png"
     },
     {
       "id": "tier_015",
@@ -6295,6 +6820,13 @@
       "image": "delta_tigre.png"
     },
     {
+      "id": "tier_072",
+      "name": "Descontrol en la Isla Paulino",
+      "category": "tierras",
+      "face": "front",
+      "image": "descontrol_en_la_isla_paulino.png"
+    },
+    {
       "id": "tier_030",
       "name": "Dársena Sur",
       "category": "tierras",
@@ -6370,6 +6902,13 @@
       "category": "tierras",
       "face": "front",
       "image": "feria_mataderos.png"
+    },
+    {
+      "id": "tier_073",
+      "name": "Feria de la Zona Sur",
+      "category": "tierras",
+      "face": "front",
+      "image": "feria_de_la_zona_sur.png"
     },
     {
       "id": "tier_068",
@@ -6608,6 +7147,13 @@
       "category": "tierras",
       "face": "front",
       "image": "taller_bajo_el_puente.png"
+    },
+    {
+      "id": "tier_070",
+      "name": "Taller de Artefactos de Igor",
+      "category": "tierras",
+      "face": "front",
+      "image": "taller_de_artefactos_de_igor.png"
     },
     {
       "id": "tier_001",
@@ -6962,6 +7508,73 @@
       "image": "token_envase_hermetico.png"
     },
     {
+      "cardId": "crea_395",
+      "cardName": "El Yastay",
+      "category": "criaturas",
+      "path": "triggers.1.effect",
+      "tokenName": "Guanaco",
+      "tokenType": "Criatura — Guanaco",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_guanaco.png"
+    },
+    {
+      "cardId": "crea_398",
+      "cardName": "Lagarto Hiperbrotado",
+      "category": "criaturas",
+      "path": "triggers.0.effect",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 3,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
+    },
+    {
+      "cardId": "crea_399",
+      "cardName": "Jilfon, la Incubadora Gigante",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Engendro Mutante",
+      "tokenType": "Criatura — Engendro Mutante",
+      "amount": 3,
+      "power": 0,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_engendro_mutante.png"
+    },
+    {
+      "cardId": "crea_403",
+      "cardName": "Oscor, Hongo del Paseo del Bajo",
+      "category": "criaturas",
+      "path": "upkeepTrigger",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
+    },
+    {
+      "cardId": "crea_405",
+      "cardName": "Encion, Críador de Refuerzos",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Dragón",
+      "tokenType": "Criatura — Dragón",
+      "amount": 1,
+      "power": 4,
+      "toughness": 4,
+      "keywords": [
+        "flying"
+      ],
+      "image": "token_dragon_rojo_4_4.png"
+    },
+    {
       "cardId": "inst_118",
       "cardName": "Inspección Ocular",
       "category": "instantaneos",
@@ -6999,6 +7612,19 @@
       "toughness": null,
       "keywords": [],
       "image": "token_mancha_de_malbec.png"
+    },
+    {
+      "cardId": "inst_157",
+      "cardName": "¡Pedazo de Bestia!",
+      "category": "instantaneos",
+      "path": "effect.compensation",
+      "tokenName": "Bestia",
+      "tokenType": "Criatura — Bestia",
+      "amount": 1,
+      "power": 3,
+      "toughness": 3,
+      "keywords": [],
+      "image": "token_bestia_verde_3_3.png"
     },
     {
       "cardId": "conj_009",
@@ -7217,6 +7843,19 @@
       "image": "token_vecino.png"
     },
     {
+      "cardId": "conj_118",
+      "cardName": "Eclosión de Huevos",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Dragoncito",
+      "tokenType": "Criatura — Dragoncito",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_dragoncito.png"
+    },
+    {
       "cardId": "ench_040",
       "cardName": "Brotación del Terraplén",
       "category": "encantamientos",
@@ -7386,6 +8025,19 @@
       "image": "token_vecino.png"
     },
     {
+      "cardId": "ench_123",
+      "cardName": "Dispensador de Semillas",
+      "category": "encantamientos",
+      "path": "activatedAbility.effect.onCreatureExiled.createTokens",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
+    },
+    {
       "cardId": "pw_001",
       "cardName": "El Cacique del Barrio",
       "category": "planeswalkers",
@@ -7475,6 +8127,19 @@
       "image": "token_bailarin_chacarera.png"
     },
     {
+      "cardId": "inst_157",
+      "cardName": "¡Pedazo de Bestia!",
+      "category": "instantaneos",
+      "path": "effect.compensation",
+      "tokenName": "Bestia",
+      "tokenType": "Criatura — Bestia",
+      "amount": 1,
+      "power": 3,
+      "toughness": 3,
+      "keywords": [],
+      "image": "token_bestia_verde_3_3.png"
+    },
+    {
       "cardId": "pw_005",
       "cardName": "La Guardiana del Delta",
       "category": "planeswalkers",
@@ -7529,6 +8194,32 @@
       "image": "token_brote.png"
     },
     {
+      "cardId": "crea_398",
+      "cardName": "Lagarto Hiperbrotado",
+      "category": "criaturas",
+      "path": "triggers.0.effect",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 3,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
+    },
+    {
+      "cardId": "crea_403",
+      "cardName": "Oscor, Hongo del Paseo del Bajo",
+      "category": "criaturas",
+      "path": "upkeepTrigger",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
+    },
+    {
       "cardId": "ench_040",
       "cardName": "Brotación del Terraplén",
       "category": "encantamientos",
@@ -7540,6 +8231,19 @@
       "toughness": 1,
       "keywords": [],
       "image": "token_brote.png"
+    },
+    {
+      "cardId": "ench_123",
+      "cardName": "Dispensador de Semillas",
+      "category": "encantamientos",
+      "path": "activatedAbility.effect.onCreatureExiled.createTokens",
+      "tokenName": "Brote",
+      "tokenType": "Criatura — Brote",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_brote_1_1.png"
     },
     {
       "cardId": "tier_052",
@@ -7607,6 +8311,34 @@
       "image": "token_contrato_firmado.png"
     },
     {
+      "cardId": "conj_118",
+      "cardName": "Eclosión de Huevos",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Dragoncito",
+      "tokenType": "Criatura — Dragoncito",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_dragoncito.png"
+    },
+    {
+      "cardId": "crea_405",
+      "cardName": "Encion, Críador de Refuerzos",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Dragón",
+      "tokenType": "Criatura — Dragón",
+      "amount": 1,
+      "power": 4,
+      "toughness": 4,
+      "keywords": [
+        "flying"
+      ],
+      "image": "token_dragon_rojo_4_4.png"
+    },
+    {
       "cardId": "crea_282",
       "cardName": "Arbolito de Florida",
       "category": "criaturas",
@@ -7644,6 +8376,19 @@
       "toughness": null,
       "keywords": [],
       "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "crea_399",
+      "cardName": "Jilfon, la Incubadora Gigante",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Engendro Mutante",
+      "tokenType": "Criatura — Engendro Mutante",
+      "amount": 3,
+      "power": 0,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_engendro_mutante.png"
     },
     {
       "cardId": "art_065",
@@ -7696,6 +8441,19 @@
       "toughness": 1,
       "keywords": [],
       "image": "token_estudiante.png"
+    },
+    {
+      "cardId": "crea_395",
+      "cardName": "El Yastay",
+      "category": "criaturas",
+      "path": "triggers.1.effect",
+      "tokenName": "Guanaco",
+      "tokenType": "Criatura — Guanaco",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_guanaco.png"
     },
     {
       "cardId": "crea_191",

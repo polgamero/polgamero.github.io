@@ -2509,5 +2509,206 @@
       "shuffle": false,
       "allowFewer": true
     }
+  },
+  {
+    "id": "conj_112",
+    "name": "Todo Tiene un Costo",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "El jugador objetivo muestra su mano. Elegí una carta que no sea tierra de entre ellas. Ese jugador descarta esa carta. Perdés 2 Puntos de Vida.",
+    "flavorText": "La vida te da opotunidades, luego te quita algo a cambio.",
+    "image": "todo_tiene_un_costo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "destination": "graveyard",
+      "visibility": "reveal_candidates",
+      "filter": "nonland",
+      "operation": "discard",
+      "showIneligible": true,
+      "casterLifeLoss": 2
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "conj_113",
+    "name": "El Último en Cantar Bingo",
+    "type": "Conjuro",
+    "manaCost": "{3}{R}{R}",
+    "cmc": 5,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Rare",
+    "text": "Cada jugador descarta su mano y luego roba siete cartas.",
+    "flavorText": "El reseteo que nadie esperaba y nadie quiere sufrir.",
+    "image": "el_ultimo_en_cantar_bingo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "refill_each_hand",
+      "move": "discard",
+      "amount": 7
+    },
+    "requiresTarget": false,
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "conj_114",
+    "name": "Déjà vu",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Mythic",
+    "text": "Jugá un turno adicional después de este.",
+    "flavorText": "Cuando pensabas que ya había pasado lo peor, la historia se repite nuevamente.",
+    "image": "deja_vu.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "grant_extra_turn"
+    },
+    "requiresTarget": false,
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "conj_115",
+    "name": "Barajar y Dar de Nuevo",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Mythic",
+    "text": "Cada jugador baraja su mano y su cementerio en su biblioteca y luego roba siete cartas.",
+    "flavorText": "El verdadero botón de reset.",
+    "image": "barajar_y_dar_de_nuevo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "refill_each_hand",
+      "move": "shuffle",
+      "amount": 7
+    },
+    "requiresTarget": false,
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "conj_116",
+    "name": "Bajonivel Inundado",
+    "type": "Conjuro",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Uncommon",
+    "text": "El jugador objetivo muestra su mano. Elegí de entre ellas una carta que no sea tierra con valor de maná de 3 o menos. Ese jugador descarta esa carta.",
+    "flavorText": "El ruido de las bombas tapadas interrumen la tranquilidad de lo vecinos.",
+    "image": "bajonivel_inundado.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "destination": "graveyard",
+      "visibility": "reveal_candidates",
+      "filter": "nonland",
+      "operation": "discard",
+      "showIneligible": true,
+      "maxManaValue": 3
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "conj_117",
+    "name": "Certificado por Escribano",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Uncommon",
+    "text": "Buscá una carta en tu biblioteca, ponela en tu mano y luego barajá.",
+    "flavorText": "El escribano certificó la firma. De lo demás no se hizo cargo.",
+    "image": "certificado_por_escribano.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "destination": "hand",
+      "allowFewer": false,
+      "shuffle": true
+    },
+    "requiresTarget": false,
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "conj_118",
+    "name": "Eclosión de Huevos",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Common",
+    "text": "Creá dos fichas de criatura Dragoncito rojas 1/1.",
+    "flavorText": "De ninguna manera te van a permitir acercarte.",
+    "image": "eclosion_de_huevos.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "token": {
+        "name": "Dragoncito",
+        "type": "Criatura — Dragoncito",
+        "colors": [
+          "R"
+        ],
+        "power": 1,
+        "toughness": 1,
+        "image": "token_dragoncito.png"
+      }
+    }
+  },
+  {
+    "id": "conj_119",
+    "name": "Ojo por Ojo",
+    "type": "Conjuro",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Common",
+    "text": "Como coste adicional para lanzar este hechizo, sacrificá una criatura.\nDestruí la criatura objetivo.",
+    "flavorText": "Diente por diente.",
+    "image": "ojo_por_ojo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "destroy_creature"
+    },
+    "requiresTarget": true,
+    "additionalCost": {
+      "type": "sacrifice",
+      "target": "own_creature",
+      "amount": 1
+    }
   }
 ]

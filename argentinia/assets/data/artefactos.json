@@ -2334,5 +2334,279 @@
       "allowFewer": true,
       "reveal": true
     }
+  },
+  {
+    "id": "art_092",
+    "name": "Anillo de Oro",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "colors": [],
+    "rarity": "Uncommon",
+    "text": "{T}: Agregá {C}{C}.",
+    "flavorText": "Algunos sostienen que todo pasa por algo.",
+    "image": "anillo_de_oro.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": "C",
+      "amount": 2,
+      "requiresTap": true
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "art_093",
+    "name": "Salto Hipertemporal",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "colors": [],
+    "rarity": "Rare",
+    "text": "{2}, {T}: Terminá el turno. Activá solo durante tu turno.",
+    "flavorText": "La sombra no avanzó más desde que tapió la ventana.",
+    "image": "salto_hipertemporal.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "timing": "instant",
+      "effect": {
+        "type": "end_turn"
+      },
+      "onlyDuringOwnTurn": true
+    },
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "art_094",
+    "name": "Motito del Repartidor de App",
+    "type": "Artefacto — Equipo",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "colors": [],
+    "rarity": "Uncommon",
+    "text": "La criatura equipada tiene Intocable y Apuro.\nEquipar {1}.",
+    "flavorText": "Rápida e incorrompible.",
+    "image": "motito_del_repartidor_de_app.png",
+    "enabled": false,
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "hexproof",
+        "haste"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_095",
+    "name": "Espejito del Auto",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Uncommon",
+    "text": "{X}, {T}: Cambiá el objetivo del hechizo objetivo con un solo objetivo si ese objetivo sos vos. El nuevo objetivo debe ser un jugador. X es el doble del valor de maná de ese hechizo.",
+    "flavorText": "Cuidado que el reflejo puede distorisionar el tamaño de las cosas.",
+    "image": "espejito_del_auto.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{X}{T}",
+      "timing": "instant",
+      "effect": {
+        "type": "redirect_stack_target",
+        "fromTarget": "controller",
+        "toTarget": "player",
+        "manaValueCostMultiplier": 2
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "art_096",
+    "name": "Monolito de Violeta",
+    "type": "Artefacto",
+    "manaCost": "{6}",
+    "cmc": 6,
+    "colors": [],
+    "rarity": "Rare",
+    "text": "{1}{W}, {T}: Ganá 5 Puntos de Vida.\n{1}{U}, {T}: Robá una carta y luego descartá una carta.\n{1}{B}, {T}: La criatura objetivo obtiene −2/−2 hasta el final del turno.\n{1}{R}, {T}: Monolito de Violeta hace 3 puntos de daño al jugador o semidiós objetivo.\n{1}{G}, {T}: La criatura objetivo obtiene +4/+4 hasta el final del turno.",
+    "flavorText": "Cada cantera reclamó una cara. La quinta no explicó dónde talló la suya.",
+    "image": "monolito_de_violeta.png",
+    "enabled": false,
+    "keywords": [],
+    "activatedAbilities": [
+      {
+        "cost": "{1}{W}{T}",
+        "timing": "instant",
+        "effect": {
+          "type": "heal",
+          "amount": 5
+        },
+        "name": "Ganar 5 Puntos de Vida"
+      },
+      {
+        "cost": "{1}{U}{T}",
+        "timing": "instant",
+        "effect": {
+          "type": "loot",
+          "amount": 1
+        },
+        "name": "Robar y descartar"
+      },
+      {
+        "cost": "{1}{B}{T}",
+        "timing": "instant",
+        "effect": {
+          "type": "pump",
+          "powerMod": -2,
+          "toughnessMod": -2
+        },
+        "name": "Dar −2/−2",
+        "requiresTarget": true
+      },
+      {
+        "cost": "{1}{R}{T}",
+        "timing": "instant",
+        "effect": {
+          "type": "damage",
+          "amount": 3,
+          "target": "player_or_planeswalker"
+        },
+        "name": "Hacer 3 puntos de daño",
+        "requiresTarget": true
+      },
+      {
+        "cost": "{1}{G}{T}",
+        "timing": "instant",
+        "effect": {
+          "type": "pump",
+          "powerMod": 4,
+          "toughnessMod": 4
+        },
+        "name": "Dar +4/+4",
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "art_097",
+    "name": "Monolito de Juan",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Common",
+    "text": "{T}: Agregá {G}, {W} o {U}.",
+    "flavorText": "Desde el río, la piedra se veía blanca. Las raíces sabían lo demás.",
+    "image": "monolito_de_juan.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": [
+        "G",
+        "W",
+        "U"
+      ],
+      "requiresTap": true
+    }
+  },
+  {
+    "id": "art_098",
+    "name": "Monolito de Carlos",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Common",
+    "text": "{T}: Agregá {W}, {U} o {B}.",
+    "flavorText": "La niebla dejaba un lado a la vista y el otro bajo custodia.",
+    "image": "monolito_de_carlos.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": [
+        "W",
+        "U",
+        "B"
+      ],
+      "requiresTap": true
+    }
+  },
+  {
+    "id": "art_099",
+    "name": "Monolito de Belén",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Common",
+    "text": "{T}: Agregá {U}, {B} o {R}.",
+    "flavorText": "El agua contra la piedra olía a carbón mojado.",
+    "image": "monolito_de_belen.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": [
+        "U",
+        "B",
+        "R"
+      ],
+      "requiresTap": true
+    }
+  },
+  {
+    "id": "art_100",
+    "name": "Monolito de Vicente",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Common",
+    "text": "{T}: Agregá {B}, {R} o {G}.",
+    "flavorText": "La piedra daba sombra al mediodía y calor toda la noche.",
+    "image": "monolito_de_vicente.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": [
+        "B",
+        "R",
+        "G"
+      ],
+      "requiresTap": true
+    }
+  },
+  {
+    "id": "art_101",
+    "name": "Monolito de Adriana",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "colors": [],
+    "rarity": "Common",
+    "text": "{T}: Agregá {R}, {G} o {W}.",
+    "flavorText": "Las tres laderas tenían distinto suelo y un mismo mojón.",
+    "image": "monolito_de_adriana.png",
+    "enabled": false,
+    "keywords": [],
+    "manaAbility": {
+      "produces": [
+        "R",
+        "G",
+        "W"
+      ],
+      "requiresTap": true
+    }
   }
 ]

@@ -3233,5 +3233,519 @@
     "effect": {
       "type": "exile_creature"
     }
+  },
+  {
+    "id": "inst_154",
+    "name": "Bendición o Castigo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{U}",
+    "cmc": 3,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Mythic",
+    "text": "El jugador objetivo roba tres cartas.",
+    "flavorText": "Bien usado puede causar un desastre.",
+    "image": "bendicion_o_castigo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "draw",
+      "target": "player",
+      "amount": 3
+    },
+    "requiresTarget": true,
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "inst_155",
+    "name": "Cabeza Dura",
+    "type": "Instantáneo",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Uncommon",
+    "text": "Podés pagar 2 Puntos de Vida y exiliar otra carta azul de tu mano en vez de pagar el coste de maná de este hechizo.\nContrarrestá el hechizo objetivo.",
+    "flavorText": "Se la pega una, dos o tres veces y después aprende.",
+    "image": "cabeza_dura.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "counter"
+    },
+    "requiresTarget": true,
+    "alternativeCost": {
+      "life": 2,
+      "exileFromHand": {
+        "color": "U",
+        "amount": 1
+      }
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "inst_156",
+    "name": "Desmoronar",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Rare",
+    "text": "Destruí la criatura o el semidiós objetivo. Su controlador puede buscar una tierra básica en su biblioteca, ponerla en el campo de batalla girada y luego barajar.",
+    "flavorText": "Mucho poder, con una contracara peligrosa.",
+    "image": "desmoronar.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "creature_or_planeswalker",
+      "operation": "destroy",
+      "compensation": {
+        "type": "search_land",
+        "filter": "basic",
+        "amount": 1,
+        "destination": "battlefield_tapped",
+        "optional": true
+      }
+    }
+  },
+  {
+    "id": "inst_157",
+    "name": "¡Pedazo de Bestia!",
+    "type": "Instantáneo",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "colors": [
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Destruí el permanente objetivo. Su controlador crea una ficha de criatura Bestia verde 3/3.",
+    "flavorText": "Te destruye pero luego te compensa un poquito.",
+    "image": "pedazo_de_bestia.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "permanent",
+      "operation": "destroy",
+      "compensation": {
+        "type": "create_tokens",
+        "amount": 1,
+        "token": {
+          "name": "Bestia",
+          "type": "Criatura — Bestia",
+          "colors": [
+            "G"
+          ],
+          "power": 3,
+          "toughness": 3,
+          "image": "token_bestia_verde_3_3.png"
+        }
+      }
+    }
+  },
+  {
+    "id": "inst_158",
+    "name": "La Perinola de la Vida",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Uncommon",
+    "text": "Exiliá la criatura objetivo. Su controlador gana Puntos de Vida iguales a la fuerza de esa criatura.",
+    "flavorText": "Ojito cómo la usas.",
+    "image": "la_perinola_de_la_vida.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "creature",
+      "operation": "exile",
+      "compensation": {
+        "type": "heal"
+      }
+    }
+  },
+  {
+    "id": "inst_159",
+    "name": "Claridad Mental",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Common",
+    "text": "Robá tres cartas y luego poné dos cartas de tu mano en la parte superior de tu biblioteca en el orden que elijas.",
+    "flavorText": "Cuando ves las cosas con claridad, podés hacer realidad la mejor jugada.",
+    "image": "claridad_mental.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "draw_then_top",
+      "amount": 3,
+      "putBack": 2
+    },
+    "requiresTarget": false
+  },
+  {
+    "id": "inst_160",
+    "name": "Te Acompaño a la Salida",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "colors": [
+      "W"
+    ],
+    "rarity": "Uncommon",
+    "text": "Exiliá la criatura objetivo. Su controlador puede buscar una tierra básica en su biblioteca, ponerla en el campo de batalla girada y luego barajar.",
+    "flavorText": "Te da, te quita y te acompaña para que no bardees.",
+    "image": "te_acompano_a_la_salida.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "creature",
+      "operation": "exile",
+      "compensation": {
+        "type": "search_land",
+        "filter": "basic",
+        "amount": 1,
+        "destination": "battlefield_tapped",
+        "optional": true
+      }
+    }
+  },
+  {
+    "id": "inst_161",
+    "name": "Patada Letal",
+    "type": "Instantáneo",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Uncommon",
+    "text": "Destruí la criatura objetivo si su valor de maná es 2 o menos.\nSi un permanente que controlabas dejó el campo de batalla este turno, destruí esa criatura en su lugar si su valor de maná es 4 o menos.",
+    "flavorText": "La zapatilla estaba rota desde antes de la pelea.",
+    "image": "patada_letal.png",
+    "enabled": false,
+    "keywords": [],
+    "requiresTarget": true,
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "creature",
+      "operation": "destroy",
+      "maxManaValue": 2,
+      "exitManaValueBonus": 2
+    }
+  },
+  {
+    "id": "inst_162",
+    "name": "Error en la Comanda",
+    "type": "Instantáneo",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Rare",
+    "text": "Podés exiliar otra carta azul de tu mano en vez de pagar el coste de maná de este hechizo.\nCambiá el objetivo del hechizo objetivo que tenga un solo objetivo.",
+    "flavorText": "Mandaron la comida a una mesa y resultó ser para otra.",
+    "image": "error_en_la_comanda.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target"
+    },
+    "requiresTarget": true,
+    "alternativeCost": {
+      "exileFromHand": {
+        "color": "U",
+        "amount": 1
+      }
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "inst_163",
+    "name": "Cortocircuito de Trifásica",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Rare",
+    "text": "Elegí uno.\n• Destruí el artefacto objetivo.\n• Cambiá el objetivo del hechizo o habilidad objetivo que tenga un solo objetivo.\n• Una o dos criaturas objetivo no pueden bloquear este turno.",
+    "flavorText": "El electricista dejó tres interruptores marcados. Se quemaron los tres.",
+    "image": "cortocircuito_de_trifasica.png",
+    "enabled": false,
+    "keywords": [],
+    "modal": true,
+    "modes": [
+      {
+        "text": "Destruí el artefacto objetivo.",
+        "effect": {
+          "type": "destroy_artifact"
+        },
+        "requiresTarget": true
+      },
+      {
+        "text": "Cambiá el objetivo del hechizo o habilidad objetivo que tenga un solo objetivo.",
+        "effect": {
+          "type": "redirect_stack_target",
+          "stackFilter": "any"
+        },
+        "requiresTarget": true
+      },
+      {
+        "text": "Una o dos criaturas objetivo no pueden bloquear este turno.",
+        "effect": {
+          "type": "prevent_block_this_turn",
+          "maxTargets": 2
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "inst_164",
+    "name": "Volantazo en Av. General Paz",
+    "type": "Instantáneo",
+    "manaCost": "{U}{R}",
+    "cmc": 2,
+    "colors": [
+      "U",
+      "R"
+    ],
+    "rarity": "Uncommon",
+    "text": "Cambiá el objetivo del hechizo objetivo que tenga un solo objetivo.",
+    "flavorText": "Las marcas de las gomas siguen ahí hasta el día de hoy.",
+    "image": "volantazo_general_paz.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target"
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_165",
+    "name": "El Duende Pillo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Cambiá el objetivo del hechizo objetivo que tenga un solo objetivo. Perdés tantos Puntos de Vida como el valor de maná de ese hechizo.",
+    "flavorText": "El duende se encargó de hacerlo. El daño va a tu nombre.",
+    "image": "el_duende_pillo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target",
+      "loseLifeByManaValue": true
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_166",
+    "name": "Dar Vuelta en U",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Rare",
+    "text": "Cambiá el objetivo del hechizo objetivo que tenga un solo objetivo, a menos que su controlador pague {2}.",
+    "flavorText": "La prohibición está clara después pagá las consecuencias.",
+    "image": "dar_vuelta_en_u.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target",
+      "unlessPay": 2
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_167",
+    "name": "Torcer el Haz de Luz",
+    "type": "Instantáneo",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Uncommon",
+    "text": "Este hechizo cuesta {3} menos para lanzarse si controlás una criatura con fuerza 4 o más.\nCambiá el objetivo del hechizo o habilidad objetivo que tenga un solo objetivo.",
+    "flavorText": "La descarga eligió al que llevaba la bandera más alta.",
+    "image": "torcer_el_haz_de_luz.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target",
+      "stackFilter": "any"
+    },
+    "requiresTarget": true,
+    "costModifiers": [
+      {
+        "mode": "reduce",
+        "amount": 3,
+        "per": {
+          "kind": "controls_creature_with_power",
+          "atLeast": 4
+        }
+      }
+    ]
+  },
+  {
+    "id": "inst_168",
+    "name": "Jugar al Frontón",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "colors": [
+      "U"
+    ],
+    "rarity": "Rare",
+    "text": "Cambiá el objetivo del hechizo objetivo que tenga un solo objetivo.",
+    "flavorText": "La pared estaba acostumbrada a devolver pelotas, no amenazas.",
+    "image": "jugar_al_fronton.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target"
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_169",
+    "name": "Cambió de  Recorrido el Bondi",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "colors": [
+      "R"
+    ],
+    "rarity": "Uncommon",
+    "text": "Cambiá el objetivo de la habilidad activada objetivo que tenga un solo objetivo. Robá una carta.",
+    "flavorText": "El chofer avisó el cambio de recorrido después de doblar.",
+    "image": "cambio_de_recorrido_el_bondi.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "redirect_stack_target",
+      "stackFilter": "activated_ability",
+      "drawAfter": 1
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_170",
+    "name": "¿Positivo o Negativo?",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{U}{R}",
+    "cmc": 4,
+    "colors": [
+      "U",
+      "R"
+    ],
+    "rarity": "Rare",
+    "text": "Elegí el hechizo objetivo y lanzá una moneda. Si ganás el lanzamiento, ganás el control de ese hechizo y podés elegir nuevos objetivos para él. Si perdés, contrarrestá ese hechizo.",
+    "flavorText": "El polarímetro se encendió pero la desconfianza es total.",
+    "image": "positivo_o_negativo.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "coin_control_spell"
+    },
+    "requiresTarget": true,
+    "deckCopyLimit": 2
+  },
+  {
+    "id": "inst_171",
+    "name": "Buscar por Conveniencia",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "colors": [
+      "B"
+    ],
+    "rarity": "Rare",
+    "text": "Buscá una carta en tu biblioteca, barajá y poné esa carta en la parte superior. Perdés 2 Puntos de Vida.",
+    "flavorText": "Cuando no queda otra, es mejor arriesgarse.",
+    "image": "buscar_por_conveniencia.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "search_library",
+      "destination": "top",
+      "allowFewer": false,
+      "lifeLossAfter": 2
+    },
+    "deckCopyLimit": 1
+  },
+  {
+    "id": "inst_172",
+    "name": "Hay Olor a Podrido",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}{G}",
+    "cmc": 3,
+    "colors": [
+      "B",
+      "G"
+    ],
+    "rarity": "Uncommon",
+    "text": "Destruí el artefacto o la criatura objetivo. No puede regenerarse.",
+    "flavorText": "En el fondo de la zanja el hierro se deshace antes que la madera.",
+    "image": "hay_olor_a_podrido.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "artifact_or_creature",
+      "operation": "destroy",
+      "cannotRegenerate": true
+    },
+    "requiresTarget": true
+  },
+  {
+    "id": "inst_173",
+    "name": "Hasta Nunca",
+    "type": "Instantáneo",
+    "manaCost": "{B}{R}",
+    "cmc": 2,
+    "colors": [
+      "B",
+      "R"
+    ],
+    "rarity": "Common",
+    "text": "Destruí la criatura objetivo. No puede regenerarse.",
+    "flavorText": "No llegó ni a despedirse.",
+    "image": "hasta_nunca.png",
+    "enabled": false,
+    "keywords": [],
+    "effect": {
+      "type": "move_target_permanent",
+      "targetKind": "creature",
+      "operation": "destroy",
+      "cannotRegenerate": true
+    },
+    "requiresTarget": true
   }
 ]
