@@ -24,7 +24,7 @@ export function syncSessionInput(){
 }
 // Only controls required by the existing serialized identity/startup flow can
 // work while it is pending. Navigation, gameplay and tutorial replay cannot.
-const bootControls='.username-overlay[data-session-verification-control],#starter-deck-select-overlay,#daily-login-reward-modal,.campaign-popup-shell,.trade-notification-modal,#community-notice-ok,#simple-alert-ok';
+const bootControls='.username-overlay[data-session-verification-control],#starter-deck-select-overlay,#daily-login-reward-modal,#daily-rewards-overlay,.campaign-popup-shell,.trade-notification-modal,#community-notice-ok,#simple-alert-ok';
 const fullscreenControls='#arg-mobile-fullscreen-retry,#arg-mobile-ios-install-close';
 function suppress(event){if(event.cancelable)event.preventDefault();event.stopImmediatePropagation();}
 function guard(event){
